@@ -54,5 +54,31 @@
     "title": "{screen}",
     "body": "This workspace view is being assembled from the typed M2 contract.",
     "unknown": "Workspace"
+  },
+  "home": {
+    "title": "Good morning",
+    "description": "Resume a matter or start a scoped notarial task.",
+    "commandTitle": "What needs your attention?",
+    "createTitle": "Create a matter",
+    "createBody": "Open a privacy-safe RTA workspace",
+    "askTitle": "Ask a legal question",
+    "askBody": "Search the curated Sri Lankan corpus",
+    "workflowTitle": "Open a guided workflow",
+    "workflowBody": "Continue a repeatable notarial procedure",
+    "recentTitle": "Recent matters",
+    "status": "Status",
+    "activeFunction": "Active function",
+    "openIssues": "{count, plural, =0 {No open issues} one {# open issue} other {# open issues}}",
+    "lastActivity": "Last activity {date}",
+    "obligationsTitle": "Upcoming obligations",
+    "due": "Due {date}",
+    "viewAll": "View all matters",
+    "inReview": "In review",
+    "examination": "Examination"
+  },
+  "obligations": {
+    "monthlyList": "Monthly list deadline",
+    "licenseRenewal": "Notarial licence renewal",
+    "lawyerReview": "Unresolved lawyer review"
   }
 }
