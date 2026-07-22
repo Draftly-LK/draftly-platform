@@ -1,0 +1,17 @@
+{
+  "route": "/matters/matter-rta-001/checks",
+  "viewport": {
+    "name": "1440x900",
+    "width": 1440,
+    "height": 900
+  },
+  "consoleProblems": [],
+  "seriousAxeViolations": [],
+  "probe": {
+    "canvas": "rgb(244, 243, 239)",
+    "bodyFont": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+    "headingFont": "Newsreader, \"Newsreader Fallback\", \"Noto Serif Sinhala\", \"Noto Serif Sinhala Fallback\", serif",
+    "radius": "6px",
+    "overflow": 0
+  }
+}
