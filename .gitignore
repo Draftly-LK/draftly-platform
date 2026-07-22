@@ -9,6 +9,6 @@ screenshots/
 .env*
 !.env.example
 *.log
+*.tsbuildinfo
 docs/review/**/intermediate-*
 docs/review/**/raw-*
-
