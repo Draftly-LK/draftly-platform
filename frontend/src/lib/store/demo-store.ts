@@ -27,6 +27,7 @@ interface DemoState {
   replaceDocument: (documentId: string, fileName: string, reason: string) => void;
   verifyFact: (factId: string) => void;
   correctFact: (factId: string, value: VerifiedFact["value"], reason: string) => void;
+  addManualFact: (labelKey: string, value: VerifiedFact["value"], reason: string) => string;
   resolveCheck: (checkId: string, action: NonNullable<Check["resolution"]>["action"], reason: string) => void;
   completeStep: (workflowId: string, stepId: string, note?: string, overrideReason?: string) => void;
   createDraft: (matterId: string, templateId: string) => string | null;
@@ -90,6 +91,15 @@ export const useDemoStore = create<DemoState>()(persist((set, get) => ({
     const updated = state.facts.map((fact) => fact.id === factId ? { ...fact, value, verificationState: "corrected" as const, reviewerId: DEMO_USER_ID, reviewedAt, changes: [...fact.changes, { id: `change-live-${state.auditEvents.length + 1}`, before: fact.value, after: value, reason, actorId: DEMO_USER_ID, timestamp: reviewedAt }] } : fact);
     return { facts: updated, auditEvents: appendEvent(state, { matterId: before?.matterId ?? DEMO_MATTER_ID, action: "fact.corrected", targetType: "fact", targetId: factId, before, after: updated.find((fact) => fact.id === factId) }) };
   }),
+  // TODO(api): POST /api/matters/{matterId}/facts
+  addManualFact: (labelKey, value, reason) => {
+    const id = `fact-manual-${String(get().facts.length + 1).padStart(3, "0")}`;
+    set((state) => {
+      const fact: VerifiedFact = { id, matterId: DEMO_MATTER_ID, key: id, labelKey, section: "manual", value, extractedValue: null, confidence: 1, verificationState: "unreviewed", changes: [], manualReason: reason };
+      return { facts: [...state.facts, fact], auditEvents: appendEvent(state, { matterId: DEMO_MATTER_ID, action: "fact.added-manually", targetType: "fact", targetId: id, after: fact }) };
+    });
+    return id;
+  },
   // TODO(api): POST /api/matters/{matterId}/checks/{checkId}/resolve
   resolveCheck: (checkId, action, reason) => set((state) => {
     const before = state.checks.find((check) => check.id === checkId);
@@ -135,4 +145,3 @@ export const useDemoStore = create<DemoState>()(persist((set, get) => ({
     set({ ...reset, auditEvents: [...reset.auditEvents, { id: "audit-reset", matterId: DEMO_MATTER_ID, actor: DEMO_USER_ID, action: "demo.reset", targetType: "matter", targetId: DEMO_MATTER_ID, timestamp: deterministicTimestamp(reset.auditEvents.length) }] });
   }
 }), { name: "draftly-m2-demo", storage: createJSONStorage(() => localStorage), version: 1 }));
-
