@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+references/
+screenshots/
+.env*
+!.env.example
+*.log
+docs/review/**/intermediate-*
+docs/review/**/raw-*
+

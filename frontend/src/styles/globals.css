@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --canvas: #f4f3ef;
+  --surface: #ffffff;
+  --ink: #1b211d;
+  --muted-ink: #667068;
+  --border: #d8ddd8;
+  --border-strong: #aeb7ae;
+  --forest: #24533d;
+  --soft-green: #e2eee7;
+  --teal: #26747a;
+  --amber: #a56a16;
+  --amber-text: #8a5510;
+  --red: #a4443e;
+  --selected-bg: #eef2ee;
+  --ring: #26747a;
+  --hover-bg: #ecebe6;
+  --active-bg: #e4e3dd;
+  --disabled-fg: #9ba39c;
+  --disabled-bg: #f0efeb;
+  --amber-bg: #f5ecdd;
+  --teal-bg: #e1edee;
+  --red-bg: #f3e3e2;
+  --shadow-popover: 0 8px 24px rgb(27 33 29 / 0.12);
+  --shadow-dialog: 0 16px 48px rgb(27 33 29 / 0.16);
+  --shadow-toast: 0 6px 20px rgb(27 33 29 / 0.14);
+}
+
+* { box-sizing: border-box; }
+html { background: var(--canvas); font-optical-sizing: auto; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; font-size: 15px; line-height: 1.5; letter-spacing: 0; }
+html[lang="si"] body { line-height: 1.75; }
+::selection { background: var(--soft-green); }
+h1, h2, h3, .font-heading { font-family: var(--font-newsreader), var(--font-noto-serif-si), serif; font-optical-sizing: auto; }
+button, input, textarea, select { font: inherit; letter-spacing: 0; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+table { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  body { background: #fff; color: #000; font-family: Georgia, serif; }
+  [data-app-chrome], [data-no-print] { display: none !important; }
+  [data-print-surface] { border: 0 !important; box-shadow: none !important; }
+  [data-fact-chip]::after { content: " [source: " attr(data-source) "]"; font-size: 9pt; }
+  section { break-inside: avoid; }
+}
+

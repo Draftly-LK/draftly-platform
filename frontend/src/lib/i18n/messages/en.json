@@ -1,0 +1,13 @@
+{
+  "app": {
+    "name": "Draftly",
+    "loading": "Preparing your workspace",
+    "errorTitle": "The workspace could not be loaded",
+    "errorBody": "Try loading this view again.",
+    "retry": "Try again",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "This workspace view does not exist.",
+    "backHome": "Back to home"
+  }
+}
+
