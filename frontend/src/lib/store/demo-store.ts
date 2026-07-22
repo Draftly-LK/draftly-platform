@@ -34,6 +34,7 @@ interface DemoState {
   saveDraftVersion: (draftId: string, document: EditorDocument) => void;
   restoreDraftVersion: (draftId: string, versionId: string) => void;
   approveDraft: (draftId: string) => void;
+  recordAssistantAction: (answerId: string, action: string) => void;
   resetDemo: () => void;
 }
 
@@ -139,6 +140,8 @@ export const useDemoStore = create<DemoState>()(persist((set, get) => ({
   }), auditEvents: appendEvent(state, { matterId: DEMO_MATTER_ID, action: "draft.version-restored", targetType: "draft", targetId: draftId, after: { versionId } }) })),
   // TODO(api): POST /api/matters/{matterId}/drafts/{draftId}/approve
   approveDraft: (draftId) => set((state) => ({ drafts: state.drafts.map((draft) => draft.id === draftId ? { ...draft, approvalState: "approved", approvedBy: DEMO_USER_ID, approvedAt: deterministicTimestamp(state.auditEvents.length) } : draft), auditEvents: appendEvent(state, { matterId: DEMO_MATTER_ID, action: "draft.approved", targetType: "draft", targetId: draftId }) })),
+  // TODO(api): POST /api/assistant/actions
+  recordAssistantAction: (answerId, action) => set((state) => ({ auditEvents: appendEvent(state, { matterId: DEMO_MATTER_ID, action: `assistant.${action}`, targetType: "answer", targetId: answerId }) })),
   // TODO(api): POST /api/demo/reset
   resetDemo: () => {
     const reset = seed();
