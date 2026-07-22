@@ -7,7 +7,7 @@ type Status = VerificationState | ProcessingState | CheckStatus | StepState;
 
 const styles: Record<Status, string> = {
   unreviewed: "border-border-strong bg-surface text-ink", verified: "border-forest bg-soft-green text-forest", corrected: "border-teal bg-teal-bg text-teal", conflict: "border-amber bg-amber-bg text-amber-text", blocked: "border-red bg-red-bg text-red",
-  uploaded: "border-border-strong bg-surface text-ink", extracting: "border-teal bg-teal-bg text-teal", "ready-for-review": "border-forest bg-soft-green text-forest", failed: "border-red bg-red-bg text-red", replaced: "border-border-strong bg-disabled-bg text-muted-ink",
+  uploaded: "border-border-strong bg-surface text-ink", extracting: "border-teal bg-teal-bg text-teal", "ready-for-review": "border-forest bg-soft-green text-forest", failed: "border-red bg-red-bg text-red", replaced: "border-border-strong bg-disabled-bg text-ink",
   pass: "border-forest bg-soft-green text-forest", warning: "border-amber bg-amber-bg text-amber-text", fail: "border-red bg-red-bg text-red", "needs-review": "border-teal bg-teal-bg text-teal",
   "not-started": "border-border-strong bg-surface text-muted-ink", "in-progress": "border-teal bg-teal-bg text-teal", complete: "border-forest bg-soft-green text-forest"
 };
@@ -23,4 +23,3 @@ export function StatusBadge({ status, className }: { status: Status; className?:
   const { label, icon: Icon } = details(status);
   return <span className={cn("inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold", styles[status], className)}><Icon aria-hidden="true" className="size-4" strokeWidth={1.5} />{label}</span>;
 }
-
