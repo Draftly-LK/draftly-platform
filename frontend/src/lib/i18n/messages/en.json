@@ -7,7 +7,52 @@
     "retry": "Try again",
     "notFoundTitle": "Page not found",
     "notFoundBody": "This workspace view does not exist.",
-    "backHome": "Back to home"
+    "backHome": "Back to home",
+    "syntheticNotice": "Synthetic demonstration data"
+  },
+  "shell": {
+    "workspace": "Notarial workspace",
+    "search": "Search workspace",
+    "searchShortcut": "Ctrl+K",
+    "searchPlaceholder": "Search matters, documents, facts, and sources",
+    "searchEmpty": "No matching workspace item",
+    "create": "Create matter",
+    "home": "Home",
+    "matters": "Matters",
+    "workflows": "Workflows",
+    "library": "Legal sources",
+    "history": "History",
+    "settings": "Settings",
+    "help": "Help",
+    "recentMatters": "Recent matters",
+    "resetDemo": "Reset demo",
+    "openNavigation": "Open navigation",
+    "close": "Close",
+    "locale": "Interface language",
+    "english": "EN",
+    "sinhala": "සිං",
+    "commands": "Commands",
+    "goHome": "Go to home",
+    "openAssistant": "Open assistant",
+    "openMatter": "Open matter"
+  },
+  "matterNav": {
+    "overview": "Overview",
+    "documents": "Documents",
+    "facts": "Verified facts",
+    "workflow": "Workflow",
+    "checks": "Checks",
+    "drafts": "Drafts",
+    "activity": "Activity",
+    "updated": "Updated {date}",
+    "menu": "Matter actions",
+    "regime": "RTA",
+    "type": "Transfer",
+    "status": "In review"
+  },
+  "placeholder": {
+    "title": "{screen}",
+    "body": "This workspace view is being assembled from the typed M2 contract.",
+    "unknown": "Workspace"
   }
 }
-

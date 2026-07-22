@@ -9,6 +9,10 @@
     "notFoundBody": "This workspace view does not exist.",
     "backHome": "Back to home"
   },
+  "shell": {
+    "locale": "අතුරුමුහුණත් භාෂාව",
+    "english": "EN",
+    "sinhala": "සිං"
+  },
   "_todo": "TODO(si): lawyer-reviewed Sinhala translations pending"
 }
-
