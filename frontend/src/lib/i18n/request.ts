@@ -8,7 +8,7 @@ export default getRequestConfig(async () => {
   const requested = cookieStore.get("draftly-locale")?.value;
   const locale = requested === "si" ? "si" : "en";
   const messages = locale === "si" ? mergeMessages(en, si) : en;
-  return { locale, messages };
+  return { locale, messages, timeZone: "Asia/Colombo" };
 });
 
 function mergeMessages(base: Record<string, unknown>, translated: Record<string, unknown>): Record<string, unknown> {

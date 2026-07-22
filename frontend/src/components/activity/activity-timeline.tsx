@@ -1,12 +1,12 @@
 "use client";
 
 import { Clock3 } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useDemoStore } from "@/lib/store";
 
 export function ActivityTimeline({ matterId }: { matterId?: string }) {
   const t = useTranslations("activity");
-  const format = useFormatter();
+  const locale = useLocale() === "si" ? "si-LK" : "en-LK";
   const allEvents = useDemoStore((state) => state.auditEvents);
   const events = (
     matterId
@@ -36,10 +36,11 @@ export function ActivityTimeline({ matterId }: { matterId?: string }) {
               </div>
             </div>
             <div className="text-muted-ink text-xs tabular-nums">
-              {format.dateTime(new Date(event.timestamp), {
+              {new Intl.DateTimeFormat(locale, {
                 dateStyle: "medium",
                 timeStyle: "short",
-              })}
+                timeZone: "Asia/Colombo",
+              }).format(new Date(event.timestamp))}
             </div>
           </div>
           <span className="border-border-strong mt-2 inline-block rounded-full border px-2 py-1 text-xs">

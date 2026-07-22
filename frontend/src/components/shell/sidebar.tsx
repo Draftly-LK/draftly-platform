@@ -17,7 +17,6 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { matters } from "@/lib/mocks";
 import { useDemoStore } from "@/lib/store";
 import { IconButton } from "@/components/ui/icon-button";
 import { CommandPalette } from "./command-palette";
@@ -26,6 +25,7 @@ export function Sidebar() {
   const t = useTranslations("shell");
   const app = useTranslations("app");
   const pathname = usePathname();
+  const matters = useDemoStore((state) => state.matters);
   const resetDemo = useDemoStore((state) => state.resetDemo);
   const [open, setOpen] = useState(false);
   const links = [

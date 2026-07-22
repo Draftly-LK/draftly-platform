@@ -14,7 +14,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useDemoStore } from "@/lib/store";
+import { simulateDocumentProcessing, useDemoStore } from "@/lib/store";
 import type { MatterType } from "@/types";
 import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { Button } from "@/components/ui/button";
@@ -44,7 +44,10 @@ export function NewMatterScreen() {
       regime: "rta",
       type,
     });
-    files.forEach((file) => addDocument(file.name, "other", id));
+    files.forEach((file) => {
+      const documentId = addDocument(file.name, "other", id);
+      simulateDocumentProcessing(documentId);
+    });
     router.push(`/matters/${id}`);
   };
   if (step === 1)

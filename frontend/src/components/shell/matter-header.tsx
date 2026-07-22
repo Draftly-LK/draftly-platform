@@ -1,10 +1,10 @@
 "use client";
 
 import { MoreHorizontal } from "lucide-react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { matters } from "@/lib/mocks";
+import { useDemoStore } from "@/lib/store";
 import { IconButton } from "@/components/ui/icon-button";
 
 const tabs = [
@@ -19,9 +19,10 @@ const tabs = [
 
 export function MatterHeader({ matterId }: { matterId: string }) {
   const t = useTranslations("matterNav");
-  const format = useFormatter();
   const pathname = usePathname();
-  const matter = matters.find((item) => item.id === matterId) ?? matters[0];
+  const matter = useDemoStore((state) =>
+    state.matters.find((item) => item.id === matterId),
+  );
   if (!matter) return null;
   return (
     <header className="border-border bg-surface border-b">
@@ -41,11 +42,7 @@ export function MatterHeader({ matterId }: { matterId: string }) {
           <div className="text-muted-ink mt-1 truncate text-sm">
             {matter.parties.map((party) => party.nameToken).join(" ↔ ")} ·{" "}
             {t("updated", {
-              date: format.dateTime(new Date(matter.updatedAt), {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              }),
+              date: matter.updatedAt.slice(0, 10),
             })}
           </div>
         </div>
