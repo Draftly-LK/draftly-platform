@@ -80,5 +80,43 @@
     "monthlyList": "Monthly list deadline",
     "licenseRenewal": "Notarial licence renewal",
     "lawyerReview": "Unresolved lawyer review"
+  },
+  "matters": {
+    "title": "Matters",
+    "description": "Role-aware work assigned to your notarial practice.",
+    "reference": "Reference",
+    "parties": "Parties",
+    "regime": "Regime",
+    "transaction": "Transaction",
+    "owner": "Owner",
+    "status": "Status",
+    "updated": "Updated",
+    "openMatter": "Open matter {reference}",
+    "syntheticOwner": "N. M. Silva (synthetic)",
+    "rta": "RTA",
+    "transfer": "Transfer",
+    "inReview": "In review"
+  },
+  "overview": {
+    "activeFunction": "Active function",
+    "completion": "Matter completion",
+    "examination": "Examination",
+    "drafting": "Drafting",
+    "execution": "Execution",
+    "attestation": "Attestation",
+    "nextAction": "Next action",
+    "nextActionBody": "Verify extracted deed particulars",
+    "continue": "Continue review",
+    "documents": "Document processing",
+    "issues": "Missing or conflicting evidence",
+    "facts": "Recently verified facts",
+    "drafts": "Draft outputs",
+    "activity": "Recent activity",
+    "readyCount": "{ready} of {total} documents ready",
+    "issueCount": "{count} findings require attention",
+    "verifiedCount": "{count} lawyer-reviewed facts",
+    "draftCount": "{count} draft awaiting review",
+    "activityBody": "Latest action: corrected transferor name",
+    "view": "View {section}"
   }
 }

@@ -15,8 +15,9 @@ for (const viewport of [{ name: "1440x900", width: 1440, height: 900 }, { name: 
     const consoleProblems: string[] = [];
     page.on("console", (message) => { if (["error", "warning"].includes(message.type())) consoleProblems.push(`${message.type()}: ${message.text()}`); });
     page.on("pageerror", (error) => consoleProblems.push(`pageerror: ${error.message}`));
-    await page.goto(route, { waitUntil: "networkidle" });
+    await page.goto(route, { waitUntil: "domcontentloaded" });
     await expect(page.locator("body")).toBeVisible();
+    await page.waitForTimeout(300);
     const axe = await new AxeBuilder({ page }).analyze();
     const serious = axe.violations.filter((violation) => violation.impact === "serious" || violation.impact === "critical");
     const probe = await page.evaluate(() => {
@@ -44,4 +45,3 @@ for (const viewport of [{ name: "1440x900", width: 1440, height: 900 }, { name: 
     await context.close();
   });
 }
-
