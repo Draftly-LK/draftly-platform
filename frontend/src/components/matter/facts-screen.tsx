@@ -2,7 +2,7 @@
 
 import { FileSearch, Link2, Plus, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDemoStore } from "@/lib/store";
 import type { VerifiedFact } from "@/types";
 import { AppShell } from "@/components/shell/app-shell";
@@ -35,6 +35,10 @@ export function FactsScreen({ matterId }: { matterId: string }) {
   const [editReason, setEditReason] = useState("");
   const [manual, setManual] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const correctionInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (editId) correctionInputRef.current?.focus();
+  }, [editId]);
   const selected = facts.find((fact) => fact.id === selectedId) ?? facts[0];
   const visible = facts.filter(
     (fact) =>
@@ -120,7 +124,7 @@ export function FactsScreen({ matterId }: { matterId: string }) {
         </div>
         <section className="border-border-strong bg-surface mt-4 overflow-hidden rounded border">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[980px] border-collapse text-left">
+            <table className="w-full min-w-[1200px] border-collapse whitespace-nowrap text-left">
               <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
                 <tr className="border-border h-10 border-b">
                   <th className="px-3">{t("fact")}</th>
@@ -173,7 +177,7 @@ export function FactsScreen({ matterId }: { matterId: string }) {
                       <div className="flex items-center gap-1">
                         {fact.verificationState === "unreviewed" && (
                           <Button
-                            className="min-h-9 px-2 py-1 text-xs"
+                            className="min-h-8 px-2 py-1 text-xs"
                             variant="primary"
                             onClick={() => verifyFact(fact.id)}
                           >
@@ -183,28 +187,28 @@ export function FactsScreen({ matterId }: { matterId: string }) {
                         <button
                           aria-label={t("openEvidence", { fact: label(fact) })}
                           title={t("openEvidence", { fact: label(fact) })}
-                          className="hover:bg-active-bg grid size-9 place-items-center rounded"
+                          className="hover:bg-active-bg grid size-8 place-items-center rounded"
                           onClick={() => setSelectedId(fact.id)}
                         >
                           <FileSearch className="size-4" strokeWidth={1.5} />
                         </button>
                         {fact.verificationState === "conflict" ? (
                           <Button
-                            className="min-h-9 px-2 py-1 text-xs"
+                            className="min-h-8 px-2 py-1 text-xs"
                             onClick={() => setSelectedId(fact.id)}
                           >
                             {t("compare")}
                           </Button>
                         ) : fact.verificationState === "blocked" ? (
                           <Button
-                            className="min-h-9 px-2 py-1 text-xs"
+                            className="min-h-8 px-2 py-1 text-xs"
                             onClick={() => setManual(true)}
                           >
                             {t("resolve")}
                           </Button>
                         ) : (
                           <Button
-                            className="min-h-9 px-2 py-1 text-xs"
+                            className="min-h-8 px-2 py-1 text-xs"
                             onClick={() => beginCorrection(fact)}
                           >
                             {t("correct")}
@@ -294,6 +298,9 @@ export function FactsScreen({ matterId }: { matterId: string }) {
           <div
             className="bg-ink/25 fixed inset-0 z-40 grid place-items-center p-4"
             role="presentation"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setEditId(undefined);
+            }}
           >
             <section
               role="dialog"
@@ -307,6 +314,7 @@ export function FactsScreen({ matterId }: { matterId: string }) {
               <label className="mt-4 block font-medium">
                 {t("correctedValue")}
                 <input
+                  ref={correctionInputRef}
                   className="border-border-strong mt-1 h-10 w-full rounded border px-3"
                   value={editValue}
                   onChange={(event) => setEditValue(event.target.value)}
@@ -339,7 +347,12 @@ export function FactsScreen({ matterId }: { matterId: string }) {
           <ManualFactDialog
             onClose={() => setManual(false)}
             onAdd={(value, reason) => {
-              const id = addManualFact("facts.manualValue", value, reason);
+              const id = addManualFact(
+                "facts.manualValue",
+                value,
+                reason,
+                matterId,
+              );
               setSelectedId(id);
               setManual(false);
               setAnnouncement(t("manualAdded"));
@@ -373,7 +386,7 @@ function ConflictComparison({
               {t("pagePinpoint", { page: candidate.evidence.page })}
             </div>
             <div className="mt-1 font-medium">{String(candidate.value)}</div>
-            <div className="mt-1 text-xs text-ink">
+            <div className="text-ink mt-1 text-xs">
               {candidate.evidence.snippet}
             </div>
             <Button
@@ -399,10 +412,15 @@ function ManualFactDialog({
   const t = useTranslations("facts");
   const [value, setValue] = useState("");
   const [reason, setReason] = useState("");
+  const valueInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => valueInputRef.current?.focus(), []);
   return (
     <div
       className="bg-ink/25 fixed inset-0 z-40 grid place-items-center p-4"
       role="presentation"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") onClose();
+      }}
     >
       <section
         role="dialog"
@@ -416,6 +434,7 @@ function ManualFactDialog({
         <label className="mt-4 block font-medium">
           {t("manualValue")}
           <input
+            ref={valueInputRef}
             className="border-border-strong mt-1 h-10 w-full rounded border px-3"
             value={value}
             onChange={(event) => setValue(event.target.value)}

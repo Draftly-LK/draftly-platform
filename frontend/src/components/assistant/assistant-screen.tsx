@@ -31,6 +31,7 @@ export function AssistantScreen() {
   const t = useTranslations("assistant");
   const locale = useLocale() === "si" ? "si" : "en";
   const recordAction = useDemoStore((state) => state.recordAssistantAction);
+  const activeMatterId = useDemoStore((state) => state.matters.at(-1)?.id);
   const grounded = answers.find((answer) => answer.kind === "grounded");
   const insufficient = answers.find(
     (answer) => answer.kind === "insufficient-authority",
@@ -44,12 +45,12 @@ export function AssistantScreen() {
   const [question, setQuestion] = useState("");
   const [announcement, setAnnouncement] = useState("");
   const action = (name: string) => {
-    recordAction(grounded?.id ?? "answer-grounded", name);
+    recordAction(grounded?.id ?? "answer-grounded", name, activeMatterId);
     setAnnouncement(t("actionRecorded"));
   };
   const submit = () => {
     if (!question.trim()) return;
-    recordAction("answer-grounded", "question-asked");
+    recordAction("answer-grounded", "question-asked", activeMatterId);
     setQuestion("");
     setAnnouncement(t("questionRecorded"));
   };
@@ -81,12 +82,21 @@ export function AssistantScreen() {
             >
               <ScopeChip
                 active
-                icon={<MessageSquareText />}
+                icon={<MessageSquareText strokeWidth={1.5} />}
                 label={t("matterScope")}
               />
-              <ScopeChip icon={<FileCheck2 />} label={t("stepScope")} />
-              <ScopeChip icon={<BookMarked />} label={t("documentScope")} />
-              <ScopeChip icon={<Library />} label={t("libraryScope")} />
+              <ScopeChip
+                icon={<FileCheck2 strokeWidth={1.5} />}
+                label={t("stepScope")}
+              />
+              <ScopeChip
+                icon={<BookMarked strokeWidth={1.5} />}
+                label={t("documentScope")}
+              />
+              <ScopeChip
+                icon={<Library strokeWidth={1.5} />}
+                label={t("libraryScope")}
+              />
             </div>
           </section>
           <form
@@ -174,7 +184,7 @@ export function AssistantScreen() {
                       {t("saveToLibrary")}
                     </Button>
                     <Button onClick={() => action("check-created")}>
-                      <PlusCircle className="size-4" />
+                      <PlusCircle className="size-4" strokeWidth={1.5} />
                       {t("createCheck")}
                     </Button>
                   </div>
@@ -218,7 +228,8 @@ export function AssistantScreen() {
                     {citation.evidence.snippet}
                   </p>
                   <div className="text-muted-ink mt-3 text-sm">
-                    {citation.evidence.documentId} · {t("page", { page: citation.evidence.page })}
+                    {citation.evidence.documentId} ·{" "}
+                    {t("page", { page: citation.evidence.page })}
                   </div>
                 </div>
                 <div className="border-border-strong bg-surface mt-4 rounded border p-4">

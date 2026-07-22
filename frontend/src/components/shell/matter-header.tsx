@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDemoStore } from "@/lib/store";
 import { IconButton } from "@/components/ui/icon-button";
+import { LocaleToggle } from "./locale-toggle";
 
 const tabs = [
   "overview",
@@ -46,9 +47,12 @@ export function MatterHeader({ matterId }: { matterId: string }) {
             })}
           </div>
         </div>
-        <IconButton label={t("menu")}>
-          <MoreHorizontal className="size-5" strokeWidth={1.5} />
-        </IconButton>
+        <div className="flex shrink-0 items-center gap-2">
+          <LocaleToggle />
+          <IconButton label={t("menu")}>
+            <MoreHorizontal className="size-5" strokeWidth={1.5} />
+          </IconButton>
+        </div>
       </div>
       <nav
         aria-label={matter.reference}

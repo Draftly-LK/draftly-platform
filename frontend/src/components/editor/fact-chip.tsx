@@ -52,7 +52,7 @@ function FactChipView({ node, extension }: NodeViewProps) {
   return (
     <NodeViewWrapper
       as="span"
-      data-fact-chip
+      data-fact-chip=""
       data-source={source}
       title={source}
       className="border-forest bg-soft-green text-forest mx-0.5 inline-flex cursor-help items-center rounded-full border px-2 py-0.5 align-baseline text-sm font-medium"

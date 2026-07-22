@@ -6,7 +6,7 @@ import {
   Noto_Serif_Sinhala,
 } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "@/styles/globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -31,10 +31,10 @@ const notoSerifSi = Noto_Serif_Sinhala({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Draftly",
-  description: "Synthetic legal workflow demonstration",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("app");
+  return { title: t("name"), description: t("metaDescription") };
+}
 
 export default async function RootLayout({
   children,

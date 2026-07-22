@@ -52,9 +52,14 @@ export function DraftEditorScreen({
   const previous = draft.versions.at(-2);
   if (!selected || !current) return null;
   const editable = selected.id === draft.activeVersionId;
-  const canExport = draft.approvalState === "approved" || draft.approvalState === "exported";
+  const canExport =
+    draft.approvalState === "approved" || draft.approvalState === "exported";
   const save = (document: EditorDocument) => {
     saveDraftVersion(draft.id, document);
+    const activeVersionId = useDemoStore
+      .getState()
+      .drafts.find((item) => item.id === draft.id)?.activeVersionId;
+    setSelectedVersionId(activeVersionId);
     setAnnouncement(t("saved"));
   };
   const restore = () => {
@@ -80,9 +85,7 @@ export function DraftEditorScreen({
         className="border-border bg-surface flex flex-wrap items-center gap-2 border-b px-5 py-3"
       >
         <div className="w-full min-w-0 min-[1200px]:w-auto min-[1200px]:flex-1">
-          <h1 className="text-2xl font-semibold">
-            {t("editorTitle")}
-          </h1>
+          <h1 className="text-2xl font-semibold">{t("editorTitle")}</h1>
           <div className="text-muted-ink mt-1 text-xs">
             {t("versionPill", { number: selected.number, hash: selected.hash })}
           </div>
@@ -103,12 +106,12 @@ export function DraftEditorScreen({
           ))}
         </select>
         <Button onClick={() => setCompare((value) => !value)}>
-          <GitCompare className="size-4" />
+          <GitCompare className="size-4" strokeWidth={1.5} />
           {compare ? t("closeCompare") : t("compare")}
         </Button>
         {!editable && (
           <Button onClick={restore}>
-            <RotateCcw className="size-4" />
+            <RotateCcw className="size-4" strokeWidth={1.5} />
             {t("restore")}
           </Button>
         )}
@@ -121,31 +124,23 @@ export function DraftEditorScreen({
           }
           onClick={approve}
         >
-          <Check className="size-4" />
+          <Check className="size-4" strokeWidth={1.5} />
           {t("approve")}
         </Button>
         <Button
           disabled={!canExport}
           onClick={() => exportFile("docx")}
-          title={
-            !canExport
-              ? t("exportGate")
-              : t("exportDocx")
-          }
+          title={!canExport ? t("exportGate") : t("exportDocx")}
         >
-          <Download className="size-4" />
+          <Download className="size-4" strokeWidth={1.5} />
           {t("exportDocx")}
         </Button>
         <Button
           disabled={!canExport}
           onClick={() => exportFile("pdf")}
-          title={
-            !canExport
-              ? t("exportGate")
-              : t("exportPdf")
-          }
+          title={!canExport ? t("exportGate") : t("exportPdf")}
         >
-          <Download className="size-4" />
+          <Download className="size-4" strokeWidth={1.5} />
           {t("exportPdf")}
         </Button>
       </header>

@@ -11,6 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import Image from "next/image";
+import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -30,6 +31,7 @@ const transactionTypes: MatterType[] = [
 export function NewMatterScreen() {
   const t = useTranslations("newMatter");
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const createMatter = useDemoStore((state) => state.createMatter);
   const addDocument = useDemoStore((state) => state.addDocument);
   const [step, setStep] = useState(1);
@@ -72,7 +74,12 @@ export function NewMatterScreen() {
           />
           <div className="relative z-[1] flex min-h-[calc(100vh-64px)] flex-col">
             <div className="flex flex-1 items-center px-6 py-10 sm:px-12 lg:px-20">
-              <div className="max-w-xl">
+              <motion.div
+                initial={reduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.25 }}
+                className="max-w-xl"
+              >
                 <div className="text-forest text-sm font-semibold uppercase">
                   {t("entryEyebrow")}
                 </div>
@@ -82,7 +89,7 @@ export function NewMatterScreen() {
                 <p className="text-ink mt-4 max-w-lg text-lg leading-8">
                   {t("entryBody")}
                 </p>
-              </div>
+              </motion.div>
             </div>
             <div className="border-border-strong bg-surface/95 border-t px-6 py-5 sm:px-12 lg:px-20">
               <div className="flex flex-wrap items-end gap-4">
@@ -93,22 +100,22 @@ export function NewMatterScreen() {
                   <div className="mt-3 grid gap-2 sm:grid-cols-4">
                     <RegimeChoice
                       active
-                      icon={<FileKey2 />}
+                      icon={<FileKey2 strokeWidth={1.5} />}
                       title={t("rta")}
                       status={t("available")}
                     />
                     <RegimeChoice
-                      icon={<Landmark />}
+                      icon={<Landmark strokeWidth={1.5} />}
                       title={t("rdo")}
                       status={t("future")}
                     />
                     <RegimeChoice
-                      icon={<Building2 />}
+                      icon={<Building2 strokeWidth={1.5} />}
                       title={t("apartment")}
                       status={t("future")}
                     />
                     <RegimeChoice
-                      icon={<MapPinned />}
+                      icon={<MapPinned strokeWidth={1.5} />}
                       title={t("special")}
                       status={t("future")}
                     />
@@ -116,7 +123,7 @@ export function NewMatterScreen() {
                 </div>
                 <Button variant="primary" onClick={() => setStep(2)}>
                   {t("continue")}
-                  <ArrowRight className="size-4" />
+                  <ArrowRight className="size-4" strokeWidth={1.5} />
                 </Button>
               </div>
             </div>
@@ -218,7 +225,7 @@ export function NewMatterScreen() {
         )}
         <footer className="border-border mt-8 flex gap-2 border-t pt-4">
           <Button onClick={() => setStep((value) => Math.max(1, value - 1))}>
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-4" strokeWidth={1.5} />
             {t("back")}
           </Button>
           {step < 4 ? (
@@ -228,12 +235,12 @@ export function NewMatterScreen() {
               onClick={() => setStep((value) => value + 1)}
             >
               {t("continue")}
-              <ArrowRight className="size-4" />
+              <ArrowRight className="size-4" strokeWidth={1.5} />
             </Button>
           ) : (
             <Button className="ml-auto" variant="primary" onClick={finish}>
               {t("create")}
-              <ArrowRight className="size-4" />
+              <ArrowRight className="size-4" strokeWidth={1.5} />
             </Button>
           )}
         </footer>

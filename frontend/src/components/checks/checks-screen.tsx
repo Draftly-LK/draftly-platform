@@ -2,7 +2,7 @@
 
 import { BookOpen, FileSearch, Scale, ShieldAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { crossChecks } from "@/lib/mocks";
 import { useDemoStore } from "@/lib/store";
 import type { Check, CheckCategory } from "@/types";
@@ -44,6 +44,10 @@ export function ChecksScreen({ matterId }: { matterId: string }) {
     action: NonNullable<Check["resolution"]>["action"];
   }>();
   const [reason, setReason] = useState("");
+  const reasonInputRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (resolution) reasonInputRef.current?.focus();
+  }, [resolution]);
   const [announcement, setAnnouncement] = useState("");
   const record = () => {
     if (!resolution || !reason.trim()) return;
@@ -134,17 +138,17 @@ export function ChecksScreen({ matterId }: { matterId: string }) {
                           </div>
                           <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                             <Meta
-                              icon={<FileSearch />}
+                              icon={<FileSearch strokeWidth={1.5} />}
                               term={t("affected")}
                               value={check.affectedFactIds.join(" · ") || "—"}
                             />
                             <Meta
-                              icon={<BookOpen />}
+                              icon={<BookOpen strokeWidth={1.5} />}
                               term={t("authority")}
                               value={check.authority?.reference ?? "—"}
                             />
                             <Meta
-                              icon={<ShieldAlert />}
+                              icon={<ShieldAlert strokeWidth={1.5} />}
                               term={t("suggested")}
                               value={t(
                                 check.suggestedResolutionKey
@@ -157,7 +161,7 @@ export function ChecksScreen({ matterId }: { matterId: string }) {
                               )}
                             />
                             <Meta
-                              icon={<FileSearch />}
+                              icon={<FileSearch strokeWidth={1.5} />}
                               term={t("owner")}
                               value={
                                 check.ownerId
@@ -227,6 +231,9 @@ export function ChecksScreen({ matterId }: { matterId: string }) {
         <div
           className="bg-ink/25 fixed inset-0 z-40 grid place-items-center p-4"
           role="presentation"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setResolution(undefined);
+          }}
         >
           <section
             role="dialog"
@@ -249,6 +256,7 @@ export function ChecksScreen({ matterId }: { matterId: string }) {
             <label className="mt-4 block font-medium">
               {t("reason")}
               <textarea
+                ref={reasonInputRef}
                 className="border-border-strong mt-1 min-h-28 w-full rounded border p-3"
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}

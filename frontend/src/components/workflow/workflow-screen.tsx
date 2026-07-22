@@ -63,6 +63,7 @@ export function WorkflowScreen({
       selected.id,
       note,
       blocked ? overrideReason : undefined,
+      matterId,
     );
     setAnnouncement(blocked ? t("overrideRecorded") : t("completed"));
   };
@@ -246,7 +247,7 @@ export function WorkflowScreen({
                 setSelectedId(workflow.steps[selectedIndex - 1]?.id)
               }
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className="size-4" strokeWidth={1.5} />
               {t("previous")}
             </Button>
             <Button onClick={() => setAnnouncement(t("saved"))}>
@@ -259,7 +260,7 @@ export function WorkflowScreen({
               onClick={finish}
             >
               {t("continue")}
-              <ChevronRight className="size-4" />
+              <ChevronRight className="size-4" strokeWidth={1.5} />
             </Button>
           </footer>
         </main>

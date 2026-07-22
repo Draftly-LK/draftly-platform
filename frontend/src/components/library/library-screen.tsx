@@ -78,7 +78,7 @@ export async function LibraryScreen() {
               <span
                 className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${verified ? "border-forest bg-soft-green text-forest" : "border-amber bg-amber-bg text-amber-text"}`}
               >
-                <BookOpen className="size-3.5" />
+                <BookOpen className="size-3.5" strokeWidth={1.5} />
                 {state}
               </span>
             </article>

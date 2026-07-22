@@ -108,6 +108,7 @@ export function StatusBadge({
   const { label, icon: Icon } = details(status, locale);
   return (
     <span
+      data-status={status}
       className={cn(
         "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold",
         styles[status],

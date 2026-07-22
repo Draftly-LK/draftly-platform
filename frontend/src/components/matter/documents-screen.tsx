@@ -48,7 +48,7 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
     documents.find((document) => document.id === selectedId) ?? documents[0];
   const upload = (file: File | undefined) => {
     if (!file) return;
-    const id = addDocument(file.name, "other");
+    const id = addDocument(file.name, "other", matterId);
     setSelectedId(id);
     setAnnouncement(t("uploadReady", { name: file.name }));
     simulateDocumentProcessing(id);
@@ -58,11 +58,7 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
     simulateDocumentProcessing(id);
   };
   const replace = (id: string) => {
-    replaceDocument(
-      id,
-      "replacement-scan-synthetic.pdf",
-      "Clearer synthetic scan supplied",
-    );
+    replaceDocument(id, t("replacementFileName"), t("replacementReason"));
     simulateDocumentProcessing(id);
   };
   return (
@@ -89,7 +85,7 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
       <div className="p-6">
         <section className="border-border-strong bg-surface overflow-hidden rounded border">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[920px] border-collapse text-left">
+            <table className="w-full min-w-[1200px] border-collapse whitespace-nowrap text-left">
               <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
                 <tr className="border-border h-10 border-b">
                   <th className="px-3">{t("file")}</th>
@@ -151,7 +147,7 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
                           <button
                             aria-label={t("retry")}
                             title={t("retry")}
-                            className="hover:bg-active-bg grid size-9 place-items-center rounded"
+                            className="hover:bg-active-bg grid size-8 place-items-center rounded"
                             onClick={() => retry(document.id)}
                           >
                             <RefreshCw className="size-4" strokeWidth={1.5} />
@@ -160,13 +156,13 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
                         <button
                           aria-label={t("replace")}
                           title={t("replace")}
-                          className="hover:bg-active-bg grid size-9 place-items-center rounded"
+                          className="hover:bg-active-bg grid size-8 place-items-center rounded"
                           onClick={() => replace(document.id)}
                         >
                           <Replace className="size-4" strokeWidth={1.5} />
                         </button>
                         <button
-                          className="border-border-strong hover:bg-hover-bg min-h-9 rounded border px-2 text-xs"
+                          className="border-border-strong hover:bg-hover-bg min-h-8 rounded border px-2 text-xs"
                           onClick={() => setSelectedId(document.id)}
                         >
                           {t("open")}
@@ -258,11 +254,11 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
               {selected.processingState === "failed" && (
                 <div className="mt-4 grid gap-2">
                   <Button onClick={() => retry(selected.id)}>
-                    <RefreshCw className="size-4" />
+                    <RefreshCw className="size-4" strokeWidth={1.5} />
                     {t("retry")}
                   </Button>
                   <Button onClick={() => replace(selected.id)}>
-                    <Replace className="size-4" />
+                    <Replace className="size-4" strokeWidth={1.5} />
                     {t("replace")}
                   </Button>
                   <Button onClick={() => setAnnouncement(t("manualReady"))}>

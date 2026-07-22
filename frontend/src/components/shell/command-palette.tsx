@@ -17,15 +17,149 @@ export function CommandPalette({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setOpen((value) => !value); }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setOpen((value) => !value);
+      }
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
   }, []);
-  const navigate = (href: string) => { setOpen(false); router.push(href); };
-  return <Dialog.Root open={open} onOpenChange={setOpen}><Dialog.Trigger asChild>{compact ? <IconButton label={t("search")}><Search className="size-5" strokeWidth={1.5} /></IconButton> : <button className="flex h-10 w-full items-center gap-2 rounded border border-border-strong bg-surface px-3 text-left text-sm text-muted-ink hover:bg-hover-bg"><Search className="size-4" strokeWidth={1.5} /><span className="min-w-0 flex-1 truncate">{t("search")}</span><kbd className="text-xs">{t("searchShortcut")}</kbd></button>}</Dialog.Trigger><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-40 bg-ink/25" /><Dialog.Content aria-describedby={undefined} className="fixed left-1/2 top-[14vh] z-40 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 rounded-dialog border border-border-strong bg-surface p-2 shadow-dialog"><Dialog.Title className="sr-only">{t("search")}</Dialog.Title><div className="flex items-center border-b border-border px-2"><Search className="size-5 text-muted-ink" strokeWidth={1.5} /><Command.Input className="h-12 min-w-0 flex-1 border-0 bg-transparent px-3 outline-none" placeholder={t("searchPlaceholder")} /><Dialog.Close asChild><IconButton label={t("close")}><X className="size-5" strokeWidth={1.5} /></IconButton></Dialog.Close></div><Command.List className="max-h-[420px] overflow-y-auto p-2"><Command.Empty className="p-6 text-center text-muted-ink">{t("searchEmpty")}</Command.Empty><Command.Group heading={t("commands")} className="text-xs text-muted-ink"><CommandItem icon={<Home />} onSelect={() => navigate("/")}>{t("goHome")}</CommandItem><CommandItem icon={<Sparkles />} onSelect={() => navigate("/assistant")}>{t("openAssistant")}</CommandItem></Command.Group><Command.Group heading={t("matters")} className="text-xs text-muted-ink">{matters.map((matter) => <CommandItem key={matter.id} icon={<FileText />} onSelect={() => navigate(`/matters/${matter.id}`)}>{matter.reference}</CommandItem>)}</Command.Group><Command.Group heading={t("search")} className="text-xs text-muted-ink">{documents.map((document) => <CommandItem key={document.id} icon={<FileText />} onSelect={() => navigate(`/matters/${document.matterId}/documents?document=${document.id}`)}>{document.fileName}</CommandItem>)}{facts.map((fact) => <CommandItem key={fact.id} icon={<Search />} onSelect={() => navigate(`/matters/${fact.matterId}/facts?fact=${fact.id}`)}>{String(fact.value ?? fact.key)}</CommandItem>)}{libraryItems.map((item) => <CommandItem key={item} icon={<Library />} onSelect={() => navigate(`/library?q=${item}`)}>{item}</CommandItem>)}</Command.Group></Command.List></Dialog.Content></Dialog.Portal></Dialog.Root>;
+  const navigate = (href: string) => {
+    setOpen(false);
+    router.push(href);
+  };
+  return (
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger asChild>
+        {compact ? (
+          <IconButton label={t("search")}>
+            <Search className="size-5" strokeWidth={1.5} />
+          </IconButton>
+        ) : (
+          <button className="border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-2 rounded border px-3 text-left text-sm">
+            <Search className="size-4" strokeWidth={1.5} />
+            <span className="min-w-0 flex-1 truncate">{t("search")}</span>
+            <kbd className="text-xs">{t("searchShortcut")}</kbd>
+          </button>
+        )}
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="bg-ink/25 fixed inset-0 z-40" />
+        <Dialog.Content
+          aria-describedby={undefined}
+          className="rounded-dialog border-border-strong bg-surface shadow-dialog fixed left-1/2 top-[14vh] z-40 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 border p-2"
+        >
+          <Dialog.Title className="sr-only">{t("search")}</Dialog.Title>
+          <Command className="bg-transparent">
+            <div className="border-border flex items-center border-b px-2">
+              <Search className="text-muted-ink size-5" strokeWidth={1.5} />
+              <Command.Input
+                className="h-12 min-w-0 flex-1 border-0 bg-transparent px-3 outline-none"
+                placeholder={t("searchPlaceholder")}
+              />
+              <Dialog.Close asChild>
+                <IconButton label={t("close")}>
+                  <X className="size-5" strokeWidth={1.5} />
+                </IconButton>
+              </Dialog.Close>
+            </div>
+            <Command.List className="max-h-[420px] overflow-y-auto p-2">
+              <Command.Empty className="text-muted-ink p-6 text-center">
+                {t("searchEmpty")}
+              </Command.Empty>
+              <Command.Group
+                heading={t("commands")}
+                className="text-muted-ink text-xs"
+              >
+                <CommandItem icon={<Home />} onSelect={() => navigate("/")}>
+                  {t("goHome")}
+                </CommandItem>
+                <CommandItem
+                  icon={<Sparkles />}
+                  onSelect={() => navigate("/assistant")}
+                >
+                  {t("openAssistant")}
+                </CommandItem>
+              </Command.Group>
+              <Command.Group
+                heading={t("matters")}
+                className="text-muted-ink text-xs"
+              >
+                {matters.map((matter) => (
+                  <CommandItem
+                    key={matter.id}
+                    icon={<FileText />}
+                    onSelect={() => navigate(`/matters/${matter.id}`)}
+                  >
+                    {matter.reference}
+                  </CommandItem>
+                ))}
+              </Command.Group>
+              <Command.Group
+                heading={t("search")}
+                className="text-muted-ink text-xs"
+              >
+                {documents.map((document) => (
+                  <CommandItem
+                    key={document.id}
+                    icon={<FileText />}
+                    onSelect={() =>
+                      navigate(
+                        `/matters/${document.matterId}/documents?document=${document.id}`,
+                      )
+                    }
+                  >
+                    {document.fileName}
+                  </CommandItem>
+                ))}
+                {facts.map((fact) => (
+                  <CommandItem
+                    key={fact.id}
+                    icon={<Search />}
+                    onSelect={() =>
+                      navigate(
+                        `/matters/${fact.matterId}/facts?fact=${fact.id}`,
+                      )
+                    }
+                  >
+                    {String(fact.value ?? fact.key)}
+                  </CommandItem>
+                ))}
+                {libraryItems.map((item) => (
+                  <CommandItem
+                    key={item}
+                    icon={<Library />}
+                    onSelect={() => navigate(`/library?q=${item}`)}
+                  >
+                    {item}
+                  </CommandItem>
+                ))}
+              </Command.Group>
+            </Command.List>
+          </Command>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
 }
 
-function CommandItem({ icon, children, onSelect }: { icon: React.ReactNode; children: React.ReactNode; onSelect: () => void }) {
-  return <Command.Item onSelect={onSelect} className="mt-1 flex min-h-10 cursor-pointer items-center gap-2 rounded px-3 text-sm text-ink outline-none data-[selected=true]:bg-selected-bg [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.5]">{icon}{children}</Command.Item>;
+function CommandItem({
+  icon,
+  children,
+  onSelect,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  onSelect: () => void;
+}) {
+  return (
+    <Command.Item
+      onSelect={onSelect}
+      className="text-ink data-[selected=true]:bg-selected-bg mt-1 flex min-h-10 cursor-pointer items-center gap-2 rounded px-3 text-sm outline-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:stroke-[1.5]"
+    >
+      {icon}
+      {children}
+    </Command.Item>
+  );
 }

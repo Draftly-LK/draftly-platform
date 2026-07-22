@@ -71,7 +71,7 @@ export function WorkflowsLibraryScreen() {
             workflows.map((workflow) => (
               <LibraryItem
                 key={workflow.id}
-                icon={<BookOpenCheck />}
+                icon={<BookOpenCheck strokeWidth={1.5} />}
                 title={t("examinationTitle")}
                 meta={`${t("rta")} · ${t("bilingual")} · ${t("version", { version: workflow.version })}`}
                 href={`/workflows/${workflow.id}`}
@@ -82,7 +82,7 @@ export function WorkflowsLibraryScreen() {
             templates.map((template) => (
               <LibraryItem
                 key={template.id}
-                icon={<FileText />}
+                icon={<FileText strokeWidth={1.5} />}
                 title={t("form8Template")}
                 meta={`${t("rta")} · ${t("transfer")} · ${t("approved")}`}
               />
@@ -91,14 +91,14 @@ export function WorkflowsLibraryScreen() {
             questionSets.map((set) => (
               <LibraryItem
                 key={set.id}
-                icon={<ScrollText />}
+                icon={<ScrollText strokeWidth={1.5} />}
                 title={t("questionBank")}
                 meta={t("approved")}
               />
             ))}
           {tab === "examples" && (
             <LibraryItem
-              icon={<Play />}
+              icon={<Play strokeWidth={1.5} />}
               title={t("exampleTitle")}
               meta={t("exampleBody")}
             />
@@ -140,7 +140,7 @@ function LibraryItem({
       {action && (
         <span className="text-teal inline-flex items-center gap-2 font-medium">
           {action}
-          <Play className="size-4" />
+          <Play className="size-4" strokeWidth={1.5} />
         </span>
       )}
     </div>

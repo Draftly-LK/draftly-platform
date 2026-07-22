@@ -17,7 +17,7 @@ export function MattersScreen() {
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
         <div className="border-border-strong bg-surface overflow-x-auto rounded border">
-          <table className="w-full min-w-[760px] border-collapse text-left">
+          <table className="w-full min-w-[980px] border-collapse whitespace-nowrap text-left">
             <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
               <tr className="border-border h-10 border-b">
                 <th className="px-4 font-medium">{t("reference")}</th>
@@ -64,12 +64,12 @@ export function MattersScreen() {
                     />
                   </td>
                   <td className="text-muted-ink px-4 text-sm tabular-nums">
-                        {new Intl.DateTimeFormat(locale, {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                          timeZone: "Asia/Colombo",
-                        }).format(new Date(matter.updatedAt))}
+                    {new Intl.DateTimeFormat(locale, {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      timeZone: "Asia/Colombo",
+                    }).format(new Date(matter.updatedAt))}
                   </td>
                   <td className="px-3">
                     <Link

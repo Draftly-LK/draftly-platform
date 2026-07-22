@@ -84,6 +84,7 @@ interface DemoState {
     labelKey: string,
     value: VerifiedFact["value"],
     reason: string,
+    matterId?: string,
   ) => string;
   resolveCheck: (
     checkId: string,
@@ -95,13 +96,18 @@ interface DemoState {
     stepId: string,
     note?: string,
     overrideReason?: string,
+    matterId?: string,
   ) => void;
   createDraft: (matterId: string, templateId: string) => string | null;
   saveDraftVersion: (draftId: string, document: EditorDocument) => void;
   restoreDraftVersion: (draftId: string, versionId: string) => void;
   approveDraft: (draftId: string) => void;
   exportDraft: (draftId: string, format: "docx" | "pdf") => void;
-  recordAssistantAction: (answerId: string, action: string) => void;
+  recordAssistantAction: (
+    answerId: string,
+    action: string,
+    matterId?: string,
+  ) => void;
   resetDemo: () => void;
 }
 
@@ -130,6 +136,27 @@ export const useDemoStore = create<DemoState>()(
         const id = `matter-rta-${String(get().matters.length + 1).padStart(3, "0")}`;
         set((state) => {
           const timestamp = deterministicTimestamp(state.auditEvents.length);
+          const sourceFacts = state.facts.filter(
+            (fact) => fact.matterId === DEMO_MATTER_ID,
+          );
+          const factIds = new Map(
+            sourceFacts.map((fact) => [fact.id, `${id}-${fact.id}`]),
+          );
+          const initializedFacts = sourceFacts.map((fact) => ({
+            ...structuredClone(fact),
+            id: factIds.get(fact.id) ?? `${id}-${fact.id}`,
+            matterId: id,
+          }));
+          const initializedChecks = state.checks
+            .filter((check) => check.matterId === DEMO_MATTER_ID)
+            .map((check) => ({
+              ...structuredClone(check),
+              id: `${id}-${check.id}`,
+              matterId: id,
+              affectedFactIds: check.affectedFactIds.map(
+                (factId) => factIds.get(factId) ?? factId,
+              ),
+            }));
           const matter: Matter = {
             id,
             ...input,
@@ -148,6 +175,8 @@ export const useDemoStore = create<DemoState>()(
           };
           return {
             matters: [...state.matters, matter],
+            facts: [...state.facts, ...initializedFacts],
+            checks: [...state.checks, ...initializedChecks],
             auditEvents: appendEvent(state, {
               matterId: id,
               action: "matter.created",
@@ -218,19 +247,24 @@ export const useDemoStore = create<DemoState>()(
         }),
       // TODO(api): POST /api/matters/{matterId}/documents/{documentId}/retry
       retryDocument: (documentId) =>
-        set((state) => ({
-          documents: state.documents.map((document) =>
-            document.id === documentId
-              ? { ...document, processingState: "uploaded" }
-              : document,
-          ),
-          auditEvents: appendEvent(state, {
-            matterId: DEMO_MATTER_ID,
-            action: "document.retry-requested",
-            targetType: "document",
-            targetId: documentId,
-          }),
-        })),
+        set((state) => {
+          const document = state.documents.find(
+            (item) => item.id === documentId,
+          );
+          return {
+            documents: state.documents.map((document) =>
+              document.id === documentId
+                ? { ...document, processingState: "uploaded" }
+                : document,
+            ),
+            auditEvents: appendEvent(state, {
+              matterId: document?.matterId ?? DEMO_MATTER_ID,
+              action: "document.retry-requested",
+              targetType: "document",
+              targetId: documentId,
+            }),
+          };
+        }),
       // TODO(api): POST /api/matters/{matterId}/documents/{documentId}/versions
       replaceDocument: (documentId, fileName, reason) =>
         set((state) => {
@@ -334,12 +368,12 @@ export const useDemoStore = create<DemoState>()(
           };
         }),
       // TODO(api): POST /api/matters/{matterId}/facts
-      addManualFact: (labelKey, value, reason) => {
+      addManualFact: (labelKey, value, reason, matterId = DEMO_MATTER_ID) => {
         const id = `fact-manual-${String(get().facts.length + 1).padStart(3, "0")}`;
         set((state) => {
           const fact: VerifiedFact = {
             id,
-            matterId: DEMO_MATTER_ID,
+            matterId,
             key: id,
             labelKey,
             section: "manual",
@@ -353,7 +387,7 @@ export const useDemoStore = create<DemoState>()(
           return {
             facts: [...state.facts, fact],
             auditEvents: appendEvent(state, {
-              matterId: DEMO_MATTER_ID,
+              matterId,
               action: "fact.added-manually",
               targetType: "fact",
               targetId: id,
@@ -390,7 +424,13 @@ export const useDemoStore = create<DemoState>()(
           };
         }),
       // TODO(api): POST /api/matters/{matterId}/workflows/{workflowId}/steps/{stepId}/complete
-      completeStep: (workflowId, stepId, note, overrideReason) =>
+      completeStep: (
+        workflowId,
+        stepId,
+        note,
+        overrideReason,
+        matterId = DEMO_MATTER_ID,
+      ) =>
         set((state) => ({
           workflows: state.workflows.map((workflow) =>
             workflow.id === workflowId
@@ -405,7 +445,7 @@ export const useDemoStore = create<DemoState>()(
               : workflow,
           ),
           auditEvents: appendEvent(state, {
-            matterId: DEMO_MATTER_ID,
+            matterId,
             action: overrideReason
               ? "workflow.step-overridden"
               : "workflow.step-completed",
@@ -422,8 +462,8 @@ export const useDemoStore = create<DemoState>()(
             ["verified", "corrected"].includes(fact.verificationState),
         );
         if (
-          !eligible.some((fact) => fact.id === "fact-transferee") ||
-          !eligible.some((fact) => fact.id === "fact-extent")
+          !eligible.some((fact) => fact.key === "transferee") ||
+          !eligible.some((fact) => fact.key === "extent")
         )
           return null;
         const id = `draft-live-${String(get().drafts.length + 1).padStart(3, "0")}`;
@@ -508,7 +548,9 @@ export const useDemoStore = create<DemoState>()(
             };
           }),
           auditEvents: appendEvent(state, {
-            matterId: DEMO_MATTER_ID,
+            matterId:
+              state.drafts.find((draft) => draft.id === draftId)?.matterId ??
+              DEMO_MATTER_ID,
             action: "draft.version-created",
             targetType: "draft",
             targetId: draftId,
@@ -543,7 +585,9 @@ export const useDemoStore = create<DemoState>()(
             };
           }),
           auditEvents: appendEvent(state, {
-            matterId: DEMO_MATTER_ID,
+            matterId:
+              state.drafts.find((draft) => draft.id === draftId)?.matterId ??
+              DEMO_MATTER_ID,
             action: "draft.version-restored",
             targetType: "draft",
             targetId: draftId,
@@ -564,7 +608,9 @@ export const useDemoStore = create<DemoState>()(
               : draft,
           ),
           auditEvents: appendEvent(state, {
-            matterId: DEMO_MATTER_ID,
+            matterId:
+              state.drafts.find((draft) => draft.id === draftId)?.matterId ??
+              DEMO_MATTER_ID,
             action: "draft.approved",
             targetType: "draft",
             targetId: draftId,
@@ -579,7 +625,9 @@ export const useDemoStore = create<DemoState>()(
               : draft,
           ),
           auditEvents: appendEvent(state, {
-            matterId: DEMO_MATTER_ID,
+            matterId:
+              state.drafts.find((draft) => draft.id === draftId)?.matterId ??
+              DEMO_MATTER_ID,
             action: `draft.exported-${format}`,
             targetType: "draft",
             targetId: draftId,
@@ -587,10 +635,10 @@ export const useDemoStore = create<DemoState>()(
           }),
         })),
       // TODO(api): POST /api/assistant/actions
-      recordAssistantAction: (answerId, action) =>
+      recordAssistantAction: (answerId, action, matterId = DEMO_MATTER_ID) =>
         set((state) => ({
           auditEvents: appendEvent(state, {
-            matterId: DEMO_MATTER_ID,
+            matterId,
             action: `assistant.${action}`,
             targetType: "answer",
             targetId: answerId,
