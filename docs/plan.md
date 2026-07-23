@@ -664,8 +664,8 @@ Decisions the plan previously left implicit — all cheap now, expensive later:
   `eslint-config-prettier`.
 - **Prettier** with **`prettier-plugin-tailwindcss`** (class sorting — three
   people editing token-heavy classes).
-- **Hooks** — husky + lint-staged: format/lint staged files on commit;
-  `tsc --noEmit` on pre-push (too slow for commit). Conventional Commits with
+- **Hooks** — disabled for this repo. Run `pnpm check` manually before commits
+  that claim completed work. Conventional Commits with
   epic-id scopes (`feat(e8-7): …`) as a documented convention.
 
 ### CI + branching (3-person team)

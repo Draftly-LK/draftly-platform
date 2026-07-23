@@ -7,18 +7,12 @@
     "pnpm": ">=10.23.0 <11"
   },
   "scripts": {
-    "prepare": "husky",
     "check:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#frontend/node_modules\"",
     "check": "pnpm --dir frontend typecheck && pnpm --dir frontend lint && pnpm --dir frontend build && pnpm check:markdown"
   },
   "devDependencies": {
-    "husky": "9.1.7",
-    "lint-staged": "16.1.2",
     "markdownlint-cli2": "0.18.1",
     "prettier": "3.5.3",
     "prettier-plugin-tailwindcss": "0.6.11"
-  },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx,json,css,md}": "prettier --write"
   }
 }
