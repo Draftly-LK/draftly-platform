@@ -1,0 +1,23 @@
+/** PDF page numbers from docs/reference/forms/manifest.json (gazette 1886/58). */
+export const templatePdfPages: Record<string, number[]> = {
+  "form-07-amalgamation-subdivision": [25, 26],
+  "form-08-instrument-of-transfer": [4, 5],
+  "form-09-mortgage": [6, 7],
+  "form-10-lease": [8, 9],
+  "form-11-caveat": [10, 12],
+  "form-12-withdrawal-of-caveat": [13, 14],
+  "form-13-power-of-attorney": [15, 16],
+  "form-19-title-certificate": [38, 39],
+  "form-19a-title-certificate": [40, 41],
+  "form-21-condominium": [31],
+  "form-23-agreement-to-sell": [23, 24],
+  "form-24-gift": [44, 45],
+  "form-25-judgment-registration": [32, 37],
+  "form-26-cancellation-of-judgment": [29, 30],
+  "form-27-discharge-of-mortgage": [46, 48],
+  "form-28-relinquishment-life-interest": [27, 28],
+  "form-29-cancellation-of-lease": [17, 18],
+  "form-30-revocation-of-poa": [21, 22],
+  "form-31-registration-of-address": [19, 20],
+  "form-32-partition": [42, 43],
+};

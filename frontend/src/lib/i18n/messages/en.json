@@ -590,5 +590,25 @@
     "primary": "Primary action",
     "secondary": "Secondary action",
     "disabled": "Disabled action"
+  },
+  "devTemplates": {
+    "chromeTitle": "Template preview",
+    "chromeHint": "Not linked to matters or drafts",
+    "devOnly": "Dev only",
+    "title": "Legal form templates",
+    "description": "Industry-level Tiptap templates under development. Open a form to inspect layout and fill fields. Declaration blocks remain lawyer placeholders.",
+    "openPreview": "Open preview",
+    "backToList": "All templates",
+    "statusReady": "Ready",
+    "statusStub": "Stub",
+    "previewHint": "Editable preview — fill fields and tables to verify structure. Locked amber blocks are prescribed wording pending lawyer review.",
+    "fieldPlaceholder": "…",
+    "editorLabel": "Form template editor",
+    "loadingEditor": "Loading editor…",
+    "openCompare": "Side-by-side vs PDF pages",
+    "compareTitle": "PDF vs live template",
+    "compareHint": "Left: gazette PDF pages for {form}. Right: live Tiptap template. Match spacing, fonts, and structure.",
+    "comparePdf": "Gazette PDF",
+    "compareLive": "Live Tiptap template"
   }
 }

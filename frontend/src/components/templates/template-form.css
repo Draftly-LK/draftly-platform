@@ -1,0 +1,282 @@
+/* Gazette A4 print fidelity — match docs/reference/forms/pages/*.png */
+
+.template-a4-sheet,
+.template-a4-sheet *,
+.template-form-page,
+.template-form-page *,
+.template-form-page .ProseMirror,
+.template-form-page .ProseMirror * {
+  font-family:
+    var(--font-abhaya), "Abhaya Libre", var(--font-noto-serif-si),
+    "Noto Serif Sinhala", "Iskoola Pota", Georgia, "Times New Roman", serif !important;
+}
+
+.template-form-page {
+  font-size: 10pt;
+  line-height: 1.28;
+  color: #000;
+  letter-spacing: 0;
+}
+
+.template-form-page .ProseMirror {
+  outline: none;
+  min-height: 100%;
+  color: #000;
+}
+
+/* Form number — top right like gazette (paragraph immediately before h1) */
+.template-form-page .ProseMirror > p:has(+ h1),
+.template-form-page .ProseMirror > p:first-child {
+  text-align: right !important;
+  font-size: 9.5pt;
+  margin: 0 0 0.2rem;
+  font-weight: 500;
+}
+
+.template-form-page h1 {
+  text-align: center;
+  font-size: 12pt !important;
+  font-weight: 700 !important;
+  margin: 0.1rem 0 0.08rem;
+  line-height: 1.35;
+}
+
+.template-form-page h1 + p,
+.template-form-page h1 + p + p {
+  text-align: center;
+  margin: 0 !important;
+  font-size: 9.5pt !important;
+}
+
+.template-form-page .form-section-heading {
+  font-size: 10pt !important;
+  font-weight: 700 !important;
+  margin: 0.45rem 0 0.12rem;
+  line-height: 1.3;
+}
+
+.template-form-page .form-field {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0 0.3rem;
+  align-items: baseline;
+  margin: 0.06rem 0;
+  min-height: 1.05rem;
+}
+
+.template-form-page .form-field-label {
+  font-weight: 400;
+  white-space: nowrap;
+  font-size: 9.5pt;
+}
+
+.template-form-page .form-field-value {
+  display: block;
+  min-height: 1em;
+  border-bottom: 1px dotted #000;
+  padding: 0;
+  font-size: 9.5pt;
+}
+
+.template-form-page .form-field-value:empty::before {
+  content: "\00a0";
+}
+
+.template-form-page .form-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 0.9rem;
+  row-gap: 0;
+  margin: 0.08rem 0 0.25rem;
+}
+
+@media (max-width: 720px) {
+  .template-form-page .form-field-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.template-form-page .office-use-box {
+  border: 1px solid #000;
+  margin: 0.4rem 0 0.5rem;
+  break-inside: avoid;
+}
+
+.template-form-page .office-use-heading {
+  text-align: center;
+  font-weight: 700;
+  padding: 0.12rem 0.35rem;
+  border-bottom: 1px solid #000;
+  font-size: 9.5pt;
+}
+
+.template-form-page .office-use-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.template-form-page .office-use-column {
+  padding: 0.25rem 0.35rem 0.3rem;
+  min-width: 0;
+}
+
+.template-form-page .office-use-column + .office-use-column {
+  border-left: 1px solid #000;
+}
+
+.template-form-page .office-use-column-title {
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.15rem;
+  font-size: 9.5pt;
+}
+
+.template-form-page .office-use-column-body > .form-field,
+.template-form-page .office-use-column-body > .form-field .form-field-label,
+.template-form-page .office-use-column-body > p {
+  font-size: 8.5pt !important;
+}
+
+.template-form-page .office-use-column .signature-block {
+  margin-top: 0.35rem;
+}
+
+.template-form-page .signature-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin: 0.5rem 0 0.35rem;
+  break-inside: avoid;
+}
+
+.template-form-page .signature-block-single {
+  grid-template-columns: minmax(9rem, 12rem);
+  justify-content: start;
+}
+
+.template-form-page .signature-slot {
+  text-align: center;
+}
+
+.template-form-page .signature-line {
+  border-bottom: 1px solid #000;
+  height: 1.25rem;
+  margin-bottom: 0.1rem;
+}
+
+.template-form-page .signature-label {
+  font-size: 8.5pt;
+  font-weight: 400;
+}
+
+.template-form-page .signature-date {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  justify-content: center;
+  font-size: 8.5pt;
+}
+
+.template-form-page .signature-date-line {
+  flex: 1;
+  max-width: 5.5rem;
+  border-bottom: 1px dotted #000;
+  min-height: 0.9em;
+}
+
+.template-form-page table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.2rem 0 0.25rem;
+  table-layout: fixed;
+}
+
+.template-form-page th,
+.template-form-page td {
+  border: 1px solid #000;
+  padding: 0.15rem 0.2rem;
+  vertical-align: top;
+  font-size: 8.5pt;
+  background: #fff;
+}
+
+.template-form-page th {
+  font-weight: 700;
+  text-align: center;
+  background: #fff;
+}
+
+.template-form-page td p,
+.template-form-page th p {
+  margin: 0 !important;
+  min-height: 0.95em;
+  font-size: 8.5pt !important;
+}
+
+.template-form-page .locked-block {
+  margin: 0.3rem 0;
+  padding: 0.1rem 0;
+  border: 0;
+  border-bottom: 1px dashed #555;
+  background: transparent;
+  color: #222;
+  font-size: 9pt;
+  font-style: italic;
+}
+
+.template-form-page .locked-block p {
+  margin: 0 !important;
+}
+
+.template-form-page p {
+  margin: 0.08rem 0 !important;
+  font-size: 9.5pt;
+}
+
+.template-a4-sheet {
+  width: 210mm;
+  max-width: 100%;
+  min-height: 297mm;
+  margin-left: auto;
+  margin-right: auto;
+  background: #fff;
+  color: #000;
+  border: 1px solid #000;
+  padding: 12mm 14mm 14mm;
+  box-sizing: border-box;
+}
+
+.template-compare-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .template-compare-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.template-compare-pdf {
+  width: 100%;
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.template-compare-pdf img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+@media print {
+  .template-a4-sheet {
+    border: 0;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 12mm 14mm;
+  }
+}

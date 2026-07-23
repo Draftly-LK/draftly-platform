@@ -591,5 +591,25 @@
     "secondary": "Secondary action",
     "disabled": "Disabled action"
   },
+  "devTemplates": {
+    "chromeTitle": "ආකෘති පෙරදසුන",
+    "chromeHint": "කාරණා හෝ කෙටුම්පත් සමඟ සම්බන්ධ නොවේ",
+    "devOnly": "සංවර්ධනය පමණි",
+    "title": "නීතිමය ආකෘති පත්‍ර",
+    "description": "සංවර්ධනය වෙමින් පවතින Tiptap ආකෘති. පිරිසැලසුම පරීක්ෂා කිරීමට පෝරමයක් විවෘත කරන්න. නීතිමය ප්‍රකාශ කොටස් නීතිඥ placeholder ලෙස තබා ඇත.",
+    "openPreview": "පෙරදසුන විවෘත කරන්න",
+    "backToList": "සියලු ආකෘති",
+    "statusReady": "සූදානම්",
+    "statusStub": "කෙටුම්පත",
+    "previewHint": "සංස්කාර්ය පෙරදසුන — ක්ෂේත්‍ර සහ වගු පුරවන්න. කහ කොටස් නීතිඥ සමාලෝචනය බලාපොරොත්තුවෙන් ඇත.",
+    "fieldPlaceholder": "…",
+    "editorLabel": "ආකෘති පත්‍ර සංස්කාරකය",
+    "loadingEditor": "සංස්කාරකය පූරණය වේ…",
+    "openCompare": "PDF පිටු සමඟ සසඳන්න",
+    "compareTitle": "PDF සහ සජීවී ආකෘතිය",
+    "compareHint": "වම: {form} සඳහා ගැසට් PDF. දකුණ: සජීවී Tiptap ආකෘතිය.",
+    "comparePdf": "ගැසට් PDF",
+    "compareLive": "සජීවී Tiptap ආකෘතිය"
+  },
   "_todo": "TODO(si): English fallbacks pending native-Sinhala drafting and lawyer terminology review"
 }

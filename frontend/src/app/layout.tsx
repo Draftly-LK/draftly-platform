@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import {
+  Abhaya_Libre,
   IBM_Plex_Sans,
   Newsreader,
   Noto_Sans_Sinhala,
@@ -27,7 +28,15 @@ const notoSansSi = Noto_Sans_Sinhala({
 });
 const notoSerifSi = Noto_Serif_Sinhala({
   subsets: ["sinhala"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-noto-serif-si",
+  display: "swap",
+});
+/** Sinhala serif closer to gazette/print forms (FM Abhaya family). */
+const abhayaLibre = Abhaya_Libre({
+  subsets: ["sinhala", "latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-abhaya",
   display: "swap",
 });
 
@@ -44,7 +53,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${plex.variable} ${newsreader.variable} ${notoSansSi.variable} ${notoSerifSi.variable}`}
+      className={`${plex.variable} ${newsreader.variable} ${notoSansSi.variable} ${notoSerifSi.variable} ${abhayaLibre.variable}`}
     >
       <body>
         <NextIntlClientProvider
