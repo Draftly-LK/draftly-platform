@@ -15,17 +15,15 @@ export function simulateDocumentProcessing(
         .setDocumentProcessingState(documentId, "extracting", 0.48),
     900,
   );
-  const second = setTimeout(
-    () =>
+  const second = setTimeout(() => {
+    if (outcome === "failed") {
       useDemoStore
         .getState()
-        .setDocumentProcessingState(
-          documentId,
-          outcome === "ready" ? "ready-for-review" : "failed",
-          outcome === "ready" ? 0.88 : 0.31,
-        ),
-    2400,
-  );
+        .setDocumentProcessingState(documentId, "failed", 0.31);
+      return;
+    }
+    useDemoStore.getState().completeDocumentExtraction(documentId);
+  }, 2400);
   timers.set(documentId, [first, second]);
 }
 

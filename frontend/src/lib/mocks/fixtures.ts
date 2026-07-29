@@ -60,6 +60,30 @@ export const matters: Matter[] = [
   },
 ];
 
+const identityFrontText = [
+  "National Identity Card — Front (synthetic extract)",
+  "",
+  "Full name: A. B. Perera (synthetic)",
+  "Identity reference: ID-SYN-4102",
+  "Address: 12 Synthetic Lane, Colombo (synthetic)",
+  "Date of birth: 1978-03-14 (synthetic)",
+  "",
+  "This text is a seeded mock extraction for interface review.",
+  "Correct any OCR-like errors before verifying facts.",
+].join("\n");
+
+const identityBackText = [
+  "National Identity Card — Back (synthetic extract)",
+  "",
+  "Full name: A. B. Perera (synthetic)",
+  "Identity reference: ID-SYN-4102",
+  "Address: 12 Synthetic Lane, Colombo (synthetic)",
+  "Date of birth: 1978-03-14 (synthetic)",
+  "",
+  "This text is a seeded mock extraction for interface review.",
+  "Correct any OCR-like errors before verifying facts.",
+].join("\n");
+
 export const documents: MatterDocument[] = [
   {
     id: "doc-deed-001",
@@ -82,6 +106,7 @@ export const documents: MatterDocument[] = [
       },
     ],
     uploadedAt: "2026-07-17T04:14:00.000Z",
+    relation: "unrelated",
   },
   {
     id: "doc-plan-001",
@@ -113,11 +138,12 @@ export const documents: MatterDocument[] = [
       },
     ],
     uploadedAt: "2026-07-17T04:15:00.000Z",
+    relation: "unrelated",
   },
   {
     id: "doc-id-001",
     matterId: DEMO_MATTER_ID,
-    fileName: "identity-synthetic.pdf",
+    fileName: "a-b-perera-synthetic-identity-front.pdf",
     kind: "identity",
     language: "en",
     pageCount: 1,
@@ -126,6 +152,41 @@ export const documents: MatterDocument[] = [
     qualityProblems: [{ code: "blur", pages: [1] }],
     versions: [],
     uploadedAt: "2026-07-22T09:28:00.000Z",
+    relation: "authorized",
+    identitySide: "front",
+    identityGroupId: "identity-group-1",
+    displayName: "A. B. Perera (synthetic)'s identity card",
+    extractedText: identityFrontText,
+    extractedFields: {
+      fullName: "A. B. Perera (synthetic)",
+      idReference: "ID-SYN-4102",
+      address: "12 Synthetic Lane, Colombo (synthetic)",
+      dateOfBirth: "1978-03-14 (synthetic)",
+    },
+  },
+  {
+    id: "doc-id-002",
+    matterId: DEMO_MATTER_ID,
+    fileName: "a-b-perera-synthetic-identity-back.pdf",
+    kind: "identity",
+    language: "en",
+    pageCount: 1,
+    processingState: "ready-for-review",
+    extractionConfidence: 0.9,
+    qualityProblems: [],
+    versions: [],
+    uploadedAt: "2026-07-22T09:28:30.000Z",
+    relation: "authorized",
+    identitySide: "back",
+    identityGroupId: "identity-group-1",
+    displayName: "A. B. Perera (synthetic)'s identity card",
+    extractedText: identityBackText,
+    extractedFields: {
+      fullName: "A. B. Perera (synthetic)",
+      idReference: "ID-SYN-4102",
+      address: "12 Synthetic Lane, Colombo (synthetic)",
+      dateOfBirth: "1978-03-14 (synthetic)",
+    },
   },
   {
     id: "doc-assessment-001",
@@ -138,6 +199,7 @@ export const documents: MatterDocument[] = [
     qualityProblems: [],
     versions: [],
     uploadedAt: "2026-07-22T09:29:00.000Z",
+    relation: "unrelated",
   },
   {
     id: "doc-registry-001",
@@ -150,6 +212,7 @@ export const documents: MatterDocument[] = [
     qualityProblems: [{ code: "cropped", pages: [3] }],
     versions: [],
     uploadedAt: "2026-07-20T07:10:00.000Z",
+    relation: "unrelated",
   },
   {
     id: "doc-at-001",
@@ -171,6 +234,7 @@ export const documents: MatterDocument[] = [
       },
     ],
     uploadedAt: "2026-07-19T03:00:00.000Z",
+    relation: "unrelated",
   },
 ];
 

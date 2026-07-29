@@ -13,11 +13,24 @@ import {
   matters,
   workflows,
 } from "@/lib/mocks";
+import {
+  classifyFileName,
+  extractIdentityDocument,
+  identityDisplayName,
+  identityFileName,
+  nextIdentityGroupId,
+  type IdentityPairAssignment,
+} from "@/lib/documents/mock-pipeline";
+import { relationForKind } from "@/lib/documents/authorization";
 import type {
   AuditEvent,
   Check,
+  DocumentKind,
+  DocumentRelation,
   Draft,
   EditorDocument,
+  ExtractedFields,
+  IdentitySide,
   Matter,
   MatterDocument,
   MatterType,
@@ -49,6 +62,17 @@ type CreateMatterInput = {
   type: MatterType;
 };
 
+export type AddDocumentOptions = {
+  kind?: DocumentKind;
+  matterId?: string;
+  relation?: DocumentRelation;
+  identitySide?: IdentitySide;
+  identityGroupId?: string;
+  displayName?: string;
+};
+
+export type { IdentityPairAssignment };
+
 interface DemoState {
   matters: Matter[];
   documents: MatterDocument[];
@@ -58,16 +82,20 @@ interface DemoState {
   drafts: Draft[];
   auditEvents: AuditEvent[];
   createMatter: (input: CreateMatterInput) => string;
-  addDocument: (
-    fileName: string,
-    kind?: MatterDocument["kind"],
-    matterId?: string,
-  ) => string;
+  addDocument: (fileName: string, options?: AddDocumentOptions) => string;
   setDocumentProcessingState: (
     documentId: string,
     processingState: ProcessingState,
     confidence?: number,
   ) => void;
+  completeDocumentExtraction: (documentId: string) => void;
+  updateDocumentExtraction: (
+    documentId: string,
+    extractedText: string,
+    extractedFields?: ExtractedFields,
+  ) => void;
+  assignDocumentKind: (documentId: string, kind: DocumentKind) => void;
+  setIdentityPairing: (assignments: IdentityPairAssignment[]) => void;
   retryDocument: (documentId: string) => void;
   replaceDocument: (
     documentId: string,
@@ -189,7 +217,16 @@ export const useDemoStore = create<DemoState>()(
         return id;
       },
       // TODO(api): POST /api/matters/{matterId}/documents
-      addDocument: (fileName, kind = "other", matterId = DEMO_MATTER_ID) => {
+      addDocument: (fileName, options = {}) => {
+        const matterId = options.matterId ?? DEMO_MATTER_ID;
+        const matter = get().matters.find((item) => item.id === matterId);
+        const regime = matter?.regime ?? "rta";
+        const type = matter?.type ?? "transfer";
+        const classified = classifyFileName(fileName, regime, type);
+        const kind = options.kind ?? classified.kind;
+        const identitySide = options.identitySide ?? classified.identitySide;
+        const relation =
+          options.relation ?? relationForKind(kind, regime, type);
         const id = `doc-upload-${String(get().documents.length + 1).padStart(3, "0")}`;
         set((state) => {
           const document: MatterDocument = {
@@ -203,6 +240,10 @@ export const useDemoStore = create<DemoState>()(
             qualityProblems: [],
             versions: [],
             uploadedAt: deterministicTimestamp(state.auditEvents.length),
+            relation,
+            identitySide: kind === "identity" ? identitySide : undefined,
+            identityGroupId: options.identityGroupId,
+            displayName: options.displayName,
           };
           return {
             documents: [...state.documents, document],
@@ -242,6 +283,206 @@ export const useDemoStore = create<DemoState>()(
               targetId: documentId,
               before,
               after: updated.find((document) => document.id === documentId),
+            }),
+          };
+        }),
+      // TODO(api): POST /api/matters/{matterId}/documents/{documentId}/extract
+      completeDocumentExtraction: (documentId) =>
+        set((state) => {
+          const before = state.documents.find(
+            (document) => document.id === documentId,
+          );
+          if (!before) return state;
+          const matter = state.matters.find(
+            (item) => item.id === before.matterId,
+          );
+          const regime = matter?.regime ?? "rta";
+          const type = matter?.type ?? "transfer";
+          const classified = classifyFileName(before.fileName, regime, type);
+          const kind = before.kind === "other" ? classified.kind : before.kind;
+          const identitySide =
+            before.identitySide && before.identitySide !== "unknown"
+              ? before.identitySide
+              : classified.identitySide;
+          const relation = relationForKind(kind, regime, type);
+          let identityGroupId = before.identityGroupId;
+          let patch: Partial<MatterDocument> = {
+            kind,
+            relation,
+            identitySide: kind === "identity" ? identitySide : undefined,
+            processingState: "ready-for-review",
+            extractionConfidence: 0.88,
+          };
+          if (kind === "identity") {
+            if (!identityGroupId) {
+              const existing = state.documents
+                .filter(
+                  (document) =>
+                    document.matterId === before.matterId &&
+                    document.identityGroupId,
+                )
+                .map((document) => document.identityGroupId as string);
+              identityGroupId = nextIdentityGroupId(existing);
+            }
+            const extraction = extractIdentityDocument(
+              documentId,
+              identityGroupId,
+              identitySide,
+            );
+            patch = {
+              ...patch,
+              identityGroupId,
+              displayName: extraction.displayName,
+              fileName: extraction.fileName,
+              extractedText: extraction.extractedText,
+              extractedFields: extraction.extractedFields,
+              language: extraction.language,
+            };
+          }
+          const updated = state.documents.map((document) =>
+            document.id === documentId ? { ...document, ...patch } : document,
+          );
+          return {
+            documents: updated,
+            auditEvents: appendEvent(state, {
+              matterId: before.matterId,
+              action: "document.ready-for-review",
+              targetType: "document",
+              targetId: documentId,
+              before,
+              after: updated.find((document) => document.id === documentId),
+            }),
+          };
+        }),
+      // TODO(api): PATCH /api/matters/{matterId}/documents/{documentId}/extraction
+      updateDocumentExtraction: (
+        documentId,
+        extractedText,
+        extractedFields,
+      ) =>
+        set((state) => {
+          const before = state.documents.find(
+            (document) => document.id === documentId,
+          );
+          if (!before) return state;
+          const fields = extractedFields ?? before.extractedFields;
+          const fullName =
+            fields && "fullName" in fields && typeof fields.fullName === "string"
+              ? fields.fullName
+              : undefined;
+          const displayName = fullName
+            ? identityDisplayName(fullName)
+            : before.displayName;
+          const fileName =
+            before.kind === "identity" && fullName
+              ? identityFileName(fullName, before.identitySide ?? "unknown")
+              : before.fileName;
+          const updated = state.documents.map((document) =>
+            document.id === documentId
+              ? {
+                  ...document,
+                  extractedText,
+                  extractedFields: fields,
+                  displayName,
+                  fileName,
+                }
+              : document,
+          );
+          return {
+            documents: updated,
+            auditEvents: appendEvent(state, {
+              matterId: before.matterId,
+              action: "document.extraction.edited",
+              targetType: "document",
+              targetId: documentId,
+              before,
+              after: updated.find((document) => document.id === documentId),
+            }),
+          };
+        }),
+      // TODO(api): PATCH /api/matters/{matterId}/documents/{documentId}/kind
+      assignDocumentKind: (documentId, kind) =>
+        set((state) => {
+          const before = state.documents.find(
+            (document) => document.id === documentId,
+          );
+          if (!before) return state;
+          const matter = state.matters.find(
+            (item) => item.id === before.matterId,
+          );
+          const relation = relationForKind(
+            kind,
+            matter?.regime ?? "rta",
+            matter?.type ?? "transfer",
+          );
+          const updated = state.documents.map((document) =>
+            document.id === documentId
+              ? {
+                  ...document,
+                  kind,
+                  relation,
+                  identitySide:
+                    kind === "identity"
+                      ? (document.identitySide ?? "unknown")
+                      : undefined,
+                }
+              : document,
+          );
+          return {
+            documents: updated,
+            auditEvents: appendEvent(state, {
+              matterId: before.matterId,
+              action: "document.kind-assigned",
+              targetType: "document",
+              targetId: documentId,
+              before,
+              after: updated.find((document) => document.id === documentId),
+            }),
+          };
+        }),
+      // TODO(api): POST /api/matters/{matterId}/documents/identity-pairing
+      setIdentityPairing: (assignments) =>
+        set((state) => {
+          if (assignments.length === 0) return state;
+          const first = state.documents.find(
+            (document) => document.id === assignments[0]?.documentId,
+          );
+          const updated = state.documents.map((document) => {
+            const assignment = assignments.find(
+              (item) => item.documentId === document.id,
+            );
+            if (!assignment) return document;
+            const extraction = extractIdentityDocument(
+              document.id,
+              assignment.identityGroupId,
+              assignment.identitySide,
+            );
+            return {
+              ...document,
+              kind: "identity" as const,
+              relation: relationForKind(
+                "identity",
+                state.matters.find((item) => item.id === document.matterId)
+                  ?.regime ?? "rta",
+                state.matters.find((item) => item.id === document.matterId)
+                  ?.type ?? "transfer",
+              ),
+              identityGroupId: assignment.identityGroupId,
+              identitySide: assignment.identitySide,
+              displayName: extraction.displayName,
+              fileName: extraction.fileName,
+              extractedText: extraction.extractedText,
+              extractedFields: extraction.extractedFields,
+            };
+          });
+          return {
+            documents: updated,
+            auditEvents: appendEvent(state, {
+              matterId: first?.matterId ?? DEMO_MATTER_ID,
+              action: "document.identity-paired",
+              targetType: "document",
+              targetId: first?.id ?? "identity-pairing",
+              after: { assignments },
             }),
           };
         }),
@@ -286,7 +527,7 @@ export const useDemoStore = create<DemoState>()(
                 ? {
                     ...item,
                     fileName,
-                    processingState: "uploaded",
+                    processingState: "uploaded" as const,
                     versions: [...item.versions, version],
                   }
                 : item,
@@ -667,7 +908,11 @@ export const useDemoStore = create<DemoState>()(
     {
       name: "draftly-m2-demo",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
+      migrate: (persisted, version) => {
+        if (version < 2) return seed();
+        return persisted as ReturnType<typeof seed>;
+      },
     },
   ),
 );

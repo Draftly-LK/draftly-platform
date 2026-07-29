@@ -1,4 +1,4 @@
-import type { AuthorityType, AuthorityWeight, CheckStatus, CourtLevel, ProcessingState, StepState, VerificationState } from "@/types";
+import type { AuthorityType, AuthorityWeight, CheckStatus, CourtLevel, DocumentKind, DocumentRelation, IdentitySide, MatterType, ProcessingState, RegistrationRegime, StepState, VerificationState } from "@/types";
 
 type LocaleLabels<T extends string> = Record<T, { en: string; si: string }>;
 
@@ -8,6 +8,38 @@ export const verificationLabels: LocaleLabels<VerificationState> = {
 };
 export const processingLabels: LocaleLabels<ProcessingState> = {
   uploaded: { en: "Uploaded", si: "Uploaded" }, extracting: { en: "Extracting", si: "Extracting" }, "ready-for-review": { en: "Ready for review", si: "Ready for review" }, failed: { en: "Failed", si: "Failed" }, replaced: { en: "Replaced", si: "Replaced" }
+};
+export const documentRelationLabels: LocaleLabels<DocumentRelation> = {
+  authorized: { en: "Authorized", si: "Authorized" },
+  unrelated: { en: "Unrelated", si: "Unrelated" },
+  unclassified: { en: "Unclassified", si: "Unclassified" },
+};
+export const identitySideLabels: LocaleLabels<IdentitySide> = {
+  front: { en: "Front", si: "Front" },
+  back: { en: "Back", si: "Back" },
+  unknown: { en: "Side unknown", si: "Side unknown" },
+};
+export const documentKindLabels: LocaleLabels<DocumentKind> = {
+  deed: { en: "Deed", si: "Deed" },
+  "survey-plan": { en: "Survey plan", si: "Survey plan" },
+  identity: { en: "Identity", si: "Identity" },
+  assessment: { en: "Assessment", si: "Assessment" },
+  "registry-extract": { en: "Registry extract", si: "Registry extract" },
+  "at-form": { en: "AT form", si: "AT form" },
+  other: { en: "Other", si: "Other" },
+};
+export const matterTypeLabels: LocaleLabels<MatterType> = {
+  transfer: { en: "Transfer", si: "Transfer" },
+  gift: { en: "Gift", si: "Gift" },
+  lease: { en: "Lease", si: "Lease" },
+  mortgage: { en: "Mortgage", si: "Mortgage" },
+  other: { en: "Other", si: "Other" },
+};
+export const registrationRegimeLabels: LocaleLabels<RegistrationRegime> = {
+  rta: { en: "RTA", si: "RTA" },
+  deed: { en: "RDO", si: "RDO" },
+  condominium: { en: "Apartment Ownership", si: "Apartment Ownership" },
+  "special-area": { en: "Special Area", si: "Special Area" },
 };
 export const checkLabels: LocaleLabels<CheckStatus> = {
   pass: { en: "Pass", si: "Pass" }, warning: { en: "Warning", si: "Warning" }, fail: { en: "Fail", si: "Fail" }, "needs-review": { en: "Needs review", si: "Needs review" }
