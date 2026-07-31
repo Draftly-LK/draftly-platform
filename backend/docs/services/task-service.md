@@ -8,10 +8,30 @@ This service maps to Phase 5 of the backend plan, the Tasks API, and the
 invariant that a mandatory blocked step requires new evidence or a recorded
 authorised override.
 
-V0 is RTA-first. Its first governed checklist is compiled from an approved base
-workflow, an RTA module, a transaction module, and any approved conditional
-modules that apply to the matter. Deed-registration and other regimes can use
-the same mechanism after their content has been reviewed and approved.
+V0 is RTA-first. Its first governed checklist is compiled from approved core,
+transaction, registration-regime, conditional, and firm-policy modules.
+Deed-registration and other regimes use the same mechanism only after their
+content has been reviewed and approved.
+
+The canonical workflow has ten phases:
+
+```text
+intake
+classification
+document-collection
+title-examination
+issue-resolution
+drafting
+pre-execution
+execution
+registration
+closure
+```
+
+The frontend may group these phases into the four familiar work areas
+Examination, Drafting, Execution, and Attestation. Those groups are a
+presentation choice and do not replace the canonical phase recorded by the
+backend.
 
 ## 1. What it owns
 
@@ -26,6 +46,10 @@ It owns:
 - deterministic applicability evaluation against verified or corrected facts;
 - the compilation record, including definition, fact, and document versions;
 - the run state of each compiled step;
+- matter-specific document requirements and their lawyer-review state;
+- explainable readiness evaluations for drafting, execution, registration,
+  and closure;
+- the operational phase and blocking projections exposed to `matter_service`;
 - completion, blocking, and authorised override decisions; and
 - invalidation when a relied-on fact or document changes.
 
@@ -48,6 +72,9 @@ POST /matters/{id}/workflows/instantiate
 GET  /matters/{id}/workflows
 POST /matters/{id}/workflows/{runId}/re-evaluate
 POST /matters/{id}/workflows/{runId}/steps/{stepRunId}/complete
+GET  /matters/{id}/document-requirements
+POST /matters/{id}/document-requirements/{requirementId}/review
+GET  /matters/{id}/readiness
                               |
                               v
                       api/v1/tasks.py
@@ -58,7 +85,8 @@ POST /matters/{id}/workflows/{runId}/steps/{stepRunId}/complete
           +-------------------+-------------------+
           |                   |                   |
 WorkflowDefinitionPort  WorkflowRunPort  VerifiedFactReadPort
-StepRunPort             DocumentReadPort EventPort / AuditPort
+StepRunPort             DocumentReadPort RequirementPort
+ReadinessPort           EventPort / AuditPort
 ```
 
 The router authenticates and parses requests. The application service takes a
@@ -76,14 +104,13 @@ Governed definitions are versioned and read-only to this service.
 
 ### 3.1 WorkflowDefinition
 
-The approved base for a notarial function:
+The approved base for the complete notarial matter:
 
 ```text
 WorkflowDefinition
   id
   titleKey
   kind = base
-  function = examination | drafting | execution | attestation
   approvalState = draft | approved | retired
   language = en | si | bilingual
   ownerId
@@ -101,7 +128,7 @@ A reusable group of approved steps:
 WorkflowModule
   id
   titleKey
-  kind = transaction | registration-regime | conditional
+  kind = core | transaction | registration-regime | conditional | firm-policy
   registrationRegimes: string[]
   transactionTypes: string[]
   applicability?
@@ -117,10 +144,14 @@ WorkflowModule
 Examples of module selection are:
 
 ```text
-base examination workflow
+base notarial workflow
+  + client-intake-and-CDD core module
+  + document-intake core module
+  + title-examination core module
   + transfer transaction module
   + RTA registration-regime module
   + power-of-attorney conditional module, when applicable
+  + approved firm-policy module
 ```
 
 V0 must not maintain a separate permanent template for every possible
@@ -133,22 +164,30 @@ maintain.
 StepDefinition
   id
   definitionId
-  order
+  phase
+  displayOrder
   titleKey
+  descriptionKey
   objectiveKey
+  assignedRole
   mandatory
   applicability?
   requiredFactKeys: string[]
   requiredDocumentTypes: string[]
-  authority: Authority
-  sourceExcerpt
+  requiredCheckResults: CheckRequirement[]
+  authorityReferences: AuthorityReference[]
+  completionPolicy
+  overridePolicy
+  deadlineRuleId?
+  deadlineRuleVersion?
   rules: StepRule[]
 ```
 
 Definitions use stable fact keys and document types. They never contain
 matter-specific database IDs.
 
-`StepRule` remains descriptive guidance:
+`deadlineRuleId` references a separately approved deadline rule. A step never
+embeds an ungoverned date formula. `StepRule` remains descriptive guidance:
 
 ```text
 StepRule
@@ -201,11 +240,14 @@ WorkflowRun
   compiledAt
   compiledBy
   matterClassificationVersion
-  status = active | stale | closed
+  status = active | stale | superseded | closed
+  supersededByRunId?
+  supersededReason?
+  version
 ```
 
-`moduleVersions` records every transaction, registration-regime, and
-conditional module used during compilation.
+`moduleVersions` records every core, transaction, registration-regime,
+conditional, and firm-policy module used during compilation.
 
 ### 4.2 StepRun
 
@@ -215,6 +257,9 @@ StepRun
   workflowRunId
   stepDefinitionId
   definitionVersion
+  sourceType?
+  sourceId?
+  sourceVersion?
   state
   applicability
   applicabilityReason
@@ -247,6 +292,95 @@ StepState =
 The current frontend only understands `not-started`, `in-progress`, `complete`,
 and `blocked`. Its type and rendering contract must be expanded before the
 backend returns the additional states.
+
+### 4.3 DocumentRequirement
+
+A document requirement is workflow state, not document-processing state:
+
+```text
+DocumentRequirement
+  id
+  matterId
+  workflowRunId
+  requirementKey
+  documentType
+  titleKey
+  mandatory
+  applicability
+  applicabilityReason
+  state
+  acceptedDocumentId?
+  acceptedDocumentVersionId?
+  reviewedBy?
+  reviewedAt?
+  rejectionReason?
+  version
+
+DocumentRequirementState =
+  missing |
+  requested |
+  present |
+  reviewed |
+  accepted |
+  rejected |
+  not-applicable
+```
+
+`document_service` owns upload and processing states such as `uploaded`,
+`queued`, `processing`, `processed`, and `failed`. A processed document may
+make a requirement `present`; it never makes it `accepted`. Acceptance is a
+recorded lawyer decision against one immutable document version.
+
+### 4.4 ReadinessEvaluation
+
+Readiness is a derived, explainable evaluation rather than an editable flag:
+
+```text
+ReadinessEvaluation
+  id
+  matterId
+  workflowRunId
+  stage = draft | execute | register | close
+  ready
+  blockerReferences
+  evaluatedStepRunVersions
+  evaluatedRequirementVersions
+  evaluatedFactVersions
+  evaluatedCheckVersions
+  workflowRunVersion
+  evaluatedAt
+```
+
+Each blocker reference identifies the exact unresolved step, requirement,
+fact, check, or stale dependency. The latest evaluation supplies the summary
+projection shown on a matter, but the full evaluation remains task-owned.
+
+The default readiness policies are:
+
+```text
+ready-to-draft =
+  required facts verified
+  AND required documents accepted
+  AND title-examination steps complete
+  AND no unresolved blocking checks
+
+ready-to-execute =
+  ready-to-draft
+  AND final draft approved
+  AND pre-execution steps complete
+
+ready-to-register =
+  execution and attestation steps complete
+  AND required execution evidence accepted
+
+ready-to-close =
+  registration outcome recorded
+  AND final documents accounted for
+  AND no unresolved mandatory task or active obligation
+```
+
+These policies must be versioned as approved definitions. The displayed
+boolean is never accepted as a command from a browser.
 
 ## 5. Applicability rules
 
@@ -297,10 +431,16 @@ Applicability and prerequisites answer different questions:
   versions.
 - `StepRunRepository`: persists matter-scoped StepRun rows with optimistic
   concurrency.
+- `DocumentRequirementRepository`: persists compiled requirements, accepted
+  evidence bindings, review decisions, and optimistic versions.
+- `ReadinessRepository`: stores immutable readiness evaluations and returns the
+  latest projection for each stage.
 - `VerifiedFactReadPort`: reads verified or corrected facts, their versions,
   and their verification states.
-- `DocumentReadPort`: resolves requirements by document type and returns the
-  current processed document versions.
+- `DocumentReadPort`: returns current immutable document versions and their
+  processing states; it does not decide whether evidence is accepted.
+- `CheckReadPort`: returns current check results and blocker provenance.
+- `ObligationReadPort`: returns active obligations when evaluating closure.
 - `EventPort`: consumes fact-correction and document-supersession events and
   publishes workflow-staleness events through the transactional outbox.
 - `AuditPort`: records every material workflow transition.
@@ -316,8 +456,9 @@ instantiate_workflow(ctx, matter_id) -> WorkflowRunRead
 1. Re-check matter membership. Return 404 for a non-member.
 2. Read the matter's current registration regime, transaction type, and
    classification version.
-3. Resolve exactly one approved base definition and the approved transaction
-   and registration-regime modules effective at compilation time.
+3. Resolve exactly one approved base definition and all required approved core,
+   transaction, registration-regime, and firm-policy modules effective at
+   compilation time.
 4. Read current verified or corrected facts and processed document versions.
 5. Evaluate approved conditional modules and step conditions with three-valued
    logic.
@@ -325,16 +466,23 @@ instantiate_workflow(ctx, matter_id) -> WorkflowRunRead
    version, matter classification version, and compilation time.
 7. Create a StepRun for every candidate step. Store its applicability result,
    reason, and the fact and document versions used.
-8. Preserve non-applicable steps in the run for audit.
-9. Persist the run, step runs, and `workflow.instantiated` audit event in one
-   transaction.
+8. Compile document requirements and preserve not-applicable requirements for
+   audit.
+9. Calculate the initial phase, blocking summary, and readiness evaluations.
+10. Persist the run, steps, requirements, projections, and
+    `workflow.instantiated` audit event in one transaction.
 
 Ambiguous or missing governed content is a configuration error. The compiler
 must not choose a matching definition by list order.
 
-Compilation is deterministic. The same approved definitions, matter
+Compilation is idempotent for the same matter classification version and
+request key. It is also deterministic. The same approved definitions, matter
 classification, fact versions, and document versions produce the same StepRun
 set. AI suggestions are not compilation inputs.
+
+`matter.created` triggers this operation through the outbox. An inquiry gets
+the approved intake and classification modules first; activation adds the
+remaining modules once acceptance and classification gates pass.
 
 ### 7.2 list_workflows
 
@@ -372,6 +520,8 @@ re_evaluate_workflow(ctx, matter_id, run_id) -> WorkflowRunRead
 
 Re-evaluation uses the run's pinned workflow and module versions. Adopting a
 newer approved definition requires a separate, explicit migration decision.
+Re-evaluation is only valid while transaction type and registration regime are
+unchanged. A material reclassification supersedes the run instead.
 
 ### 7.4 complete_step
 
@@ -405,6 +555,88 @@ Use `workflow.step-completed` for ordinary completion and
 `workflow.step-overridden` for an override. The audit event records the actor,
 target, before and after states, reason, and correlation ID.
 
+### 7.5 review_document_requirement
+
+```text
+review_document_requirement(
+  ctx,
+  matter_id,
+  requirement_id,
+  document_id,
+  document_version_id,
+  decision,
+  reason?
+) -> DocumentRequirementRead
+```
+
+1. Require matter membership and an authorised lawyer.
+2. Confirm the immutable document version belongs to the same matter and is
+   current enough to review.
+3. Permit `accepted` only after the required evidence review completes.
+4. Bind acceptance to the exact document version.
+5. Require a reason for rejection.
+6. Recalculate affected step prerequisites and readiness.
+7. Persist the decision, projection changes, audit event, and outbox events in
+   one transaction.
+
+### 7.6 evaluate_readiness
+
+```text
+evaluate_readiness(ctx, matter_id, run_id) -> list[ReadinessEvaluationRead]
+```
+
+Evaluate every approved readiness policy against current step, requirement,
+fact, check, workflow, and obligation versions. Store a new immutable
+evaluation when its inputs or result differ. Return blocker references rather
+than a bare boolean.
+
+The current operational phase is derived from the earliest applicable
+mandatory phase with incomplete work. Approved definitions may allow explicit
+parallel work, but a client cannot assign `currentPhase` directly.
+
+### 7.7 supersede_for_reclassification
+
+```text
+supersede_for_reclassification(
+  ctx,
+  matter_id,
+  old_run_id,
+  classification_version,
+  reason
+) -> WorkflowRunRead
+```
+
+Use this method when transaction type or registration regime changes:
+
+1. Require an authorised lawyer and a recorded reclassification reason.
+2. Mark the old run `superseded`; never delete it.
+3. Compile a new run from approved definitions for the new classification.
+4. Re-evaluate existing evidence against the new requirements.
+5. Do not copy earlier completions or accepted requirements automatically.
+   Present possible mappings for lawyer confirmation.
+6. Link both runs and persist `workflow.run-superseded` plus audit events.
+
+Changes to conditional characteristics, such as power-of-attorney use, keep
+the same pinned run and use ordinary dependency re-evaluation.
+
+### 7.8 create_finding_remediation
+
+```text
+create_finding_remediation(
+  ctx,
+  matter_id,
+  check_id,
+  check_evaluation_version,
+  remediation_policy
+) -> StepRunRead
+```
+
+Create or return the governed remediation StepRun for the idempotency tuple
+`(check_id, check_evaluation_version, required_action_key)`. The StepRun owns
+the responsible role, required evidence, progress, and any authorised
+override. It retains the source check reference. Completion never rewrites the
+finding; check-service re-evaluates it against new verified evidence.
+
 ## 8. Blocking and overrides
 
 An applicable mandatory step stays blocked until the missing evidence exists.
@@ -433,8 +665,12 @@ The service consumes at least:
 
 ```text
 particular.corrected
+document.processing-completed
 document.version_superseded
 matter.classification_changed
+check.result-changed
+finding.remediation-requested
+obligation.status-changed
 ```
 
 For each event, find StepRuns whose recorded dependencies contain the changed
@@ -442,6 +678,8 @@ fact, document, or classification version.
 
 - An untouched step is re-evaluated and its applicability history is appended.
 - A completed or overridden step is marked stale.
+- A requirement accepted against a superseded document version is marked
+  `present` and requires a new lawyer review.
 - A stale mandatory step blocks approval.
 - No historical state or applicability record is deleted.
 
@@ -451,6 +689,10 @@ Publish:
 workflow.step-stale
 workflow.applicability-changed
 workflow.run-stale
+workflow.run-superseded
+workflow.phase-changed
+workflow.requirement-changed
+workflow.readiness-changed
 ```
 
 Events are written through the same outbox transaction as the state change.
@@ -462,9 +704,12 @@ Events are written through the same outbox transaction as the state change.
 | Checklist is tailored deterministically | Compile approved base, transaction, registration-regime, and conditional definitions against the matter classification and verified facts |
 | Unknown never means not applicable | Missing, unreviewed, conflict, blocked, stale, or unsupported inputs produce `pending-applicability` |
 | Compilation is reproducible | WorkflowRun pins definition, module, classification, fact, and document versions plus evaluation reasons |
+| Processing is not acceptance | Only an authorised requirement review binds accepted evidence to a document version |
+| Readiness is derived and explainable | Versioned policies evaluate current dependencies and return exact blocker references |
 | Mandatory block requires evidence or override | Domain transition refuses completion without current prerequisites or a non-empty authorised override reason |
 | Only a lawyer decides | Instantiate, re-evaluate, complete, and override methods enforce the lawyer role |
 | Definition changes preserve history | Existing runs keep their pinned versions; newer approved definitions do not mutate them |
+| Material reclassification preserves history | Transaction or regime changes supersede and link the old run; conditional changes re-evaluate the pinned run |
 | Dependency changes preserve decisions | Affected completed steps become stale and retain their earlier state and applicability records |
 | Every material transition is audited | Instantiate, applicability change, stale marking, completion, re-evaluation, and override write separate events |
 | Matter isolation | Membership is re-checked and cross-matter access is denied |
@@ -480,6 +725,12 @@ Events are written through the same outbox transaction as the state change.
 - A required fact changes after completion: mark affected steps stale and keep
   their completion history.
 - A required document version is superseded: mark dependent steps stale.
+- A processed document is present but not reviewed: keep its requirement
+  `present` and readiness blocked.
+- Transaction type or registration regime changes: refuse ordinary
+  re-evaluation and require run supersession.
+- A client attempts to write a readiness flag or current phase: reject it;
+  both are derived projections.
 - Two actors complete the same step concurrently: reject the stale write using
   optimistic concurrency.
 - A step is completed out of order: reject with a domain error.
@@ -501,10 +752,16 @@ Events are written through the same outbox transaction as the state change.
 - A mandatory blocked step cannot complete without evidence or override.
 - An override requires a non-empty reason and an authorised lawyer.
 - Out-of-order completion is rejected.
+- Processed evidence does not become accepted without lawyer review.
+- Readiness reports exact blocker references and all dependency versions.
+- Current phase is derived from applicable incomplete mandatory work.
+- Conditional reclassification re-evaluates the pinned run.
+- Transaction or regime reclassification supersedes and links the old run.
 
 ### Contract
 
-- Instantiate, list, re-evaluate, and complete request and response schemas.
+- Instantiate, list, re-evaluate, complete, requirement review, and readiness
+  request and response schemas.
 - Compiled provenance fields and applicability explanations.
 - Frontend mapping for all StepState values.
 - Stable fact-key and document-type requirements.
@@ -512,10 +769,16 @@ Events are written through the same outbox transaction as the state change.
 ### Integration
 
 - Compile a base plus RTA, transaction, and conditional modules.
+- Compile intake and classification for an inquiry, then add active-matter
+  modules after activation.
 - Verify every pinned definition and dependency version.
+- Process a document, confirm its requirement is only `present`, then accept it
+  through a lawyer review.
 - Complete steps in order.
 - Correct a relied-on fact and confirm affected steps become stale.
 - Re-evaluate without losing earlier applicability or completion history.
+- Reclassify the registration regime and confirm the old run is superseded,
+  the new run is linked, and evidence is not silently accepted.
 - Override a blocked mandatory step and confirm the separate audit event.
 - Approve only when no mandatory block, pending applicability, or stale step
   remains.
@@ -530,8 +793,8 @@ Events are written through the same outbox transaction as the state change.
 ## 13. Decisions to confirm before coding
 
 1. Use separate WorkflowDefinition and WorkflowModule entities. Compile
-   approved base, transaction, registration-regime, and conditional content
-   into a WorkflowRun.
+   approved core, transaction, registration-regime, conditional, and
+   firm-policy content into a WorkflowRun.
 2. Store WorkflowRun and StepRun separately. WorkflowRun holds compilation
    provenance; StepRun holds applicability and completion state.
 3. Keep workflow/run/step routes as the V0 API and treat "Tasks" as the
@@ -546,3 +809,13 @@ Events are written through the same outbox transaction as the state change.
 7. Start V0 with the lawyer-approved RTA workflow required for the evaluated
    transaction. Add transaction modules only after scope approval and legal
    review.
+8. Use the ten canonical phases in the backend. Treat Examination, Drafting,
+   Execution, and Attestation as frontend presentation groups only.
+9. Keep document requirements and readiness evaluations in `task_service`.
+   Keep upload and processing state in `document_service`.
+10. Start with approved modules for client intake and CDD, document intake,
+    title examination, draft review, execution, registration, and closure;
+    transfer and gift; RTA and any legally reviewed deed regime; and approved
+    conditional modules such as power of attorney, corporate party, minor
+    party, reserved life interest, mortgage or encumbrance, divided or
+    undivided share, subdivision, and missing original evidence.

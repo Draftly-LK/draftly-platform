@@ -20,8 +20,9 @@ red-flag mismatches, and it owns the resolution trail for each finding.
 
 It does **not** verify facts (`verification_service` does), does **not** write
 prose or suggestions in natural language (only i18n keys), and does **not**
-approve anything. It reads the verified record and reports; the check engine is
-deterministic and contains no model call.
+approve anything. It also does not track remediation work; `task_service`
+creates and runs the required action. It reads the verified record and reports;
+the check engine is deterministic and contains no model call.
 
 ## 2. Where it sits
 
@@ -53,6 +54,10 @@ In `domain/findings.py`, mirroring the frontend contract
   `resolution?: CheckResolution`. One finding from one rule against the record.
 - **CheckResolution** — `action: resolved | waived | document-requested |
   checklist-created`, `reason`, `actorId`, `timestamp`. The disposition trail.
+- **CheckRemediationLink** — `checkId`, `checkEvaluationVersion`,
+  `taskStepRunId`, `requiredActionKey`, `requiredEvidenceTypes`,
+  `assignedRole`, `createdAt`. This records which task owns remediation without
+  copying its state into the finding.
 - **CrossCheck** — `id`, `matterId`, `labelKey`, `bindings: CrossCheckBinding[]`,
   `verdict: match | mismatch | incomplete`, `checkId`. One
   reconciliation across documents, linked to its `Check`.
@@ -85,6 +90,9 @@ In `ports/`:
   or `blocked` fact is not check input.
 - `CheckRepository` — persist and load `Check` and `CrossCheck`, append a
   `CheckResolution`, matter-scoped queries only.
+- `TaskCommandPort` — idempotently request a governed remediation StepRun and
+  return its reference. Task-service owns assignee, progress, evidence
+  prerequisites, completion, and override state.
 - `AuditPort` — `record(event)`; every resolution and override is audited
   (invariant 8).
 
@@ -145,6 +153,28 @@ cannot show. Provenance on both sides is what makes the red flag actionable.
 4. Audit `finding.resolved` (or `finding.waived`) with actor, target, and reason
    (invariant 8).
 
+### create_remediation(ctx, matter_id, check_id) -> CheckRead
+
+1. Require matter membership and an authorised lawyer.
+2. Load the current finding evaluation and its governed remediation policy.
+3. Ask `TaskCommandPort` to create exactly one remediation StepRun for the
+   tuple `(check_id, check_evaluation_version, required_action_key)`.
+4. Store a `CheckRemediationLink` and append a `checklist-created` resolution.
+5. Publish `finding.remediation-created` and audit the action in the same
+   transaction or coordinated outbox flow.
+
+Completing the remediation task does not silently turn a failed finding into a
+pass. New verified evidence causes the deterministic rule to run again, or an
+authorised lawyer records an explicit resolution or waiver.
+
+```text
+finding
+  -> governed required action
+  -> task-service assignee and evidence prerequisites
+  -> new evidence or recorded override
+  -> deterministic re-run or lawyer resolution
+```
+
 ## 6. The blocking seam to approval
 
 An **unresolved blocker prevents approval**. `check_service` does not approve —
@@ -169,6 +199,7 @@ until every red flag is either fixed or a lawyer has waived it on the record.
 | Status distinctness kept | `pass`/`warning`/`fail`/`needs-review` are stored as computed; a resolution never rewrites the status |
 | Unresolved blockers prevent approval | `fail`/`needs-review` without a `resolved`/`waived` resolution block; the seam to `approval_service` (§6) |
 | Findings inherit provenance | `Check.evidence` and every `CrossCheckBinding.evidence` come from the facts' spans, tied to immutable `DocumentVersion`s (invariant 1) |
+| Remediation stays task-owned | Finding stores a versioned task link; task-service owns responsibility, prerequisites, and progress |
 | Every resolution audited (inv. 8) | `AuditPort.record` on resolve, waive, and override, with reason |
 | Matter isolation | Membership re-checked; 404 hides existence |
 
@@ -185,6 +216,8 @@ until every red flag is either fixed or a lawyer has waived it on the record.
   is traceable.
 - **Waived blocker re-triggered by new evidence** — a superseding document or a
   correction reopens the finding; the prior waiver stays in history.
+- **Remediation creation is replayed** — idempotency returns the existing
+  StepRun; it never creates duplicate work for the same finding evaluation.
 
 ## 9. Phase 5 exit gates and how they are met
 
@@ -203,14 +236,16 @@ until every red flag is either fixed or a lawyer has waived it on the record.
 - **Unit:** each rule's pass/warning/fail/needs-review outcome on fixture facts;
   applicability gating; a missing required fact yields `needs-review` not `pass`;
   cross-check `match`/`mismatch`/`incomplete` verdicts; a resolution does not
-  rewrite `status`; blocker classification (which findings block approval).
+  rewrite `status`; blocker classification (which findings block approval);
+  remediation idempotency.
 - **Contract:** `checks`, `cross-checks`, and `resolve` response schemas match
   `Check`/`CrossCheck`/`CheckResolution`; the `RuleCatalogPort` rule-definition
   schema (authority, version, effective date).
 - **Integration:** run the catalogue over a verified record in real PostgreSQL;
   correcting a fact recomputes the dependent findings; a `fail` finding blocks
   `approval_service` until `resolved`/`waived`; cross-check surfaces a
-  deed-schedule-versus-survey-plan mismatch with both spans.
+  deed-schedule-versus-survey-plan mismatch with both spans; remediation
+  creates one linked StepRun and does not clear the finding on task completion.
 - **Security:** cross-matter check read and resolve denied; 404-not-403;
   a clerk cannot resolve or waive; no raw client value in logs.
 - **Evaluation:** on a lawyer-labelled matter set, report precision, recall, and

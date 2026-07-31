@@ -14,16 +14,18 @@ event (§5.2). Frontend reads (`GET /api/templates`, `/api/questions`,
 
 ## 1. What it owns
 
-The lifecycle of **controlled, versioned content definitions**: `FormTemplate`
-(Form 8 and its kin), `Workflow` templates, and `QuestionSet`s / `Question`s.
-Each carries an `approvalState` and moves `draft → approved → retired` only under
-a maintainer's hand. It owns the create/version/approve/retire write path and
-the read path that hands `approved` definitions to per-matter services.
+The lifecycle of **controlled, versioned content definitions**:
+`FormTemplate` (Form 8 and its kin), `WorkflowDefinition`,
+`WorkflowModule`, `DeadlineRule`, and `QuestionSet`s / `Question`s. Each
+carries an `approvalState` and moves `draft → approved → retired` only under a
+maintainer's hand. It owns the create/version/approve/retire write path and the
+read path that hands `approved` definitions to per-matter services.
 
-It does **not** run a workflow (task-service runs an instance of an approved
-template), does **not** bind facts into a draft (draft-service does), and does
-**not** author legal wording — that stays lawyer-owned. It governs the
-definition; other services consume it.
+It does **not** run a workflow (task-service runs an instance of approved
+definitions), calculate an obligation occurrence (obligations-service does),
+bind facts into a draft (draft-service does), or author legal wording. Legal
+wording and legal rule content stay lawyer-owned. This service governs the
+definition lifecycle; specialist services execute approved definitions.
 
 ## 2. Where it sits
 
@@ -52,10 +54,23 @@ In `domain/content.py`, mirroring the frontend contract exactly:
   - **FormTemplateBlock** — `{ id, order, kind, placeholderText }` where `kind`
     is `locked-prescribed` or `editable`. A `locked-prescribed` block is the
     wording invariant §5.3.6 protects.
-- **Workflow** (from `frontend/src/types/workflow.ts`) — `{ id, titleKey,
-  regime, transactionTypes, function, approvalState, language, ownerId, version,
-  steps: Step[] }`, where `function` is `examination | drafting | execution |
-  attestation`. This is the **template**; task-service runs an instance of it.
+- **WorkflowDefinition** — the versioned base for a complete notarial matter:
+  `{ id, titleKey, kind: "base", approvalState, language, ownerId, version,
+  effectiveFrom?, effectiveTo?, steps: StepDefinition[] }`.
+- **WorkflowModule** — a reusable governed group of steps:
+  `{ id, titleKey, kind, registrationRegimes, transactionTypes,
+  applicability?, approvalState, language, ownerId, version, effectiveFrom?,
+  effectiveTo?, steps: StepDefinition[] }`, where `kind` is `core |
+  transaction | registration-regime | conditional | firm-policy`.
+- **StepDefinition** — `{ id, definitionId, phase, displayOrder, titleKey,
+  descriptionKey, objectiveKey, assignedRole, mandatory, applicability?,
+  requiredFactKeys, requiredDocumentTypes, requiredCheckResults,
+  authorityReferences, completionPolicy, overridePolicy, deadlineRuleId?,
+  deadlineRuleVersion?, rules }`.
+- **DeadlineRule** — a versioned rule definition with scope, trigger schema,
+  applicability, calculation policy, timezone/calendar references, authority
+  references, effective dates, confirmation policy, approval state, owner, and
+  version. `obligations_service` executes it and owns generated obligations.
 - **Question** (from `frontend/src/types/question.ts`) — `{ id, prompt, scope,
   language, frequentlyWrong }` where `scope` is `matter | step | standalone`.
 - **QuestionSet** — `{ id, titleKey, descriptionKey, questionIds, approvalState,
@@ -68,7 +83,8 @@ Enums and shared values (exact):
 | `FormTemplate.approvalState` / `Workflow.approvalState` / `QuestionSet.approvalState` | `draft`, `approved`, `retired` |
 | `FormTemplateBlock.kind` | `locked-prescribed`, `editable` |
 | `Question.scope` | `matter`, `step`, `standalone` |
-| `Workflow.function` | `examination`, `drafting`, `execution`, `attestation` |
+| `WorkflowPhase` | `intake`, `classification`, `document-collection`, `title-examination`, `issue-resolution`, `drafting`, `pre-execution`, `execution`, `registration`, `closure` |
+| `WorkflowModule.kind` | `core`, `transaction`, `registration-regime`, `conditional`, `firm-policy` |
 | `Role` (from `user.ts`) | `reviewer`, `approver`, `maintainer`, `administrator` |
 
 The `approvalState` state machine, enforced in the domain layer so the first
@@ -84,13 +100,19 @@ approved  ──(edit)──▶  NEW draft version (never mutate the approved on
 An illegal transition — or an edit to an `approved` definition in place — raises
 a domain error, not an HTTP error.
 
+The current frontend's four `Workflow.function` values are presentation groups
+only. An API adapter may group the ten canonical phases as Examination,
+Drafting, Execution, and Attestation, but governed definitions and matter runs
+retain the canonical phase.
+
 ## 4. Ports it depends on
 
 In `ports/`:
 
-- `ContentRepository` — persist and load `FormTemplate`, `Workflow`, and
+- `ContentRepository` — persist and load `FormTemplate`,
+  `WorkflowDefinition`, `WorkflowModule`, `DeadlineRule`, and
   `QuestionSet`/`Question` definitions with their versions; list by
-  `approvalState`; fetch the current `approved` version for a per-matter
+  `approvalState`; fetch the applicable `approved` version for a per-matter
   consumer.
 - `AuditPort` — `record(event)`; every governance transition writes a *content
   governance* audit event (§5.2).
@@ -106,6 +128,9 @@ versioning; it touches neither matter storage nor the legal corpus index.
 - **list_questions(ctx, filter) -> QuestionRead[]** — `GET /api/questions`.
 - **list_question_sets(ctx, filter) -> QuestionSetRead[]** — `GET
   /api/question-sets`.
+- **list_workflow_definitions(ctx, filter) -> WorkflowDefinitionRead[]**.
+- **list_workflow_modules(ctx, filter) -> WorkflowModuleRead[]**.
+- **list_deadline_rules(ctx, filter) -> DeadlineRuleRead[]**.
 
 Per-matter services request `approved` definitions only; a `draft` or `retired`
 definition is never handed to matter work (§7). These three reads are wired in
@@ -123,6 +148,11 @@ the frontend today as mock accessors (`getTemplates`, `getQuestions`,
   Maintainer only. Records version, effective date, and authority metadata
   (Phase 5). For a `FormTemplate`, approval locks the `locked-prescribed`
   blocks: from here they change only through a further new approved version.
+  For workflow content, approval validates stable fact, document, and check
+  keys; typed applicability; authority references; canonical phases; role and
+  override policies; and referenced deadline-rule versions. For a deadline
+  rule, approval validates its trigger schema, calculation policy, timezone or
+  calendar dependency, authority, effective dates, and confirmation policy.
 - **retire_content(ctx, kind, id) -> ContentRead** — moves `draft` or `approved`
   → `retired`. A retired definition stops feeding new matter work but stays in
   history; matters already bound to it keep their pinned version.
@@ -133,18 +163,21 @@ target, before/after version references, and correlation id (inv. 8).
 
 ## 6. The template-vs-run split
 
-This service resolves the split the frontend `Workflow` type only hints at. The
-**definition** — the `Workflow` (or `FormTemplate`, or `QuestionSet`) with its
-`approvalState`, `version`, and `ownerId` — lives **here**. task-service takes an
-`approved` definition and runs an **instance** (the step runs, decisions, and
-overrides against a specific matter). Governance owns "what the correct wording
-and steps are"; task-service owns "what happened in this matter".
+This service resolves the split the frontend `Workflow` type only hints at.
+The **definition** — a `WorkflowDefinition`, `WorkflowModule`,
+`DeadlineRule`, `FormTemplate`, or `QuestionSet` with its `approvalState`,
+`version`, and `ownerId` — lives **here**. Task-service compiles approved
+workflow definitions into a matter run. Obligations-service evaluates approved
+deadline rules into dated occurrences. Governance owns "what reviewed content
+and rules are available"; the consuming service owns "what happened in this
+matter".
 
 ```text
-content-governance-service          task-service
-──────────────────────────          ────────────
-Workflow (approvalState=approved) ──▶ StepRun instance in matter M
-FormTemplate (approved, locked)   ──▶ Draft bound to that template version
+content-governance-service          consuming service
+──────────────────────────          ─────────────────
+Workflow definition/module       ──▶ task-service WorkflowRun and StepRuns
+DeadlineRule                     ──▶ obligations-service calculation
+FormTemplate (approved, locked)  ──▶ draft bound to that template version
 ```
 
 A per-matter run may consume an `approved` definition only. It cannot pull a
@@ -161,6 +194,9 @@ already pinned.
 | Per-matter services consume `approved` only | Reads for matter work filter to `approvalState = approved`; draft/retired never feed a matter |
 | Retire preserves history, does not yank pinned versions | Retired rows retained; a running matter keeps its bound version (mirrors inv. 7) |
 | Versioned rule definitions carry authority metadata (Phase 5) | Approval records version, effective date, and authority metadata |
+| Workflow phases stay canonical | Approved steps use one of the ten backend phases; four frontend work areas are presentation metadata only |
+| Rules are declarative | Applicability and calculations use typed, allowlisted schemas; executable code and provider prompts are rejected |
+| Referenced rules are pinned | An approved step references an exact approved deadline-rule version |
 | Every governance mutation audited (inv. 8, §5.2) | `AuditPort.record` a content-governance event on create/version/approve/retire |
 | Controlled content separate from matter data (§5.2) | Definitions live in their own tier; the service touches no matter storage |
 
@@ -177,18 +213,27 @@ already pinned.
   keeps its pinned version, only new work is blocked from the retired one.
 - Concurrent version bumps on the same definition — optimistic version column
   rejects the stale write.
+- Workflow approval references an unknown fact, document, or check key —
+  rejected with the unresolved keys listed.
+- Workflow approval references a draft, retired, or missing deadline rule —
+  rejected.
+- Deadline rule lacks authority, an effective range, or required calendar
+  metadata — rejected.
+- A definition attempts to contain executable code or an AI prompt — rejected.
 
 ## 9. Test list
 
 - **Unit:** `draft→approved→retired` transitions; editing an `approved`
   definition creates a new draft rather than mutating; `locked-prescribed`
   blocks fixed after approval; illegal-transition rejection; maintainer gate.
-- **Contract:** `FormTemplate`, `Workflow`, `Question`, and `QuestionSet`
-  schemas against the frontend types; the create/version/approve/retire request
-  and response shapes.
+- **Contract:** `FormTemplate`, `WorkflowDefinition`, `WorkflowModule`,
+  `DeadlineRule`, `Question`, and `QuestionSet` schemas; the
+  create/version/approve/retire request and response shapes; and the temporary
+  frontend presentation-group adapter.
 - **Integration:** approve then consume — a per-matter read returns only the
   `approved` version; retire does not affect a matter pinned to a prior version;
-  audit event written on every transition.
+  task-service compiles pinned workflow modules; obligations-service evaluates
+  a pinned deadline rule; audit event written on every transition.
 - **Security:** non-maintainer cannot create, approve, or retire; no altered
   locked wording escapes; cross-role escalation denied; no secret or raw client
   data in logs.
@@ -216,3 +261,9 @@ Recommended defaults in bold; confirm or override before coding.
    `POST /api/templates`, `POST /api/templates/{id}/versions`,
    `POST /api/templates/{id}/approve`, `POST /api/templates/{id}/retire`, and the
    same for questions/question-sets and workflows.
+5. **Deadline-rule ownership.** Keep the approval and version lifecycle here,
+   while obligations-service owns calculation execution, lawyer confirmation,
+   recurrence, and generated occurrences.
+6. **Workflow vocabulary.** Use the ten canonical phases and modular
+   compilation. Preserve the current four-function frontend type only as a
+   temporary grouped read model during migration.

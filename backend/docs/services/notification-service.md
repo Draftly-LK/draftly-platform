@@ -13,6 +13,15 @@ microservice in V0.
 `obligations_service` decides that a reminder is due.
 `notification_service` delivers that reminder through the allowed channels.
 
+The selected production email provider for V0 is **Resend**. Local development
+and automated tests continue to use the console adapter and never send external
+email.
+
+All Draftly-authored email templates and reusable email components are owned by
+`notification_service`. They are authored with **React Email**, versioned in
+this repository, reviewed here, and published to Resend as deployment
+artifacts. Resend delivers templates; it is not their source of truth.
+
 The boundary is:
 
 ```text
@@ -20,7 +29,8 @@ obligations_service
   owns what is due, when it is due, and who is responsible
 
 notification_service
-  owns delivery preferences, templates, attempts, retries, and provider state
+  owns delivery preferences, every Draftly email template, reusable email
+  components, attempts, retries, and provider state
 ```
 
 An email failure must not roll back or otherwise change an obligation. The two
@@ -36,7 +46,9 @@ notification delivery state = failed
 The service owns:
 
 - notification preferences for each recipient and channel;
-- rendering an approved message template from a template key and variables;
+- every Draftly-authored transactional email template;
+- the React Email component library and email design tokens;
+- template keys, variable schemas, versions, review, and publication;
 - delivery through email and in-app channels;
 - delivery attempts, provider message ids, and final delivery state;
 - retry and dead-letter behaviour;
@@ -53,6 +65,12 @@ It does not own:
 - user or matter authorization;
 - prescribed legal wording; or
 - approval of reminder policy or message copy.
+
+Authentication, storage, or other providers may technically send an email, but
+they do not own its Draftly-authored template. The approved source remains in
+`notification_service` and is synchronized to that provider through a
+documented deployment step. Any provider-controlled email that cannot follow
+this process requires an explicit exception.
 
 The service consumes a decision already made by the obligations module. It
 must not independently recalculate whether a legal obligation is due.
@@ -74,7 +92,8 @@ application/notification_service.py
           |
           +--> NotificationPreferenceRepository
           +--> NotificationRepository
-          +--> TemplateRepository
+          +--> TemplateCatalog
+          +--> TemplateDeploymentRepository
           +--> EmailPort
           +--> InAppNotificationPort
           +--> AuditPort
@@ -98,19 +117,134 @@ backend/src/draftly/
   infrastructure/
     email/
       console_adapter.py
-      provider_adapter.py
+      resend_adapter.py
   workers/
     obligation_reminder_jobs.py
     notification_jobs.py
+backend/email-templates/
+  package.json
+  src/
+    components/
+      email-layout.tsx
+      email-header.tsx
+      email-footer.tsx
+      action-button.tsx
+      status-callout.tsx
+    templates/
+      obligation-reminder.tsx
+      restricted-action-required.tsx
+    messages/
+      en.json
+      si.json
+    manifest.ts
+  tests/
+  scripts/
+    publish-resend.ts
 ```
 
 The application service imports no FastAPI, SQLAlchemy, queue client, SMTP
-library, or provider SDK. Infrastructure adapters implement those boundaries.
+library, React Email package, or provider SDK. Infrastructure adapters
+implement those boundaries. The React Email package is a separate pnpm project
+under the notification module and does not run inside the FastAPI process.
 
 V0 uses the same FastAPI deployable, PostgreSQL database, transactional outbox,
 and worker runtime as the rest of the backend. A separate notification
 deployment is justified only after operational load or isolation requirements
 make it necessary.
+
+### 3.1 Resend provider decision
+
+Draftly will use the Resend transactional Email API behind `EmailPort`:
+
+```text
+obligation.reminder-due
+          |
+          v
+notification worker
+          |
+          v
+ResendEmailAdapter
+          |
+          v
+Resend Email API
+          |
+          v
+recipient mail server
+```
+
+As verified on 31 July 2026, Resend's free transactional plan includes 3,000
+emails per month and limits sending to 100 emails per day. These are provider
+account limits, not domain rules or values to hardcode in Draftly. Production
+configuration must expose the current quota and alert before either limit is
+reached.
+
+The intended sender is:
+
+```text
+Draftly <notifications@draftly.lk>
+```
+
+This address can be enabled only after the team controls `draftly.lk` and the
+domain passes Resend's SPF and DKIM verification. DMARC should be configured
+before production sending. Sender identity is environment configuration, not a
+request field.
+
+Provider choice rationale:
+
+- a small transactional API suited to the FastAPI worker;
+- verified-domain sending from a Draftly address;
+- idempotency support for retry-safe sends;
+- delivery, delay, failure, bounce, complaint, and suppression events;
+- enough free capacity for development and a small controlled pilot; and
+- no need to operate SMTP infrastructure in V0.
+
+The free plan is not an availability guarantee. A quota breach or provider
+outage must leave the delivery queued or failed visibly and must never change
+the underlying obligation.
+
+### 3.2 Template ownership and publication
+
+The repository is authoritative:
+
+```text
+React Email source and message catalogue
+          |
+          | preview, lint, compatibility, snapshot, content approval
+          v
+approved template version
+          |
+          | CI publication
+          v
+published Resend Template
+          |
+          | template id or alias recorded against the version
+          v
+notification worker sends validated variables
+```
+
+Rules:
+
+- Every Draftly-authored email lives under `backend/email-templates/`.
+- Shared layout, header, footer, buttons, callouts, and typography are React
+  Email components; templates compose them rather than duplicating markup.
+- The repository owns template source, copy, variable schema, locale coverage,
+  privacy classification, and approval state.
+- Resend stores a published copy for runtime delivery. Direct dashboard edits
+  are prohibited except emergency response; any emergency edit must be
+  backported and reviewed immediately.
+- Publishing is one-way from the reviewed repository version to Resend.
+- A template deployment records environment, template key, locale, source
+  version, Resend template id or alias, published by, and published at.
+- Rollback selects an earlier published deployment. It never edits historical
+  source or delivery records.
+- Draft templates cannot be used by production delivery policies.
+
+React Email is selected because it provides email-safe React components, local
+preview, HTML rendering, plain-text rendering, compatibility checks, and
+reusable TypeScript props. The planned packages are `react-email`,
+`@react-email/components`, and their React peer dependencies. These are
+justified email-template build dependencies and are added with pnpm only when
+the template project is implemented.
 
 ## 4. Event contract
 
@@ -286,11 +420,12 @@ It does not wait for an external provider response.
 deliver_notification(delivery_id)
   1. claim the queued row with a lease
   2. re-check idempotency and terminal state
-  3. load the approved template and recipient locale
+  3. load the approved template manifest and recipient locale
   4. resolve the recipient address through the identity port
-  5. render a privacy-safe subject and body
-  6. call the channel port with the delivery id as idempotency key
-  7. record delivered, retryable failure, or permanent failure
+  5. validate variables against the template version's schema
+  6. resolve the published template deployment for this environment
+  7. call the channel port with the delivery id as idempotency key
+  8. record delivered, retryable failure, or permanent failure
 ```
 
 No email address is copied into the event. The worker resolves current contact
@@ -316,6 +451,7 @@ class EmailPort(Protocol):
         *,
         recipient_address: str,
         template_key: str,
+        template_version: str,
         locale: str,
         variables: Mapping[str, str],
         idempotency_key: str,
@@ -327,22 +463,87 @@ Provider adapters translate this contract into provider-specific requests.
 Application and domain code never import the provider SDK.
 
 V0 starts with a `console_adapter` that renders and stores synthetic or
-development notifications without sending external email. A production
-provider adapter is added only after secrets, data processing terms, delivery
-region, bounce handling, and retention have been reviewed.
+development notifications without sending external email. Staging and
+production use `ResendEmailAdapter` after secrets, data processing terms,
+delivery region, bounce handling, and retention have been reviewed.
 
-## 8. Templates, localization, and legal wording
+### 7.1 Resend adapter
 
-Templates use stable keys and reviewed variables. They are versioned content,
+The adapter calls `POST /emails` through the backend's existing `httpx`
+dependency. No Resend SDK is required for V0.
+
+Provider mapping:
+
+```text
+EmailPort.recipient_address -> to
+configured sender           -> from
+template deployment         -> template.id or template alias
+validated variables         -> template.variables
+NotificationDelivery.id     -> Idempotency-Key
+provider response id         -> providerMessageId
+```
+
+The Resend adapter does not select, author, or edit templates. It resolves the
+published deployment already selected by `notification_service` and sends its
+identifier and variables. The Send Email request must not combine a Resend
+Template with `html`, `text`, or `react`.
+
+Resend retains idempotency keys for 24 hours. Draftly's database uniqueness
+constraint remains the permanent duplicate-send guard; provider idempotency is
+an additional protection for immediate retries.
+
+Configuration:
+
+```text
+RESEND_API_KEY
+RESEND_FROM_EMAIL=Draftly <notifications@draftly.lk>
+RESEND_WEBHOOK_SECRET
+```
+
+Secrets are injected by the deployment environment and never committed,
+returned by health endpoints, or written to logs.
+
+## 8. Templates, components, localization, and legal wording
+
+`notification_service` owns all Draftly email templates. Templates use stable
+keys, typed React props, reviewed variables, and a versioned manifest. They are
 not free-form strings assembled in a worker:
 
 ```text
 templateKey = obligation.reminder.due_in_24_hours
+templateVersion = 1.0.0
 variables = obligationLabelKey, dueAt, matterReference?, actionUrl
+locales = en, si
+confidentiality = private-matter
+approvalState = approved
 ```
+
+Initial English copy for content review:
+
+```text
+Subject: Draftly deadline reminder
+
+Matter DFT-SYN-2026-014 (synthetic) has an obligation due on 6 August.
+Log in to Draftly to review it.
+```
+
+This is product copy, not a provider-side hardcoded template. The approved
+English and Sinhala versions live in Draftly's versioned message catalogue.
 
 Requirements:
 
+- Templates use React Email components from the notification-owned component
+  library.
+- Template props and runtime variable schemas must match exactly.
+- Each template renders both email-safe HTML and a meaningful plain-text
+  alternative.
+- Email styling uses a small email-safe projection of Draftly's design tokens;
+  it does not import workspace CSS or depend on unsupported browser layout.
+- Email components use semantic structure, useful preview text, descriptive
+  links, and sufficiently large text and tap targets.
+- Sinhala templates preserve Unicode text, use robust system-font fallbacks,
+  and use a tested line height; delivery must not depend on a remote custom
+  font loading successfully.
 - English and Sinhala variants share the same template key and variable
   contract.
 - Missing Sinhala copy falls back to English and remains explicitly marked for
@@ -354,13 +555,54 @@ Requirements:
   addresses, identity numbers, deed numbers, or extracted facts.
 - Prescribed legal wording and legal advice are prohibited in notification
   templates unless supplied and approved by the responsible lawyer.
-- Template changes are versioned, reviewed, and auditable.
+- Template changes are versioned, visually reviewed, and auditable.
+- No template may access a matter or user repository directly. The application
+  service supplies only validated, privacy-classified variables.
 
 Frontend notification-center strings continue to use `next-intl`. Backend
-email and push templates use their own versioned message catalogue because
-they render outside the Next.js process.
+email templates use their own notification-owned React Email message catalogue
+because they render outside the Next.js process.
 
-### 8.1 Restricted compliance notifications
+### 8.1 Initial template inventory
+
+All Draftly-authored transactional email categories use this same ownership
+model:
+
+```text
+obligations
+  - upcoming deadline
+  - due today
+  - overdue
+  - escalation
+
+matter collaboration
+  - assignment
+  - review requested
+  - comment or mention
+
+documents and processing
+  - processing failed
+  - replacement ready for review
+  - registered document ready for collection
+
+drafts and approvals
+  - draft review requested
+  - approval recorded
+  - export ready
+
+account and security
+  - invitation
+  - email verification
+  - password or sign-in security notice
+
+restricted compliance
+  - neutral action required
+```
+
+The inventory describes product events, not approved final copy. Templates are
+implemented only when their owning workflow exists.
+
+### 8.2 Restricted compliance notifications
 
 Sanctions and suspicious-transaction workflows use
 `restricted-compliance`. The notification service applies a dedicated
@@ -402,6 +644,8 @@ Failures are classified before retry:
 | Recipient preference disabled | Suppressed; do not send |
 | Duplicate event or delivery | Return existing delivery; do not send |
 | Missing template or variables | Dead-letter and alert |
+| Template is draft, retired, or unpublished | Dead-letter; never fall back to another template |
+| Resend quota or rate limit | Retry after provider window; alert before exhaustion |
 | Provider accepted message | Delivered; save provider message id |
 
 Retries are bounded. After the configured maximum, the delivery becomes
@@ -409,10 +653,32 @@ Retries are bounded. After the configured maximum, the delivery becomes
 never mutates the obligation state.
 
 The worker must support graceful retry after a crash between provider
-acceptance and local persistence. Where the provider supports an idempotency
-key, use the `NotificationDelivery.id`. Where it does not, reconciliation must
-check the stored provider message id and provider event stream before any
-manual resend.
+acceptance and local persistence. The Resend adapter sends the
+`NotificationDelivery.id` as its idempotency key. Draftly must retry the same
+payload with the same key; changing a payload under an existing key is an
+error.
+
+### 9.1 Resend delivery webhooks
+
+The webhook handler consumes the delivery events needed by V0:
+
+```text
+email.sent
+email.delivered
+email.delivery_delayed
+email.failed
+email.bounced
+email.complained
+email.suppressed
+```
+
+`email.sent` means the API request was accepted. `email.delivered` means the
+recipient's mail server accepted the message; it does not prove that a person
+read it. Draftly records these states separately.
+
+The handler verifies the Resend webhook signature with
+`RESEND_WEBHOOK_SECRET`, stores each provider event idempotently, and maps the
+provider email id back to `NotificationDelivery.providerMessageId`.
 
 ## 10. Audit and observability
 
@@ -448,6 +714,11 @@ addresses and never include template bodies or matter content.
 - Encrypt provider credentials and contact data at rest and in transit.
 - Use least-privilege provider credentials and rotate them.
 - Sign and verify provider webhooks; make webhook processing idempotent.
+- Restrict the Resend API key to the notification worker environment.
+- Verify `draftly.lk` through SPF and DKIM and publish a reviewed DMARC policy
+  before production sending.
+- Restrict non-production Resend delivery to an explicit synthetic-recipient
+  allowlist.
 - Protect notification-preference routes with the authenticated user context.
 - Apply a separate role allowlist to restricted-compliance notifications;
   ordinary matter membership is insufficient.
@@ -486,7 +757,7 @@ There is no public "send email" endpoint in V0.
 | Restricted alerts reveal no sensitive context | Dedicated delivery policy, neutral template, and compliance-role allowlist |
 | Preferences are respected | Preferences are checked before delivery creation |
 | Provider code stays at the boundary | EmailPort and infrastructure adapters |
-| Message copy is governed | Versioned template key and approved catalogue |
+| Message copy is governed | Notification-owned React Email source, typed variables, approval, and one-way publication |
 | Every material outcome is traceable | Correlation ids, delivery records, audit outcomes, and operational metrics |
 
 ## 14. Test list
@@ -499,6 +770,9 @@ There is no public "send email" endpoint in V0.
 - Duplicate events return existing delivery rows.
 - Retryable and permanent errors transition to the correct state.
 - Rendering rejects missing template variables.
+- Draft, retired, or unpublished template versions cannot send.
+- Every React Email template renders HTML and plain text for both locales.
+- Shared components render consistently across every template.
 - Event and log serializers exclude private matter fields.
 - Restricted-compliance policy produces only a neutral message for approved
   recipients.
@@ -508,15 +782,20 @@ There is no public "send email" endpoint in V0.
 - `obligation.reminder-due` schema and version compatibility.
 - Notification preference and in-app notification API schemas.
 - English and Sinhala template variable parity.
+- React Email prop, manifest, and runtime variable-schema parity.
 - Provider port contract and error classification.
+- Resend request mapping, 24-hour idempotency behaviour, and webhook schemas.
 
 ### Integration
 
 - Obligation transaction and outbox event commit or roll back together.
 - Event consumption creates delivery rows before acknowledgement.
 - Console adapter records a development delivery without external network use.
+- Approved React Email versions publish to the expected Resend template
+  deployment; draft versions do not publish.
+- Resend adapter tests use mocked HTTP responses and never send real email.
 - Retry reaches delivered or dead-letter state without a duplicate send.
-- Provider webhook updates the matching delivery idempotently.
+- Signed Resend webhook updates the matching delivery idempotently.
 
 ### Security
 
@@ -535,11 +814,18 @@ There is no public "send email" endpoint in V0.
 2. Add ReminderOccurrence and the configurable reminder-policy model.
 3. Add the transactional outbox event and idempotent consumer.
 4. Add NotificationPreference and NotificationDelivery persistence.
-5. Implement the console email adapter and in-app notifications.
-6. Add the scheduled sweep, retry worker, dead-letter handling, and metrics.
-7. Connect the frontend notification center and preferences.
-8. Review privacy, retention, provider terms, approved templates, and legal
-   policy before enabling an external email provider.
+5. Scaffold the notification-owned React Email project, shared components,
+   bilingual catalogue, manifest, preview, and rendering tests.
+6. Implement and approve the first obligation and restricted-action templates.
+7. Add one-way publication to Resend Templates and deployment records.
+8. Implement the console email adapter and in-app notifications.
+9. Implement `ResendEmailAdapter` over `httpx` with mocked contract tests.
+10. Verify the sending domain and configure SPF, DKIM, and DMARC.
+11. Add signed Resend webhooks, the scheduled sweep, retry worker, dead-letter
+   handling, quota alerts, and delivery metrics.
+12. Connect the frontend notification center and preferences.
+13. Review privacy, retention, Resend's data processing terms, approved
+    templates, and legal policy before enabling production email.
 
 ## 16. Decisions to confirm before coding
 
@@ -548,11 +834,22 @@ There is no public "send email" endpoint in V0.
 3. Make `Obligation.matterId` nullable for user-scoped duties.
 4. Store reminder decisions separately from channel delivery attempts.
 5. Start with email and in-app channels; defer SMS and push.
-6. Start with the console adapter; select an external provider only after the
-   privacy and operational review.
-7. Treat reminder schedules and message copy as governed configuration, not
-   application constants.
-8. Require provider idempotency where supported and retain the database
-   uniqueness constraint regardless.
+6. Use the console adapter locally and Resend for staging and production email.
+7. Keep every Draftly-authored email template and component under
+   `notification_service`; the repository is the source of truth.
+8. Send `NotificationDelivery.id` as the Resend idempotency key and retain the
+   database uniqueness constraint as the permanent guard.
 9. Add a restricted-compliance delivery policy with neutral templates and a
    dedicated role allowlist before enabling AML/CFT alerts.
+10. Author templates with React Email and publish approved versions one-way to
+    Resend Templates; do not add a Node runtime to FastAPI.
+
+## 17. Provider references
+
+- [Resend pricing](https://resend.com/docs/knowledge-base/what-is-resend-pricing)
+- [Resend domain verification](https://resend.com/docs/dashboard/domains/introduction)
+- [Resend send-email API and idempotency header](https://resend.com/docs/api-reference/emails/send-email)
+- [Resend webhook event types](https://resend.com/docs/webhooks/event-types)
+- [React Email components](https://react.email/components)
+- [React Email rendering](https://react.email/docs/utilities/render)
+- [Publishing React Email templates to Resend](https://resend.com/docs/knowledge-base/template-emails-with-react-email)

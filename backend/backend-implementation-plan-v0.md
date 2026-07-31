@@ -137,6 +137,8 @@ backend/
 │     │  ├─ verification_service.py
 │     │  ├─ check_service.py
 │     │  ├─ task_service.py
+│     │  ├─ corpus_governance_service.py
+│     │  ├─ library_service.py
 │     │  ├─ research_service.py
 │     │  ├─ draft_service.py
 │     │  ├─ approval_service.py
@@ -150,6 +152,7 @@ backend/
 │     │  ├─ entities.py
 │     │  ├─ findings.py
 │     │  ├─ tasks.py
+│     │  ├─ legal_sources.py
 │     │  ├─ drafts.py
 │     │  ├─ approvals.py
 │     │  ├─ audit.py
@@ -170,6 +173,7 @@ backend/
 │     │  ├─ jobs.py
 │     │  ├─ document_processing.py
 │     │  ├─ legal_retrieval.py
+│     │  ├─ legal_catalogue.py
 │     │  ├─ identity.py
 │     │  └─ rendering.py
 │     ├─ infrastructure/
@@ -238,7 +242,8 @@ The backend must keep these stores and concepts separate:
 | Original evidence | Immutable object version; never overwritten by OCR or correction |
 | Derivatives | OCR, layout, quality, previews, and candidate extraction are rebuildable and never authoritative |
 | Verified matter record | Only lawyer-verified or lawyer-corrected particulars may feed approved matter outputs |
-| Legal corpus | Separate source/index and access path; confidential matter documents are not public authority |
+| Legal corpus | Separate approved release, index, and access path; confidential matter documents are not public authority |
+| Quarantined sources | CommonLII harvest, unreviewed NLR/SLR, and unknown-rights material have no production catalogue, retrieval, model, snippet, or download path |
 | Draft | Versioned snapshot bound to exact fact and template versions |
 | Approval/export | Approval targets one content hash; export records its manifest and checksum |
 | Audit | Append-only events for upload, review, correction, override, approval, export, access, and content governance |
@@ -258,6 +263,9 @@ The first domain tests must enforce:
 7. Replaced documents remain in history but cannot silently feed new output.
 8. Every material mutation writes an audit event with actor, target, before or
    after references, reason where required, and correlation ID.
+9. No legal source enters a production catalogue or retrieval index without an
+   approved provenance record, rights policy, reviewed checksum, and corpus
+   release entry.
 
 ## 6. Implementation Phases
 
@@ -277,9 +285,10 @@ Exit gate:
 
 Implement Pydantic request/response schemas and domain enums for Matter,
 Document, DocumentVersion, SourceSpan, Particular, ParticularVersion, Party,
-Parcel, Instrument, Interest, Finding, StepRun, Draft, Approval, Export, and
-AuditEvent. Add SQLAlchemy models, Alembic migrations, optimistic version
-columns, and repository interfaces.
+Parcel, Instrument, Interest, Finding, StepRun, LegalSource,
+CorpusReleaseManifest, Draft, Approval, Export, and AuditEvent. Add SQLAlchemy
+models, Alembic migrations, optimistic version columns, and repository
+interfaces.
 
 Exit gate:
 
@@ -349,16 +358,32 @@ Exit gate:
 
 ### Phase 6 — Grounded research
 
-Create the legal-retrieval port and adapter to the approved versioned corpus.
+Implement corpus governance before retrieval. Record source provenance,
+rights/licence status, indexing, display, quotation, and download policies;
+approve sources into a signed versioned release; and expose a catalogue of
+approved official statutes, amendments, and gazettes.
+
+Quarantine the CommonLII harvest and unreviewed NLR/SLR material. They must not
+enter production indexes, model context, snippets, downloads, training, or
+evaluation. The curriculum supplies a coverage taxonomy and acquisition
+priority only; each source and amendment relationship is independently
+verified.
+
+Create the legal-catalogue and legal-retrieval ports over the approved release.
 Expose search first, then bounded answer composition with claim-level citation
-validation. The first integration may wrap the existing Python retrieval
-engine through a versioned package/interface; it must not reach across the
-repository boundary by importing arbitrary research paths in production.
+and source-policy validation. The first integration may wrap approved outputs
+from the existing Python retrieval engine through a versioned
+package/interface; it must not walk or import arbitrary research paths in
+production.
 
 Exit gate:
 
 - every retained claim resolves to a source passage and authority status;
+- every source and passage resolves to an approved release entry, reviewed
+  checksum, and policy permitting that use;
 - unsupported questions abstain;
+- CommonLII and unreviewed NLR/SLR files are absent from catalogue and
+  retrieval indexes;
 - the legal corpus cannot query confidential matter storage; and
 - search and answer latency are measured against the V0 targets.
 
@@ -457,7 +482,9 @@ successful HTTP response means a fact is legally verified.
 The backend cannot be accepted if it permits an invented citation, unsupported
 retained legal claim, cross-matter disclosure, silent original loss, mandatory
 unverified fact in an approved export, altered locked wording, hidden
-placeholder, missing audit event, or approval attached to changed content.
+placeholder, missing audit event, approval attached to changed content, or an
+unapproved or quarantined legal source entering catalogue, retrieval, model
+context, quotation, or download output.
 
 ## 10. Operational Requirements
 
@@ -481,8 +508,8 @@ The V0 backend implementation is complete only when these are present:
 1. `pyproject.toml` and committed `uv.lock`.
 2. The structured `src/draftly_api` package and migration history.
 3. Versioned OpenAPI output and frontend contract fixtures.
-4. Working matter, document, verification, checks, research, drafting,
-   approval, export, audit, and health endpoints.
+4. Working matter, document, verification, checks, corpus-governance, library,
+   research, drafting, approval, export, audit, and health endpoints.
 5. Authenticated workers for document, research, and export jobs.
 6. Synthetic seed data and reproducible local setup.
 7. Unit, integration, contract, security, domain, and end-to-end tests.
@@ -493,6 +520,8 @@ The V0 backend implementation is complete only when these are present:
 ## 12. Decisions Requiring Approval
 
 - The exact Python package boundary for the existing retrieval engine.
+- The written production source policy and legal review for official texts,
+  historical reports, NLR/SLR, and any licensed third-party corpus.
 - PostgreSQL and object-storage deployment choices for the reference
   environment.
 - Queue technology and worker runtime.

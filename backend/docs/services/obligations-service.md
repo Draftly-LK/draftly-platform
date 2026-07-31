@@ -72,8 +72,8 @@ check_service finds a missing survey plan
   -> lawyer requests the plan by an agreed date
   -> obligations_service tracks that dated commitment
 
-task_service records attestation
-  -> governed deadline rule calculates a registration date
+task_service records attestation and the verified registration regime
+  -> governed regime-specific rule calculates a registration date
   -> lawyer confirms the calculation
   -> obligations_service tracks the legal deadline
 
@@ -90,7 +90,7 @@ The service owns:
 - recurrence and reminder schedules;
 - source and legal-authority provenance;
 - trigger events and trigger dates;
-- governed due-date calculation rules;
+- execution of approved, pinned due-date calculation rules;
 - assignee and backup-assignee responsibility;
 - lawyer confirmation of calculated legal deadlines;
 - completion evidence references;
@@ -103,6 +103,7 @@ It does not own:
 - undated workflow steps or professional-conduct gates;
 - the underlying task, check, matter, document, or court order;
 - legal content authoring;
+- the approval or version lifecycle of deadline-rule definitions;
 - universal litigation deadline tables;
 - email, push, SMS, provider retries, or bounce handling;
 - record destruction itself; or
@@ -298,6 +299,12 @@ DeadlineRule
   version
 ```
 
+`content-governance-service` owns the rule's
+`draft -> approved -> retired` lifecycle and immutable versions.
+`obligations_service` reads only approved applicable versions, pins the
+selected version, evaluates it, and owns the resulting calculation,
+confirmation, recurrence, and obligation occurrence.
+
 The rule engine returns an explainable candidate:
 
 ```text
@@ -379,28 +386,54 @@ exposing client data in reminder text.
 
 ### 7.3 Registration after attestation
 
+Registration deadlines are regime-specific. The engine must first select the
+approved rule for the verified registration regime. It must never apply one
+generic attestation deadline to every instrument.
+
+#### Deed-registration candidate
+
 Section 31(30A), inserted by Act No. 31 of 2022, provides different periods
 from the attestation date depending on whether registration is within or
 outside the notary's practising jurisdiction.
 
-Candidate rule branches:
-
 ```text
+registration regime: deed
+
 within practising jurisdiction
   trigger: attestation date
-  period: 30 days
+  candidate period: 30 days
 
 outside practising jurisdiction
   trigger: attestation date
-  period: 60 days
+  candidate period: 60 days
 ```
 
-The calculation must capture:
+#### Title/RTA candidate
+
+The Registrar General's Department title-registration transaction guidance
+states that an instrument is handed over for registration within seven working
+days. This must be a separate reviewed rule with its own effective version,
+working-day calendar, authority reference, and trigger interpretation.
+
+```text
+registration regime: title/RTA
+trigger: reviewed attestation or execution event
+candidate period: 7 working days
+calendar: approved Sri Lankan working-day calendar
+```
+
+The legal reviewer must confirm the exact governing provision, trigger, and
+calendar behavior before this candidate becomes an approved production rule.
+The public guidance alone must not be converted directly into executable legal
+logic.
+
+Every registration calculation must capture:
 
 ```text
 attestation date
 notary practising jurisdiction at attestation
 registration jurisdiction
+verified registration regime
 selected rule branch
 calculated due date
 source section and rule version
@@ -408,7 +441,10 @@ lawyer confirmation
 ```
 
 Jurisdiction classification must never be guessed from an address string.
-It comes from verified matter and notary-registration data.
+Registration regime and jurisdiction come from verified matter and
+notary-registration data. If either required input is unknown, the service
+creates no authoritative deadline and surfaces a configuration or evidence
+blocker.
 
 ### 7.4 Office change or discontinuance
 
@@ -827,7 +863,11 @@ event history, not one user-facing audit entry per clock tick.
 - Multiple rules match: refuse calculation; never choose by list order.
 - Trigger data is incomplete or unverified: keep the candidate blocked or
   awaiting confirmation.
-- Jurisdiction cannot be resolved: do not choose the 30-day or 60-day branch.
+- Registration regime cannot be resolved: do not select a registration rule.
+- Deed-registration jurisdiction cannot be resolved: do not choose the
+  30-day or 60-day branch.
+- An RTA working-day calendar is absent or unapproved: do not calculate the
+  seven-working-day candidate.
 - Rule changes after confirmation: preserve the old rule and due date; require
   explicit migration review.
 - Reminder worker runs twice: ReminderOccurrence uniqueness prevents duplicate
@@ -858,9 +898,13 @@ event history, not one user-facing audit entry per clock tick.
 - Annual certificate candidate resolves to 1 April under the approved current
   rule version.
 - Monthly return candidate resolves to the 15th of the following month.
-- Local attestation produces the reviewed 30-day branch.
-- Outside-jurisdiction attestation produces the reviewed 60-day branch.
-- Unknown jurisdiction produces no authoritative deadline.
+- Deed-regime local attestation produces the reviewed 30-day branch.
+- Deed-regime outside-jurisdiction attestation produces the reviewed 60-day
+  branch.
+- RTA attestation uses the separately reviewed seven-working-day rule.
+- Unknown regime produces no authoritative deadline.
+- Unknown deed jurisdiction produces no authoritative deadline.
+- The same attestation input cannot match both deed and RTA rules.
 - Designated-person escalation produces a restricted 24-hour candidate.
 
 These fixtures verify implementation of lawyer-approved rules. They are not a
@@ -877,7 +921,8 @@ substitute for legal approval of the rules.
 
 ### Integration
 
-- Attestation event creates an awaiting-confirmation registration deadline.
+- Attestation plus verified regime creates the correct awaiting-confirmation
+  registration deadline.
 - Lawyer confirmation activates reminders.
 - Monthly close generates one return aggregate and no duplicate on replay.
 - Completion evidence and audit event commit together.
@@ -933,7 +978,8 @@ Implement first:
 ```text
 1. Annual notarial practice certificate
 2. Monthly deed, duplicate, applicable-copy, or nil return
-3. Deed-registration deadline with 30-day or 60-day reviewed branch
+3. Regime-specific registration deadline: reviewed deed 30-day or 60-day
+   branch, or separately reviewed RTA seven-working-day branch
 4. Signing and attestation appointment
 5. Missing deed, plan, or assessment follow-up
 6. Mandatory lawyer-review deadline
@@ -963,6 +1009,8 @@ filing, service, appeal, review, or limitation periods.
    human review.
 9. Implement the ten-item conveyancing V0 scope above and defer litigation
    deadline rules.
+10. Select registration rules by verified registration regime. Never treat the
+    deed 30-day or 60-day branches as universal.
 
 ## 24. Sources for legal review
 
@@ -972,6 +1020,7 @@ Primary or official sources to pin in the governed rule records:
 - [Registrar General's Department: Notaries Ordinance PDF](https://rgd.gov.lk/web/images/ActsPDF/notary/Notaries-English.pdf)
 - [Registrar General's Department: Notaries (Amendment) Act, No. 6 of 2024](https://rgd.gov.lk/web/images/ActsPDF/notary/06-2024_E.pdf)
 - [Registrar General's Department: document registration](https://www.rgd.gov.lk/web/index.php/en/services/document-land-registration/movable-and-immovable-properties/document-registration1)
+- [Registrar General's Department: title-registration transactions](https://www.rgd.gov.lk/web/index.php/en/services/document-land-registration/title/transactions)
 - [FIU: AML/CFT Compliance Obligations for Attorneys-at-Law and Notaries, No. 02 of 2023](https://fiusrilanka.gov.lk/docs/Guidelines/2023/Guidelines_02_2023.pdf)
 - [Financial Transactions Reporting Act, No. 6 of 2006](https://fiusrilanka.gov.lk/docs/ACTs/FTRA/Financial_Transactions_Reporting_Act_2006-6_%28English%29.pdf)
 

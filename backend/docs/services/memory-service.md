@@ -1,10 +1,10 @@
 # memory-service — implementation design
 
 Companion to `backend/backend-implementation-plan-v0.md`,
-`document-service.md`, `document-processing.md`, and `voice-service.md`. This
-service is the per-matter **session memory** — the working memory that lets the
-assistant resume a matter across sessions without re-querying everything each
-turn.
+`corpus-governance-service.md`, `document-service.md`,
+`document-processing.md`, and `voice-service.md`. This service is the
+per-matter **session memory** — the working memory that lets the assistant
+resume a matter across sessions without re-querying everything each turn.
 
 Its design is **HiMem-shaped**.
 
@@ -63,8 +63,8 @@ note-overwrite) tolerable.
 
 **Everything in session memory is reconstructable from the authoritative
 stores** — verified facts in Postgres, documents in object storage, law in the
-`src/draftly/retrieval` index, and voice transcript events in the voice-service
-event store. Session memory is a cache, not a source of truth.
+approved signed corpus release, and voice transcript events in the
+voice-service event store. Session memory is a cache, not a source of truth.
 
 This single rule neutralises the benchmark HiMem's main weakness. If a note is
 silently overwritten or drifts stale, the worst case is a re-derivation; the
@@ -93,8 +93,8 @@ everything traces back:
 | Remembered item | Source pointer |
 | --- | --- |
 | Document summary | `DocumentVersion` id (immutable) |
-| Retrieved law | `SRC` id plus the query that surfaced it |
-| Retrieved case | case id plus query |
+| Retrieved law | Approved legal-source id, corpus release, policy version, and query |
+| Retrieved case | Approved case-source id, release, and query; unavailable in V0 until case sources pass governance |
 | Session working note | session id, author, timestamp |
 | Decision / checklist state | the matter event that set it |
 | Live partial transcript | `TranscriptEvent` id, session id, and sequence |
@@ -142,6 +142,11 @@ memory subscribes to authoritative-tier events:
   the successor.
 - particular corrected or rejected (from `verification_service`) — memory
   derived from the old value is invalidated.
+- `corpus.source-quarantined` or `corpus.source-policy-changed` (from
+  `corpus-governance-service`) — every episode and note containing the affected
+  source passage is invalidated and excluded from replay.
+- `corpus.release-retired` — episodes pinned only to that release are
+  revalidated against an active approved release before use.
 - `voice.transcript_partial_superseded` (from `voice_service`) — the earlier
   partial remains in history but is excluded from current-context retrieval.
 - `voice.transcript_finalised` — all partial episodes for that session are
@@ -159,16 +164,17 @@ did we believe before" still resolves.
 ## 9. The "don't re-query" win
 
 ```text
-turn 1:  question ─→ src/draftly/retrieval (full statute/case pipeline)
-                     └─ result ingested as episodes (with SRC/case pointers)
+turn 1:  question ─→ approved legal retrieval release
+                     └─ result ingested with source/release/policy pointers
 turn 2+: question ─→ session memory (fast, ~0.024s-class) serves the remembered
                      context; only a genuine delta triggers a fresh retrieval
 ```
 
 Memory holds the established working set for the matter, so the assistant
 resumes instead of rebuilding context, and repeated lookups do not re-run the
-retrieval engine. Because remembered law is stored as `SRC`-id pointers, a
-served answer is still traceable and re-runnable.
+retrieval engine. Because remembered law is stored as approved source and
+release pointers, a served answer is still traceable and re-runnable. A
+quarantined source is invalidated rather than replayed from memory.
 
 ## 10. SessionMemoryPort
 
@@ -204,6 +210,8 @@ another matter's memory query.
 - Reconstructable from the authoritative stores at all times.
 - Corrections in the authoritative tier propagate down and invalidate stale
   memory.
+- Corpus quarantine and policy narrowing invalidate affected legal passages;
+  memory cannot preserve access that the current source policy removed.
 - Every voice-memory episode points to a persisted voice-service event or
   transcript version.
 - Partial transcript history is stored, but only the latest non-superseded

@@ -16,8 +16,10 @@ write path for evidence and the read path for document metadata and processing
 state.
 
 It does **not** run OCR (a worker does), does **not** verify particulars
-(`verification_service` does), and does **not** decide extraction correctness.
-It produces derivatives marked non-authoritative and hands off.
+(`verification_service` does), does **not** decide extraction correctness, and
+does **not** decide whether a workflow document requirement is accepted
+(`task_service` does). It produces derivatives marked non-authoritative and
+hands off.
 
 ## 2. Where it sits
 
@@ -142,12 +144,38 @@ contract matters:
    Google Document AI adapter).
 3. Store derivatives keyed to the run. Never touch the original.
 4. On success, set `processed`, record all provider metadata and the outcome,
-   and emit an event that classification and extraction consume.
+   and emit `document.processing-completed` for classification, extraction,
+   and task requirement projection consumers.
 5. On provider failure, preserve the original, set `failed` with backoff retry,
    then `manual_review` or `dead_letter`. No provider response ever sets a
    particular to verified (Phase 3 exit gate).
 
-## 7. Invariants this service enforces
+## 7. Processing state is not requirement state
+
+The two state machines answer different questions:
+
+```text
+document_service
+  uploaded | queued | processing | processed | failed | manual_review
+  = what happened to this immutable file version?
+
+task_service
+  missing | requested | present | reviewed | accepted | rejected |
+  not-applicable
+  = does this matter satisfy this governed evidence requirement?
+```
+
+A successful processing run may move a matching task requirement from
+`missing` or `requested` to `present`. It cannot move the requirement to
+`accepted`. Acceptance requires an authorised lawyer to review and bind the
+requirement to the exact `document_id` and `document_version_id`.
+
+Replacing a document emits `document.version_superseded`. Consumers must mark
+verified particulars, accepted requirements, completed dependent steps, and
+readiness evaluations stale as applicable. This service publishes the fact of
+supersession; it does not mutate those other services' records.
+
+## 8. Invariants this service enforces
 
 | Invariant | How |
 | --- | --- |
@@ -156,10 +184,11 @@ contract matters:
 | Replacement preserves history (inv. 7) | New version supersedes; old row and blob retained; stale facts flagged via event |
 | Ack independent of OCR | Enqueue and return; the worker processes later |
 | Machine result never authoritative | Derivatives flagged rebuildable; only verification promotes facts |
+| Processing never implies acceptance | `processed` is emitted as evidence availability; only task-service records lawyer acceptance |
 | Every mutation audited (inv. 8) | `AuditPort.record` on upload, replace, retry, and state changes |
 | Matter isolation | Membership re-checked; 404 hides existence |
 
-## 8. Failure modes to handle explicitly
+## 9. Failure modes to handle explicitly
 
 - Duplicate upload (same checksum in the matter) — dedupe policy, see open
   decisions.
@@ -171,21 +200,26 @@ contract matters:
 - Oversized, disallowed mime, or zero-byte — rejected before storage.
 - Superseded version still bound to an in-flight draft — the draft keeps its
   pinned version; new work uses the successor.
+- Processing succeeds while a requirement remains unreviewed — expose the
+  document as `present`; do not unblock readiness.
 
-## 9. Test list
+## 10. Test list
 
 - **Unit:** version and run state transitions, checksum, mime and size gates,
   supersession preserves history, idempotent retry, illegal-transition
   rejection.
 - **Contract:** upload and get response schemas, the `ProcessingMessage` job
-  schema, provider-result normalisation.
+  schema, provider-result normalisation, and processing-completed and
+  supersession events.
 - **Integration:** real PostgreSQL plus storage emulator plus queue — upload to
   job to worker to `processed`; provider failure to `manual_review`; retry
-  idempotency; orphan-blob reconciliation; outbox drain.
+  idempotency; orphan-blob reconciliation; outbox drain; processed evidence
+  becomes present but not accepted in task-service; replacement stales the
+  accepted requirement binding.
 - **Security:** cross-matter upload and read denied; 404-not-403 existence
   hiding; signed-URL expiry; no secret and no raw client data in logs.
 
-## 10. Open decisions
+## 11. Open decisions
 
 Recommended defaults in bold; confirm or override before coding.
 
