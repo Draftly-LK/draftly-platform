@@ -5,13 +5,13 @@ import type {
   RegistrationRegime,
 } from "@/types";
 
-/** Authorized evidence kinds for a regime + transaction. M2: identity only on RTA transfer. */
+/** Authorized evidence kinds for a regime + transaction. M2: identity + deed on RTA transfer. */
 // TODO(api): GET /api/regimes/{regime}/transactions/{type}/authorized-document-kinds
 export function authorizedKinds(
   regime: RegistrationRegime,
   type: MatterType,
 ): DocumentKind[] {
-  if (regime === "rta" && type === "transfer") return ["identity"];
+  if (regime === "rta" && type === "transfer") return ["identity", "deed"];
   return [];
 }
 

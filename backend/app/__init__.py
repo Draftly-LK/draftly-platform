@@ -1,0 +1,1 @@
+"""Draftly FastAPI application package."""

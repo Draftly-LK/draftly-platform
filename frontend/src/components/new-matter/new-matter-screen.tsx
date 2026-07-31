@@ -17,7 +17,11 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { hasAuthorizedDocumentCatalog } from "@/lib/documents/authorization";
 import { classifyFileName } from "@/lib/documents/mock-pipeline";
-import { simulateDocumentProcessing, useDemoStore } from "@/lib/store";
+import {
+  queueDocumentFile,
+  simulateDocumentProcessing,
+  useDemoStore,
+} from "@/lib/store";
 import type { DocumentKind, DocumentRelation, MatterType } from "@/types";
 import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { Button } from "@/components/ui/button";
@@ -85,20 +89,22 @@ export function NewMatterScreen() {
       regime: "rta",
       type,
     });
-    let hasIdentity = false;
+    const hasFiles = files.length > 0;
     files.forEach((file) => {
-      const classified = classifyFileName(file.name, "rta", type);
-      if (classified.kind === "identity") hasIdentity = true;
+      const previewUrl = URL.createObjectURL(file);
+      const hint = classifyFileName(file.name, "rta", type);
       const documentId = addDocument(file.name, {
         matterId: id,
-        kind: classified.kind,
-        relation: classified.relation,
-        identitySide: classified.identitySide,
+        kind: "other",
+        relation: "unclassified",
+        identitySide: hint.identitySide,
+        previewUrl,
       });
+      queueDocumentFile(documentId, file);
       simulateDocumentProcessing(documentId);
     });
     router.push(
-      hasIdentity ? `/matters/${id}/documents?pair=1` : `/matters/${id}`,
+      hasFiles ? `/matters/${id}/documents?pair=1` : `/matters/${id}`,
     );
   };
   if (step === 1)

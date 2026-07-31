@@ -1,118 +1,36 @@
 "use client";
 
-import { GripVertical, Plus, X } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import {
   nextIdentityGroupId,
-  personForIdentityGroup,
   type IdentityPairAssignment,
 } from "@/lib/documents/mock-pipeline";
-import type { IdentitySide, MatterDocument } from "@/types";
+import type { MatterDocument } from "@/types";
 import { Button } from "@/components/ui/button";
 
-type PersonSlot = {
-  groupId: string;
-  frontId?: string;
+type DragPayload = { documentId: string };
+
+type PairStep = {
+  frontId: string;
   backId?: string;
 };
 
-type DragPayload = {
-  documentId: string;
-};
-
-function buildInitialSlots(documents: MatterDocument[]): PersonSlot[] {
-  const groups = new Map<string, PersonSlot>();
-  const ungrouped: MatterDocument[] = [];
-  for (const document of documents) {
-    if (document.identityGroupId) {
-      const existing = groups.get(document.identityGroupId) ?? {
-        groupId: document.identityGroupId,
-      };
-      if (document.identitySide === "front") existing.frontId = document.id;
-      else if (document.identitySide === "back") existing.backId = document.id;
-      else if (!existing.frontId) existing.frontId = document.id;
-      else existing.backId = document.id;
-      groups.set(document.identityGroupId, existing);
-    } else {
-      ungrouped.push(document);
-    }
+function Preview({ document }: { document: MatterDocument }) {
+  if (document.previewUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={document.previewUrl}
+        alt={document.displayName ?? document.fileName}
+        className="border-border-strong bg-canvas h-28 w-full rounded border object-contain"
+      />
+    );
   }
-  const slots = [...groups.values()];
-  for (const document of ungrouped) {
-    const empty = slots.find((slot) => !slot.frontId || !slot.backId);
-    if (empty) {
-      if (!empty.frontId) empty.frontId = document.id;
-      else empty.backId = document.id;
-    } else {
-      slots.push({
-        groupId: nextIdentityGroupId(slots.map((slot) => slot.groupId)),
-        frontId: document.id,
-      });
-    }
-  }
-  if (slots.length === 0) {
-    return [{ groupId: "identity-group-1" }];
-  }
-  return slots;
-}
-
-function DropSlot({
-  label,
-  document,
-  onDropDocument,
-  onClear,
-}: {
-  label: string;
-  document?: MatterDocument;
-  onDropDocument: (documentId: string) => void;
-  onClear: () => void;
-}) {
-  const t = useTranslations("documents");
   return (
-    <div
-      className="border-border-strong bg-canvas min-h-24 rounded border border-dashed p-3"
-      onDragOver={(event) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        const raw = event.dataTransfer.getData("application/json");
-        if (!raw) return;
-        const payload = JSON.parse(raw) as DragPayload;
-        onDropDocument(payload.documentId);
-      }}
-    >
-      <div className="text-muted-ink text-xs font-semibold uppercase tracking-wide">
-        {label}
-      </div>
-      {document ? (
-        <div className="border-border-strong bg-surface mt-2 flex items-start gap-2 rounded border p-2">
-          <GripVertical
-            className="text-muted-ink mt-0.5 size-4 shrink-0"
-            strokeWidth={1.5}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">
-              {document.displayName ?? document.fileName}
-            </div>
-            <div className="text-muted-ink truncate text-xs">
-              {document.fileName}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="hover:bg-active-bg grid size-7 place-items-center rounded"
-            aria-label={t("pairingClear")}
-            onClick={onClear}
-          >
-            <X className="size-4" strokeWidth={1.5} />
-          </button>
-        </div>
-      ) : (
-        <p className="text-muted-ink mt-3 text-sm">{t("pairingDropHint")}</p>
-      )}
+    <div className="border-border-strong bg-canvas text-muted-ink flex h-28 items-center justify-center rounded border text-xs">
+      {document.fileName}
     </div>
   );
 }
@@ -133,58 +51,73 @@ export function IdentityPairingDialog({
     () => documents.filter((document) => document.kind === "identity"),
     [documents],
   );
-  const [slots, setSlots] = useState<PersonSlot[]>(() =>
-    buildInitialSlots(identityDocs),
+
+  const fronts = useMemo(() => {
+    const explicit = identityDocs.filter(
+      (document) => document.identitySide === "front",
+    );
+    if (explicit.length > 0) return explicit;
+    return identityDocs.filter(
+      (document) =>
+        document.identitySide === "unknown" || !document.identitySide,
+    );
+  }, [identityDocs]);
+  const backs = useMemo(
+    () => identityDocs.filter((document) => document.identitySide === "back"),
+    [identityDocs],
   );
+
+  const [stepIndex, setStepIndex] = useState(0);
+  const [pairs, setPairs] = useState<PairStep[]>([]);
+  const [currentBackId, setCurrentBackId] = useState<string | undefined>();
 
   useEffect(() => {
-    if (open) setSlots(buildInitialSlots(identityDocs));
-  }, [open, identityDocs]);
+    if (!open) return;
+    setStepIndex(0);
+    setPairs(fronts.map((front) => ({ frontId: front.id })));
+    setCurrentBackId(undefined);
+  }, [open, fronts]);
 
-  const assignedIds = new Set(
-    slots.flatMap((slot) => [slot.frontId, slot.backId].filter(Boolean)),
+  const matchedBackIds = new Set(
+    pairs.map((pair) => pair.backId).filter(Boolean),
   );
-  const pool = identityDocs.filter((document) => !assignedIds.has(document.id));
+  const unmatchedBacks = backs.filter(
+    (document) =>
+      !matchedBackIds.has(document.id) || document.id === currentBackId,
+  );
+  const currentFront = fronts[stepIndex];
+  const isLast = stepIndex >= fronts.length - 1;
 
   if (!open) return null;
 
-  const place = (
-    groupId: string,
-    side: IdentitySide,
-    documentId: string,
-  ) => {
-    setSlots((current) => {
-      const cleared = current.map((slot) => ({
-        ...slot,
-        frontId: slot.frontId === documentId ? undefined : slot.frontId,
-        backId: slot.backId === documentId ? undefined : slot.backId,
-      }));
-      return cleared.map((slot) => {
-        if (slot.groupId !== groupId) return slot;
-        if (side === "front") return { ...slot, frontId: documentId };
-        return { ...slot, backId: documentId };
-      });
-    });
-  };
-
-  const confirm = () => {
+  const advance = () => {
+    const nextPairs = pairs.map((pair, index) =>
+      index === stepIndex ? { ...pair, backId: currentBackId } : pair,
+    );
+    setPairs(nextPairs);
+    if (!isLast) {
+      setStepIndex((value) => value + 1);
+      setCurrentBackId(nextPairs[stepIndex + 1]?.backId);
+      return;
+    }
     const assignments: IdentityPairAssignment[] = [];
-    for (const slot of slots) {
-      if (slot.frontId) {
+    const usedGroups: string[] = [];
+    nextPairs.forEach((pair) => {
+      const groupId = nextIdentityGroupId(usedGroups);
+      usedGroups.push(groupId);
+      assignments.push({
+        documentId: pair.frontId,
+        identityGroupId: groupId,
+        identitySide: "front",
+      });
+      if (pair.backId) {
         assignments.push({
-          documentId: slot.frontId,
-          identityGroupId: slot.groupId,
-          identitySide: "front",
-        });
-      }
-      if (slot.backId) {
-        assignments.push({
-          documentId: slot.backId,
-          identityGroupId: slot.groupId,
+          documentId: pair.backId,
+          identityGroupId: groupId,
           identitySide: "back",
         });
       }
-    }
+    });
     onConfirm(assignments);
   };
 
@@ -200,7 +133,7 @@ export function IdentityPairingDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="identity-pairing-title"
-        className="border-border-strong bg-surface relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border shadow-none"
+        className="border-border-strong bg-surface relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg border"
       >
         <div className="border-border flex items-start justify-between gap-4 border-b px-5 py-4">
           <div>
@@ -210,7 +143,17 @@ export function IdentityPairingDialog({
             >
               {t("pairingTitle")}
             </h2>
-            <p className="text-muted-ink mt-1 text-sm">{t("pairingBody")}</p>
+            <p className="text-muted-ink mt-1 text-sm">
+              {t("pairingBodySequential")}
+            </p>
+            {fronts.length > 0 && (
+              <p className="text-muted-ink mt-2 text-xs font-semibold uppercase">
+                {t("pairingStep", {
+                  current: stepIndex + 1,
+                  total: fronts.length,
+                })}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -221,108 +164,126 @@ export function IdentityPairingDialog({
             <X className="size-5" strokeWidth={1.5} />
           </button>
         </div>
+
         <div className="space-y-4 p-5">
-          {pool.length > 0 && (
-            <section>
-              <h3 className="text-sm font-semibold">{t("pairingPool")}</h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {pool.map((document) => (
-                  <div
-                    key={document.id}
-                    draggable
-                    onDragStart={(event) => {
-                      event.dataTransfer.setData(
-                        "application/json",
-                        JSON.stringify({ documentId: document.id }),
-                      );
-                      event.dataTransfer.effectAllowed = "move";
-                    }}
-                    className="border-border-strong bg-canvas flex cursor-grab items-center gap-2 rounded border px-3 py-2 active:cursor-grabbing"
-                  >
-                    <GripVertical className="size-4" strokeWidth={1.5} />
-                    <span className="text-sm">
-                      {document.displayName ?? document.fileName}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
+          {!currentFront && (
+            <p className="text-muted-ink text-sm">{t("pairingNoFronts")}</p>
           )}
-          {slots.map((slot, index) => (
-            <section
-              key={slot.groupId}
-              className="border-border-strong rounded border p-4"
-            >
-              <h3 className="font-medium">
-                {t("pairingPerson", {
-                  index: index + 1,
-                  name: personForIdentityGroup(slot.groupId),
-                })}
-              </h3>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <DropSlot
-                  label={t("sideFront")}
-                  document={identityDocs.find(
-                    (document) => document.id === slot.frontId,
+          {currentFront && (
+            <>
+              <section className="border-border-strong rounded border p-4">
+                <h3 className="text-sm font-semibold uppercase tracking-wide">
+                  {t("sideFront")}
+                </h3>
+                <div className="mt-3">
+                  <Preview document={currentFront} />
+                  <div className="mt-2 text-sm font-medium">
+                    {currentFront.displayName ?? currentFront.fileName}
+                  </div>
+                </div>
+                <div
+                  className="border-border-strong bg-canvas mt-4 min-h-24 rounded border border-dashed p-3"
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const raw = event.dataTransfer.getData("application/json");
+                    if (!raw) return;
+                    const payload = JSON.parse(raw) as DragPayload;
+                    setCurrentBackId(payload.documentId);
+                  }}
+                >
+                  <div className="text-muted-ink text-xs font-semibold uppercase">
+                    {t("sideBack")}
+                  </div>
+                  {currentBackId ? (
+                    <div className="mt-2 flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <Preview
+                          document={
+                            identityDocs.find(
+                              (document) => document.id === currentBackId,
+                            ) ?? currentFront
+                          }
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="hover:bg-active-bg grid size-7 place-items-center rounded"
+                        aria-label={t("pairingClear")}
+                        onClick={() => setCurrentBackId(undefined)}
+                      >
+                        <X className="size-4" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-muted-ink mt-3 text-sm">
+                      {t("pairingDropBackHint")}
+                    </p>
                   )}
-                  onDropDocument={(documentId) =>
-                    place(slot.groupId, "front", documentId)
-                  }
-                  onClear={() =>
-                    setSlots((current) =>
-                      current.map((item) =>
-                        item.groupId === slot.groupId
-                          ? { ...item, frontId: undefined }
-                          : item,
-                      ),
-                    )
-                  }
-                />
-                <DropSlot
-                  label={t("sideBack")}
-                  document={identityDocs.find(
-                    (document) => document.id === slot.backId,
+                </div>
+              </section>
+
+              <section>
+                <h3 className="text-sm font-semibold">
+                  {t("pairingBackPool")}
+                </h3>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {unmatchedBacks.map((document) => (
+                    <button
+                      type="button"
+                      key={document.id}
+                      draggable
+                      aria-pressed={currentBackId === document.id}
+                      onClick={() => setCurrentBackId(document.id)}
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData(
+                          "application/json",
+                          JSON.stringify({ documentId: document.id }),
+                        );
+                        event.dataTransfer.effectAllowed = "move";
+                      }}
+                      className={`border-border-strong bg-canvas cursor-grab rounded border p-2 text-left active:cursor-grabbing ${
+                        currentBackId === document.id
+                          ? "border-forest bg-selected-bg"
+                          : "hover:border-forest"
+                      }`}
+                    >
+                      <div className="mb-2 flex items-center gap-1 text-xs font-medium">
+                        <GripVertical className="size-4" strokeWidth={1.5} />
+                        {document.displayName ?? document.fileName}
+                      </div>
+                      <Preview document={document} />
+                      <div className="text-teal mt-2 text-xs font-medium">
+                        {currentBackId === document.id
+                          ? t("pairingSelectedBack")
+                          : t("pairingSelectBack")}
+                      </div>
+                    </button>
+                  ))}
+                  {unmatchedBacks.length === 0 && (
+                    <p className="text-muted-ink text-sm">
+                      {t("pairingNoBacks")}
+                    </p>
                   )}
-                  onDropDocument={(documentId) =>
-                    place(slot.groupId, "back", documentId)
-                  }
-                  onClear={() =>
-                    setSlots((current) =>
-                      current.map((item) =>
-                        item.groupId === slot.groupId
-                          ? { ...item, backId: undefined }
-                          : item,
-                      ),
-                    )
-                  }
-                />
-              </div>
-            </section>
-          ))}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() =>
-              setSlots((current) => [
-                ...current,
-                {
-                  groupId: nextIdentityGroupId(
-                    current.map((slot) => slot.groupId),
-                  ),
-                },
-              ])
-            }
-          >
-            <Plus className="size-4" strokeWidth={1.5} />
-            {t("pairingAddPerson")}
-          </Button>
+                </div>
+              </section>
+            </>
+          )}
         </div>
+
         <div className="border-border flex justify-end gap-2 border-t px-5 py-4">
           <Button type="button" variant="secondary" onClick={onClose}>
             {t("pairingCancel")}
           </Button>
-          <Button type="button" onClick={confirm}>
-            {t("pairingConfirm")}
+          <Button
+            type="button"
+            disabled={!currentFront || !currentBackId}
+            onClick={advance}
+          >
+            {isLast ? t("pairingConfirm") : t("pairingNextFront")}
           </Button>
         </div>
       </div>

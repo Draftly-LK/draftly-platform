@@ -31,14 +31,32 @@ export interface DocumentVersion {
   timestamp: string;
 }
 
+/** Sri Lankan NIC fields — null means Undetected in the UI. */
 export interface IdentityExtractedFields {
-  fullName: string;
-  idReference: string;
-  address: string;
-  dateOfBirth: string;
+  nicNumber: string | null;
+  nameSi: string | null;
+  nameEn: string | null;
+  sex: string | null;
+  dateOfBirth: string | null;
+  addressEn: string | null;
+  serialNumber: string | null;
+  dateOfIssue: string | null;
+  placeOfBirthEn: string | null;
 }
 
-export type ExtractedFields = IdentityExtractedFields | Record<string, string>;
+export const IDENTITY_FIELD_KEYS: Array<keyof IdentityExtractedFields> = [
+  "nicNumber",
+  "nameSi",
+  "nameEn",
+  "sex",
+  "dateOfBirth",
+  "addressEn",
+  "serialNumber",
+  "dateOfIssue",
+  "placeOfBirthEn",
+];
+
+export type ExtractedFields = IdentityExtractedFields | Record<string, string | null>;
 
 export interface MatterDocument {
   id: string;
@@ -58,4 +76,6 @@ export interface MatterDocument {
   displayName?: string;
   extractedText?: string;
   extractedFields?: ExtractedFields;
+  /** Object URL or data URL for local preview (ephemeral; not persisted). */
+  previewUrl?: string;
 }

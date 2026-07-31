@@ -15,13 +15,13 @@ import {
 } from "@/lib/mocks";
 import {
   classifyFileName,
-  extractIdentityDocument,
   identityDisplayName,
   identityFileName,
-  nextIdentityGroupId,
   type IdentityPairAssignment,
 } from "@/lib/documents/mock-pipeline";
+import { mergeIdentityFields } from "@/lib/documents/identity-groups";
 import { relationForKind } from "@/lib/documents/authorization";
+import type { ProcessDocumentResponse } from "@/lib/api/documents";
 import type {
   AuditEvent,
   Check,
@@ -30,6 +30,7 @@ import type {
   Draft,
   EditorDocument,
   ExtractedFields,
+  IdentityExtractedFields,
   IdentitySide,
   Matter,
   MatterDocument,
@@ -69,6 +70,7 @@ export type AddDocumentOptions = {
   identitySide?: IdentitySide;
   identityGroupId?: string;
   displayName?: string;
+  previewUrl?: string;
 };
 
 export type { IdentityPairAssignment };
@@ -89,10 +91,18 @@ interface DemoState {
     confidence?: number,
   ) => void;
   completeDocumentExtraction: (documentId: string) => void;
+  applyDocumentPipelineResult: (
+    documentId: string,
+    result: ProcessDocumentResponse,
+  ) => void;
   updateDocumentExtraction: (
     documentId: string,
     extractedText: string,
     extractedFields?: ExtractedFields,
+  ) => void;
+  updateIdentityFields: (
+    identityGroupId: string,
+    extractedFields: IdentityExtractedFields,
   ) => void;
   assignDocumentKind: (documentId: string, kind: DocumentKind) => void;
   setIdentityPairing: (assignments: IdentityPairAssignment[]) => void;
@@ -241,9 +251,12 @@ export const useDemoStore = create<DemoState>()(
             versions: [],
             uploadedAt: deterministicTimestamp(state.auditEvents.length),
             relation,
-            identitySide: kind === "identity" ? identitySide : undefined,
+            identitySide:
+              options.identitySide ??
+              (kind === "identity" ? identitySide : undefined),
             identityGroupId: options.identityGroupId,
             displayName: options.displayName,
+            previewUrl: options.previewUrl,
           };
           return {
             documents: [...state.documents, document],
@@ -305,38 +318,30 @@ export const useDemoStore = create<DemoState>()(
               ? before.identitySide
               : classified.identitySide;
           const relation = relationForKind(kind, regime, type);
-          let identityGroupId = before.identityGroupId;
+          const emptyIdentity: IdentityExtractedFields = {
+            nicNumber: null,
+            nameSi: null,
+            nameEn: null,
+            sex: null,
+            dateOfBirth: null,
+            addressEn: null,
+            serialNumber: null,
+            dateOfIssue: null,
+            placeOfBirthEn: null,
+          };
           let patch: Partial<MatterDocument> = {
             kind,
             relation,
             identitySide: kind === "identity" ? identitySide : undefined,
             processingState: "ready-for-review",
-            extractionConfidence: 0.88,
+            extractionConfidence: 0.5,
           };
           if (kind === "identity") {
-            if (!identityGroupId) {
-              const existing = state.documents
-                .filter(
-                  (document) =>
-                    document.matterId === before.matterId &&
-                    document.identityGroupId,
-                )
-                .map((document) => document.identityGroupId as string);
-              identityGroupId = nextIdentityGroupId(existing);
-            }
-            const extraction = extractIdentityDocument(
-              documentId,
-              identityGroupId,
-              identitySide,
-            );
             patch = {
               ...patch,
-              identityGroupId,
-              displayName: extraction.displayName,
-              fileName: extraction.fileName,
-              extractedText: extraction.extractedText,
-              extractedFields: extraction.extractedFields,
-              language: extraction.language,
+              displayName: "Identity card (unidentified)",
+              extractedText: before.extractedText ?? "",
+              extractedFields: before.extractedFields ?? emptyIdentity,
             };
           }
           const updated = state.documents.map((document) =>
@@ -354,28 +359,93 @@ export const useDemoStore = create<DemoState>()(
             }),
           };
         }),
+      applyDocumentPipelineResult: (documentId, result) =>
+        set((state) => {
+          const before = state.documents.find(
+            (document) => document.id === documentId,
+          );
+          if (!before) return state;
+          const matter = state.matters.find(
+            (item) => item.id === before.matterId,
+          );
+          const regime = matter?.regime ?? "rta";
+          const type = matter?.type ?? "transfer";
+          const kind = result.kind;
+          const relation = relationForKind(kind, regime, type);
+          // Prefer filename front/back hints (e.g. nic2b) over model side guesses.
+          const fileHint = classifyFileName(before.fileName, regime, type);
+          const identitySide =
+            kind === "identity"
+              ? fileHint.identitySide !== "unknown"
+                ? fileHint.identitySide
+                : (result.identity_side ?? before.identitySide ?? "unknown")
+              : undefined;
+          const nameEn =
+            result.extracted_fields &&
+            "nameEn" in result.extracted_fields &&
+            typeof result.extracted_fields.nameEn === "string"
+              ? result.extracted_fields.nameEn
+              : null;
+          const displayName =
+            result.display_name ??
+            (kind === "identity"
+              ? nameEn
+                ? identityDisplayName(nameEn)
+                : "Identity card (unidentified)"
+              : before.displayName);
+          const fileName =
+            kind === "identity" && nameEn
+              ? identityFileName(nameEn, identitySide ?? "unknown")
+              : before.fileName;
+          const updated = state.documents.map((document) =>
+            document.id === documentId
+              ? {
+                  ...document,
+                  kind,
+                  relation,
+                  identitySide,
+                  displayName: displayName ?? undefined,
+                  fileName,
+                  extractedText: result.extracted_text,
+                  extractedFields: result.extracted_fields,
+                  extractionConfidence: result.extraction_confidence,
+                  processingState: "ready-for-review" as const,
+                }
+              : document,
+          );
+          return {
+            documents: updated,
+            auditEvents: appendEvent(state, {
+              matterId: before.matterId,
+              action: "document.ready-for-review",
+              targetType: "document",
+              targetId: documentId,
+              before,
+              after: updated.find((document) => document.id === documentId),
+            }),
+          };
+        }),
       // TODO(api): PATCH /api/matters/{matterId}/documents/{documentId}/extraction
-      updateDocumentExtraction: (
-        documentId,
-        extractedText,
-        extractedFields,
-      ) =>
+      updateDocumentExtraction: (documentId, extractedText, extractedFields) =>
         set((state) => {
           const before = state.documents.find(
             (document) => document.id === documentId,
           );
           if (!before) return state;
           const fields = extractedFields ?? before.extractedFields;
-          const fullName =
-            fields && "fullName" in fields && typeof fields.fullName === "string"
-              ? fields.fullName
+          const nameEn =
+            fields &&
+            "nameEn" in fields &&
+            typeof fields.nameEn === "string" &&
+            fields.nameEn
+              ? fields.nameEn
               : undefined;
-          const displayName = fullName
-            ? identityDisplayName(fullName)
+          const displayName = nameEn
+            ? identityDisplayName(nameEn)
             : before.displayName;
           const fileName =
-            before.kind === "identity" && fullName
-              ? identityFileName(fullName, before.identitySide ?? "unknown")
+            before.kind === "identity" && nameEn
+              ? identityFileName(nameEn, before.identitySide ?? "unknown")
               : before.fileName;
           const updated = state.documents.map((document) =>
             document.id === documentId
@@ -397,6 +467,46 @@ export const useDemoStore = create<DemoState>()(
               targetId: documentId,
               before,
               after: updated.find((document) => document.id === documentId),
+            }),
+          };
+        }),
+      // TODO(api): PATCH /api/matters/{matterId}/identity-documents/{identityGroupId}
+      updateIdentityFields: (identityGroupId, extractedFields) =>
+        set((state) => {
+          const members = state.documents.filter(
+            (document) => document.identityGroupId === identityGroupId,
+          );
+          if (members.length === 0) return state;
+          const nameEn = extractedFields.nameEn ?? undefined;
+          const displayName = nameEn
+            ? identityDisplayName(nameEn)
+            : "Identity card (unidentified)";
+          const updated = state.documents.map((document) =>
+            document.identityGroupId === identityGroupId
+              ? {
+                  ...document,
+                  extractedFields,
+                  displayName,
+                  fileName: nameEn
+                    ? identityFileName(
+                        nameEn,
+                        document.identitySide ?? "unknown",
+                      )
+                    : document.fileName,
+                }
+              : document,
+          );
+          return {
+            documents: updated,
+            auditEvents: appendEvent(state, {
+              matterId: members[0]?.matterId ?? DEMO_MATTER_ID,
+              action: "document.identity-fields.edited",
+              targetType: "document",
+              targetId: identityGroupId,
+              before: members,
+              after: updated.filter(
+                (document) => document.identityGroupId === identityGroupId,
+              ),
             }),
           };
         }),
@@ -447,16 +557,20 @@ export const useDemoStore = create<DemoState>()(
           const first = state.documents.find(
             (document) => document.id === assignments[0]?.documentId,
           );
-          const updated = state.documents.map((document) => {
+          const paired = state.documents.map((document) => {
             const assignment = assignments.find(
               (item) => item.documentId === document.id,
             );
             if (!assignment) return document;
-            const extraction = extractIdentityDocument(
-              document.id,
-              assignment.identityGroupId,
-              assignment.identitySide,
-            );
+            const nameEn =
+              document.extractedFields &&
+              "nameEn" in document.extractedFields &&
+              typeof document.extractedFields.nameEn === "string"
+                ? document.extractedFields.nameEn
+                : null;
+            const displayName = nameEn
+              ? identityDisplayName(nameEn)
+              : (document.displayName ?? "Identity card (unidentified)");
             return {
               ...document,
               kind: "identity" as const,
@@ -469,10 +583,41 @@ export const useDemoStore = create<DemoState>()(
               ),
               identityGroupId: assignment.identityGroupId,
               identitySide: assignment.identitySide,
-              displayName: extraction.displayName,
-              fileName: extraction.fileName,
-              extractedText: extraction.extractedText,
-              extractedFields: extraction.extractedFields,
+              displayName,
+              fileName: nameEn
+                ? identityFileName(nameEn, assignment.identitySide)
+                : document.fileName,
+            };
+          });
+          const groupIds = [
+            ...new Set(
+              assignments.map((assignment) => assignment.identityGroupId),
+            ),
+          ];
+          const mergedByGroup = new Map(
+            groupIds.map((groupId) => [
+              groupId,
+              mergeIdentityFields(
+                paired.filter(
+                  (document) => document.identityGroupId === groupId,
+                ),
+              ).fields,
+            ]),
+          );
+          const updated = paired.map((document) => {
+            if (!document.identityGroupId) return document;
+            const fields = mergedByGroup.get(document.identityGroupId);
+            if (!fields) return document;
+            const nameEn = fields.nameEn ?? undefined;
+            return {
+              ...document,
+              extractedFields: fields,
+              displayName: nameEn
+                ? identityDisplayName(nameEn)
+                : "Identity card (unidentified)",
+              fileName: nameEn
+                ? identityFileName(nameEn, document.identitySide ?? "unknown")
+                : document.fileName,
             };
           });
           return {
@@ -908,9 +1053,9 @@ export const useDemoStore = create<DemoState>()(
     {
       name: "draftly-m2-demo",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
-        if (version < 2) return seed();
+        if (version < 3) return seed();
         return persisted as ReturnType<typeof seed>;
       },
     },

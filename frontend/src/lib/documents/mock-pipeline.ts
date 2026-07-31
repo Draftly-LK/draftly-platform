@@ -58,14 +58,25 @@ export function classifyFileName(
   const base = normalizeName(fileName);
   const isIdentity =
     /\b(identity|id[-_]?card|nic)\b/i.test(base) ||
+    /^nic\d*[fb](?:ront|ack)?$/i.test(base) ||
+    /nic\d*[fb]/i.test(base) ||
     /^id[-_]/.test(base) ||
     /[-_]id$/.test(base) ||
     /[-_]id[-_]/.test(base);
 
   if (isIdentity) {
     let identitySide: IdentitySide = "unknown";
-    if (/\b(front|obverse)\b/i.test(base)) identitySide = "front";
-    else if (/\b(back|reverse)\b/i.test(base)) identitySide = "back";
+    if (
+      /\b(front|obverse)\b/i.test(base) ||
+      /nic\d*f(?:ront)?$/i.test(base)
+    ) {
+      identitySide = "front";
+    } else if (
+      /\b(back|reverse)\b/i.test(base) ||
+      /nic\d*b(?:ack)?$/i.test(base)
+    ) {
+      identitySide = "back";
+    }
     return {
       kind: "identity",
       identitySide,
@@ -118,47 +129,29 @@ export function identityFileName(
   return `${slug}-identity${sideSuffix}.pdf`;
 }
 
-function opaqueIdReference(seed: string): string {
-  let hash = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    hash = (hash * 31 + seed.charCodeAt(i)) % 10000;
-  }
-  return `ID-SYN-${String(4100 + (hash % 5000)).padStart(4, "0")}`;
-}
-
-/** Seeded extraction payload for identity cards. No real NIC digits. */
+/** Offline mock extraction — empty/undetected fields only (no invented PII). */
 // TODO(api): POST /api/matters/{matterId}/documents/{documentId}/extract
 export function extractIdentityDocument(
-  documentId: string,
+  _documentId: string,
   identityGroupId: string,
   side: IdentitySide,
 ): ExtractionResult {
   const person = personForIdentityGroup(identityGroupId);
-  const idReference = opaqueIdReference(identityGroupId);
   const fields: IdentityExtractedFields = {
-    fullName: person,
-    idReference,
-    address: "12 Synthetic Lane, Colombo (synthetic)",
-    dateOfBirth: "1978-03-14 (synthetic)",
+    nicNumber: null,
+    nameSi: null,
+    nameEn: null,
+    sex: null,
+    dateOfBirth: null,
+    addressEn: null,
+    serialNumber: null,
+    dateOfIssue: null,
+    placeOfBirthEn: null,
   };
-  const sideLabel =
-    side === "front" ? "Front" : side === "back" ? "Back" : "Side unknown";
-  const extractedText = [
-    `National Identity Card — ${sideLabel} (synthetic extract)`,
-    "",
-    `Full name: ${fields.fullName}`,
-    `Identity reference: ${fields.idReference}`,
-    `Address: ${fields.address}`,
-    `Date of birth: ${fields.dateOfBirth}`,
-    "",
-    "This text is a seeded mock extraction for interface review.",
-    "Correct any OCR-like errors before verifying facts.",
-  ].join("\n");
-
   return {
-    extractedText,
+    extractedText: "",
     extractedFields: fields,
-    displayName: identityDisplayName(person),
+    displayName: "Identity card (unidentified)",
     fileName: identityFileName(person, side),
     language: "en",
   };

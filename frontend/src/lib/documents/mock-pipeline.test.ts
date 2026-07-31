@@ -7,11 +7,11 @@ import {
 } from "./mock-pipeline";
 
 describe("document authorization", () => {
-  it("authorizes only identity for RTA transfer", () => {
-    expect(authorizedKinds("rta", "transfer")).toEqual(["identity"]);
+  it("authorizes identity and deed for RTA transfer", () => {
+    expect(authorizedKinds("rta", "transfer")).toEqual(["identity", "deed"]);
     expect(authorizedKinds("rta", "gift")).toEqual([]);
     expect(relationForKind("identity", "rta", "transfer")).toBe("authorized");
-    expect(relationForKind("deed", "rta", "transfer")).toBe("unrelated");
+    expect(relationForKind("deed", "rta", "transfer")).toBe("authorized");
     expect(relationForKind("other", "rta", "transfer")).toBe("unclassified");
   });
 });
@@ -28,11 +28,21 @@ describe("mock classify and extract", () => {
       identitySide: "back",
       relation: "authorized",
     });
+    expect(classifyFileName("nic1f.jpg", "rta", "transfer")).toEqual({
+      kind: "identity",
+      identitySide: "front",
+      relation: "authorized",
+    });
+    expect(classifyFileName("nic2b.jpeg", "rta", "transfer")).toEqual({
+      kind: "identity",
+      identitySide: "back",
+      relation: "authorized",
+    });
   });
 
-  it("marks deeds unrelated on transfer and unknown files unclassified", () => {
+  it("marks deeds authorized on transfer and unknown files unclassified", () => {
     expect(classifyFileName("deed-4821.pdf", "rta", "transfer").relation).toBe(
-      "unrelated",
+      "authorized",
     );
     expect(classifyFileName("mystery-scan.pdf", "rta", "transfer")).toEqual({
       kind: "other",
@@ -41,16 +51,16 @@ describe("mock classify and extract", () => {
     });
   });
 
-  it("renames identity extracts with synthetic person names", () => {
+  it("returns undetected fields without inventing PII", () => {
     const extraction = extractIdentityDocument(
       "doc-1",
       "identity-group-1",
       "front",
     );
-    expect(extraction.displayName).toBe(
-      identityDisplayName("A. B. Perera (synthetic)"),
-    );
-    expect(extraction.extractedFields.idReference).toMatch(/^ID-SYN-\d{4}$/);
-    expect(extraction.extractedText).toContain("Full name:");
+    expect(extraction.displayName).toBe("Identity card (unidentified)");
+    expect(extraction.extractedText).toBe("");
+    expect(extraction.extractedFields.nicNumber).toBeNull();
+    expect(extraction.extractedFields.nameEn).toBeNull();
+    expect(identityDisplayName("Sample")).toBe("Sample's identity card");
   });
 });

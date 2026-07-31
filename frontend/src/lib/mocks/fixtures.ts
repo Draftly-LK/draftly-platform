@@ -60,29 +60,20 @@ export const matters: Matter[] = [
   },
 ];
 
-const identityFrontText = [
-  "National Identity Card — Front (synthetic extract)",
-  "",
-  "Full name: A. B. Perera (synthetic)",
-  "Identity reference: ID-SYN-4102",
-  "Address: 12 Synthetic Lane, Colombo (synthetic)",
-  "Date of birth: 1978-03-14 (synthetic)",
-  "",
-  "This text is a seeded mock extraction for interface review.",
-  "Correct any OCR-like errors before verifying facts.",
-].join("\n");
+const identityFrontText = "";
+const identityBackText = "";
 
-const identityBackText = [
-  "National Identity Card — Back (synthetic extract)",
-  "",
-  "Full name: A. B. Perera (synthetic)",
-  "Identity reference: ID-SYN-4102",
-  "Address: 12 Synthetic Lane, Colombo (synthetic)",
-  "Date of birth: 1978-03-14 (synthetic)",
-  "",
-  "This text is a seeded mock extraction for interface review.",
-  "Correct any OCR-like errors before verifying facts.",
-].join("\n");
+const emptyIdentityFields = {
+  nicNumber: null,
+  nameSi: null,
+  nameEn: null,
+  sex: null,
+  dateOfBirth: null,
+  addressEn: null,
+  serialNumber: null,
+  dateOfIssue: null,
+  placeOfBirthEn: null,
+};
 
 export const documents: MatterDocument[] = [
   {
@@ -155,19 +146,14 @@ export const documents: MatterDocument[] = [
     relation: "authorized",
     identitySide: "front",
     identityGroupId: "identity-group-1",
-    displayName: "A. B. Perera (synthetic)'s identity card",
+    displayName: "Identity card (unidentified)",
     extractedText: identityFrontText,
-    extractedFields: {
-      fullName: "A. B. Perera (synthetic)",
-      idReference: "ID-SYN-4102",
-      address: "12 Synthetic Lane, Colombo (synthetic)",
-      dateOfBirth: "1978-03-14 (synthetic)",
-    },
+    extractedFields: emptyIdentityFields,
   },
   {
     id: "doc-id-002",
     matterId: DEMO_MATTER_ID,
-    fileName: "a-b-perera-synthetic-identity-back.pdf",
+    fileName: "identity-back-synthetic.pdf",
     kind: "identity",
     language: "en",
     pageCount: 1,
@@ -179,14 +165,9 @@ export const documents: MatterDocument[] = [
     relation: "authorized",
     identitySide: "back",
     identityGroupId: "identity-group-1",
-    displayName: "A. B. Perera (synthetic)'s identity card",
+    displayName: "Identity card (unidentified)",
     extractedText: identityBackText,
-    extractedFields: {
-      fullName: "A. B. Perera (synthetic)",
-      idReference: "ID-SYN-4102",
-      address: "12 Synthetic Lane, Colombo (synthetic)",
-      dateOfBirth: "1978-03-14 (synthetic)",
-    },
+    extractedFields: emptyIdentityFields,
   },
   {
     id: "doc-assessment-001",
