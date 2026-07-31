@@ -1,9 +1,9 @@
 # matter_service: implementation design
 
 Companion to `backend/backend-implementation-plan-v0.md`,
-`task-service.md`, `auth-service.md`, `audit-service.md`, and
-`obligations-service.md`. One markdown file is kept per service under
-`backend/docs/services/`.
+`task-service.md`, `auth-service.md`, `billing-service.md`,
+`audit-service.md`, and `obligations-service.md`. One markdown file is kept per
+service under `backend/docs/services/`.
 
 This service is the root record and security boundary for a legal matter. It
 identifies the transaction being handled; it does not define or run the
@@ -72,7 +72,8 @@ It does not own:
 - deterministic findings;
 - draft text or approvals;
 - deadline calculations;
-- notification templates or delivery; or
+- notification templates or delivery;
+- plans, subscriptions, payment state, or usage accounting; or
 - editable progress and readiness booleans.
 
 ## 3. Where it sits
@@ -98,6 +99,7 @@ POST  /matters/{id}/archive
               +--> MembershipRepository
               +--> MatterProjectionPort
               +--> IdentityPort
+              +--> BillingEntitlementPort
               +--> EventPort
               +--> AuditPort
 ```
@@ -362,13 +364,17 @@ create_matter(ctx, input) -> MatterRead
 
 1. Validate organisation, privacy-safe reference, transaction type, and
    registration regime.
-2. Create `Matter(lifecycleStatus=inquiry, classificationVersion=1)`.
-3. Create the initial MatterClassification.
-4. Create creator membership in the same transaction.
-5. Write `matter.created` audit and outbox events.
-6. Return `workflowSetupStatus=pending`.
+2. Require the organisation's `matter.create` entitlement and atomically check
+   any active-matter quota through `BillingEntitlementPort`.
+3. Create `Matter(lifecycleStatus=inquiry, classificationVersion=1)`.
+4. Create the initial MatterClassification.
+5. Create creator membership in the same transaction.
+6. Write `matter.created` audit and outbox events.
+7. Return `workflowSetupStatus=pending`.
 
 The creation transaction does not create StepRuns, seed facts, or clone checks.
+Subscription state never grants matter access; `auth_service` organisation and
+role checks run before this entitlement gate.
 
 `task_service` consumes `matter.created` idempotently and compiles the approved
 intake and classification workflow. The UI must show pending, ready, or failed
@@ -557,6 +563,8 @@ aggregate.
 ### Security
 
 - Cross-organisation and cross-matter isolation.
+- Matter creation enforces the organisation entitlement and active-matter
+  quota server-side.
 - Non-member receives 404.
 - Browser cannot assign itself a role or team membership.
 - Non-lawyer cannot reclassify, close with override, or reopen.

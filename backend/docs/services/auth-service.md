@@ -1,8 +1,8 @@
 # auth_service — implementation design
 
 Companion to `backend/backend-implementation-plan-v0.md`,
-`document-service.md`, and `memory-service.md`. One markdown per service under
-`backend/docs/services/`.
+`billing-service.md`, `document-service.md`, and `memory-service.md`. One
+markdown per service under `backend/docs/services/`.
 
 Maps to plan **Phase 2** (authentication, authorisation, and matters), the
 Auth/session API row (§7), and the *Audit* trust-boundary row for account,
@@ -14,18 +14,20 @@ allowed to trust the browser for any of that.
 
 ## 1. What it owns
 
-Server-side **identity, role, matter membership, and policy**. It turns a
-validated identity-provider token into a `RequestContext` (actor id, role,
-matter memberships) that document, verification, check, draft, approval, and
-export services consume. It answers three questions for every request: is this
-actor who they claim to be, what may their role do, and are they a member of
-this matter?
+Server-side **identity, account role, organisation membership, matter
+membership, and policy**. It turns a validated identity-provider token and a
+requested organisation into a `RequestContext` (actor id, organisation id,
+account role, organisation role, and matter memberships) that downstream
+services consume. It answers four questions for every request: is this actor
+who they claim to be, which organisation may they act in, what may their roles
+do, and are they a member of this matter?
 
 It does **not** store passwords, raw authentication tokens, magic-link tokens,
 or login codes. Clerk owns the login flow, token expiry, replay protection,
 sessions, and account linking. This service does **not** decide extraction,
 verification, or drafting correctness; it only gates who may invoke those. It
-does **not** hold matter content.
+does **not** hold matter content. It also does not own subscriptions, payment
+state, plan entitlements, or usage counters; those belong to `billing_service`.
 
 ### State of play in the frontend
 
@@ -51,6 +53,7 @@ GET /api/v1/me ──→ api/v1/auth.py ──→ application/auth_service.py
                         │ validates token        │ derives role + memberships
                         ▼                        ▼
                  ports: IdentityPort (OIDC)   ports: UserRepository,
+                                              OrganisationMembershipRepository,
                                               MatterMembershipRepository,
                                               AuditPort
 ```
@@ -63,11 +66,12 @@ FastAPI, no SQLAlchemy, and no Clerk SDK — identity validation happens behind
 infrastructure implements that port as a Clerk JWT/OIDC adapter in
 `infrastructure/identity/clerk_adapter.py`.
 
-**The browser never supplies a trusted role or unrestricted matter access.**
-Role and membership are derived server-side from the persisted `User` and
-`MatterMembership` records, keyed off the verified identity subject — never off
-a claim the client sent (plan Phase 2). A role or matter id in the request body
-is ignored.
+**The browser never supplies a trusted role, organisation membership, or
+unrestricted matter access.** Roles and memberships are derived server-side
+from persisted `User`, `OrganisationMembership`, and `MatterMembership`
+records, keyed off the verified identity subject. A role or organisation id in
+a request body is ignored. A route or header may select an organisation, but
+the server must verify active membership before building the context.
 
 ### Selected V0 identity provider
 
@@ -215,6 +219,14 @@ In `domain/entities.py` (identity) and a small membership model:
   plan **requires** matter membership checks (§2.1, Phase 2), so this join is
   the missing piece. Cross-reference `matter-service.md` for where memberships
   are assigned and audited.
+- **Organisation** — the tenant/workspace boundary: `id`, `name`, `type`,
+  `status`, and `createdAt`. `type` is `solo | firm | enterprise | demo`;
+  `status` is `active | suspended | closed`. Every matter and subscription is
+  scoped to one organisation.
+- **OrganisationMembership** — `(organisation_id, user_id, role, joined_at)`.
+  `role` is `owner | admin | member`. It controls workspace administration and
+  is distinct from the legal-workflow `User.role` and matter-specific role.
+  A user may have memberships in multiple organisations.
 
 Do not create a Draftly-owned `email_login_tokens` table. Token generation,
 expiry, replay protection, sessions, and login-account linking belong to
@@ -266,8 +278,12 @@ In `ports/`:
   persist an identity link only through the controlled invitation/provisioning
   path.
 - `UserRepository` — load the `User`, `accountStatus`, and server-owned role.
+- `OrganisationRepository` — load active organisation state.
+- `OrganisationMembershipRepository` — verify that the actor belongs to the
+  selected organisation and load the server-owned organisation role.
 - `MatterMembershipRepository` — load memberships for a user; answer "is actor
-  a member of matter X, and in what role". Matter-scoped queries only.
+  a member of matter X in the selected organisation, and in what role".
+  Organisation- and matter-scoped queries only.
 - `AuditPort` — `record(event)`; every account, role, assignment, and matter
   membership mutation goes through here (the same `AuditPort` every service
   calls, see `audit-service.md`).
@@ -281,19 +297,32 @@ Backs `GET /api/v1/me` (frontend `GET /api/users/me`). Returns the actor's own
 the validated token, never from the request body. This replaces the mock
 `getCurrentUser()` that returns `users[0]`.
 
-### build_request_context(token) -> RequestContext
+### build_request_context(token, requested_organisation) -> RequestContext
 
 The core of the service, called by `api/deps.py` on every authenticated
 request. Validate the token via `IdentityPort`, resolve `(issuer, subject)`
-through `UserIdentityRepository`, load the `User` and role from
-`UserRepository`, load memberships from `MatterMembershipRepository`, and
-assemble the `RequestContext (actor, role, matter_memberships)` that downstream
-services trust.
+through `UserIdentityRepository`, load the `User` and account role, verify the
+selected organisation and its active `OrganisationMembership`, then load only
+that organisation's matter memberships. Assemble:
+
+```text
+RequestContext
+  actorId
+  organisationId
+  accountRole
+  organisationRole
+  matterMemberships
+```
+
+Downstream services trust this server-built context. Subscription state and
+mutable usage counters are deliberately absent; `billing_service` reads them
+server-side at the time of each paid operation.
 
 If the token is invalid, deny with 401. If the identity is valid but has no
 approved invitation or active user, return the pending/no-access response
-without constructing a privileged `RequestContext`. Suspended accounts are
-denied.
+without constructing a privileged `RequestContext`. Suspended accounts and
+suspended or closed organisations are denied. A user who is not a member of
+the selected organisation receives no organisation context.
 
 ### provision_identity(claims, invitation?) -> AccountStatusRead
 
@@ -310,10 +339,12 @@ This method never accepts a role or membership selected by the browser.
 The single server-side policy check. Given a required capability (for example
 "approve draft") and an optional matter, it enforces two things:
 
-1. **Role capability.** The actor's role must grant the capability per the §3
-   map. A `reviewer` asking to approve is denied — this is the Phase 2 exit
-   gate that a clerk/reviewer cannot approve.
-2. **Matter membership.** If a matter is in scope, the actor must be a member.
+1. **Role capability.** The actor's account, organisation, and where relevant
+   matter roles must grant the capability. Use the narrowest applicable grant;
+   an organisation owner is not automatically a legal approver.
+2. **Organisation boundary.** The target resource must belong to
+   `ctx.organisationId`; a client-selected id never changes this boundary.
+3. **Matter membership.** If a matter is in scope, the actor must be a member.
    A non-member is treated as if the matter does not exist: return **404, not
    403**, so an unauthorised user cannot infer another matter's existence
    (Phase 2 exit gate). A `403` would confirm the matter is real.
@@ -345,13 +376,16 @@ browser session alone must not be treated as sufficient indefinitely.
 | Authentication is not authorisation | A valid Clerk identity without an active Draftly account, role, and membership receives no matter access |
 | External identity is stable | Users resolve by verified `(issuer, subject)`, never by email alone |
 | Role is server-derived | `UserIdentityRepository` resolves the verified subject, then `UserRepository` supplies the role; a client-sent role is ignored |
-| Membership is server-derived | Access decisions read `MatterMembershipRepository`, never a client claim |
+| Organisation is server-derived | The selected organisation is accepted only after an active server-side membership lookup |
+| Membership is server-derived | Access decisions read organisation and matter membership repositories, never a client claim |
+| Billing is not token-derived | Subscription state and usage remain outside `RequestContext` and are checked server-side |
 | Login secrets stay outside Draftly | Clerk owns login codes, magic links, raw auth tokens, expiry, replay protection, and sessions |
 | Auth email is isolated | Authentication messages never pass through `notification_service`, even if Resend is later used as transport |
 | Reviewer cannot approve | `authorize` maps `approve` to `approver`/`administrator` only (Phase 2 exit gate) |
 | Existence hidden from non-members | Non-member matter access returns 404, not 403 (Phase 2 exit gate) |
 | Permission changes audited | `assign_membership` and `set_user_role` call `AuditPort.record` with `targetType: "permission"` |
 | Cross-matter isolation | Every matter-scoped call re-checks membership; a cross-matter read is denied, not filtered client-side |
+| Cross-organisation isolation | Every resource organisation must equal `ctx.organisationId`; no membership permits access across tenants |
 | Auth identity ≠ attestation NIC | User identity via `IdentityPort`; party NIC lives in the verified matter record, not here |
 
 Cross-matter disclosure is a **release-blocker** (§9.2): the backend cannot be
@@ -381,6 +415,8 @@ rule that acts on it lives in the check engine, not here.
   require an audited administrative recovery/linking path.
 - Client sends a role or matter id it should not have — ignored; the server
   derives both from persisted records.
+- Client selects an organisation without membership — deny before loading any
+  organisation, matter, document, or billing data.
 - Non-member requests a real matter — 404, identical to a matter that does not
   exist.
 - Administrator removes their own last admin membership — guard against
@@ -389,19 +425,20 @@ rule that acts on it lives in the check engine, not here.
 ## 9. Test list
 
 - **Unit:** role → capability map (reviewer denied approve, approver allowed);
-  membership check derives from repository not request; role/membership from
-  the request body is ignored; pending and suspended accounts cannot produce a
-  privileged `RequestContext`.
+  organisation and matter membership derive from repositories, not request
+  bodies; pending and suspended accounts cannot produce a privileged context;
+  organisation owner is not automatically a legal approver.
 - **Contract:** `GET /me` response schema matches the frontend `User`
   (id, displayName, role, notaryRegistration, jurisdiction); `RequestContext`
   shape consumed by `api/deps.py`; pending account response has no role or
-  matter memberships.
+  memberships; billing state is absent from the context.
 - **Integration:** Clerk adapter validates issuer, signature, authorised party,
   audience where configured, and expiry; `(issuer, subject)` maps through
   `UserIdentity`; invited users activate with only invitation-approved access;
   uninvited or manually provisioned identities remain pending; membership
   assignment and role changes persist and are audited.
-- **Security:** cross-matter access denied; 404-not-403 existence hiding;
+- **Security:** cross-organisation and cross-matter access denied;
+  404-not-403 existence hiding;
   privilege escalation via forged role/membership claims rejected; permission
   changes always produce an audit event; email-only account merging rejected;
   raw tokens, login codes, and PII are absent from logs; sensitive actions
@@ -411,16 +448,17 @@ rule that acts on it lives in the check engine, not here.
 
 Recommended defaults in bold; confirm or override before coding.
 
-1. **Membership role vs. account role** — `MatterMembership` carries its own
-   `role` (per matter), while `User.role` is account-wide. Decide precedence
-   when they differ. Lean **the narrower of the two grants** the capability.
+1. **Role composition** — `User`, `OrganisationMembership`, and
+   `MatterMembership` carry separate roles. Use **the narrowest applicable
+   grant**, and never let organisation ownership imply legal approval.
 2. **Owner vs. membership** — the frontend `Matter.ownerId` is a single owner.
    Decide whether `ownerId` becomes an implicit `administrator`/`approver`
    membership or is dropped in favour of explicit memberships. Lean **derive an
    explicit membership from `ownerId` at migration**, then treat memberships as
    the source of truth.
-3. **Admin lockout guard** — prevent removing the last administrator membership
-   on an account or matter. Lean **block the operation** with a clear error.
+3. **Admin lockout guard** — prevent removing the last organisation owner or
+   required matter administrator. Lean **block the operation** with a clear
+   error.
 4. **Step-up policy** — choose the Clerk session age and which actions require
    recent authentication for V0. Lean **require it for final-draft approval,
    legal-instrument export, controlled-template changes, and role changes**.
@@ -439,7 +477,9 @@ The following decisions are closed for V0:
 - Sign-in methods: **Google OAuth/OIDC and passwordless email code**; magic link
   optional.
 - Application database: **Neon PostgreSQL** for Draftly users, identities,
-  roles, invitations, and matter memberships.
+  roles, invitations, organisation memberships, and matter memberships.
+- Tenant boundary: **organisation/workspace selected through verified
+  membership**; subscriptions belong to that organisation.
 - Application email: **Resend through `notification_service`**.
 - Identity mapping: **separate `UserIdentity` keyed by `(issuer, subject)`**.
 - Admission: **invitation/approval required; otherwise pending with no access**.

@@ -19,7 +19,10 @@ becoming an unsafe legal system.
 
 The V0 backend shall provide:
 
-- authenticated users, roles, and matter membership checks;
+- authenticated users, organisation workspaces, roles, and matter membership
+  checks;
+- organisation-owned subscriptions, plan entitlements, usage quotas, and
+  provider-neutral recurring billing;
 - matter creation, assignment, lifecycle, and privacy-safe references;
 - immutable document upload and versioning;
 - asynchronous document-processing jobs with visible states;
@@ -121,6 +124,7 @@ backend/
 │     │  └─ v1/
 │     │     ├─ router.py
 │     │     ├─ auth.py
+│     │     ├─ billing.py
 │     │     ├─ matters.py
 │     │     ├─ documents.py
 │     │     ├─ particulars.py
@@ -132,6 +136,8 @@ backend/
 │     │     ├─ audit.py
 │     │     └─ health.py
 │     ├─ application/
+│     │  ├─ auth_service.py
+│     │  ├─ billing_service.py
 │     │  ├─ matter_service.py
 │     │  ├─ document_service.py
 │     │  ├─ verification_service.py
@@ -145,6 +151,8 @@ backend/
 │     │  └─ export_service.py
 │     ├─ domain/
 │     │  ├─ enums.py
+│     │  ├─ organisations.py
+│     │  ├─ billing.py
 │     │  ├─ matter.py
 │     │  ├─ documents.py
 │     │  ├─ evidence.py
@@ -159,6 +167,7 @@ backend/
 │     │  └─ invariants.py
 │     ├─ schemas/
 │     │  ├─ common.py
+│     │  ├─ billing.py
 │     │  ├─ matter.py
 │     │  ├─ document.py
 │     │  ├─ particular.py
@@ -175,6 +184,7 @@ backend/
 │     │  ├─ legal_retrieval.py
 │     │  ├─ legal_catalogue.py
 │     │  ├─ identity.py
+│     │  ├─ billing.py
 │     │  └─ rendering.py
 │     ├─ infrastructure/
 │     │  ├─ db/
@@ -190,7 +200,9 @@ backend/
 │     │  ├─ retrieval/
 │     │  │  └─ engine_adapter.py
 │     │  ├─ identity/
-│     │  │  └─ oidc_adapter.py
+│     │  │  └─ clerk_adapter.py
+│     │  ├─ billing/
+│     │  │  └─ payhere_adapter.py
 │     │  └─ rendering/
 │     │     └─ office_renderer.py
 │     ├─ workers/
@@ -247,6 +259,8 @@ The backend must keep these stores and concepts separate:
 | Draft | Versioned snapshot bound to exact fact and template versions |
 | Approval/export | Approval targets one content hash; export records its manifest and checksum |
 | Audit | Append-only events for upload, review, correction, override, approval, export, access, and content governance |
+| Organisation | Every matter and subscription belongs to one server-verified workspace; cross-organisation access is denied |
+| Billing | Provider events are verified and idempotent; role permission and paid entitlement are independent gates |
 
 ### 5.3 State invariants
 
@@ -283,12 +297,13 @@ Exit gate:
 
 ### Phase 1 — Contracts and database
 
-Implement Pydantic request/response schemas and domain enums for Matter,
-Document, DocumentVersion, SourceSpan, Particular, ParticularVersion, Party,
-Parcel, Instrument, Interest, Finding, StepRun, LegalSource,
-CorpusReleaseManifest, Draft, Approval, Export, and AuditEvent. Add SQLAlchemy
-models, Alembic migrations, optimistic version columns, and repository
-interfaces.
+Implement Pydantic request/response schemas and domain enums for Organisation,
+OrganisationMembership, PlanVersion, PlanEntitlement, Subscription, usage,
+Matter, Document, DocumentVersion, SourceSpan, Particular,
+ParticularVersion, Party, Parcel, Instrument, Interest, Finding, StepRun,
+LegalSource, CorpusReleaseManifest, Draft, Approval, Export, and AuditEvent.
+Add SQLAlchemy models, Alembic migrations, optimistic version columns, and
+repository interfaces.
 
 Exit gate:
 
@@ -299,16 +314,33 @@ Exit gate:
 
 ### Phase 2 — Authentication, authorisation, and matters
 
-Add OIDC-compatible identity validation, user and role mapping, matter
-membership, server-side policy checks, safe 404/403 behaviour, and matter CRUD.
-The browser never supplies trusted role or unrestricted matter access.
+Add Clerk-compatible OIDC identity validation, user and role mapping,
+organisation and matter membership, server-side policy checks, safe 404/403
+behaviour, and matter CRUD. The browser never supplies a trusted role,
+organisation boundary, or unrestricted matter access.
 
 Exit gate:
 
-- a clerk cannot verify or approve;
+- a reviewer cannot approve;
 - an unauthorised user cannot infer another matter's existence;
 - all account, role, assignment, and matter mutations are audited; and
-- cross-matter security tests pass.
+- cross-organisation and cross-matter security tests pass.
+
+### Phase 2B — Organisation billing and entitlements
+
+Add immutable plan versions, organisation subscriptions, feature entitlements,
+atomic usage reservations and consumption, PayHere checkout behind
+`BillingProviderPort`, verified webhook processing, billing audit/outbox
+events, and grace/restricted policy. Payment details remain provider-hosted.
+
+Exit gate:
+
+- a subscription belongs to an organisation, never directly to a user;
+- forged checkout-return state cannot grant an entitlement;
+- duplicate or out-of-order provider events cannot duplicate or regress state;
+- role, organisation, matter, feature, and quota gates are server-enforced;
+- payment failure preserves existing legal records and approved exports; and
+- cross-organisation billing and usage tests pass.
 
 ### Phase 3 — Evidence intake and asynchronous processing
 
@@ -430,6 +462,8 @@ map:
 | Resource | Initial endpoints | State-changing controls |
 | --- | --- | --- |
 | Auth/session | `GET /me` | Identity provider owns authentication; API derives role and memberships |
+| Billing | `GET /billing/plans`, `GET /billing/subscription`, `GET /billing/usage`, `POST /billing/checkout`, `POST /billing/customer-portal`, `POST /billing/cancel`, `POST /billing/reactivate` | Organisation owner/admin policy; server-side plan data; audit changes |
+| Billing webhooks | `POST /billing/webhooks/payhere` | Provider checksum/signature, body limit, idempotency, transactional state and outbox |
 | Matters | `GET/POST /matters`, `GET/PATCH /matters/{id}` | Membership and role policy; audit create, assignment, archive |
 | Documents | `POST /matters/{id}/documents`, `GET /documents/{id}`, `POST /documents/{id}/versions` | Original preservation, checksum, type/size validation, replacement history |
 | Processing | `GET /documents/{id}/processing`, `POST /processing/{job}/retry` | Matter-scoped access, idempotent retry, audit outcome |
@@ -451,13 +485,14 @@ hold an HTTP request open while OCR, retrieval, or rendering runs.
 Connect the frontend in this order:
 
 1. Shared API client, session identity, and error envelope.
-2. Matters list, create, assignment, and overview.
-3. Document upload, processing status, original/derivative viewer.
-4. Candidate particulars, source evidence, verification, correction, and
+2. Organisation selection, subscription state, plan, and usage surfaces.
+3. Matters list, create, assignment, and overview.
+4. Document upload, processing status, original/derivative viewer.
+5. Candidate particulars, source evidence, verification, correction, and
    conflict comparison.
-5. Findings and guided task runs.
-6. Legal search and grounded answers with citation chips.
-7. Draft snapshots, review, approval, export, and audit history.
+6. Findings and guided task runs.
+7. Legal search and grounded answers with citation chips.
+8. Draft snapshots, review, approval, export, and audit history.
 
 Each replacement of a mock accessor must retain loading, empty, blocked,
 failure, and permission-denied states. The frontend must not infer that a
@@ -472,9 +507,11 @@ successful HTTP response means a fact is legally verified.
 - Contract: OpenAPI schemas, frontend fixtures, job messages, provider result
   normalisation, and export manifests.
 - Integration: PostgreSQL transactions, migrations, object storage, queue
-  retries, Document AI adapter, legal index, identity adapter, and renderer.
-- Security: cross-matter isolation, role escalation, upload validation, signed
-  URL expiry, CSRF/CORS policy, secret/log inspection, and approval bypass.
+  retries, Document AI adapter, legal index, identity adapter, billing adapter,
+  webhook replay, and renderer.
+- Security: cross-organisation and cross-matter isolation, role escalation,
+  forged entitlements, invalid billing webhooks, upload validation, signed URL
+  expiry, CSRF/CORS policy, secret/log inspection, and approval bypass.
 - End-to-end: the complete V0 path from matter creation to approved export.
 - Domain evaluation: lawyer-labelled extraction, provenance, checks, citation
   support, draft correctness, abstentions, and disagreements.
@@ -493,8 +530,8 @@ download boundary.
 - Use separate development, evaluation, and demonstration data.
 - Keep real client data out of fixtures, logs, traces, screenshots, and error
   reports.
-- Record application, migration, controlled-content, provider, processor, and
-  renderer versions for each evaluation and export.
+- Record application, migration, controlled-content, identity, billing,
+  processor, and renderer versions for each evaluation and export.
 - Provide retry, dead-letter, manual-review, and operator reprocessing paths.
 - Add database and object-storage backup/restore procedures before lawyer
   testing.
@@ -502,6 +539,9 @@ download boundary.
   prefixes and retention policies.
 - Document Google Document AI region, retention, deletion, training-use,
   quota, cost, and exit controls before live processing.
+- Document payment-provider onboarding, settlement, webhook reconciliation,
+  refund, grace, restriction, and billing-data retention procedures before
+  charging a customer.
 
 ## 11. Deliverables
 
@@ -510,8 +550,9 @@ The V0 backend implementation is complete only when these are present:
 1. `pyproject.toml` and committed `uv.lock`.
 2. The structured `src/draftly_api` package and migration history.
 3. Versioned OpenAPI output and frontend contract fixtures.
-4. Working matter, document, verification, checks, corpus-governance, library,
-   research, drafting, approval, export, audit, and health endpoints.
+4. Working organisation, billing, matter, document, verification, checks,
+   corpus-governance, library, research, drafting, approval, export, audit, and
+   health endpoints.
 5. Authenticated workers for document, research, and export jobs.
 6. Synthetic seed data and reproducible local setup.
 7. Unit, integration, contract, security, domain, and end-to-end tests.
@@ -527,7 +568,9 @@ The V0 backend implementation is complete only when these are present:
 - PostgreSQL and object-storage deployment choices for the reference
   environment.
 - Queue technology and worker runtime.
-- OIDC provider and role/matter-membership mapping.
+- Clerk environment and account, organisation, and matter role mapping.
+- PayHere business onboarding, settlement account, plan prices, currencies,
+  allowances, taxes, refunds, grace period, and restricted-mode policy.
 - Google Document AI processor version, region, and approved document classes.
 - Form 8 schema, wording, legal rules, and template approval.
 - Retention, deletion, backup, and external-processing policy.
