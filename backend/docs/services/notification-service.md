@@ -127,13 +127,18 @@ eligible:
   "recipientUserId": "user-synthetic-123",
   "dueAt": "2026-08-06T17:00:00+05:30",
   "reminderType": "due-in-24-hours",
+  "obligationClass": "legal-deadline",
+  "urgency": "critical",
+  "confidentialityLevel": "private-matter",
   "templateKey": "obligation.reminder.due_in_24_hours",
+  "deliveryPolicyKey": "legal-deadline.standard",
   "correlationId": "corr-01K2DRAFTLY00000000001"
 }
 ```
 
-`matterId` is nullable because a notary licence renewal is user-scoped rather
-than matter-scoped. Events contain identifiers and timing metadata only. They
+`matterId` is nullable because an annual notarial practice certificate is
+user-scoped rather than matter-scoped. Events contain identifiers and timing
+metadata only. They
 must not contain client names, property details, document excerpts, extracted
 facts, or other private matter content.
 
@@ -198,7 +203,11 @@ NotificationDelivery
   recipientUserId
   channel
   reminderType
+  obligationClass
+  urgency
+  confidentialityLevel
   templateKey
+  deliveryPolicyKey
   locale
   status = queued | processing | delivered | failed | suppressed
   attemptCount
@@ -261,10 +270,11 @@ handle_reminder_due(event)
   1. validate the event schema and version
   2. reject or dead-letter an event with missing required identifiers
   3. load the recipient and current notification preferences
-  4. determine the enabled channels
-  5. create one NotificationDelivery per channel, idempotently
-  6. mark disabled or unavailable channels as suppressed
-  7. enqueue queued deliveries
+  4. load the approved delivery policy for class, urgency, and confidentiality
+  5. determine the permitted and enabled channels
+  6. create one NotificationDelivery per channel, idempotently
+  7. mark disabled or unavailable channels as suppressed
+  8. enqueue queued deliveries
 ```
 
 Event acknowledgement occurs only after the delivery records are committed.
@@ -350,6 +360,37 @@ Frontend notification-center strings continue to use `next-intl`. Backend
 email and push templates use their own versioned message catalogue because
 they render outside the Next.js process.
 
+### 8.1 Restricted compliance notifications
+
+Sanctions and suspicious-transaction workflows use
+`restricted-compliance`. The notification service applies a dedicated
+delivery policy before user preferences:
+
+```text
+recipient
+  = compliance officer or explicitly approved backup role
+
+in-app destination
+  = authenticated restricted compliance workspace
+
+email or push content
+  = neutral action-required message only
+```
+
+The event, subject, preview, body, logs, metrics, and provider metadata must
+not contain:
+
+- the client or beneficial-owner name;
+- the designated-list match;
+- a suspicion narrative;
+- the matter reference;
+- property or deed details; or
+- the existence or contents of an STR.
+
+Preference settings cannot redirect restricted notifications to an arbitrary
+address. Whether a mandatory compliance alert may bypass an ordinary opt-out
+is a governed legal and firm-policy decision, not an application default.
+
 ## 9. Retry and failure policy
 
 Failures are classified before retry:
@@ -408,6 +449,8 @@ addresses and never include template bodies or matter content.
 - Use least-privilege provider credentials and rotate them.
 - Sign and verify provider webhooks; make webhook processing idempotent.
 - Protect notification-preference routes with the authenticated user context.
+- Apply a separate role allowlist to restricted-compliance notifications;
+  ordinary matter membership is insufficient.
 - Keep action links short-lived and authenticated; never place private data in
   URL query parameters.
 - Define retention separately for delivery metadata and provider payloads.
@@ -440,6 +483,7 @@ There is no public "send email" endpoint in V0.
 | Reminder decisions are made once | Unique ReminderOccurrence per obligation, recipient, and reminder type |
 | Each channel sends at most once | Unique NotificationDelivery plus provider idempotency key |
 | No private matter data enters events | Identifier-only event contract and schema tests |
+| Restricted alerts reveal no sensitive context | Dedicated delivery policy, neutral template, and compliance-role allowlist |
 | Preferences are respected | Preferences are checked before delivery creation |
 | Provider code stays at the boundary | EmailPort and infrastructure adapters |
 | Message copy is governed | Versioned template key and approved catalogue |
@@ -456,6 +500,8 @@ There is no public "send email" endpoint in V0.
 - Retryable and permanent errors transition to the correct state.
 - Rendering rejects missing template variables.
 - Event and log serializers exclude private matter fields.
+- Restricted-compliance policy produces only a neutral message for approved
+  recipients.
 
 ### Contract
 
@@ -477,6 +523,8 @@ There is no public "send email" endpoint in V0.
 - A user cannot read or change another user's preferences.
 - A caller cannot choose an arbitrary delivery address.
 - Cross-matter notification reads do not disclose another matter.
+- Ordinary matter members cannot discover restricted-compliance
+  notifications.
 - Logs, audit rows, and events do not expose addresses or matter content.
 - Unsigned or replayed provider webhooks are rejected.
 
@@ -506,3 +554,5 @@ There is no public "send email" endpoint in V0.
    application constants.
 8. Require provider idempotency where supported and retain the database
    uniqueness constraint regardless.
+9. Add a restricted-compliance delivery policy with neutral templates and a
+   dedicated role allowlist before enabling AML/CFT alerts.
