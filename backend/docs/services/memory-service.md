@@ -63,7 +63,7 @@ note-overwrite) tolerable.
 
 **Everything in session memory is reconstructable from the authoritative
 stores** — verified facts in Postgres, documents in object storage, law in the
-approved signed corpus release, and voice transcript events in the
+signed internal-research corpus release, and voice transcript events in the
 voice-service event store. Session memory is a cache, not a source of truth.
 
 This single rule neutralises the benchmark HiMem's main weakness. If a note is
@@ -94,7 +94,7 @@ everything traces back:
 | --- | --- |
 | Document summary | `DocumentVersion` id (immutable) |
 | Retrieved law | Approved legal-source id, corpus release, policy version, and query |
-| Retrieved case | Approved case-source id, release, and query; unavailable in V0 until case sources pass governance |
+| Retrieved case | Restricted internal-research case-source id, release, policy version, and query |
 | Session working note | session id, author, timestamp |
 | Decision / checklist state | the matter event that set it |
 | Live partial transcript | `TranscriptEvent` id, session id, and sequence |
@@ -164,7 +164,7 @@ did we believe before" still resolves.
 ## 9. The "don't re-query" win
 
 ```text
-turn 1:  question ─→ approved legal retrieval release
+turn 1:  question ─→ internal legal retrieval release
                      └─ result ingested with source/release/policy pointers
 turn 2+: question ─→ session memory (fast, ~0.024s-class) serves the remembered
                      context; only a genuine delta triggers a fresh retrieval

@@ -1,10 +1,9 @@
 # research-service — implementation design
 
-Companion to `backend/backend-implementation-plan-v0.md`,
-`corpus-governance-service.md`, `document-service.md`, and
-`memory-service.md`. This service is the **grounded legal assistant**: a
-question about Sri Lankan RTA law goes in, a rights-compliant cited answer or
-an honest abstention comes out.
+Companion to `backend/backend-implementation-plan-v0.md`, `document-service.md`,
+and `memory-service.md`. This service is the **grounded legal assistant**: a
+question about Sri Lankan RTA law goes in, a cited answer or an honest
+abstention comes out.
 
 The assistant UI is based mainly on selected components and interaction
 patterns from [LibreChat](https://github.com/danny-avila/LibreChat). LibreChat
@@ -33,10 +32,17 @@ particulars, feed drafts, or promote a machine-derived case-rule to authority.
 It produces citations marked with their verification status and hands the
 decision to the lawyer.
 
-It does not decide source reuse rights. `corpus-governance-service` approves
-source-specific indexing, display, quotation, and download policies. Research
-can use only the approved production release. The CommonLII harvest and
-unreviewed NLR/SLR material are not available to this service in V0.
+The research corpus may include case-law text classified for restricted
+internal research use, including the current CommonLII-derived collection.
+That classification permits retrieval and grounded answer composition; it does
+not permit the Library to republish full judgments, report scans, headnotes,
+database pages, or bulk downloads. Research output is limited to Draftly-
+composed claims, case citations, and bounded evidence passages required for
+grounding.
+
+This is a deliberate product boundary, not a conclusion that the acquisition
+or use is legally risk-free. The source and access policy remains subject to
+written Sri Lankan intellectual-property review and any provider terms.
 
 It also owns research-conversation state: conversations, messages, branches,
 answer jobs, visible tool calls, stream cursors, and attachment references.
@@ -151,9 +157,8 @@ answer.
 
 ## 3. Domain models it needs
 
-In `domain/research.py`, preserving the frontend contract in
-`frontend/src/types/answer.ts` while adding server-owned source-integrity
-fields:
+In `domain/research.py`, mirroring the frontend contract in
+`frontend/src/types/answer.ts` exactly:
 
 - **GroundedAnswer** — a discriminated union on `kind`:
   - `{ id, kind: "grounded", question, claims: Claim[], corpusLimitKey }`
@@ -163,8 +168,6 @@ fields:
 - **Citation** — `{ id, authority: Authority, evidence: EvidenceSpan }`. The
   `EvidenceSpan` (from `evidence.ts`: `documentId`, `page`, optional `region`,
   optional `charRange`, `snippet`) is the source passage the claim resolves to.
-  The persisted backend record also pins `legalSourceId`, `sourceChecksum`,
-  `corpusReleaseVersion`, `sourcePolicyVersion`, and `quotationPolicy`.
 - **Authority** — `{ id, title, reference, type: AuthorityType, courtLevel:
   CourtLevel, weight: AuthorityWeight, verified: boolean }`.
 - **AssistantScope** — `{ type: AssistantScopeType, targetId?, labelKey }`. The
@@ -207,24 +210,20 @@ machine-derived case-rule until a lawyer reviews it. A rendered answer may cite
 such an authority, but it is visibly marked unverified — it never silently
 carries the weight of a reviewed source.
 
-The `case-rule` enum remains reserved for future approved sources. V0 does not
-emit case-law citations merely because an unverified candidate or quarantined
-CommonLII record exists.
-
 ## 4. Ports it depends on
 
 In `ports/`:
 
 - `LegalRetrievalPort` (`ports/legal_retrieval.py`) — the versioned interface
-  over an approved signed corpus release. `search(query, scope, corpus_version)
-  -> RetrievalResult` returns candidate passages, each with its source id,
-  span, authority metadata, provenance, and quotation policy. Provider-neutral
-  so the engine is swappable and pinned to a recorded corpus version.
+  over `src/draftly/retrieval`. `search(query, scope, corpus_version) ->
+  RetrievalResult` returns candidate passages, each with its `SRC`/case id,
+  span, and authority metadata. Provider-neutral so the engine is swappable and
+  pinned to a recorded corpus version.
 - `SessionMemoryPort` (from `memory-service`) — `ingest_episode` and `retrieve`,
   per-matter scoped. This is the "don't re-query" seam, see §6.
 - `CitationValidationPort` — resolves every proposed citation to a corpus
-  version, authority record, exact source passage, reviewed checksum, and
-  current quotation/display policy before the claim can be retained.
+  version, authority record, and exact source passage before the claim can be
+  retained.
 - `ResearchRepository` — persist and load `GroundedAnswer` records and the
   audit-only action log; matter-scoped queries only.
 - `ConversationRepository` — persist conversations, immutable message
@@ -235,9 +234,9 @@ In `ports/`:
 - `AuditPort` — `record(event)`; every ask and every action logs.
 
 The corpus is a **separate index and access path**. `LegalRetrievalPort` has no
-handle to matter storage or quarantine storage. It cannot query confidential
-documents or harvested restricted sources. This is enforced by construction:
-the port exposes neither method.
+handle to matter storage; it cannot query confidential documents (§5.2 trust
+boundary). This is enforced by construction — the port simply exposes no such
+method.
 
 ### Draftly MCP tools
 
@@ -249,15 +248,13 @@ Initial tool surface:
 
 ```text
 search_statutes
+search_cases
 lookup_legal_reference
+expand_citation_graph
 get_source_passage
 search_matter_memory
 get_matter_context
 ```
-
-`search_cases` and `expand_citation_graph` remain disabled until approved
-case-law records exist. Their presence in a future schema does not permit use
-of the quarantined CommonLII corpus.
 
 Tool rules:
 
@@ -267,8 +264,6 @@ Tool rules:
   and audit event.
 - Corpus tools return authority IDs, corpus versions, and source spans rather
   than uncited prose.
-- Corpus tools enforce source indexing and quotation policies server-side.
-  The model cannot request a blocked passage or broader display mode.
 - Matter tools call Draftly service ports and repeat membership checks.
 - `get_matter_context` returns only the minimum permitted context for the
   current question.
@@ -328,15 +323,13 @@ The round-trip that does not exist today. `POST /api/assistant/ask`.
    version. This is the long path; return a job id and `pending` state per §7,
    then compose asynchronously in `workers/research_jobs.py`.
 4. Compose claims from the retrieval passages. For each claim, attach only
-   citations that resolve to an approved quotable `EvidenceSpan`, an
-   `Authority`, the reviewed source checksum, and the current policy. Drop any
-   claim whose citation or source policy does not validate.
+   citations that resolve to a real `EvidenceSpan` plus an `Authority`. Drop any
+   claim whose citations do not validate.
 5. If no claim survives validation, return the `insufficient-authority` branch
    with a `reasonKey` and `suggestedActionKey` — **abstain, do not fabricate**
    (§7 exit gate).
-6. Ingest the result into session memory as episodes carrying approved source
-   and corpus-release pointers, so a later identical or near ask is served from
-   memory.
+6. Ingest the result into session memory as episodes carrying `SRC`/case
+   pointers, so a later identical or near ask is served from memory.
 7. Audit `assistant.question-asked`. Persist the `GroundedAnswer`, append a
    terminal stream event, and return the updated job. The completed answer is
    available through the conversation message and answer read endpoints.
@@ -363,21 +356,17 @@ matter hits the full retrieval pipeline; the result is remembered; later asks in
 the same session are served from memory.
 
 ```text
-ask #1: question ─→ LegalRetrievalPort.search (approved-source pipeline)
+ask #1: question ─→ LegalRetrievalPort.search (full statute/case pipeline)
                     └─ result composed, then ingested as episodes
-                       (approved source + release + span pointers)
+                       (SRC/case id + span pointers, non-authoritative)
 ask #2+: question ─→ SessionMemoryPort.retrieve (fast, remembered set)
                     └─ only a genuine delta re-triggers LegalRetrievalPort
 ```
 
-Because remembered law is stored as approved source and release pointers, an
-answer served from memory is still traceable and re-runnable — it does not
-become a second, drifting source of truth. Session memory is a cache; the
-approved corpus release stays authoritative.
-
-Quarantine, takedown, or a policy downgrade invalidates every memory episode
-and persisted replay passage that points to the affected source. Historical
-audit metadata remains, but restricted text is not replayed.
+Because remembered law is stored as `SRC`-id pointers, an answer served from
+memory is still traceable and re-runnable — it does not become a second,
+drifting source of truth. Session memory is a cache; the corpus stays
+authoritative.
 
 ## 7. Invariants this service enforces
 
@@ -386,10 +375,8 @@ audit metadata remains, but restricted text is not replayed.
 | Every retained claim resolves to a source passage and authority status (Phase 6 gate) | Each `Claim` keeps only `Citation`s with a real `EvidenceSpan` + `Authority`; unbacked claims are dropped |
 | Unsupported questions abstain (Phase 6 gate) | The `insufficient-authority` union branch, with `reasonKey`/`suggestedActionKey`; never a fabricated claim |
 | No invented citation (§9.2 release blocker) | Citation validation runs on every claim before an answer is retained |
-| Source rights fail closed | Retrieval and citation validation require an approved release entry and a quotation policy that permits the returned span |
 | Machine-derived case-rules stay unverified | `Authority.verified = false` and `weight = unverified-candidate` until lawyer review; visibly marked |
 | Corpus cannot query matter storage (§5.2) | `LegalRetrievalPort` exposes no matter-storage access; separate index and path |
-| Quarantine cannot feed the model | Production retrieval has no quarantine-store path; CommonLII and unreviewed NLR/SLR records are absent from the release |
 | Never authority | A grounded answer is a suggestion; nothing here feeds a draft — only the verified tier does |
 | Ask does not block on retrieval (§7) | Returns a job id and state; composition runs in the worker |
 | Chat shell cannot widen authority | LibreChat-derived components call typed Draftly APIs; they do not decide corpus, matter, role, memory, or audit policy |
@@ -406,10 +393,6 @@ audit metadata remains, but restricted text is not replayed.
   retry state; no partial or guessed answer is persisted.
 - Session-memory hit is stale (the corpus version moved) — treat as a miss and
   re-retrieve against the pinned version.
-- A source is quarantined or its display/quotation policy is narrowed —
-  invalidate cached passages and abstain if no approved source remains.
-- A CommonLII or unreviewed NLR/SLR identifier is requested — return no result;
-  do not link the model to the quarantine store.
 - Scope names a matter the actor cannot access — deny at membership re-check,
   return 404-not-403 (Phase 2 gate) so matter existence is not leaked.
 - A question is asked in `library` scope with no matter context — allowed;
@@ -431,7 +414,7 @@ audit metadata remains, but restricted text is not replayed.
 - **Unit:** claim retention (drop claims with no valid citation); abstain
   produces the `insufficient-authority` branch; `unverified-candidate` weight
   and `verified=false` survive composition; discriminated-union serialisation
-  matches `answer.ts`; blocked quotation policy drops the claim.
+  matches `answer.ts`.
 - **Contract:** `GroundedAnswer` response schema against the frontend type; the
   conversation, message, branch, tool-call, stream-event, and `ask` job
   envelopes; `LegalRetrievalPort` and MCP tool schemas.
@@ -439,15 +422,13 @@ audit metadata remains, but restricted text is not replayed.
   from session memory without re-running the engine; corpus-version bump forces
   re-retrieval; a disconnected stream resumes without duplicating a job;
   branching preserves the original path; attachment access is re-checked;
-  latency measured against the V0 target (Phase 6 gate); quarantine invalidates
-  memory and removes the passage; CommonLII files are never retrieved.
+  latency measured against the V0 target (Phase 6 gate).
 - **Frontend compatibility:** each selected LibreChat component renders under
   Next.js 15 and React 19, uses Draftly's typed APIs and translations, passes
   keyboard and screen-reader checks, and has no dependency on LibreChat's Node
   API, MongoDB model, or authentication state.
 - **Licence:** copied or substantially derived files retain required notices;
-  the third-party notice records the pinned LibreChat revision; every corpus
-  citation carries an approved release entry and policy.
+  the third-party notice records the pinned LibreChat revision.
 - **Security:** the corpus cannot reach matter storage; cross-matter scope
   denied with 404-not-403; no matter data leaks into a `library`-scope answer;
   arbitrary MCP tools are unavailable; no secret or raw client data in logs.
@@ -490,9 +471,6 @@ Recommended defaults in bold; confirm or override before coding.
    maximum replay size. Final messages and GroundedAnswers follow their
    approved records-retention policy and are not deleted with transient stream
    events.
-10. **V0 research corpus.** Restrict production research to approved official
-    statutes, amendments, and gazettes. Keep case search disabled until
-    independently sourced case records pass corpus governance.
 
 ## 11. LibreChat references
 

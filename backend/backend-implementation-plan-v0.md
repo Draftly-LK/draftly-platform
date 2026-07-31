@@ -242,8 +242,8 @@ The backend must keep these stores and concepts separate:
 | Original evidence | Immutable object version; never overwritten by OCR or correction |
 | Derivatives | OCR, layout, quality, previews, and candidate extraction are rebuildable and never authoritative |
 | Verified matter record | Only lawyer-verified or lawyer-corrected particulars may feed approved matter outputs |
-| Legal corpus | Separate approved release, index, and access path; confidential matter documents are not public authority |
-| Quarantined sources | CommonLII harvest, unreviewed NLR/SLR, and unknown-rights material have no production catalogue, retrieval, model, snippet, or download path |
+| Legal corpus | Separate audience-specific releases, indexes, and access paths; confidential matter documents are not public authority |
+| Restricted case-law corpus | CommonLII-derived and unreviewed NLR/SLR text may feed internal research retrieval but has no Library source-reader, bulk-download, export, or public-dataset path |
 | Draft | Versioned snapshot bound to exact fact and template versions |
 | Approval/export | Approval targets one content hash; export records its manifest and checksum |
 | Audit | Append-only events for upload, review, correction, override, approval, export, access, and content governance |
@@ -360,16 +360,18 @@ Exit gate:
 
 Implement corpus governance before retrieval. Record source provenance,
 rights/licence status, indexing, display, quotation, and download policies;
-approve sources into a signed versioned release; and expose a catalogue of
-approved official statutes, amendments, and gazettes.
+approve sources into signed audience-specific releases; and expose a catalogue
+of approved official statutes, amendments, and gazettes.
 
-Quarantine the CommonLII harvest and unreviewed NLR/SLR material. They must not
-enter production indexes, model context, snippets, downloads, training, or
-evaluation. The curriculum supplies a coverage taxonomy and acquisition
-priority only; each source and amendment relationship is independently
-verified.
+Classify the CommonLII-derived and unreviewed NLR/SLR collection for restricted
+internal research. It may feed case search, citation graphs, grounded answer
+composition, embeddings, and internal evaluation. It must not feed Library
+source-text display, bulk downloads, exports, or public datasets. The
+curriculum supplies a coverage taxonomy and acquisition priority only; each
+source and amendment relationship is independently verified.
 
-Create the legal-catalogue and legal-retrieval ports over the approved release.
+Create the legal-catalogue port over the public release and the
+legal-retrieval port over the internal research release.
 Expose search first, then bounded answer composition with claim-level citation
 and source-policy validation. The first integration may wrap approved outputs
 from the existing Python retrieval engine through a versioned
@@ -382,8 +384,8 @@ Exit gate:
 - every source and passage resolves to an approved release entry, reviewed
   checksum, and policy permitting that use;
 - unsupported questions abstain;
-- CommonLII and unreviewed NLR/SLR files are absent from catalogue and
-  retrieval indexes;
+- CommonLII-derived and unreviewed NLR/SLR text is searchable by the research
+  engine but absent from Library source-text and download responses;
 - the legal corpus cannot query confidential matter storage; and
 - search and answer latency are measured against the V0 targets.
 
@@ -482,9 +484,9 @@ successful HTTP response means a fact is legally verified.
 The backend cannot be accepted if it permits an invented citation, unsupported
 retained legal claim, cross-matter disclosure, silent original loss, mandatory
 unverified fact in an approved export, altered locked wording, hidden
-placeholder, missing audit event, approval attached to changed content, or an
-unapproved or quarantined legal source entering catalogue, retrieval, model
-context, quotation, or download output.
+placeholder, missing audit event, approval attached to changed content, or a
+legal source crossing its approved audience, indexing, quotation, display, or
+download boundary.
 
 ## 10. Operational Requirements
 

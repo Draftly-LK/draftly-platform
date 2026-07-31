@@ -14,30 +14,39 @@ licence relied on for NLR, SLR, or third-party legal databases.
 
 ## 1. Decision
 
-V0 publishes a catalogue of independently verified official statutes,
-amendments, and gazettes. Full-text indexing or display is enabled only when
-the exact source record passes provenance and rights review.
+V0 has two independently governed corpus audiences:
 
-The CommonLII case-law harvest is quarantined. It is excluded from:
+```text
+internal-research
+  -> statutes, amendments, gazettes, and restricted case-law retrieval
 
-- the production corpus and vector index;
-- library browse and source-detail responses;
-- research retrieval and model context;
-- generated snippets, quotations, and citation passages;
-- training, evaluation, and embeddings;
-- downloads, exports, and public datasets; and
-- rebuild or refresh jobs.
+public-catalogue
+  -> independently verified official statutes, amendments, and gazettes
+```
 
-Case names or citations discovered there may enter Draftly only after being
-independently verified from an approved official, licensed, or public-domain
-source. The CommonLII database is not the production provenance for that new
-record.
+The CommonLII-derived case-law collection is classified
+`restricted-internal-research`. It may feed case search, citation-graph
+retrieval, grounded answer composition, embeddings, and internal evaluation.
+It is excluded from:
 
-Historical law-report material and modern NLR/SLR material remain
-`quarantined` or `metadata-only` until a record-specific public-domain
-determination, official source, or written licence is recorded. Publisher
-headnotes, summaries, catchwords, pagination, annotations, and indexes are
-never treated as official judgment text.
+- Library browse and source-detail full text;
+- judgment, report-scan, database-page, and headnote display;
+- bulk downloads, exports, and public datasets; and
+- any endpoint that returns the stored source document.
+
+Research responses may expose Draftly-composed claims, case citations, and
+bounded evidence passages needed to ground those claims. They do not expose a
+source-document reader or reconstruct the underlying report.
+
+Historical law-report material and modern NLR/SLR material use the same
+audience-specific policy unless an official source, public-domain
+determination, or written licence permits broader use. Publisher headnotes,
+summaries, catchwords, pagination, annotations, and indexes are never treated
+as official judgment text.
+
+This boundary records the intended product behavior; it is not a conclusion
+that internal commercial use is risk-free. Provider terms and Sri Lankan
+copyright advice remain an explicit legal-review item.
 
 ## 2. Local-source assessment
 
@@ -65,6 +74,7 @@ The service owns:
 - immutable provenance and retrieval metadata;
 - rights and licence classifications;
 - separate indexing, display, quotation, and download policies;
+- separate internal-research and public-catalogue release manifests;
 - rights-review and content-review decisions;
 - quarantine and takedown state;
 - corpus release manifests and versions;
@@ -81,8 +91,9 @@ It does not:
 - decide that fair use permits a commercial corpus; or
 - silently broaden rights when an LLM or crawler can access the material.
 
-`library_service` remains the read-only catalogue. `research_service` retrieves
-only approved indexable sources.
+`library_service` reads only the public-catalogue release.
+`research_service` reads the internal-research release, including sources whose
+public display and download policies are blocked.
 
 ## 4. Domain model
 
@@ -103,11 +114,13 @@ LegalSource
   officialTranslation
   provenanceStatus
   rightsStatus
+  sourceUseClass
   licenceReference?
   indexingPolicy
   displayPolicy
   quotationPolicy
   downloadPolicy
+  allowedAudiences
   reviewState
   reviewedBy?
   reviewedAt?
@@ -132,6 +145,11 @@ RightsStatus =
   restricted |
   unknown
 
+SourceUseClass =
+  public-catalogue |
+  restricted-internal-research |
+  quarantined
+
 IndexingPolicy =
   full-text |
   metadata-only |
@@ -154,6 +172,10 @@ DownloadPolicy =
   link-to-official-source |
   blocked
 
+CorpusAudience =
+  internal-research |
+  public-catalogue
+
 CorpusReviewState =
   discovered |
   provenance-recorded |
@@ -174,13 +196,16 @@ source discovered
   -> provenance recorded
   -> rights or licence classified
   -> content and official status reviewed
-  -> policies approved independently
-  -> source included in a signed corpus release
-  -> library and research services may consume that release
+  -> audience policies approved independently
+  -> source included in one or both signed audience releases
+  -> each runtime service consumes only its release
 ```
 
-Only `approved` sources appear in a production corpus release. Unknown,
-restricted, quarantined, or incomplete records fail closed.
+Only reviewed sources appear in a release. Unknown, denied, quarantined, or
+incomplete records fail closed. A `restricted` source may appear in the
+internal-research release only when its indexing, quotation, display, and
+download restrictions are explicit. It cannot appear in the public-catalogue
+release unless its public policy separately permits that audience.
 
 The approval checks include:
 
@@ -222,8 +247,13 @@ are verified.
 
 ### 6.3 Case law
 
-V0 does not publish the harvested NLR/SLR/CommonLII collection. An individually
-approved case record may later expose independently verified metadata:
+V0 indexes the CommonLII-derived NLR/SLR and court collection for restricted
+internal research. The research engine may search the text, retrieve grounded
+passages, construct a citation graph, and compose an answer.
+
+The Library does not publish the harvested source text. An individually
+approved public-catalogue case record may later expose independently verified
+metadata:
 
 ```text
 case name
@@ -234,8 +264,9 @@ official or licensed source link
 rights and verification status
 ```
 
-Judgment text, report scans, headnotes, summaries, and source passages remain
-blocked unless the exact record has an approved policy permitting that use.
+Judgment text, report scans, headnotes, database pages, and bulk source passages
+remain blocked from Library display and download unless the exact record has a
+separate public policy permitting that use.
 
 ### 6.4 Draftly editorial material
 
@@ -261,37 +292,42 @@ use.
 
 ## 7. Enforcement
 
-The corpus build fails when:
+An audience-specific corpus build fails when:
 
-- a source is not `approved`;
+- a source is not reviewed for that audience;
 - indexing is broader than `indexingPolicy`;
 - a passage is emitted when quotation is blocked;
 - full text is returned under metadata-only or link-out policy;
 - a download is generated when download is blocked;
 - the source checksum differs from the reviewed checksum; or
-- a source has no release-manifest entry.
+- a source has no release-manifest entry for the requesting audience.
 
-Runtime services receive policy-filtered records. They cannot override source
-policy:
+Runtime services receive audience- and policy-filtered records. They cannot
+override source policy:
 
 ```python
-if source.display_policy == "full-text":
-    return approved_full_text
-if source.display_policy == "snippet-only":
-    return approved_metadata_and_permitted_spans
-if source.display_policy in {"metadata-only", "link-out"}:
-    return metadata_and_source_link
+if audience == "internal-research" and source.indexing_policy == "full-text":
+    return retrieval_record
+if audience == "public-catalogue" and source.display_policy == "full-text":
+    return catalogue_full_text
+if audience == "public-catalogue" and source.display_policy == "snippet-only":
+    return catalogue_metadata_and_permitted_spans
+if audience == "public-catalogue" and source.display_policy in {
+    "metadata-only",
+    "link-out",
+}:
+    return catalogue_metadata_and_source_link
 raise PublicationDenied()
 ```
 
-The production retrieval index is built from the release manifest, never by
-walking the research repository directories.
+The research index and public catalogue are built from different signed release
+manifests, never by walking research-repository directories at runtime.
 
 ## 8. Takedown and quarantine
 
 A maintainer or legal reviewer can quarantine a source immediately. Quarantine:
 
-- removes it from the next production index and catalogue release;
+- removes it from the applicable research and catalogue releases;
 - invalidates cached source passages;
 - marks dependent research answers unavailable for replay;
 - preserves source, review, release, and audit history; and
@@ -305,11 +341,12 @@ retains the minimum non-content audit record.
 
 ### Unit
 
-- Unknown and restricted sources fail closed.
+- Unknown and denied sources fail closed.
 - Folder name and filename never imply official status.
 - Policy combinations reject broader indexing, display, quotation, or download.
 - Quarantined sources cannot enter a release.
 - Approved metadata-only records never return text.
+- Restricted internal-research records cannot enter the public catalogue.
 
 ### Contract
 
@@ -321,14 +358,15 @@ retains the minimum non-content audit record.
 ### Integration
 
 - Build a statutes catalogue from approved manifest entries only.
-- Exclude every CommonLII path from catalogue and retrieval indexes.
+- Include reviewed CommonLII-derived records in the restricted research index.
+- Exclude every CommonLII source document from Library browse and download.
 - Reject an unverified consolidated statute.
 - Approve an official amendment as metadata-only with an official link.
 - Quarantine an indexed source and rebuild without stale passages.
 
 ### Security and compliance
 
-- Production workers cannot read the quarantine store.
+- Library workers cannot read the restricted research source store.
 - Research tools cannot override source policy.
 - Audit records do not copy restricted text.
 - A release can be reproduced from its signed manifest and reviewed checksums.
@@ -337,13 +375,15 @@ retains the minimum non-content audit record.
 
 1. Ship statutes, amendments, and gazettes as a rights-reviewed catalogue
    before shipping case-law full text.
-2. Quarantine the CommonLII harvest and stop automated refreshes.
+2. Use the CommonLII-derived case-law collection for restricted research while
+   blocking Library source-text display and download.
 3. Treat the curriculum as coverage taxonomy, not authority or publication
    content.
 4. Require independent source verification for every catalogue entry.
-5. Build production indexes only from approved release manifests.
-6. Obtain written Sri Lankan IP review before enabling NLR/SLR text, snippets,
-   embeddings, training, or downloads.
+5. Build the research index and public catalogue from separate signed release
+   manifests.
+6. Obtain written Sri Lankan IP review before broadening NLR/SLR/CommonLII
+   access beyond restricted research.
 
 ## 11. Legal-review sources
 

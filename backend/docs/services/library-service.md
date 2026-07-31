@@ -135,13 +135,13 @@ A confidential matter document is not an authority and never appears in a browse
 result. The corpus index has no handle to matter storage, so the library cannot
 leak a private document into a public list.
 
-Quarantined sources are a third, separate boundary:
+Restricted research sources are a third, separate boundary:
 
 ```text
 CommonLII harvest and unreviewed NLR/SLR
-  -> no production catalogue access
-  -> no production retrieval access
-  -> no model, snippet, export, or download path
+  -> internal research retrieval only
+  -> no Library source-text access
+  -> no Library snippet, export, or download path
 ```
 
 ## 7. Invariants this service enforces
@@ -154,7 +154,7 @@ CommonLII harvest and unreviewed NLR/SLR
 | Corpus separate from matter data (§5.2) | Reads only through `LegalRetrievalPort`; no matter-storage access on the port |
 | Machine-derived case-rules not silently authoritative | `weight = unverified-candidate` / `verified = false` shown, never hidden |
 | Corpus access audited | `AuditPort.record` on browse and lookup where policy requires |
-| Quarantine is unreachable | Catalogue adapter reads approved releases only and has no path to the quarantine store |
+| Restricted research storage is unreachable | Catalogue adapter reads the public release only and has no path to restricted source text |
 
 ## 8. Failure modes to handle explicitly
 
