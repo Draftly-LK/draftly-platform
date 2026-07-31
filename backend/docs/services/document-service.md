@@ -56,6 +56,11 @@ In `domain/documents.py` and `domain/evidence.py`:
   recorded.
 - **Derivative** — OCR text, layout, quality, or preview, keyed to a
   `ProcessingRun`. Rebuildable, never authoritative (§5.2).
+- **ViewerManifest** — a read projection for one immutable `DocumentVersion`:
+  original-file checksum and short-lived URL, page count, page dimensions,
+  available page-image and thumbnail derivatives, text-layer availability,
+  coordinate-space version, and processing state. It contains no verification
+  decision.
 
 Two small state machines, both enforced in the domain layer so the first tests
 can hit them without a database:
@@ -124,6 +129,18 @@ Returns the current ProcessingRun state, the recorded provider metadata
 (processor, version, region, purpose, timing, quality, outcome), and which
 derivatives exist. Matter-scoped.
 
+### get_viewer_manifest(ctx, document_version_id) -> ViewerManifestRead
+
+Returns the exact immutable version required by an `EvidenceSpan`, not merely
+the document's current version. Re-check matter membership, then issue
+short-lived URLs for the original and available viewer derivatives. Include
+page dimensions and the coordinate-space version so the frontend can map a
+normalised evidence region to the correct PDF.js viewport or stored page
+raster. Never return raw object-storage keys.
+
+This endpoint serves evidence. Accept, correct, reject, and conflict-resolution
+actions remain in `verification_service`.
+
 ### retry_processing(ctx, job_id) -> ProcessingRead
 
 Idempotent. Retrying a `succeeded` run is a no-op that returns the current
@@ -175,7 +192,194 @@ verified particulars, accepted requirements, completed dependent steps, and
 readiness evaluations stale as applicable. This service publishes the fact of
 supersession; it does not mutate those other services' records.
 
-## 8. Invariants this service enforces
+## 8. Evidence viewer and validation contract
+
+### Preserve the original; do not recreate it
+
+The verification surface displays the original PDF or image as uploaded. It
+must not rebuild a deed, plan, or receipt as editable HTML or Word in an attempt
+to reproduce its layout.
+
+```text
+Original document
+= immutable legal evidence displayed from the pinned DocumentVersion
+
+Candidate particulars
+= machine-extracted structured values awaiting lawyer review
+
+Generated draft
+= a separate document created later from verified facts
+```
+
+Recreating the source would be unreliable for fonts, stamps, signatures,
+handwriting, Sinhala shaping, spacing, and page breaks. More importantly, the
+recreation would not be the evidence that was uploaded. Draftly instead draws a
+non-destructive highlight overlay over the original display:
+
+```text
+Original PDF or page image
+        +
+EvidenceSpan overlay
+        +
+Candidate fact and lawyer decision controls
+```
+
+The overlay is a UI projection. It never modifies the stored original or burns
+an annotation into the evidence file.
+
+### Required interaction
+
+The review screen is evidence beside decision:
+
+```text
+┌─────────────────────────────────┬──────────────────────────────┐
+│ ORIGINAL DOCUMENT               │ EXTRACTED PARTICULARS        │
+│                                 │                              │
+│ Page 3                          │ Deed number                  │
+│       ┌──────────────┐          │ 4471                         │
+│       │ Deed No.4471 │          │ Confidence: 92%              │
+│       └──────────────┘          │ [Accept] [Correct]           │
+│                                 │                              │
+│ Zoom · Rotate · Pages           │ Previous · Next              │
+└─────────────────────────────────┴──────────────────────────────┘
+```
+
+Selecting a candidate fact must:
+
+1. Open the `DocumentVersion` pinned by its `EvidenceSpan`.
+2. Navigate to the recorded page.
+3. Zoom or scroll the evidence region into view.
+4. Draw the region highlight over the unchanged source.
+5. Show alternative readings and provenance when a conflict exists.
+
+For example:
+
+```text
+Document AI: 4471
+Gemini:      4474
+Status:      Conflict — lawyer decision required
+```
+
+The stored region uses normalised, viewport-independent coordinates:
+
+```json
+{
+  "page": 2,
+  "x": 0.42,
+  "y": 0.18,
+  "width": 0.21,
+  "height": 0.06
+}
+```
+
+`document-processing.md` owns conversion from provider coordinates into this
+canonical space. The viewer multiplies the normalised values by the active page
+viewport. Tests must cover zoom, rotation, resize, mixed page dimensions, and
+the 0-based/1-based page-number boundary.
+
+### Review legally material facts, not every OCR token
+
+The OCR text layer may remain searchable, but token-by-token approval is out of
+scope. Draftly asks the lawyer to decide only workflow-relevant particulars,
+including names and identity references, deed/plan/lot numbers, dates, extents,
+boundaries, consideration, ownership shares, rights of way, reservations, and
+encumbrances.
+
+Review priority is:
+
+1. Conflicting or cross-document-mismatched values.
+2. Low-confidence or Gemini-recovered values.
+3. Missing or unreadable values.
+4. Values sourced from a superseded document version.
+5. Clear high-confidence values eligible for an explicitly recorded grouped
+   confirmation.
+
+Support three projections over the same candidate and verification records:
+
+| Review mode | Purpose |
+| --- | --- |
+| Document review | Review the material facts extracted from one document version |
+| Exception review | Show conflicts, low confidence, missing values, unreadable evidence, and superseded sources first |
+| Cross-document review | Compare the same real-world fact across deeds, plans, assessments, and other evidence |
+
+These are query and UI modes, not separate truth stores. Every accept,
+correction, rejection, or unreadable decision is owned and audited by
+`verification_service`.
+
+## 9. Open-source reuse evaluation
+
+### OpenContracts: reference architecture, not a Draftly replacement
+
+[OpenContracts][opencontracts] is a self-hostable, MIT-licensed document
+intelligence platform. Its useful overlap includes PDF/DOCX viewing, precise
+text-to-coordinate mapping, human and machine-proposed annotations, structured
+extraction in a grid, approve/reject review, permissions, and history. Its
+[PAWLS-compatible PDF data layer][opencontracts-pdf] stores page dimensions,
+tokens, bounding boxes, and character-to-position mappings. That is closely
+aligned with Draftly's `EvidenceSpan` interaction.
+
+The domain boundary is different:
+
+| OpenContracts centres on | Draftly centres on |
+| --- | --- |
+| Corpuses, annotations, search, extraction grids, and citation graphs | Matters, immutable evidence versions, verified facts, cross-document checks, drafting, approval, and export |
+
+OpenContracts is also a substantial application with its own Django backend,
+Celery workers, GraphQL/REST APIs, data model, permissions, and React frontend.
+Embedding the complete platform beside Draftly's FastAPI services would create
+two identity, persistence, queue, and policy systems. Do **not** adopt the full
+runtime for V0 without an architecture spike that proves data ownership,
+matter isolation, deployment cost, and upgrade strategy.
+
+The preferred evaluation order is:
+
+1. Study and test its PDF coordinate/data-format ideas against synthetic
+   Sinhala deeds and survey plans.
+2. Identify narrowly reusable frontend or parser modules with clear dependency
+   boundaries.
+3. Preserve Draftly's `DocumentVersion`, `EvidenceSpan`, role, audit, and
+   verification contracts around any reused code.
+4. Record the exact upstream commit and licence notices before copying code.
+
+No OpenContracts dependency is approved by this document. It is a strong
+reference and spike candidate.
+
+### Viewer component candidates
+
+| Candidate | Useful capability | Draftly concern |
+| --- | --- | --- |
+| PDF.js | Browser PDF rendering and text/display layers; maximum control | Draftly must build navigation, overlay, virtualisation, and accessibility behaviour |
+| `react-pdf-highlighter` | PDF.js-based text/area highlights, popovers, and scroll-to-highlight | Narrower feature set; verify current PDF.js compatibility and maintenance before pinning |
+| `react-pdf-highlighter-plus` | Viewport-independent highlights plus notes, shapes, search, and PDF export | Much more than evidence review needs; disable editing/export features that could imply modification of original evidence |
+| `react-pdf-selection` | Normalised permanent text/rectangle selections over PDF.js | Older project with maintenance risk; use as a coordinate-model reference unless a dependency audit passes |
+
+For V0, run a focused spike with **PDF.js plus a thin Draftly-owned evidence
+overlay**, and compare it with `react-pdf-highlighter` using the same synthetic
+fixtures. Area highlights are mandatory because scanned deeds may have no
+usable embedded text layer. Use the simpler option that passes the viewer tests
+without introducing annotation-authoring or PDF-export behaviour.
+
+### Industry precedent, not dependencies
+
+The evidence-beside-fields interaction is an established human-in-the-loop
+document-validation pattern:
+
+| System | Relevant precedent | Draftly position |
+| --- | --- | --- |
+| [ABBYY Vantage][abbyy-review] | Manual Review compares extracted fields and low-confidence characters with the document image | Pattern reference only; not a selected provider |
+| [Rossum][rossum-validation] | Validation screen, bounding boxes, review/confirm states, and automation blockers | Pattern reference only; invoice-oriented rather than notarial |
+| [Amazon A2I][aws-a2i] | Human review loops for low-confidence Textract key-value extraction | Historical reference only; AWS closed access to new customers on 2026-07-30 |
+| [Nanonets][nanonets] | Field confidence, validation rules, and low-confidence human review | Commercial benchmark only; not a source of Draftly truth |
+| [Apryse WebViewer][apryse] | Commercial viewer and programmatic annotations | Paid fallback if the open-source spike fails accessibility, fidelity, or performance gates |
+
+These products validate the workflow shape, not the legal model. Draftly still
+needs domain-specific material facts, source-version pinning, cross-document
+checks, lawyer-only verification, and approval/export gates.
+
+M2 remains unchanged: its frontend uses pre-baked synthetic page images. The
+viewer decision applies when real protected uploads are connected in M3/E8.10.
+
+## 10. Invariants this service enforces
 
 | Invariant | How |
 | --- | --- |
@@ -183,12 +387,15 @@ supersession; it does not mutate those other services' records.
 | Checksum on every version | SHA-256 computed at ingest, stored on DocumentVersion |
 | Replacement preserves history (inv. 7) | New version supersedes; old row and blob retained; stale facts flagged via event |
 | Ack independent of OCR | Enqueue and return; the worker processes later |
+| Original displayed, not recreated | Viewer manifest resolves the immutable original or its checksummed page-image derivative; highlights remain a separate overlay |
+| Evidence opens exact source | Viewer lookup uses `DocumentVersion` from `EvidenceSpan`, never silently substitutes the current version |
+| Coordinates survive viewport changes | Canonical normalised regions are mapped using recorded page dimensions and coordinate-space version |
 | Machine result never authoritative | Derivatives flagged rebuildable; only verification promotes facts |
 | Processing never implies acceptance | `processed` is emitted as evidence availability; only task-service records lawyer acceptance |
 | Every mutation audited (inv. 8) | `AuditPort.record` on upload, replace, retry, and state changes |
 | Matter isolation | Membership re-checked; 404 hides existence |
 
-## 9. Failure modes to handle explicitly
+## 11. Failure modes to handle explicitly
 
 - Duplicate upload (same checksum in the matter) — dedupe policy, see open
   decisions.
@@ -202,24 +409,35 @@ supersession; it does not mutate those other services' records.
   pinned version; new work uses the successor.
 - Processing succeeds while a requirement remains unreviewed — expose the
   document as `present`; do not unblock readiness.
+- Viewer opens the latest version instead of the evidence-pinned version —
+  reject the mismatch and retain the historical version rather than moving the
+  highlight to different evidence.
+- PDF/page rotation or dimension mismatch moves the highlight — fail the viewer
+  contract test; do not allow verification against a visibly misaligned span.
+- Browser cannot render the original PDF — fall back to the checksummed page
+  raster derivative and retain the same canonical `EvidenceSpan`.
 
-## 10. Test list
+## 12. Test list
 
 - **Unit:** version and run state transitions, checksum, mime and size gates,
   supersession preserves history, idempotent retry, illegal-transition
   rejection.
 - **Contract:** upload and get response schemas, the `ProcessingMessage` job
-  schema, provider-result normalisation, and processing-completed and
-  supersession events.
+  schema, `ViewerManifestRead`, provider-result normalisation, and
+  processing-completed and supersession events.
 - **Integration:** real PostgreSQL plus storage emulator plus queue — upload to
   job to worker to `processed`; provider failure to `manual_review`; retry
   idempotency; orphan-blob reconciliation; outbox drain; processed evidence
   becomes present but not accepted in task-service; replacement stales the
   accepted requirement binding.
+- **Viewer:** exact source version opens; fact click navigates to the correct
+  page and region; highlights survive zoom, resize, rotation, and mixed page
+  dimensions; scanned PDF falls back to an area highlight; original bytes and
+  checksum remain unchanged; superseded evidence is visibly labelled.
 - **Security:** cross-matter upload and read denied; 404-not-403 existence
   hiding; signed-URL expiry; no secret and no raw client data in logs.
 
-## 11. Open decisions
+## 13. Open decisions
 
 Recommended defaults in bold; confirm or override before coding.
 
@@ -234,3 +452,40 @@ Recommended defaults in bold; confirm or override before coding.
 3. **Allowed mime and max size for V0** — **track Google Document AI's supported
    classes** (PDF and common image types), reject the rest to manual entry.
 4. **Signed-URL TTL** for evidence reads — **short, on the order of minutes.**
+5. **Real-upload viewer** — approve PDF.js plus a thin owned overlay,
+   `react-pdf-highlighter`, or a narrowly extracted OpenContracts component only
+   after the spike. Lean **PDF.js plus a Draftly-owned area/text overlay** for
+   the smallest policy and dependency surface.
+6. **DOCX evidence** — OpenContracts demonstrates a DOCX path, but Draftly V0's
+   evidence pipeline is PDF/common-image first. Lean **convert an accepted DOCX
+   upload to a checksummed PDF/page derivative while preserving the DOCX as the
+   immutable original**, only after legal and rendering QA approves the
+   conversion contract.
+
+## 14. References
+
+- [OpenContracts repository][opencontracts]
+- [OpenContracts PDF data layer][opencontracts-pdf]
+- [OpenContracts structured-extractor model][opencontracts-extractors]
+- [PDF.js][pdfjs]
+- [`react-pdf-highlighter`][react-pdf-highlighter]
+- [`react-pdf-highlighter-plus`][react-pdf-highlighter-plus]
+- [`react-pdf-selection`][react-pdf-selection]
+- [ABBYY Vantage Manual Review][abbyy-review]
+- [Rossum validation terminology][rossum-validation]
+- [Amazon A2I human review][aws-a2i]
+- [Nanonets Document Intelligence][nanonets]
+- [Apryse WebViewer][apryse]
+
+[opencontracts]: https://github.com/Open-Source-Legal/OpenContracts
+[opencontracts-pdf]: https://github.com/Open-Source-Legal/OpenContracts/blob/main/docs/architecture/PDF-data-layer.md
+[opencontracts-extractors]: https://github.com/Open-Source-Legal/OpenContracts/blob/main/docs/walkthrough/advanced/write-your-own-extractors.md
+[pdfjs]: https://mozilla.github.io/pdf.js/
+[react-pdf-highlighter]: https://github.com/agentcooper/react-pdf-highlighter
+[react-pdf-highlighter-plus]: https://github.com/QuocVietHa08/react-pdf-highlighter-plus
+[react-pdf-selection]: https://github.com/MathiasMeuleman/react-pdf-selection
+[abbyy-review]: https://docs.abbyy.com/vantage/documentation/runtime/manual-review/verification
+[rossum-validation]: https://knowledge-base.rossum.ai/docs/glossary
+[aws-a2i]: https://docs.aws.amazon.com/sagemaker/latest/dg/a2i-use-augmented-ai-a2i-human-review-loops.html
+[nanonets]: https://nanonets.com/products/document-intelligence
+[apryse]: https://docs.apryse.com/web/guides
