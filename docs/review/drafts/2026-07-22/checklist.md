@@ -7,4 +7,3 @@
   implemented.
 - PASS Contract: generation uses the store guard and emits a draft audit event
   only when all required facts are verified or corrected.
-

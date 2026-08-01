@@ -21,4 +21,3 @@ a technical scaffold, not a terminology approval.
 the onboarding visual are fictional demonstration material. A domain reviewer
 must confirm that the complete synthetic scenario cannot be mistaken for a
 real client record or authoritative source before external demonstrations.
-

@@ -7,4 +7,3 @@
 - Fix: used `ink` for the snippets while retaining `amber-text` for warning
   labels.
 - Result: both viewports pass axe with the full comparison visible.
-

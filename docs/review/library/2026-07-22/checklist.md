@@ -6,4 +6,3 @@
   are searchable, filterable, and visibly distinguish verified from candidate.
 - PASS Legal ownership: the corpus notice states that legal text remains
   lawyer-owned and only synthetic metadata is shown.
-

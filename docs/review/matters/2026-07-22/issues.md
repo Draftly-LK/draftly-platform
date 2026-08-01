@@ -8,4 +8,3 @@
 - Fix: changed navigation readiness to `domcontentloaded`, stopped the listener,
   rebuilt from a clean process state, and restarted the production server.
 - Result: both viewports pass all mechanical assertions.
-

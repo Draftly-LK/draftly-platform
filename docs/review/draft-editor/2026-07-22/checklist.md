@@ -11,4 +11,3 @@
   overlap at 1024.
 - PASS Unit: FactChip invariant test rejects unreviewed, conflict, and blocked
   states.
-

@@ -11,4 +11,3 @@
 
 Evidence: `baseline-1440x900.png`, `baseline-1024x768.png`, and matching
 `results-*.json` files in this directory.
-

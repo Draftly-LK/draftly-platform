@@ -7,4 +7,3 @@
 - Fix: retained the prescribed disabled background and used `ink` for the
   status label.
 - Result: zero serious/critical axe violations at both viewports.
-

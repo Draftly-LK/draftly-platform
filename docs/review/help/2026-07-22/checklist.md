@@ -4,4 +4,3 @@
   motion, correct token probes, and zero serious/critical axe violations.
 - PASS Spec: privacy, governed workflow, authority abstention, and workspace
   administration guidance are present without legal advice text.
-

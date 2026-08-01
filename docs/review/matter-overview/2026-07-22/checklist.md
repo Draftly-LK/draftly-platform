@@ -7,4 +7,3 @@
 - PASS Spec: active function, four-function completion, primary next action,
   document/issues/facts/drafts summaries, and recent activity are present.
 - PASS Visual: full-width operational bands keep the next action dominant.
-

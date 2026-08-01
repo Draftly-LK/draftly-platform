@@ -4,4 +4,3 @@
   motion, correct token probes, and zero serious/critical axe violations.
 - PASS Spec: synthetic notarial profile, notification controls, saved feedback,
   and accessibility preference context are present.
-

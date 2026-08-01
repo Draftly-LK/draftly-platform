@@ -9,4 +9,3 @@
   history, and missing-document recommendation are present.
 - PASS Visual: processing ledger and evidence-beside-fields review remain
   scannable at both target widths.
-
