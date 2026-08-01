@@ -7,7 +7,7 @@
     "pnpm": ">=10.23.0 <11"
   },
   "scripts": {
-    "check:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\" \"#frontend/node_modules\"",
+    "check:markdown": "markdownlint-cli2",
     "check": "pnpm --dir frontend typecheck && pnpm --dir frontend lint && pnpm --dir frontend build && pnpm check:markdown"
   },
   "devDependencies": {

@@ -1,0 +1,117 @@
+name: AI PR review
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, review_requested]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  # Fails a pull request that edits the review configuration unless its author is
+  # a named maintainer. On a same-repo pull request GitHub runs the workflow
+  # definition from the PR head, so this workflow cannot fully protect itself.
+  # This job is the available mitigation until branch protection and CODEOWNERS
+  # become enforceable. See docs/CODE_REVIEWER.md, "What is and is not protected".
+  guard-review-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect review-configuration changes
+        id: changed
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" \
+              -- .github/ .agents/ .pr_agent.toml CODE_REVIEW_CONTEXT.md \
+              | grep -q .; then
+            echo "touched=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "touched=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Require a maintainer author
+        if: steps.changed.outputs.touched == 'true'
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          MAINTAINERS: ${{ vars.REVIEW_CONFIG_MAINTAINERS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MAINTAINERS:-}" ]; then
+            echo "::error::Repository variable REVIEW_CONFIG_MAINTAINERS is not set."
+            echo "Set it to a comma-separated list of GitHub logins allowed to change"
+            echo ".github/, .agents/, .pr_agent.toml, or CODE_REVIEW_CONTEXT.md."
+            exit 1
+          fi
+          if printf '%s' "$MAINTAINERS" | tr ',' '\n' | tr -d '[:space:]' \
+              | grep -Fxq "$AUTHOR"; then
+            echo "$AUTHOR is a review-configuration maintainer."
+          else
+            echo "::error::$AUTHOR changed review configuration but is not in"
+            echo "REVIEW_CONFIG_MAINTAINERS. A maintainer must own this change."
+            exit 1
+          fi
+
+  review:
+    needs: guard-review-config
+    # `needs` is skipped on issue_comment, where the guard job does not run.
+    if: >-
+      always() &&
+      (needs.guard-review-config.result == 'success' ||
+       needs.guard-review-config.result == 'skipped') &&
+      ((github.event_name == 'pull_request' &&
+        github.event.pull_request.draft == false) ||
+       (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        github.event.issue.state == 'open' &&
+        contains(fromJSON('["/review","/review --config.reasoning_effort=\"high\""]'),
+                 trim(github.event.comment.body)) &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
+                 github.event.comment.author_association)))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # The skill and .pr_agent.toml are read from the default branch, so a pull
+      # request cannot rewrite the rubric that reviews it. The workflow file
+      # itself is not covered; guard-review-config above is that mitigation.
+      - name: Check out trusted review configuration
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      # AI review is advisory. A provider outage must not present as a code
+      # failure, and there is deliberately no fallback model.
+      - name: Run PR-Agent review
+        continue-on-error: true
+        uses: The-PR-Agent/pr-agent@570f67ed5fc8db5be74c18df070bc20079b64b0d # v0.41.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+          # `${{ }}` is expanded by the runner. `$GITHUB_WORKSPACE` would not be:
+          # values in `env:` are not shell-expanded, so the literal string would
+          # be passed and the skill would silently fail to load.
+          skills.paths: >-
+            ["${{ github.workspace }}/.agents/skills/draftly-code-review/SKILL.md"]
+          github_action_config.auto_review: "true"
+          github_action_config.auto_describe: "false"
+          github_action_config.auto_improve: "false"
+          github_action_config.pr_actions: >-
+            ["opened","reopened","ready_for_review","review_requested"]
