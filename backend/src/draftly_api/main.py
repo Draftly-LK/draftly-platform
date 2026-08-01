@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from app.pipeline.gemini import classify_document, extract_document
-from app.pipeline.registry import get_template, side_from_filename
-from app.settings import get_settings
+from draftly_api.pipeline.gemini import classify_document, extract_document
+from draftly_api.pipeline.registry import get_template, side_from_filename
+from draftly_api.settings import get_settings
 
 logger = logging.getLogger("draftly.backend")
 logging.basicConfig(level=logging.INFO)
@@ -75,7 +75,9 @@ def unclassified_response() -> ProcessResponse:
 
 
 @app.post("/api/documents/process", response_model=ProcessResponse)
-async def process_document(file: UploadFile = File(...)) -> ProcessResponse:
+async def process_document(
+    file: Annotated[UploadFile, File()],
+) -> ProcessResponse:
     if not file.filename:
         raise HTTPException(status_code=400, detail="Missing filename")
     mime = normalize_mime(file.content_type or "", file.filename)
@@ -138,9 +140,7 @@ async def process_document(file: UploadFile = File(...)) -> ProcessResponse:
     if classification.kind == "identity":
         relation = "authorized"
         identity_side = side
-        display_name = (
-            f"{name_en}'s identity card" if name_en else "Identity card (unidentified)"
-        )
+        display_name = f"{name_en}'s identity card" if name_en else "Identity card (unidentified)"
 
     payload: dict[str, Any] = {
         "kind": classification.kind,

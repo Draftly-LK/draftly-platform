@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
-
 
 KNOWN_KINDS = ("identity", "other")
 
@@ -158,8 +158,6 @@ Respond with JSON only, no markdown:
 
 def side_from_filename(filename: str | None) -> str:
     """Prefer explicit front/back filename hints (e.g. nic1f / nic2b)."""
-    import re
-
     if not filename:
         return "unknown"
     base = filename.lower().rsplit(".", 1)[0]

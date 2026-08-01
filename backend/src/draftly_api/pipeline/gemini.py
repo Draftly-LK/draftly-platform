@@ -13,8 +13,8 @@ from google import genai
 from google.genai import types
 from google.genai.errors import ClientError
 
-from app.pipeline.registry import DocumentTemplate, classification_prompt, registered_kinds
-from app.settings import Settings
+from draftly_api.pipeline.registry import DocumentTemplate, classification_prompt, registered_kinds
+from draftly_api.settings import Settings
 
 logger = logging.getLogger("draftly.backend.gemini")
 
@@ -41,7 +41,10 @@ def _parse_json(text: str) -> dict[str, Any]:
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
         cleaned = re.sub(r"\s*```$", "", cleaned)
-    return json.loads(cleaned)
+    parsed: Any = json.loads(cleaned)
+    if not isinstance(parsed, dict):
+        raise json.JSONDecodeError("Expected a JSON object", cleaned, 0)
+    return {str(key): value for key, value in parsed.items()}
 
 
 def _generate_with_retry(
@@ -200,8 +203,10 @@ def extract_document(
             raw_text=raw,
         )
 
-    fields_raw = data.get("fields") if isinstance(data.get("fields"), dict) else {}
-    fields = template.normalize_fields(fields_raw)
+    fields_raw = data.get("fields")
+    if not isinstance(fields_raw, dict):
+        fields_raw = {}
+    fields = template.normalize_fields({str(key): value for key, value in fields_raw.items()})
     extracted_text = data.get("extracted_text")
     if not isinstance(extracted_text, str):
         extracted_text = ""

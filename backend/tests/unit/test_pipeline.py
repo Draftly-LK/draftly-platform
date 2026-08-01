@@ -7,20 +7,20 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.pipeline.gemini import (
+from draftly_api.pipeline.gemini import (
     ClassificationResult,
     ExtractionResult,
     classify_document,
     extract_document,
 )
-from app.pipeline.registry import (
+from draftly_api.pipeline.registry import (
     classification_prompt,
     get_template,
     identity_template,
     registered_kinds,
     side_from_filename,
 )
-from app.settings import Settings
+from draftly_api.settings import Settings
 
 
 def _settings() -> Settings:
@@ -70,8 +70,8 @@ class TestRegistry:
 
 
 class TestClassifyDocument:
-    @patch("app.pipeline.gemini._generate_with_retry")
-    @patch("app.pipeline.gemini.genai.Client")
+    @patch("draftly_api.pipeline.gemini._generate_with_retry")
+    @patch("draftly_api.pipeline.gemini.genai.Client")
     def test_parses_identity_classification(
         self,
         mock_client: MagicMock,
@@ -89,8 +89,8 @@ class TestClassifyDocument:
         assert result.side == "front"
         assert result.confidence == pytest.approx(0.91)
 
-    @patch("app.pipeline.gemini._generate_with_retry")
-    @patch("app.pipeline.gemini.genai.Client")
+    @patch("draftly_api.pipeline.gemini._generate_with_retry")
+    @patch("draftly_api.pipeline.gemini.genai.Client")
     def test_unknown_kind_becomes_other(
         self,
         mock_client: MagicMock,
@@ -107,8 +107,8 @@ class TestClassifyDocument:
         assert result.kind == "other"
         assert result.side == "unknown"
 
-    @patch("app.pipeline.gemini._generate_with_retry")
-    @patch("app.pipeline.gemini.genai.Client")
+    @patch("draftly_api.pipeline.gemini._generate_with_retry")
+    @patch("draftly_api.pipeline.gemini.genai.Client")
     def test_malformed_json_returns_other(
         self,
         mock_client: MagicMock,
@@ -129,8 +129,8 @@ class TestClassifyDocument:
 
 
 class TestExtractDocument:
-    @patch("app.pipeline.gemini._generate_with_retry")
-    @patch("app.pipeline.gemini.genai.Client")
+    @patch("draftly_api.pipeline.gemini._generate_with_retry")
+    @patch("draftly_api.pipeline.gemini.genai.Client")
     def test_parses_identity_extraction(
         self,
         mock_client: MagicMock,
@@ -169,8 +169,8 @@ class TestExtractDocument:
         assert result.fields["nameEn"] == "Synthetic Person"
         assert result.fields["dateOfBirth"] is None
 
-    @patch("app.pipeline.gemini._generate_with_retry")
-    @patch("app.pipeline.gemini.genai.Client")
+    @patch("draftly_api.pipeline.gemini._generate_with_retry")
+    @patch("draftly_api.pipeline.gemini.genai.Client")
     def test_malformed_json_returns_empty_fields(
         self,
         mock_client: MagicMock,
@@ -190,8 +190,8 @@ class TestExtractDocument:
 
 
 class TestProcessEndpoint:
-    @patch("app.main.extract_document")
-    @patch("app.main.classify_document")
+    @patch("draftly_api.main.extract_document")
+    @patch("draftly_api.main.classify_document")
     def test_other_skips_extraction(
         self,
         mock_classify: MagicMock,
@@ -199,7 +199,7 @@ class TestProcessEndpoint:
     ) -> None:
         from fastapi.testclient import TestClient
 
-        from app.main import app
+        from draftly_api.main import app
 
         mock_classify.return_value = ClassificationResult(
             kind="other",
@@ -218,8 +218,8 @@ class TestProcessEndpoint:
         assert body["extracted_fields"] == {}
         mock_extract.assert_not_called()
 
-    @patch("app.main.extract_document")
-    @patch("app.main.classify_document")
+    @patch("draftly_api.main.extract_document")
+    @patch("draftly_api.main.classify_document")
     def test_low_confidence_skips_extraction(
         self,
         mock_classify: MagicMock,
@@ -227,7 +227,7 @@ class TestProcessEndpoint:
     ) -> None:
         from fastapi.testclient import TestClient
 
-        from app.main import app
+        from draftly_api.main import app
 
         mock_classify.return_value = ClassificationResult(
             kind="identity",
@@ -243,8 +243,8 @@ class TestProcessEndpoint:
         assert response.json()["kind"] == "other"
         mock_extract.assert_not_called()
 
-    @patch("app.main.extract_document")
-    @patch("app.main.classify_document")
+    @patch("draftly_api.main.extract_document")
+    @patch("draftly_api.main.classify_document")
     def test_identity_pipeline_merges_filename_side(
         self,
         mock_classify: MagicMock,
@@ -252,7 +252,7 @@ class TestProcessEndpoint:
     ) -> None:
         from fastapi.testclient import TestClient
 
-        from app.main import app
+        from draftly_api.main import app
 
         mock_classify.return_value = ClassificationResult(
             kind="identity",

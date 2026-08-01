@@ -1,10 +1,10 @@
-from app.pipeline.gemini import (
+from draftly_api.pipeline.gemini import (
     ClassificationResult,
     ExtractionResult,
     classify_document,
     extract_document,
 )
-from app.pipeline.registry import (
+from draftly_api.pipeline.registry import (
     classification_prompt,
     get_template,
     identity_template,

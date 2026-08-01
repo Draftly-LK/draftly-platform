@@ -5,7 +5,8 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ROOT = Path(__file__).resolve().parents[2]
+# backend/src/draftly_api/settings.py → repo root (where .env lives)
+ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
@@ -24,8 +25,7 @@ class Settings(BaseSettings):
     # Legacy single-model fallback (unused when classify/extract are set).
     gemini_model: str = "gemini-2.5-flash"
     cors_origins: str = (
-        "http://localhost:4310,http://127.0.0.1:4310,"
-        "http://localhost:3000,http://127.0.0.1:3000"
+        "http://localhost:4310,http://127.0.0.1:4310,http://localhost:3000,http://127.0.0.1:3000"
     )
 
     @property

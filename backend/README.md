@@ -2,6 +2,8 @@
 
 FastAPI service for Gemini two-stage classify → extract (E5 / DRA-44).
 
+Package layout follows `backend-implementation-plan-v0.md` (`src/draftly_api`).
+
 ## Pipeline
 
 1. **Classify** the uploaded image against registered document types
@@ -19,12 +21,20 @@ No Document AI / OCR step.
 2. From `backend/`:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-uvicorn app.main:app --reload --port 8000
+uv sync --group dev
+uv run uvicorn draftly_api.main:app --reload --port 8000
 ```
 
 Health: `GET http://127.0.0.1:8000/health`
 
 Process: `POST http://127.0.0.1:8000/api/documents/process` (multipart `file`).
+
+## Gates
+
+```bash
+uv lock --check
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest tests/unit tests/contract tests/conformance
+```
