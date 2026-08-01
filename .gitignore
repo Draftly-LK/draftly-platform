@@ -8,6 +8,14 @@ test-results/
 screenshots/
 .env*
 !.env.example
+credentials/**
+!credentials/.gitkeep
+backend/.venv/
+backend/*.egg-info/
+backend/draftly_backend.egg-info/
+backend/**/__pycache__/
+backend/**/*.pyc
+test/NIC/
 *.log
 *.tsbuildinfo
 docs/review/**/intermediate-*
