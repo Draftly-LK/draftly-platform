@@ -120,12 +120,17 @@ The candidate fields and the Document-AI-vs-Gemini reconciliation from
 | recovered (Document AI missing, Gemini read) | `extractedValue` = recovered value, low `confidence`, `unreviewed` (priority review) |
 | unreadable / handwriting (Level 3) | no machine value; `verificationState = blocked`, page still shown |
 
-`ingest_candidates(system_ctx, matter_id, candidates)` subscribes to the
-extraction-completion event `document-processing` emits and creates these
-`unreviewed`/`conflict`/`blocked` rows. This is the only path that writes a
-machine value, and it writes it as a candidate — **no provider response ever sets
-a fact to verified** (Phase 3 exit gate, restated here as the entry rule of
-Phase 4).
+`ingest_candidates(system_ctx, matter_id, candidates)` subscribes to
+**`document.extraction-completed`** and creates these
+`unreviewed`/`conflict`/`blocked` rows. That event is distinct from
+`document.processing-completed`, which says derivatives exist and is what the
+document-requirement projection consumes; extraction completing is what produces
+candidates. This document previously named "the extraction-completion event",
+which no service published (`events.md` §5.4).
+
+This is the only path that writes a machine value, and it writes it as a
+candidate — **no provider response ever sets a fact to verified** (Phase 3 exit
+gate, restated here as the entry rule of Phase 4).
 
 The `conflict` state is exactly the Document-AI-vs-Gemini disagreement made
 reviewable: the lawyer sees "Document AI 4471 (low) / Gemini 4474" beside the
@@ -196,14 +201,23 @@ Manual entry — the Level 3 path where no machine value exists.
 
 ## 7. Events it emits (the memory seam)
 
-On any correction or rejection, this service publishes
-**`particular.corrected`** (carrying `matterId`, `fact_id`/`key`, `before`,
-`after`, `actorId`) through `EventPort`. This is the seam `memory-service.md` §8
-subscribes to: session memory derived from the old value is invalidated and
-marked superseded, not deleted. `verification_service` does not reach into memory
-itself — it emits, memory reacts. It is the downward-propagation half of the
-two-tier rule (`memory-service.md` §3): corrections in the authoritative tier
-flow down and invalidate stale working memory.
+The service publishes `particular.verified`, `particular.corrected`,
+`particular.added`, `particular.blocked`, and `particular.evidence-stale`
+(`events.md` §5.6). Payloads carry **references**, not values: a corrected
+particular is private matter content and must not travel in an event body
+(`events.md` §2).
+
+`particular.corrected` is the seam `memory-service.md` §8 subscribes to: session
+memory derived from the old value is invalidated and marked superseded, not
+deleted. `verification_service` does not reach into memory itself — it emits,
+memory reacts. It is the downward-propagation half of the two-tier rule
+(`memory-service.md` §3).
+
+`particular.evidence-stale` is published when `document.version-superseded`
+flags a fact sourced from the replaced version. `approval_service` consumes it
+and invalidates any Approval bound to that fact
+(`approval-service.md` §5), so a superseded deed cannot silently sit behind an
+approved instrument.
 
 The verified/corrected set is also the read source for `draft_service`: a final
 draft references only `verified` or `corrected` facts (invariant 4). This service
@@ -221,11 +235,12 @@ Naming that seam here keeps the enforcement point unambiguous.
 | Machine value never self-verifies | `ingest_candidates` only writes `unreviewed`/`conflict`/`blocked` |
 | Conflicts stay reviewable | Both readings kept (`extractedValue` + `conflicts[]`), each with its own span |
 | Every decision audited (inv. 8) | `AuditPort.record` on verify, correct, add, and block, with before/after references |
+| Organisation isolation | Every query filters `ctx.organisationId` before matter membership; a cross-organisation resource is a 404 (`security-model.md` §2) |
 | Matter isolation | Membership re-checked; 404 hides existence |
 
 ## 9. Failure modes to handle explicitly
 
-- **Evidence document superseded after seeding** — `document.version_superseded`
+- **Evidence document superseded after seeding** — `document.version-superseded`
   (from `document_service`) flags facts sourced from the old version; they need
   re-review against the successor before they can be verified.
 - **Verify on a fact whose evidence went unreadable** — transition to `blocked`,
@@ -260,7 +275,7 @@ Naming that seam here keeps the enforcement point unambiguous.
   `VerifiedFact`; the extraction-event candidate schema; the emitted
   `particular.corrected` event schema.
 - **Integration:** ingest candidates from a processing run → verify → correct over
-  real PostgreSQL; `document.version_superseded` flags dependent facts;
+  real PostgreSQL; `document.version-superseded` flags dependent facts;
   `particular.corrected` reaches `memory-service`; rebuild the record from
   persisted versions and confirm identical decisions.
 - **Security:** cross-matter fact read and verify denied; 404-not-403 existence

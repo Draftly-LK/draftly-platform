@@ -49,6 +49,8 @@ readiness flag through a matter patch.
 The service owns:
 
 - matter id, organisation, privacy-safe reference, and client reference;
+- the association between the matter and its team, expressed by calling
+  `auth_service`; the membership table itself is owned there;
 - transaction type and registration regime;
 - relevant registration jurisdiction;
 - instrument language;
@@ -56,8 +58,8 @@ The service owns:
 - versioned matter classification;
 - lifecycle from inquiry through closure and archive;
 - acceptance metadata;
-- party references, not raw identity records;
-- owner and matter-team membership;
+- party references, not raw identity records — the records themselves live in
+  `party_service`;
 - optimistic concurrency version;
 - creation, activation, reclassification, closure, reopening, and archive; and
 - events that notify specialist services of those changes.
@@ -96,9 +98,9 @@ POST  /matters/{id}/archive
  application/matter_service.py
               |
               +--> MatterRepository
-              +--> MembershipRepository
+              +--> MembershipCommandPort      (auth_service owns the table)
               +--> MatterProjectionPort
-              +--> IdentityPort
+              +--> PartyReadPort
               +--> BillingEntitlementPort
               +--> EventPort
               +--> AuditPort
@@ -206,28 +208,26 @@ MatterPartyReference
   id
   matterId
   role
-  partyRecordId
+  partyRecordId        -> party_service.Party.id
 ```
 
 The matter owns the association and transaction role, not the underlying raw
-identity record. Names, identity numbers, addresses, beneficial-owner data,
-and identity evidence remain behind the protected party or verified-record
-tier.
+identity record. Names, identity numbers, addresses, beneficial-owner data, and
+identity evidence live in **`party_service`** — the protected identity tier that
+`partyRecordId` points into (`party-service.md`). That tier was previously
+referenced here and documented nowhere.
 
 ### 4.4 Membership
 
-```text
-MatterMembership
-  matterId
-  userId
-  role
-  addedAt
-  addedBy
-```
+`MatterMembership` is owned and written by `auth_service`
+(`security-model.md` §4). Matter-service reads it only through
+`RequestContext` and creates the owner's membership by calling
+`MembershipCommandPort`.
 
 Membership roles are application roles, distinct from transaction-party roles.
-Every matter-scoped service re-checks membership server-side. `ownerId` is a
-primary responsibility pointer; it is not the authorization policy.
+Every matter-scoped service re-checks organisation scope and then membership
+server-side. `ownerId` is a primary responsibility pointer; it is not the
+authorization policy.
 
 ## 5. Canonical workflow phases
 
@@ -368,8 +368,11 @@ create_matter(ctx, input) -> MatterRead
    any active-matter quota through `BillingEntitlementPort`.
 3. Create `Matter(lifecycleStatus=inquiry, classificationVersion=1)`.
 4. Create the initial MatterClassification.
-5. Create creator membership in the same transaction.
-6. Write `matter.created` audit and outbox events.
+5. Call `MembershipCommandPort.grant_owner_membership(matter_id, ctx.actorId)`
+   in the same transaction. This service does not write the membership table
+   itself; `auth_service` owns it and publishes `matter.membership-changed`
+   (`security-model.md` §4).
+6. Write the `matter.created` audit row and outbox event.
 7. Return `workflowSetupStatus=pending`.
 
 The creation transaction does not create StepRuns, seed facts, or clone checks.
@@ -475,14 +478,16 @@ matter.assigned-notary-changed
 matter.closed
 matter.reopened
 matter.archived
-matter.membership-changed
 ```
+
+`matter.membership-changed` is **not** published here. `auth_service` owns every
+membership write and publishes that event (`security-model.md` §4).
 
 Consumers must be idempotent. Events carry matter, organisation,
 classification, actor, version, and correlation identifiers. They do not carry
 raw party identity, property descriptions, or private evidence.
 
-The service may consume task-owned projection events:
+The service consumes task-owned projection events:
 
 ```text
 workflow.instantiated
@@ -490,7 +495,14 @@ workflow.setup-failed
 workflow.phase-changed
 workflow.readiness-changed
 workflow.blocking-changed
+workflow.run-superseded
 ```
+
+`task_service` previously wrote `workflow.instantiated`,
+`workflow.setup-failed`, and `workflow.blocking-changed` only as audit rows, so
+this projection never updated and a matter could sit at
+`workflowSetupStatus = pending` indefinitely. All three are now required outbox
+publications (`task-service.md` §9).
 
 Those events update a rebuildable read projection, not the authoritative Matter
 aggregate.

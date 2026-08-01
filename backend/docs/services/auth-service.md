@@ -173,8 +173,14 @@ Authentication and application notifications have separate owners:
 
 | Owner | Responsibility |
 | --- | --- |
-| Clerk / auth infrastructure | Login codes, magic links, account verification, recovery, and MFA |
-| `notification_service` through Resend | Invitations, deadline reminders, document processing, review notices, and export-ready messages |
+| Clerk / auth infrastructure | Login codes, magic links, **email verification**, account recovery, password and sign-in security notices, MFA |
+| `notification_service` through Resend | Invitations, deadline reminders, document processing, review notices, approval and export messages |
+
+The split is exact and `notification-service.md` §8.1 has been corrected to
+match: its template inventory previously listed "email verification" and
+"password or sign-in security notice" under account and security, which this
+rule forbids. Only **invitation** stays with `notification_service`, because an
+invitation is a Draftly product event, not an authentication token.
 
 Draftly does not need Resend for authentication emails initially. If Clerk is
 later configured to use Resend as an underlying transport, authentication
@@ -240,19 +246,51 @@ accounts through client-side or database-only email matching.
 
 ### Role → capability map
 
-Roles map to capabilities server-side. The browser may hide buttons, but the
-gate lives here:
+Roles map to **capability keys**, not to prose. The full catalogue and the
+role-to-capability table live in `security-model.md` §3 and are the single
+source of truth; this service implements them. Summarised:
 
-| Role | May do |
+| Role | Broadly |
 | --- | --- |
-| `reviewer` | Verify and correct facts, run deterministic checks; **cannot approve** |
-| `approver` | Everything a reviewer can, plus approve drafts (the approval gate) |
-| `maintainer` | Govern controlled content — rule versions, templates, question sets (see `content-governance-service`) |
-| `administrator` | Manage accounts, roles, and matter assignments |
+| `reviewer` | Evidence, verified record, drafting, resolve findings, complete steps; **cannot approve, export, attest, waive, override, or confirm a deadline** |
+| `approver` | Everything a reviewer can, plus `draft.approve`, `export.create`, `instrument.attest`, `finding.waive`, `step.override`, `deadline.confirm` |
+| `maintainer` | `content.*` and `corpus.*` — governed content and corpus, nothing matter-operational |
+| `administrator` | Accounts, roles, memberships, retention, billing |
+
+Two capability groups are **not** reachable through these four roles and are
+granted by an audited administrative action instead: `compliance.*` (a named
+compliance allowlist) and `platform.administer` (Draftly staff). A firm
+administrator is not a compliance officer and not a platform administrator
+(`security-model.md` §3.4).
 
 A capability the map does not grant is denied. Capabilities are not additive by
-seniority unless the map says so — `maintainer` governs content but is not
-implicitly an approver.
+seniority — `maintainer` governs content but is not an approver, and an
+organisation owner is not a legal approver.
+
+### "Authorised lawyer" is a capability plus a practising-status check
+
+Nine service docs gate on "an authorised lawyer" and refuse "a clerk". Neither
+is a role, and this map previously granted `reviewer` the power to verify facts
+while `verification-service.md` said only a lawyer may. The resolution is in
+`security-model.md` §3.3 and is implemented here as a second predicate:
+
+```text
+authorize(ctx, capability, matter_id?)          # role → capability
+require_practising_notary(ctx, matter_id?)      # practising status
+```
+
+`require_practising_notary` asserts that `User.notaryRegistration` is present,
+that the annual practice certificate is current (from the annual-certificate
+obligation, `obligations-service.md` §7.1), and — for territorial operations —
+that `User.jurisdiction` covers the matter's registration jurisdiction. It is
+required by `instrument.attest`, `draft.approve`, `particular.verify`,
+`finding.waive`, `step.override`, and `deadline.confirm`.
+
+An expired certificate blocks those capabilities. It does not warn and proceed.
+
+The word "clerk" is retired across the service docs; the refusal case is "an
+actor holding a capability the map does not grant", returned as 403
+`capability_denied`.
 
 ### NIC / identity — keep two things distinct
 

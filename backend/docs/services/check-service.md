@@ -27,14 +27,16 @@ the check engine is deterministic and contains no model call.
 ## 2. Where it sits
 
 ```text
-GET  /api/matters/{id}/checks                       ─┐
-GET  /api/matters/{id}/cross-checks                 ─┼─→ api/v1/checks.py ─→ application/check_service.py
-POST /api/matters/{id}/checks/{checkId}/resolve     ─┘                              │
-                                                                                    │ orchestrates
-verification_service (verified/corrected facts) ──(read)───────────────────────────▶│
-                                                                                    ▼
-                                            ports: RuleCatalogPort, ParticularReadPort,
-                                                   CheckRepository, AuditPort
+GET  /api/v1/matters/{id}/checks                       ─┐
+GET  /api/v1/matters/{id}/cross-checks                 ─┼─→ api/v1/checks.py
+POST /api/v1/matters/{id}/checks/{checkId}/resolve     ─┤        │
+POST /api/v1/matters/{id}/checks/{checkId}/remediation ─┘        ▼
+                                                    application/check_service.py
+                                                                 │ orchestrates
+                                                                 ▼
+                          ports: RuleCatalogPort, ParticularReadPort,
+                                 CheckRepository, TaskCommandPort,
+                                 EventPort, AuditPort
 ```
 
 The router authenticates and parses only. The service takes an authenticated
@@ -81,10 +83,12 @@ basis so a finding says which statute, gazette, or practice direction it applies
 
 In `ports/`:
 
-- `RuleCatalogPort` — load the active, versioned rule definitions with their
-  applicability conditions, authority metadata, version, and effective date. The
-  catalogue is a **backend addition** (§7, open decision) — the frontend has no
-  standalone rule type.
+- `RuleCatalogPort` — load `approved` `CheckRuleDefinition` versions with their
+  applicability conditions, authority metadata, version, and effective date.
+  **Authoring and approval live in `content_governance_service`**, which owns
+  `CheckRuleDefinition` as its sixth governed content family; this port is
+  read-only, exactly as `WorkflowDefinitionRepository` is for `task_service`.
+  The frontend has no standalone rule type and never sees one.
 - `ParticularReadPort` — read `verified`/`corrected` facts for a matter, backed
   by `verification_service`. The engine reads only accepted facts; an `unreviewed`
   or `blocked` fact is not check input.
@@ -92,7 +96,9 @@ In `ports/`:
   `CheckResolution`, matter-scoped queries only.
 - `TaskCommandPort` — idempotently request a governed remediation StepRun and
   return its reference. Task-service owns assignee, progress, evidence
-  prerequisites, completion, and override state.
+  prerequisites, completion, and override state. This is a synchronous command
+  with an idempotency tuple, not an event (`events.md` §8).
+- `EventPort` — publish `check.*` and `finding.*` through the outbox.
 - `AuditPort` — `record(event)`; every resolution and override is audited
   (invariant 8).
 
@@ -118,6 +124,16 @@ Deterministic evaluation.
 `get_checks` returns the persisted findings; a re-run recomputes them and is a
 no-op where nothing changed. Findings recompute when a fact is corrected, so the
 record and its checks never drift apart.
+
+Every status change publishes **`check.result-changed`** with the before and
+after status, the evaluation version, and whether the finding blocks. This event
+was consumed by `task_service` and `approval_service` and published by nobody,
+so a newly failing check never stalled a dependent step. It is now required
+output of `run_checks`.
+
+`resolve_check` with `action = document-requested` additionally publishes
+**`check.document-requested`**, which `obligations_service` turns into the dated
+follow-up for the missing deed or plan (`obligations-service.md` §2).
 
 ### list_cross_checks(ctx, matter_id) -> CrossCheckRead[]
 
@@ -160,8 +176,10 @@ cannot show. Provenance on both sides is what makes the red flag actionable.
 3. Ask `TaskCommandPort` to create exactly one remediation StepRun for the
    tuple `(check_id, check_evaluation_version, required_action_key)`.
 4. Store a `CheckRemediationLink` and append a `checklist-created` resolution.
-5. Publish `finding.remediation-created` and audit the action in the same
-   transaction or coordinated outbox flow.
+5. Publish `finding.remediation-requested` and audit the action in the same
+   outbox transaction. The name is the one `task_service` consumes; this
+   document previously published `finding.remediation-created`, which nothing
+   listened for (`events.md` §5.7).
 
 Completing the remediation task does not silently turn a failed finding into a
 pass. New verified evidence causes the deterministic rule to run again, or an
@@ -201,6 +219,7 @@ until every red flag is either fixed or a lawyer has waived it on the record.
 | Findings inherit provenance | `Check.evidence` and every `CrossCheckBinding.evidence` come from the facts' spans, tied to immutable `DocumentVersion`s (invariant 1) |
 | Remediation stays task-owned | Finding stores a versioned task link; task-service owns responsibility, prerequisites, and progress |
 | Every resolution audited (inv. 8) | `AuditPort.record` on resolve, waive, and override, with reason |
+| Organisation isolation | Every query filters `ctx.organisationId` before matter membership; a cross-organisation resource is a 404 (`security-model.md` §2) |
 | Matter isolation | Membership re-checked; 404 hides existence |
 
 ## 8. Failure modes to handle explicitly
@@ -256,14 +275,15 @@ until every red flag is either fixed or a lawyer has waived it on the record.
 
 Recommended defaults in bold; confirm or override before coding.
 
-1. **The rule catalogue is a backend addition** — the frontend has no standalone
-   `Rule` or `Severity` type: `CheckStatus` doubles as severity, and the closest
-   existing shape is `StepRule` in the workflow types. The plan (Phase 5) wants
-   "versioned rule definitions". Lean **a backend `RuleDefinition` behind
-   `RuleCatalogPort`** — `id`, `category`, `version`, `effectiveDate`,
-   `authority`, applicability condition, and the deterministic predicate — with a
-   migration and tests per rule. It is not exposed as a frontend type; the
-   frontend sees only the `Check` a rule produces.
+1. **The rule catalogue is governed content — closed.**
+   `CheckRuleDefinition` (`id`, `category`, `version`, `effectiveFrom`,
+   `authority`, applicability condition, deterministic predicate reference, and
+   its tests) is the sixth family in `content-governance-service.md` §3, with
+   the same `draft → approved → retired` lifecycle and maintainer gate as
+   workflow modules and deadline rules. It was previously the only governed
+   legal artefact with no approval state, no maintainer gate, and no governance
+   audit — which failed the Phase 5 exit gate on its own terms. It is not a
+   frontend type; the frontend sees only the `Check` a rule produces.
 2. **Rule authoring format** — code predicates, a declarative rule table, or a
    small DSL? Lean **typed Python predicates in `domain/findings` for V0**
    (testable, no interpreter to build), with each rule pinned to a catalogue

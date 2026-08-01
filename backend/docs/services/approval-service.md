@@ -24,19 +24,17 @@ hands off.
 ## 2. Where it sits
 
 ```text
-POST /api/matters/{id}/drafts/{draftId}/approve ─┐
-  (frontend contract)                            │
-POST /draft-versions/{id}/approve ───────────────┼─→ api/v1/drafts.py
-  (plan §7 API surface)                          │        │
-GET  /draft-versions/{id}/approval ──────────────┘        │ → application/approval_service.py
-                                                           │
-                                                           │ reads
-                                    verification_service ──┤ (fact states)
-                                    check_service ─────────┤ (blockers)
-                                    draft_service ─────────┤ (version + hash)
-                                                           ▼
-                                    ports: ApprovalRepository, DraftRepository,
-                                           AuditPort, ClockPort
+POST /api/v1/matters/{id}/drafts/{draftId}/approve ─┐
+GET  /api/v1/matters/{id}/drafts/{draftId}/approval ┼─→ api/v1/drafts.py
+                                                    │        │
+  (public contract; the server resolves the draft   │        ▼
+   to its `in-review` version — api-conventions §1) │  application/approval_service.py
+                                                    │        │
+                                                    └────────┤ orchestrates
+                                                             ▼
+                    ports: ApprovalRepository, DraftReadPort,
+                           VerifiedFactReadPort, CheckReadPort,
+                           EventPort, AuditPort, ClockPort
 ```
 
 The router authenticates and parses only. The service takes an
@@ -44,12 +42,16 @@ already-authenticated `RequestContext` (actor, roles, matter memberships) and
 orchestrates domain plus ports. It imports no SQLAlchemy, no FastAPI, and no
 rendering SDK.
 
-Note the endpoint mismatch, resolved in §9. The frontend posts to
-`/api/matters/{id}/drafts/{draftId}/approve` and today only flips
+The endpoint mismatch between the frontend and plan §7 is settled centrally in
+`api-conventions.md` §1: the matter-scoped route is the public contract and the
+server resolves it to the version that is actually pinned. The backend approves
+a **version**, never a draft. Today the frontend only flips
 `Draft.approvalState` to `"approved"` and stamps `approvedBy` / `approvedAt` in
-the demo store — no gate runs. The plan §7 API targets a specific version:
-`POST /draft-versions/{id}/approve`. The backend approves a **version**, and the
-matter-scoped route resolves to the draft's active version.
+the demo store — no gate runs at all.
+
+The draft reaches this service in `in-review` because
+`draft_service.submit_for_review` put it there (`draft-service.md` §5). That
+step did not previously exist, which made this gate unreachable.
 
 ## 3. Domain models it needs
 
@@ -89,37 +91,54 @@ An illegal transition or a failed gate raises a domain error, not an HTTP error.
 
 In `ports/`:
 
-- `ApprovalRepository` — persist and load Approval records; matter-scoped
-  queries only; one active approval per content hash.
-- `DraftRepository` — load the `DraftVersion` (id, hash, document) and its
-  current state; the service never trusts a hash supplied by the caller.
+- `ApprovalRepository` — persist and load Approval records; organisation- and
+  matter-scoped queries only; one active approval per content hash.
+- `DraftReadPort` — load the `DraftVersion` (id, hash, document) and its current
+  state; the service never trusts a hash supplied by the caller.
+- `VerifiedFactReadPort` — fact state per bound `FactChip.fact_id`. The same
+  port `draft_service` and `task_service` use.
+- `CheckReadPort` — the current blocking finding set for the matter and version.
+  The same port `task_service` uses.
+- `EventPort` — publish `draft.approved` and `draft.approval-invalidated`
+  through the outbox (`events.md` §5.10).
 - `AuditPort` — `record(event)`; the approval event is a material mutation
   (invariant 8).
 - `ClockPort` — the approval timestamp; injected so tests are deterministic.
 
-Fact and blocker states are read through the sibling application services
-(`verification_service`, `check_service`), not through new ports — those
-services already own the authoritative read path.
+Fact and blocker states are read **through ports**, not by importing sibling
+application services. An earlier draft of this document allowed the direct
+call; that contradicts the dependency rule in plan §5.1 that every other service
+follows, and both ports already exist for exactly these reads.
 
 ## 5. The method
 
 ### approve(ctx, draft_version_id) -> ApprovalRead
 
-1. Re-check matter membership and approver role from the repository; do not
-   trust the router. Only an authorised approver role may approve (invariant 3);
-   a clerk cannot (Phase 2 exit gate). Reject with the role error otherwise.
-2. Load the `DraftVersion`. Reject unless the draft is `in-review`. Approving a
-   `working`, `approved`, or `exported` version is an illegal transition.
+1. Re-check organisation scope, then matter membership, then require the
+   `draft.approve` capability **and** a current practising notary
+   (`security-model.md` §3.1 and §3.3). A `reviewer` is refused with 403
+   `capability_denied` (Phase 2 exit gate). A non-member gets 404.
+2. Load the `DraftVersion`. Reject unless the draft is `in-review` and the
+   version is the one recorded by `submittedVersionId`. Approving a `working`,
+   `approved`, or `exported` version is an illegal transition; approving a
+   version other than the submitted one means a save raced the review, and the
+   draft has already returned to `working`.
 3. Pin the content hash: read `DraftVersion.hash` from the loaded version. The
    caller does not supply it. This hash is the approval target (§5.2: approval
    targets one content hash).
-4. **Fact gate.** Ask `verification_service` for the state of every `FactChip`
-   bound in this version's document. If any mandatory fact is not `verified` or
-   `corrected`, block. No unverified mandatory fact may reach approval (Phase 7
-   exit gate; §9.2 release-blocker).
-5. **Blocker gate.** Ask `check_service` for unresolved findings on this
-   matter/version. Any unresolved blocking finding blocks approval (Phase 5 and
-   Phase 7 exit gates).
+4. **Fact gate.** Read, through `VerifiedFactReadPort`, the state of every
+   `FactChip` bound in this version's document. The **mandatory** set is the
+   template's `FormTemplateField.required` fields that carry a `factBinding`
+   (open decision 3, now closed). If any mandatory fact is not `verified` or
+   `corrected`, or is flagged stale by `particular.evidence-stale`, block. No
+   unverified mandatory fact may reach approval (Phase 7 exit gate; §9.2
+   release-blocker).
+5. **Blocker gate.** Read, through `CheckReadPort`, unresolved findings on this
+   matter. A finding blocks when its status is `fail` or `needs-review` and it
+   has no `resolved` or `waived` resolution (`check-service.md` §6). Any
+   unresolved blocking finding blocks approval. A pending-applicability or stale
+   mandatory step also blocks (`task-service.md` §8), read through the same
+   readiness projection.
 6. **Placeholder gate.** Scan the document for `lockedBlock` nodes whose bound
    `locked-prescribed` template block is still at its `placeholderText`. Any
    unresolved placeholder blocks approval (§9.2: hidden placeholder must be
@@ -129,22 +148,40 @@ services already own the authoritative read path.
    transaction. Set `Draft.approvedBy` / `Draft.approvedAt` from the same record
    so the frontend contract stays satisfied.
 8. Audit `draft.approved` with actor, target version, content hash, and the
-   snapshot references (invariant 8).
+   snapshot references (invariant 8), **and** publish the `draft.approved`
+   domain event through `EventPort`. Both are required: the audit row is the
+   legal record, the event is what `export_service`, `notification_service`, and
+   `task_service` consume. An audit write is not a publication
+   (`events.md` §3).
 9. Return the ApprovalRead. Export is a separate call and reads this record.
 
 Any edit after approval is handled by `draft_service`, not here: it creates a
 **new working version** (invariant, §9.2), so the existing Approval keeps
 pointing at the old hash and never silently covers the changed content.
 
+### invalidate(system_ctx, approval_id, reason) -> ApprovalRead
+
+Not a user action. The service subscribes to `document.version-superseded` and
+`particular.evidence-stale`; when either affects a fact bound in an approved
+version, the Approval is marked invalidated with the reason and
+`draft.approval-invalidated` is published. The Approval record itself is never
+deleted or rewritten — it keeps pointing at the hash it approved, and the
+invalidation is a successor fact about it.
+
+`export_service` consumes the event and refuses to render, including for a job
+already queued (`export-service.md` §8). An invalidated approval requires a new
+submit and a new approval; gates are re-run from scratch.
+
 ## 6. The seams
 
 | Seam | Direction | Contract |
 | --- | --- | --- |
-| `verification_service` | reads | fact state per `FactChip.fact_id`; all mandatory facts `verified`/`corrected` or the gate blocks |
-| `check_service` | reads | unresolved blocking findings for the version; any one blocks |
-| `draft_service` | reads / triggers | supplies the `DraftVersion` + `hash`; a post-approval edit forks a new unapproved version |
-| `export_service` | hands off | reads the Approval record; renders only an `approved` version pinned to its hash |
-| `AuditPort` | emits | `draft.approved` event anchors the approval for history |
+| `draft_service` | reads | `DraftReadPort` supplies the `in-review` version, its `hash`, and `submittedVersionId`; a post-approval edit forks a new unapproved version |
+| `verification_service` | reads | `VerifiedFactReadPort` gives fact state per `FactChip.fact_id`; all mandatory facts `verified`/`corrected` or the gate blocks |
+| `check_service` | reads | `CheckReadPort` gives unresolved blocking findings; any one blocks |
+| `export_service` | publishes | `draft.approved` lets export run; `draft.approval-invalidated` stops it |
+| `notification_service` | publishes | `draft.approved` drives the "approval recorded" notification |
+| `AuditPort` | emits | The `draft.approved` audit row anchors the approval for history — separately from the event |
 
 ## 7. Invariants this service enforces
 
@@ -154,10 +191,13 @@ pointing at the old hash and never silently covers the changed content.
 | No mandatory unverified fact reaches approval (Phase 7, §9.2) | Fact gate blocks unless every bound `FactChip` is `verified`/`corrected` |
 | Unresolved blockers stop approval (Phase 5/7) | Blocker gate consults `check_service`; any unresolved blocking finding blocks |
 | No hidden placeholder (§9.2) | Placeholder gate rejects any `locked-prescribed` block still at `placeholderText` |
-| Only an authorised approver (inv. 3) | Role re-checked from the repository; clerk denied |
-| Approval never covers changed content (§9.2) | Post-approval edit forks a new working version; the Approval stays pinned to the old hash |
-| Altered locked wording cannot slip through (§9.2) | Locked-wording check (owned with `check_service`) must be clear before the gate passes |
-| Every approval audited (inv. 8) | `AuditPort.record("draft.approved")` with actor, hash, and snapshot |
+| Only an authorised approver (inv. 3) | `draft.approve` capability plus a current practising notary; `reviewer` denied with 403 |
+| Approval never covers changed content (§9.2) | Post-approval edit forks a new working version; the Approval stays pinned to the old hash; a save during review invalidates the submission pin |
+| Altered locked wording cannot slip through (§9.2) | Locked-wording validation runs at save and restore in `draft_service` and is re-asserted on the pinned document before the gate passes |
+| Stale evidence revokes approval | `document.version-superseded` and `particular.evidence-stale` invalidate the Approval and stop export |
+| Gates are read through ports | `VerifiedFactReadPort` and `CheckReadPort`; no sibling application service is imported (plan §5.1) |
+| Organisation isolation | Every query filters `ctx.organisationId` before matter membership |
+| Every approval audited **and** published (inv. 8) | `AuditPort.record("draft.approved")` plus the `draft.approved` outbox event, in one transaction |
 
 ## 8. Failure modes to handle explicitly
 
@@ -167,14 +207,40 @@ pointing at the old hash and never silently covers the changed content.
 - Draft edited between gate read and commit — the loaded hash no longer matches
   the active version at commit; reject and require re-review.
 - Fact verified, then its source document replaced before approval — the fact is
-  flagged stale via `document.version_superseded`; the fact gate sees it as no
+  flagged stale via `document.version-superseded`; the fact gate sees it as no
   longer verified and blocks.
 - Approver lacks role — denied at step 1; audit the denied attempt.
 - Approving an already-`exported` version — illegal transition, rejected.
-- Gate read from a sibling service times out — fail closed; never approve on a
+- Gate read through a port times out — fail closed with 503; never approve on a
   missing verdict.
+- Draft saved while it sat in `in-review` — the draft is already back in
+  `working` and `submittedVersionId` is cleared, so approve rejects with an
+  illegal-transition error naming the new version.
+- Approved version's evidence superseded before export — the Approval is
+  invalidated, the queued render is refused, and the draft must be resubmitted.
 
-## 9. Open decisions
+## 9. Test list
+
+- **Unit:** the single legal transition; approve rejects `working`, `approved`,
+  and `exported` sources; approve rejects a version other than
+  `submittedVersionId`; each of the three gates blocks independently; the
+  mandatory fact set is derived from the template's required `factBinding`
+  fields; `blockers_checked` snapshot captures what was clear; the Approval is
+  immutable once written.
+- **Contract:** `ApprovalRead` schema; the `draft.approved` and
+  `draft.approval-invalidated` event payloads against `events.md`; the 403
+  `capability_denied` and 422 gate-failure shapes.
+- **Integration:** submit → approve → export end to end over real PostgreSQL;
+  an unverified mandatory fact blocks; an unresolved `fail` finding blocks; a
+  placeholder blocks; concurrent approve returns the existing Approval rather
+  than a duplicate; superseding the evidence document invalidates the Approval
+  and stops a queued export; audit row and outbox event commit together.
+- **Security:** a `reviewer` cannot approve; a notary without a current practice
+  certificate cannot approve; cross-matter and cross-organisation approval
+  denied with 404; a caller-supplied content hash is ignored; a denied attempt
+  is audited.
+
+## 10. Open decisions
 
 Recommended defaults in bold; confirm or override before coding.
 
@@ -183,18 +249,17 @@ Recommended defaults in bold; confirm or override before coding.
    Lean **add a backend Approval record** (approver, `draft_version_id`,
    `content_hash`, timestamp, blockers-checked snapshot) as the audit anchor,
    and keep the two `Draft` fields as a projection for the frontend contract.
-2. **Endpoint reconciliation** — the frontend posts to
-   `/api/matters/{id}/drafts/{draftId}/approve`; plan §7 targets
-   `/draft-versions/{id}/approve`. Lean **keep the matter-scoped route as the
-   public contract** and resolve it server-side to the draft's active version,
-   which is what actually gets pinned.
-3. **Which facts count as mandatory** — the `FactChip` node carries only
-   `fact_id` and `verification_state`; mandatoriness comes from the template
-   field binding (`FormTemplateField.required` / `factBinding`). Confirm the
-   source of the mandatory set before wiring the fact gate.
-4. **Approver role model** — the exact role name authorised to approve (and
-   whether the drafting lawyer may approve their own draft) is a Phase 2 policy
-   decision, recorded here as pending.
-5. **Re-approval after edit** — whether a forked version inherits any prior
-   gate results or re-runs every gate from scratch. Lean **re-run all gates**;
-   a new hash is a new instrument.
+2. **Endpoint reconciliation — closed.** The matter-scoped route is the public
+   contract, resolved server-side to the `in-review` version
+   (`api-conventions.md` §1).
+3. **Which facts count as mandatory — closed.** The template's
+   `FormTemplateField.required` fields carrying a `factBinding`. The same source
+   drives `create_draft` eligibility (`draft-service.md` open decision 1).
+4. **Approver role — closed on the capability, open on self-approval.** The
+   capability is `draft.approve`, held by `approver` and requiring a current
+   practising notary (`security-model.md` §3.2, §3.3). Whether the drafting
+   lawyer may approve their own draft is a firm-policy decision: lean
+   **allow it in a solo organisation, and make four-eyes configurable per
+   organisation**, since a sole practitioner has no second approver.
+5. **Re-approval after edit — closed.** Every gate re-runs from scratch. A new
+   hash is a new instrument, and no prior gate result is inherited.

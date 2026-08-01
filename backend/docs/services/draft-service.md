@@ -18,23 +18,30 @@ editor document, and restore an earlier version. Each version is an immutable,
 content-hashed snapshot bound to exact fact and template versions (§5.2, Draft
 boundary).
 
-It owns **create, version, and restore only**. It does **not** approve a draft
-(`approval-service` does) and does **not** export it (`export-service` does) —
-those are separate services and separate documents. It does **not** author or
-approve Form templates; those are governed by `content-governance-service`
-(maintainer, `approvalState`). It reads verified facts but never verifies them
-(`verification_service` owns that).
+It owns **create, version, restore, and submit-for-review**. It does **not**
+approve a draft (`approval-service` does) and does **not** export it
+(`export-service` does) — those are separate services and separate documents. It
+does **not** author or approve Form templates; those are governed by
+`content-governance-service` (maintainer, `approvalState`). It reads verified
+facts but never verifies them (`verification_service` owns that).
+
+Submission is here, not in `approval-service`, because it is the last authoring
+act: it freezes which version the approver will judge. Before this document was
+corrected, `approval-service` refused anything that was not `in-review` and no
+service ever set `in-review`, so the approval gate was unreachable.
 
 ## 2. Where it sits
 
 ```text
-GET  /matters/{id}/drafts                       ─┐
-POST /matters/{id}/drafts                (create)─┼─→ api/v1/drafts.py
-POST /matters/{id}/drafts/{draftId}/versions(save)│         │
-POST /matters/{id}/drafts/{draftId}/restore      ─┘         │ orchestrates
-                                                            ▼
+GET  /matters/{id}/drafts                        ─┐
+POST /matters/{id}/drafts                 (create)│
+POST /matters/{id}/drafts/{draftId}/versions(save)┼─→ api/v1/drafts.py
+POST /matters/{id}/drafts/{draftId}/restore       │         │
+POST /matters/{id}/drafts/{draftId}/submit        │         │ orchestrates
+POST /matters/{id}/drafts/{draftId}/withdraw     ─┘         ▼
                     ports: DraftRepository, FormTemplateReadPort,
-                           VerifiedFactReadPort, ContentHashPort, AuditPort
+                           VerifiedFactReadPort, CheckReadPort,
+                           ContentHashPort, EventPort, AuditPort
 ```
 
 The router authenticates and parses only. The service takes an already-resolved
@@ -78,17 +85,25 @@ Editor node model (from `draft.ts`), enforced when a version is saved:
   free editing (invariant 6, §7).
 
 `DraftApprovalState = working | in-review | approved | exported` (exact values
-from `draft.ts`). This service moves a draft through `working` and produces new
-versions; `in-review`, `approved`, and `exported` are driven by the approval and
-export services. The state machine, enforced in the domain layer:
+from `draft.ts`). This service owns `working → in-review` (submit) and
+`in-review → working` (withdraw, and any edit). `approval_service` owns
+`in-review → approved`; `export_service` owns `approved → exported`. The state
+machine, enforced in the domain layer:
 
 ```text
-Draft:  working → in-review → approved → exported
-              ↖──────────────┘  (any edit after approval opens a new
-                                 unapproved version — Phase 7 exit gate)
+                submit                 approve                 render
+Draft:  working ───────▶ in-review ───────────▶ approved ───────────▶ exported
+           ▲   ◀───────      │                     │                     │
+           │   withdraw      │                     │                     │
+           └─────────────────┴─────────────────────┴─────────────────────┘
+                     any save_version or restore_version returns the
+                     draft to `working` as a new unapproved version
+                     (Phase 7 exit gate)
 ```
 
-An illegal transition raises a domain error, not an HTTP error.
+Every transition has exactly one owner, and no state is reachable only from a
+service that refuses to enter it. An illegal transition raises a domain error,
+not an HTTP error.
 
 ## 4. Ports it depends on
 
@@ -100,6 +115,11 @@ In `ports/`:
   / transactionType); read-only, written by `content-governance-service`.
 - `VerifiedFactReadPort` — read verified/corrected facts for the matter to test
   the eligibility precondition and to resolve fact chips; read-only.
+- `CheckReadPort` — read the current blocking finding set for the matter, used
+  by `submit_for_review` to report blockers before an approver sees them.
+  Read-only; the authoritative gate stays in `approval_service`.
+- `EventPort` — publish `draft.*` events through the same outbox every other
+  service uses (`events.md` §5.10).
 - `ContentHashPort` — compute the deterministic content hash of a
   `DraftVersion.document` (plus its bound fact and template versions) for the
   `hash` field.
@@ -164,24 +184,61 @@ version history and `activeVersionId`.
    changed.
 4. Audit `draft.version-restored`.
 
+### submit_for_review(ctx, matter_id, draft_id) -> DraftRead
+
+The missing transition. It moves `working → in-review` and fixes which version
+the approver will judge.
+
+1. Re-check membership; 404 hides existence. Require `draft.submit-for-review`
+   (`security-model.md` §3.1).
+2. Require `approvalState = working`. Submitting an `in-review`, `approved`, or
+   `exported` draft is an illegal transition.
+3. Re-run the full save-time validation (step 2 of `save_version`) against the
+   **current** verified facts and the current template version. A draft whose
+   chips have gone stale since the last save cannot be submitted.
+4. **Run the approval gates advisorily** — the fact gate, the blocker gate via
+   `CheckReadPort`, and the placeholder scan. Failures are returned as a 422
+   listing each unmet condition. This is deliberately not authoritative:
+   `approval_service` re-runs all three at approval time and is the only gate
+   that counts (`approval-service.md` §5). The point is that the drafting lawyer
+   discovers the blockers, not the approver.
+5. Pin the submitted version: set `activeVersionId` and record
+   `submittedVersionId`, `submittedBy`, `submittedAt` on the Draft. A save after
+   submission returns the draft to `working` (step 3 of `save_version`), so the
+   pin can never silently drift under the approver.
+6. Set `approvalState = in-review`, persist, publish `draft.review-requested`
+   with the version id and content hash, and audit `draft.submitted`.
+
+### withdraw_from_review(ctx, matter_id, draft_id, reason) -> DraftRead
+
+Moves `in-review → working` without approving or rejecting. Requires
+`draft.submit-for-review` and a non-empty reason. Clears the submission pin,
+audits `draft.withdrawn`. An approver who wants changes uses this rather than
+leaving a draft parked in `in-review`.
+
 ## 6. The seam to approval and export
 
-draft-service stops at `working`. The rest of Phase 7 lives elsewhere:
+draft-service stops at `in-review`. The rest of Phase 7 lives elsewhere:
 
 ```text
-draft-service          approval-service            export-service
-create / save /   ──▶  POST /draft-versions/{id}/  ──▶  POST /approvals/{id}/
-restore (working)      approve (→ approved)             exports (→ exported)
-   │                        │                                │
-   │ eligibility gate       │ latest-hash, blockers,         │ manifest, checksum,
-   │ (transferee+extent)    │ placeholders, lawyer role      │ expiry
+draft-service                  approval-service        export-service
+create / save / restore  ──▶   approve            ──▶  create_export
+  → working                      in-review→approved      approved→exported
+submit_for_review        ──▶
+  working → in-review
+  │                              │                       │
+  │ eligibility gate             │ fact, blocker and     │ manifest, checksum,
+  │ (template-declared keys)     │ placeholder gates,    │ expiry, signed URL
+  │ + advisory gate preview      │ hash pin, role gate   │
 ```
 
-- **Approval** (`approval-service.md`, plan `POST /draft-versions/{id}/approve`)
-  targets one content hash, checks that no mandatory fact is unverified, that no
-  placeholder is unresolved, and that the actor is a lawyer, then sets
-  `approvedBy` / `approvedAt` and `approvalState = approved`. draft-service does
-  not approve.
+- **Approval** (`approval-service.md`; public route
+  `POST /matters/{id}/drafts/{draftId}/approve`, resolved server-side to the
+  `in-review` version per `api-conventions.md` §1) targets one content hash,
+  checks that no mandatory fact is unverified, that no blocking finding is
+  unresolved, that no placeholder remains, and that the actor holds
+  `draft.approve` and is a practising notary, then sets `approvedBy` /
+  `approvedAt` and `approvalState = approved`. draft-service does not approve.
 - **Export** (`export-service.md`, plan `POST /approvals/{id}/exports`) renders
   DOCX/PDF, records a manifest and checksum, and sets `approvalState = exported`.
   draft-service does not render or export.
@@ -190,9 +247,12 @@ restore (working)      approve (→ approved)             exports (→ exported)
   its wording is a lawyer-owned placeholder pending (invariant 6). draft-service
   consumes only `approved` templates and never edits prescribed wording.
 
-The **eligibility precondition** (verified/corrected `transferee` **and**
-`extent`) is a `create_draft` server precondition, returned as a 4xx listing the
-missing requirements rather than a silent `null`.
+The **eligibility precondition** is a `create_draft` server precondition,
+returned as a 422 with `code: "draft_eligibility_unmet"` and
+`details.missingFactKeys` (`api-conventions.md` §5), never a silent `null`. The
+required key set comes from the template's own `FormTemplateField.required` +
+`factBinding` declarations; `transferee` and `extent` are the Form 8 values, not
+a hardcoded rule (open decision 1, now closed).
 
 ## 7. Invariants this service enforces
 
@@ -202,9 +262,12 @@ missing requirements rather than a silent `null`.
 | Approved wording changes only via a new approved template (inv. 6) | `lockedBlock` content must match an `approved` FormTemplate `locked-prescribed` block; altered locked wording is rejected; templates are governed elsewhere |
 | Draft is a snapshot bound to exact versions (§5.2) | Each DraftVersion is immutable and carries a content `hash` over document plus bound fact/template versions |
 | Any edit after approval opens a new unapproved version | `save_version` on an `approved` draft creates a new version, never mutating the approved snapshot |
-| Eligibility is a server precondition | `create_draft` requires verified/corrected `transferee` and `extent`; missing keys return a 4xx, not a silent null |
+| Eligibility is a server precondition | `create_draft` requires the template's declared required fact bindings verified or corrected; missing keys return 422 with the key list, not a silent null |
+| Every state has exactly one owner | draft-service owns `working ⇄ in-review`; approval owns `in-review → approved`; export owns `approved → exported`. No state is reachable only from a service that refuses to enter it |
+| Submission pins the reviewed version | `submit_for_review` records `submittedVersionId`; any later save returns the draft to `working`, so the approver's target cannot drift |
+| Organisation isolation | Every query filters `ctx.organisationId` before matter membership (`security-model.md` §2) |
 | Matter isolation | Membership re-checked; 404 hides existence; drafts are matter-scoped |
-| Every mutation audited (inv. 8) | `AuditPort.record` on create, save, and restore, with actor, before/after, correlation id |
+| Every mutation audited (inv. 8) | `AuditPort.record` on create, save, restore, submit, and withdraw, with actor, before/after, correlation id |
 
 ## 8. Failure modes to handle explicitly
 
@@ -227,17 +290,23 @@ missing requirements rather than a silent `null`.
 
 ## 9. Test list
 
-- **Unit:** `DraftApprovalState` transitions; save on an approved draft opens a
-  new unapproved version; fact-chip rejects unverified state; locked-block
-  wording and unknown-block-id rejection; restore creates a new version with
-  `restoredFromVersionId`; content-hash stability and change.
-- **Contract:** `create_draft`, `save_version`, and `restore_version` request
-  and response schemas; `EditorDocument` node-model validation; the 4xx shape
-  for the missing-eligibility case.
+- **Unit:** `DraftApprovalState` transitions in both directions, including
+  submit, withdraw, and the save-returns-to-working rule; save on an approved
+  draft opens a new unapproved version; fact-chip rejects unverified state;
+  locked-block wording and unknown-block-id rejection; restore creates a new
+  version with `restoredFromVersionId`; content-hash stability and change;
+  submit re-validates against current facts and refuses a stale chip.
+- **Contract:** `create_draft`, `save_version`, `restore_version`,
+  `submit_for_review`, and `withdraw_from_review` request and response schemas;
+  `EditorDocument` node-model validation; the 422 `draft_eligibility_unmet`
+  shape with `missingFactKeys`; the `draft.review-requested` event payload.
 - **Integration:** real PostgreSQL — create against an approved Form template,
-  save several versions, restore an earlier one, edit after a simulated
-  approval, and confirm the approved snapshot is preserved; missing-fact
-  eligibility returns 4xx.
+  save several versions, restore an earlier one, submit, approve, edit after
+  approval, and confirm the approved snapshot is preserved; **a draft can travel
+  create → submit → approve → export end to end** (the reachability regression
+  test for the gate that was previously unreachable); a save during `in-review`
+  returns the draft to `working` and invalidates the pin; missing-fact
+  eligibility returns 422.
 - **Security:** cross-matter draft read and write denied; 404-not-403 existence
   hiding; unverified fact cannot reach a saved version; altered locked wording
   cannot be persisted; audit written for every mutation.
@@ -246,12 +315,10 @@ missing requirements rather than a silent `null`.
 
 Recommended defaults in bold; confirm or override before coding.
 
-1. **Eligibility requirement source.** The `transferee` + `extent` requirement
-   is hardcoded in the frontend. Recommend the **FormTemplate declares its own
-   required fact bindings** (`FormTemplateField.required` + `factBinding`) so the
-   precondition is data-driven per form rather than hardcoded for Form 8; keep
-   `transferee` + `extent` as the Form 8 defaults until the template is
-   confirmed.
+1. **Eligibility requirement source — closed.** The FormTemplate declares its
+   own required fact bindings (`FormTemplateField.required` + `factBinding`);
+   `transferee` + `extent` remain the Form 8 values. The frontend's hardcoded
+   check is retired at M3 (`frontend-contract-migration.md`).
 2. **Content-hash inputs.** `DraftVersion.hash` must cover the editor document
    plus the exact bound fact versions and template version. Recommend a
    **canonical serialization of `{document, fact_version_ids,

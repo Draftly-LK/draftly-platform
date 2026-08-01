@@ -24,15 +24,23 @@ hands off.
 ## 2. Where it sits
 
 ```text
-POST /matters/{id}/documents ─┐
-POST /documents/{id}/versions ─┼─→ api/v1/documents.py ─→ application/document_service.py
-GET  /documents/{id}          ─┘                                   │
-GET  /documents/{id}/processing                                    │ orchestrates
-POST /processing/{job}/retry                                       ▼
-                                    ports: DocumentRepository, ObjectStoragePort,
-                                           JobQueuePort, AuditPort
-                                    (DocumentProcessingPort is used by the WORKER)
+GET  /api/v1/matters/{id}/documents        ─┐  (paginated list)
+POST /api/v1/matters/{id}/documents         │
+POST /api/v1/documents/{id}/versions        ┼─→ api/v1/documents.py
+GET  /api/v1/documents/{id}                 │        │
+GET  /api/v1/documents/{id}/processing      │        ▼
+GET  /api/v1/document-versions/{id}/manifest│  application/document_service.py
+POST /api/v1/processing/{job}/retry        ─┘        │ orchestrates
+                                                     ▼
+                    ports: DocumentRepository, ObjectStoragePort,
+                           JobQueuePort, BillingEntitlementPort,
+                           EventPort, AuditPort
+                    (DocumentProcessingPort is used by the WORKER)
 ```
+
+The list route was missing from this document even though the frontend already
+calls it (`GET /api/matters/{id}/documents`). It is paginated like every other
+list (`api-conventions.md` §2).
 
 The router does authentication and parsing only. The service takes an
 already-authenticated `RequestContext` (actor, roles, matter memberships) and
@@ -111,7 +119,7 @@ In `ports/`:
 
 Replacement. Same as upload, but the new DocumentVersion sets
 `supersedes_version_id` to the current one. The old version stays in storage and
-history (invariant 7). The service emits `document.version_superseded` so
+history (invariant 7). The service emits `document.version-superseded` so
 `verification_service` can flag any particulars sourced from the old version as
 stale — `document_service` does not reach into verified facts itself; that is
 the seam. Enqueue processing for the new version. Audit `document.replaced`.
@@ -149,6 +157,40 @@ state. Retrying a `failed` or `dead_letter` run opens a new attempt
 `processing.retried`. This is the manual escape hatch for the exit gate's
 explicit retry and manual-review state.
 
+## 5A. Entitlement and metering
+
+Every metered operation passes two independent gates in this order
+(`security-model.md` §1). This section previously did not exist, so document
+upload and OCR — the most expensive things Draftly does — were free regardless
+of plan, and `billing-service.md`'s `document_pages.monthly` and
+`storage_bytes.max` keys had no caller.
+
+```text
+auth_service.authorize(ctx, "document.upload", matter_id)
+billing_service.require_feature(org, "document_processing.enabled")
+billing_service.reserve_usage(org, "document_pages.monthly",
+                              validated_page_count, operation_id=version_id)
+billing_service.reserve_usage(org, "storage_bytes.max",
+                              content_length, operation_id=version_id)
+   -> store, persist, enqueue
+   -> worker consumes actual pages on success
+   -> release on terminal failure or dead-letter
+```
+
+Rules:
+
+- **Reserve before the work, consume after it.** The page count is validated at
+  ingest from the PDF page tree, not taken from the client. If the worker finds
+  a different real count, it consumes the actual and the delta is reconciled.
+- **`operation_id` is the `DocumentVersion` id**, so a retried processing run
+  cannot double-charge (`billing-service.md` §5.3).
+- **A dead-lettered run releases its reservation.** A failed OCR is not billable.
+- **Quota exhaustion is a 429** with `code: "quota_exhausted"` and the metric in
+  `details`, not a silent truncation (`api-conventions.md` §8).
+- **Restricted mode blocks new uploads and processing but never existing
+  reads.** An organisation in `restricted` can still open every document it
+  already has (`billing-service.md` §10).
+
 ## 6. The async boundary
 
 `workers/document_jobs.py` is not this service, but it closes the loop, so the
@@ -161,10 +203,16 @@ contract matters:
    Google Document AI adapter).
 3. Store derivatives keyed to the run. Never touch the original.
 4. On success, set `processed`, record all provider metadata and the outcome,
-   and emit `document.processing-completed` for classification, extraction,
-   and task requirement projection consumers.
+   and emit `document.processing-completed`. When the run also produced candidate
+   particulars, emit `document.extraction-completed` as well — that is the event
+   `verification_service.ingest_candidates` subscribes to. The two are
+   deliberately separate: the first says derivatives exist, which is what the
+   requirement projection needs; the second says candidates exist
+   (`events.md` §5.4).
 5. On provider failure, preserve the original, set `failed` with backoff retry,
-   then `manual_review` or `dead_letter`. No provider response ever sets a
+   then `manual_review` or `dead_letter`, and emit `document.processing-failed`
+   with `terminal` set accordingly — only the terminal case notifies. Release
+   the usage reservation on `dead_letter` (§5A). No provider response ever sets a
    particular to verified (Phase 3 exit gate).
 
 ## 7. Processing state is not requirement state
@@ -187,7 +235,7 @@ A successful processing run may move a matching task requirement from
 `accepted`. Acceptance requires an authorised lawyer to review and bind the
 requirement to the exact `document_id` and `document_version_id`.
 
-Replacing a document emits `document.version_superseded`. Consumers must mark
+Replacing a document emits `document.version-superseded`. Consumers must mark
 verified particulars, accepted requirements, completed dependent steps, and
 readiness evaluations stale as applicable. This service publishes the fact of
 supersession; it does not mutate those other services' records.
@@ -393,7 +441,10 @@ viewer decision applies when real protected uploads are connected in M3/E8.10.
 | Machine result never authoritative | Derivatives flagged rebuildable; only verification promotes facts |
 | Processing never implies acceptance | `processed` is emitted as evidence availability; only task-service records lawyer acceptance |
 | Every mutation audited (inv. 8) | `AuditPort.record` on upload, replace, retry, and state changes |
+| Organisation isolation | Every query filters `ctx.organisationId` before matter membership; storage keys are organisation-prefixed (`security-model.md` §2) |
 | Matter isolation | Membership re-checked; 404 hides existence |
+| Paid work is metered | Upload reserves pages and bytes, the worker consumes actual, a dead-lettered run releases (§5A) |
+| Held evidence is never collected | The orphan-blob sweep and any deletion skip scopes under an active `retention.hold-placed` (`retention-service.md` §6) |
 
 ## 11. Failure modes to handle explicitly
 

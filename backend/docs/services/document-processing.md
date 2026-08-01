@@ -178,6 +178,49 @@ Set it conservative at first (escalate generously), then tune against a labelled
 sample. Too high wastes Gemini calls; too low loses the recovery the fallback
 exists for.
 
+## 10A. Metering and the data-protection gate
+
+Two things this document did not previously state, both of which bite on the
+first real client bundle.
+
+### Metering
+
+The worker consumes what `document_service` reserved at upload
+(`document-service.md` §5A):
+
+```text
+reserved at upload:  document_pages.monthly = validated page count
+consumed here:       actual pages processed, per ProcessingRun
+released here:       on dead_letter, the full reservation
+```
+
+Gemini escalation calls are metered separately as
+`ai_extraction_calls.monthly`, because a page that escalates to Level 1 or 2
+costs materially more than one that does not. Level 3 (manual entry) consumes
+nothing.
+
+### Sending client documents to Google
+
+`infrastructure.md` is explicit that real client matter data may only reach
+managed cloud infrastructure once data residency, a processor agreement, and
+lawyer sign-off are confirmed under PDPA 2022. **That gate applies to Document
+AI and Gemini exactly as it applies to Neon**, and it applies harder, because
+here the payload is the scanned deed itself rather than metadata.
+
+Before any real bundle is processed, plan §10 requires recording the Document AI
+and Gemini **region, retention period, deletion behaviour, training-use terms,
+quota, cost, and exit path**. Until those are recorded and approved:
+
+- V0 runs on synthetic and pilot documents only;
+- the adapter refuses to run when the settings module reports
+  `provider_data_approval = false` and the document is not flagged synthetic;
+- the refusal routes the version to `manual_review`, which is a legitimate
+  state, not an error.
+
+This is the same fail-closed posture the corpus governance service takes for
+legal sources: an unapproved provider path is blocked by construction rather
+than by a note in a document.
+
 ## 11. Effect on the SRS and architecture
 
 The SRS and architecture documents name Google Document AI as the V0 processing

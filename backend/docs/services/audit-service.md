@@ -28,16 +28,24 @@ does **not** hold matter content beyond the before/after references, and offers
 ## 2. Where it sits
 
 ```text
-document_service ─┐
-verification_svc  ─┤
-check_service     ─┼─→ AuditPort.record(event) ─→ application/audit_service.py
-draft_service     ─┤        (write, append-only)          │
-approval_service  ─┤                                       ▼
-auth_service      ─┘                          ports: AuditRepository (append-only)
+every application service, every worker, every webhook handler
+        │
+        └─→ AuditPort.record(event) ─→ application/audit_service.py
+                (write, append-only)             │
+                                                 ▼
+                              ports: AuditRepository (insert-only)
 
-GET /api/v1/matters/{id}/audit ──→ api/v1/audit.py ──→ read timeline
-GET /api/v1/history            ──→ (optional matterId) ──→ per-matter or global feed
+GET /api/v1/matters/{id}/audit ──→ api/v1/audit.py ──→ paginated matter timeline
+GET /api/v1/history            ──→ (optional matterId) ──→ organisation feed
 ```
+
+Writers include `auth_service`, `billing_service`, `matter_service`,
+`party_service`, `document_service`, `verification_service`, `check_service`,
+`task_service`, `obligations_service`, `draft_service`, `approval_service`,
+`export_service`, `notarial_register_service`, `content_governance_service`,
+`corpus_governance_service`, `research_service`, `voice_service`,
+`notification_service`, and `retention_service`. That breadth is why the
+domain model in §3 cannot be the frontend's matter-only shape.
 
 `AuditPort` is the name every other service doc references. Services never
 write audit rows directly; they call `AuditPort.record(event)` and the audit
@@ -47,18 +55,83 @@ FastAPI and no SQLAlchemy.
 
 ## 3. Domain model it needs
 
-In `domain/audit.py`, mirroring the frontend `AuditEvent`
-(`src/types/audit.ts`) so the read contract matches:
+In `domain/audit.py`:
 
-- **AuditEvent** — `id`, `matterId`, `actor`, `action`, `targetType:
-  AuditTargetType`, `targetId`, `before?`, `after?`, `timestamp`.
-- **AuditTargetType** — exactly the frontend enum: `matter | document | fact |
-  check | workflow-step | answer | draft | permission`. `permission` covers
-  account, role, and membership changes written by `auth_service`.
+```text
+AuditEvent
+  id                 # server-assigned
+  organisationId     # REQUIRED
+  matterId?          # nullable
+  actor?             # null only for scheduler- and provider-originated events
+  action             # closed enum, §3.2
+  targetType         # closed enum, §3.1
+  targetId
+  before?            # typed reference + diff, never a full object copy
+  after?
+  reason?            # required for the actions listed in §5
+  correlationId
+  causationId?
+  prevHash           # §3.3
+  hash
+  timestamp          # server clock
+```
 
-`id` and `timestamp` are **server-assigned** on `record`, not supplied by the
-caller. `actor` comes from the authenticated `RequestContext` (see
-`auth-service.md`), not from the request body.
+`id`, `timestamp`, and `hash` are **server-assigned** on `record`, never
+supplied by the caller. `actor` comes from the authenticated `RequestContext`
+(`auth-service.md`), never from the request body.
+
+### 3.1 The target type enum is wider than the frontend's
+
+The frontend `AuditTargetType` (`src/types/audit.ts`) is
+`matter | document | fact | check | workflow-step | answer | draft |
+permission`. That set **cannot express most of what the other service docs
+promise to audit**: billing writes subscription changes, obligations writes
+user- and firm-scoped events, content-governance writes definition transitions,
+corpus-governance writes source approvals, export writes render events, party
+writes identity access, and voice writes transcript confirmations. Several of
+those also have no matter at all, which the frontend's required `matterId`
+forbids.
+
+The backend enum is therefore the contract, and the frontend enum is a **read
+projection** of it:
+
+```text
+AuditTargetType =
+  matter | document | instrument | fact | check | workflow-step |
+  answer | draft | approval | export | permission | party |
+  obligation | notification | content-definition | legal-source |
+  subscription | transcript | organisation | retention
+```
+
+The history screen filters to the eight values it renders today and shows the
+rest under a generic row until the frontend type is widened
+(`frontend-contract-migration.md`).
+
+`matterId` is nullable. `organisationId` is not: every event belongs to exactly
+one tenant, including account, billing, and firm-scoped compliance events
+(`security-model.md` §2).
+
+### 3.2 Action is a closed enum, not a free string
+
+The demo store sets `action` ad hoc per call (`"document.uploaded"`,
+`"fact.corrected"`). A free string fragments the history on the first typo and
+makes the feed unfilterable. The backend defines a closed enum in
+`domain/enums.py`, and every service maps its mutations to a member of it. An
+unknown action is rejected by `record`, not silently written.
+
+Audit action names deliberately mirror the event registry names
+(`events.md`) where an event exists for the same mutation, but the two are
+separate mechanisms: some audited actions publish no event (a privileged read),
+and some events carry no audit row (a projection refresh).
+
+### 3.3 Hash chaining
+
+Append-only prevents ordinary edits; it does not prove the log was not altered
+out of band. Each event stores `prevHash` (the `hash` of the previous event in
+its organisation's chain) and `hash` over its own canonical serialisation plus
+`prevHash`. Any retroactive change breaks the chain from that point, and a
+verification sweep detects it. Chains are per organisation so one tenant's
+volume does not serialise another's writes.
 
 ## 4. Frontend contract and what changes
 
@@ -119,19 +192,53 @@ So `record` participates in the **same database transaction** as the mutation
 it records — either both commit or neither does. An audit write is not
 best-effort fire-and-forget.
 
+### 5.1 What "same transaction" means for workers and webhooks
+
+Draftly is a modular monolith on one PostgreSQL database, so a service calling
+`AuditPort.record` inside its own unit of work is a genuine shared transaction,
+not a distributed one. Three cases need stating because they commit outside the
+originating HTTP request:
+
+| Case | Rule |
+| --- | --- |
+| Worker job (render, OCR, delivery) | The audit row commits in the same transaction as the job's terminal state change. The enqueue is audited separately at request time |
+| Provider webhook (PayHere, Resend) | The audit row commits with the subscription or delivery state change, in the handler's transaction. `actor` is null and `causationId` is the provider event id |
+| Scheduled job | Same rule; `actor` is null and the action names the scheduler. Per-attempt retries are operational logs, not audit rows (`jobs-and-workers.md` §8) |
+
+If audit ever moves to a separate database, `record` becomes an outbox write in
+the mutation's transaction, drained by the audit consumer. The invariant
+("no event, no commit") survives the move; only the mechanism changes.
+
 ## 6. The read path
 
-### get_matter_audit(ctx, matter_id) -> AuditEvent[]
+### get_matter_audit(ctx, matter_id, page) -> page[AuditEvent]
 
-Matter-scoped timeline (§7 `GET /matters/{id}/audit`). Membership is re-checked
-via `auth_service`; a non-member gets **404, not 403**, consistent with
-cross-matter isolation. Read-only.
+Matter-scoped timeline (§7 `GET /matters/{id}/audit`). Organisation scope first,
+then membership; a non-member gets **404, not 403**. Paginated per
+`api-conventions.md` §2 — cursor, `limit` capped at 100, newest first.
+Read-only.
 
-### get_history(ctx, matter_id?) -> AuditEvent[]
+### get_history(ctx, filters, page) -> page[AuditEvent]
 
 Backs `GET /api/v1/history`. With `matterId`, delegates to the matter timeline.
-Without, returns the global feed limited to matters the actor may see — the
-feed is filtered by membership server-side, not by the client. Read-only.
+Without, returns the feed for the actor's **current organisation**, limited to:
+
+- events on matters the actor is a member of;
+- their own account events;
+- organisation-wide events only where the actor holds the relevant capability
+  (billing events need `billing.manage`, content-governance events need
+  `content.author`, compliance events need `compliance.view`).
+
+Filtering is server-side by organisation, membership, and capability — never by
+the client. Restricted-compliance events are excluded unless the actor is on the
+compliance allowlist, and their absence is not signalled.
+
+The feed is **always paginated**; it previously returned an unbounded array,
+which on a real firm's history is both a performance and a disclosure problem.
+
+The frontend history screen currently renders a hardcoded four-item list and
+does not call this endpoint at all. Wiring it is Phase 8 work; the backend
+exposes it first.
 
 Both are **read-only**. There is no write, update, or delete verb on these
 routes; the API surface for ordinary users cannot mutate the log (§7: "Read
@@ -143,12 +250,17 @@ access only; ordinary users cannot edit/delete").
 | --- | --- |
 | Every material mutation is recorded (inv. #8) | `AuditPort.record` in the same transaction as the mutation; no event = no commit |
 | Append-only | `AuditRepository` is insert-only; no update or delete path is exposed |
+| Tamper-evident | Per-organisation hash chain (`prevHash`/`hash`); a verification sweep detects any out-of-band change |
 | Read API is read-only | `GET` timeline and history only; ordinary users cannot edit or delete events |
-| Server-assigned id and timestamp | `record` assigns both; caller-supplied values are ignored |
-| Actor is authenticated identity | `actor` from `RequestContext`, never a request-body or hardcoded id |
-| Reason where required | Corrections, overrides, and approvals reject a `record` without a reason |
+| Server-assigned id, timestamp, hash | `record` assigns all three; caller-supplied values are ignored |
+| Actor is authenticated identity | `actor` from `RequestContext`, never a request-body or hardcoded id; null only for scheduler and provider events |
+| Every event has an organisation | `organisationId` required; `matterId` nullable for account, billing, and firm-scoped events |
+| Action and target are closed enums | An unknown `action` or `targetType` is rejected, not written |
+| Reason where required | Corrections, overrides, waivers, approvals, reopens, and destruction approvals reject a `record` without a reason |
 | Correlation id present | Every event carries the correlation id of its logical operation |
-| Matter isolation on read | Timeline and feed filtered by membership; non-member gets 404 |
+| References, not copies | `before`/`after` are typed references plus a diff; no full document bodies or raw client values |
+| Organisation and matter isolation on read | Feed filtered by organisation, then membership, then capability; non-member gets 404 |
+| Retention is externally governed | Audit events are outside V0 destruction scope (`retention-service.md` §10) |
 
 A missing audit event and a cross-matter disclosure are both release-blockers
 (§9.2); this service is where both gates are enforced on the audit path.
@@ -169,42 +281,45 @@ A missing audit event and a cross-matter disclosure are both release-blockers
 
 ## 9. Test list
 
-- **Unit:** `record` assigns id/timestamp/actor and ignores caller-supplied
-  values; reason-required mutations reject without a reason; correlation id is
-  always present.
-- **Contract:** `AuditEvent` read schema matches the frontend type
-  (`AuditTargetType` values included); `GET /history` with and without
-  `matterId`.
-- **Integration:** a mutation and its audit event commit or roll back together;
-  every mutating service produces exactly one event per material change;
-  append-only — no update/delete path succeeds.
-- **Security:** cross-matter feed filtering (a non-member sees nothing of
-  another matter); 404-not-403 on a foreign matter timeline; no PII leakage in
-  event payloads beyond intended references; edit/delete routes absent.
+- **Unit:** `record` assigns id, timestamp, hash, and actor, and ignores
+  caller-supplied values; unknown `action` or `targetType` rejected;
+  reason-required actions reject without a reason; correlation id always
+  present; `organisationId` required and `matterId` optional; hash chain links
+  correctly and a mutated row breaks verification.
+- **Contract:** `AuditEvent` read schema; the backend `AuditTargetType` is a
+  superset of the frontend enum and the projection maps every extra value;
+  paginated `GET /history` and `GET /matters/{id}/audit` envelopes.
+- **Integration:** a mutation and its audit event commit or roll back together,
+  including from a worker and from a provider webhook handler; **every service
+  in the writer list produces exactly one event per material change** — this is
+  the conformance test in `service-definition-of-done.md` §4, parameterised over
+  the service registry; append-only, no update or delete path succeeds; the
+  chain-verification sweep passes on a clean log and fails on a tampered one.
+- **Security:** organisation filtering on the global feed; a matter non-member
+  sees nothing of that matter; capability filtering hides billing, content, and
+  compliance events from actors without the capability; restricted-compliance
+  events leave no existence signal; 404-not-403 on a foreign matter timeline; no
+  raw client value or identifier in any payload; edit and delete routes absent.
 
 ## 10. Open decisions
 
 Recommended defaults in bold; confirm or override before coding.
 
-1. **Enumerated action vocabulary** — the frontend `action` is a **free-form
-   string** (`"document.uploaded"`, `"fact.corrected"`, and so on, set
-   ad hoc per call). Recommend a **closed enum of action codes** so the feed is
-   queryable and filterable and typos cannot fragment the history. Lean
-   **define the enum in `domain/enums.py`** and map each service's mutations to
-   it.
-2. **Structured before/after** — the frontend `before`/`after` are `unknown`.
-   Recommend a **typed, structured diff** keyed to the `targetType` rather than
-   opaque blobs, so "what changed" is queryable and tamper-evidence is
-   meaningful. Lean **references plus a typed diff**, not full object copies.
-3. **Hash-chaining for tamper-evidence** — append-only prevents ordinary
-   edits, but does not by itself prove the log was not altered out of band.
-   Recommend **chaining each event to the hash of its predecessor** (per matter
-   or global) so any retroactive change is detectable. Lean **add a
-   `prev_hash`/`hash` pair** once the action vocabulary and structured diff are
-   settled.
-4. **Global feed scope** — whether the wired global feed spans all of an
-   actor's matters or only recent activity, and its pagination. Lean
-   **membership-scoped, paginated, most-recent-first**.
-5. **Retention and legal hold** — how long events are kept and how a legal hold
-   interacts with any operational purge. Defer to the retention policy (plan
-   §10, §12) — but ordinary users never delete, regardless.
+1. **Enumerated action vocabulary — closed.** A closed enum in
+   `domain/enums.py` (§3.2). Every service maps its mutations to a member; an
+   unknown action is rejected.
+2. **Structured before/after — closed.** Typed references plus a diff keyed to
+   `targetType` (§3). Never full object copies, never raw client values.
+3. **Hash-chaining — closed.** `prevHash`/`hash` per organisation chain (§3.3),
+   with a scheduled verification sweep.
+4. **Global feed scope — closed.** Organisation-scoped, then membership- and
+   capability-filtered, paginated, newest first (§6).
+5. **Retention and legal hold — closed for V0.** Audit events are outside the
+   destruction scope that `retention_service` may propose, and tombstones are
+   themselves audit records. Ordinary users never delete, regardless.
+6. **Access auditing.** Draftly audits *reads* in exactly one place today:
+   decryption of a party identifier (`party-service.md` §8). Whether evidence
+   views and export downloads also become audited reads is open — plan §5.2
+   lists "access" among audited events. Lean **audit evidence-bytes access and
+   export downloads, not ordinary list and detail reads**, so the log stays
+   about decisions rather than navigation.
