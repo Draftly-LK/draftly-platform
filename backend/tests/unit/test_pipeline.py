@@ -190,6 +190,7 @@ class TestExtractDocument:
 
 
 class TestProcessEndpoint:
+    @patch("draftly_api.main.settings", new=_settings())
     @patch("draftly_api.main.extract_document")
     @patch("draftly_api.main.classify_document")
     def test_other_skips_extraction(
@@ -211,13 +212,14 @@ class TestProcessEndpoint:
             "/api/documents/process",
             files={"file": ("mystery.jpg", b"fake-bytes", "image/jpeg")},
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, response.text
         body = response.json()
         assert body["kind"] == "other"
         assert body["relation"] == "unclassified"
         assert body["extracted_fields"] == {}
         mock_extract.assert_not_called()
 
+    @patch("draftly_api.main.settings", new=_settings())
     @patch("draftly_api.main.extract_document")
     @patch("draftly_api.main.classify_document")
     def test_low_confidence_skips_extraction(
@@ -239,10 +241,11 @@ class TestProcessEndpoint:
             "/api/documents/process",
             files={"file": ("nic1f.jpg", b"fake-bytes", "image/jpeg")},
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, response.text
         assert response.json()["kind"] == "other"
         mock_extract.assert_not_called()
 
+    @patch("draftly_api.main.settings", new=_settings())
     @patch("draftly_api.main.extract_document")
     @patch("draftly_api.main.classify_document")
     def test_identity_pipeline_merges_filename_side(
@@ -272,7 +275,7 @@ class TestProcessEndpoint:
             "/api/documents/process",
             files={"file": ("nic2b.jpeg", b"fake-bytes", "image/jpeg")},
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, response.text
         body = response.json()
         assert body["kind"] == "identity"
         assert body["relation"] == "authorized"
