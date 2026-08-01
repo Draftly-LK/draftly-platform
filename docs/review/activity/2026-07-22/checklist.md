@@ -5,4 +5,3 @@
 - PASS Spec: immutable seeded and live-session events share a chronological
   timeline with actor, target, and timestamp context.
 - PASS Contract: the view reads the central typed audit-event bus.
-

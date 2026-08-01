@@ -1,8 +1,10 @@
 # Draftly Platform — agent conventions
 
 Rules for ALL AI agents (Claude, Codex/GPT, others) working in this repo.
-The authoritative build spec is `docs/plan.md`. The UX source of truth is
-`docs/reference/draftly-interface-spec.md`. Read both before writing code.
+Frontend work follows `docs/plan.md` and
+`docs/reference/draftly-interface-spec.md`. Backend work follows
+`backend/backend-implementation-plan-v0.md`, `backend/docs/infrastructure.md`,
+and the relevant plans under `backend/docs/services/`.
 
 ## Hard rules (never break)
 
@@ -15,6 +17,41 @@ The authoritative build spec is `docs/plan.md`. The UX source of truth is
 - **Legal wording is human-owned:** never author or alter prescribed statutory
   text, form templates' legal copy, or approval/waiver language. Verify
   structure only; escalate wording to the team.
+
+## Backend implementation
+
+- Backend implementation inside `backend/` is allowed when the task requests
+  it. The M2 statement that no backend is in scope applies to the frontend M2
+  milestone; it does not override an authorized backend task.
+- Before changing backend code, read
+  `backend/backend-implementation-plan-v0.md`,
+  `backend/docs/infrastructure.md`, and every service plan directly affected by
+  the change. Follow companion-document links when a contract crosses service
+  boundaries.
+- `backend/docs/**` contains approved implementation input. Agents may read it,
+  implement from it, and update it when the implementation changes a documented
+  API, invariant, data model, port, provider decision, or phase status.
+- `backend/docs/services/**` contains sensitive, authoritative implementation
+  plans. Keep them inside this private repository. Do not copy them into public
+  artifacts, unrelated repositories, logs, or examples. Do not casually
+  rewrite, delete, or weaken their trust boundaries and invariants.
+- Open decisions and approval gates in the backend plans remain unresolved
+  until the user or named owner approves them. Use local test doubles when the
+  plan permits; do not silently choose a production provider or legal policy.
+- Use Python 3.12 and `uv` for backend dependencies and commands. Do not manage
+  backend Python packages with pnpm, npm, pip, Poetry, or an untracked virtual
+  environment.
+- Preserve the backend dependency direction: API routers call application
+  services; application services use domain logic and ports; infrastructure
+  implements ports. Domain modules do not import FastAPI, SQLAlchemy, provider
+  SDKs, frontend types, or frontend fixtures.
+- Original evidence is immutable. Machine derivatives and working memory are
+  non-authoritative. Only lawyer-verified or lawyer-corrected facts may feed
+  approved outputs. Organization and matter isolation is enforced on the
+  server, and material mutations append audit events.
+- The backend must not import arbitrary paths or raw data from
+  `../draftly-research`. Use only an explicitly approved, versioned adapter or
+  package boundary.
 
 ## Build conventions
 
@@ -57,3 +94,7 @@ The authoritative build spec is `docs/plan.md`. The UX source of truth is
 - Follow the AI build-review loop in `docs/plan.md` for every screen; evidence
   goes to `docs/review/<screen-slug>/`. Escalate rather than self-approve the
   human-gate items.
+- Backend changes must pass `uv lock --check`, `uv run ruff check .`,
+  `uv run ruff format --check .`, `uv run mypy src`, and `uv run pytest` from
+  `backend/`, limited to the gates available at the current implementation
+  phase.

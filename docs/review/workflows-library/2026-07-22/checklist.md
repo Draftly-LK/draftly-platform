@@ -6,4 +6,3 @@
   governed filters; approved run action; and maintainer permission note exist.
 - PASS Visual: governed content reads as a compact library rather than a generic
   agent marketplace.
-

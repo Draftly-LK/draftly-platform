@@ -6,4 +6,3 @@
   retaining the same evidence, authority, checks, and decision controls.
 - PASS Responsive: assistant collapse and center-pane usability match the
   matter workflow.
-

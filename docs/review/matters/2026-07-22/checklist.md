@@ -9,4 +9,3 @@
 - PASS Visual: dense ledger table reads clearly at both target widths.
 
 Evidence: paired baselines and `results-*.json` files in this directory.
-

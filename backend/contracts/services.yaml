@@ -1,0 +1,447 @@
+# Service registry — the machine-readable half of docs/services/README.md.
+#
+# tests/conformance/ is parameterised over this file, so registering a service
+# here subjects it to every cross-service test in
+# docs/service-definition-of-done.md §4. docs/services/README.md §2 is generated
+# from it; test_registry_matches_readme fails the build if the two drift.
+#
+# level: L0 designed | L1 contracted | L2 conformant | L3 functional | L4 accepted
+# exemptions: explicit, reviewed opt-outs from a conformance test. Visible on
+#             purpose — a silent exemption is how a gate quietly stops gating.
+
+- name: auth_service
+  doc: docs/services/auth-service.md
+  level: L0
+  phase: 2
+  matter_scoped: false
+  routes_prefix: /api/v1
+  capabilities: [matter.membership.assign, user.role.set]
+  publishes: [user.provisioned, user.activated, user.suspended, user.role-changed,
+              user.invited, organisation.membership-changed, matter.membership-changed]
+  consumes: []
+  metered: []
+  owns_tables: [users, user_identities, organisations, organisation_memberships,
+                matter_memberships, invitations, compliance_allowlist]
+  jobs: []
+  exemptions:
+    - test: test_tenancy.test_every_table_has_organisation_id
+      tables: [users, user_identities]
+      reason: A user exists before organisation selection; tenancy is on the membership rows.
+
+- name: billing_service
+  doc: docs/services/billing-service.md
+  level: L0
+  phase: 2B
+  matter_scoped: false
+  routes_prefix: /api/v1/billing
+  capabilities: [billing.manage, platform.administer]
+  publishes: [billing.trial-ending, billing.payment-failed, billing.grace-period-ending,
+              billing.plan-changed, billing.subscription-cancelled,
+              billing.subscription-restricted]
+  consumes: [matter.created, document.uploaded, document.processing-failed,
+             organisation.membership-changed, assistant.question-asked, export.requested]
+  metered: []
+  owns_tables: [plan_versions, plan_entitlements, subscriptions, usage_ledger_entries,
+                usage_aggregates, billing_webhook_events]
+  jobs: [billing.reconcile-subscriptions]
+  exemptions:
+    - test: test_api_conventions.test_idempotency_key_required
+      routes: [POST /api/v1/billing/webhooks/payhere]
+      reason: Provider webhooks key on the provider event id, not a client header.
+
+- name: matter_service
+  doc: docs/services/matter-service.md
+  level: L0
+  phase: 2
+  matter_scoped: true
+  routes_prefix: /api/v1/matters
+  capabilities: [matter.create, matter.reclassify, matter.close, matter.reopen,
+                 matter.archive]
+  publishes: [matter.created, matter.activated, matter.classification-changed,
+              matter.assigned-notary-changed, matter.closed, matter.reopened,
+              matter.archived]
+  consumes: [workflow.instantiated, workflow.setup-failed, workflow.phase-changed,
+             workflow.readiness-changed, workflow.blocking-changed,
+             workflow.run-superseded, workflow.run-stale,
+             workflow.applicability-changed, workflow.step-completed,
+             workflow.step-overridden]
+  metered: [{feature: matter.create, metric: active_matters.max}]
+  owns_tables: [matters, matter_classifications, matter_party_references,
+                matter_operational_projections]
+  jobs: []
+  exemptions: []
+
+- name: party_service
+  doc: docs/services/party-service.md
+  level: L0
+  phase: 3B
+  matter_scoped: false
+  routes_prefix: /api/v1/parties
+  capabilities: [party.read-identity, party.record-identity, compliance.view,
+                 compliance.act]
+  publishes: [party.created, party.identity-evidence-recorded,
+              party.identity-document-expiry-recorded, party.screening-completed,
+              party.designated-person-confirmed]
+  consumes: [retention.hold-placed, retention.hold-released]
+  metered: [{feature: screening.enabled, metric: screening_checks.monthly}]
+  owns_tables: [parties, identity_evidence, beneficial_owners, cdd_assessments,
+                screening_results, screening_match_detail]
+  jobs: []
+  exemptions: []
+
+- name: document_service
+  doc: docs/services/document-service.md
+  level: L0
+  phase: 3
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/documents
+  capabilities: [document.upload, document.replace]
+  publishes: [document.uploaded, document.replaced, document.version-superseded,
+              document.processing-completed, document.processing-failed,
+              document.extraction-completed]
+  consumes: [retention.hold-placed, retention.hold-released,
+             retention.destruction-approved]
+  metered:
+    - {feature: document_processing.enabled, metric: document_pages.monthly}
+    - {feature: document_processing.enabled, metric: storage_bytes.max}
+  owns_tables: [documents, document_versions, processing_runs, derivatives]
+  jobs: [document.process, document.rebuild-derivatives, storage.collect-orphans]
+  exemptions: []
+
+- name: verification_service
+  doc: docs/services/verification-service.md
+  level: L0
+  phase: 4
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/facts
+  capabilities: [particular.verify, particular.correct, particular.add]
+  publishes: [particular.verified, particular.corrected, particular.added,
+              particular.blocked, particular.evidence-stale]
+  consumes: [document.extraction-completed, document.version-superseded]
+  metered: []
+  owns_tables: [particulars, particular_changes, particular_conflicts,
+                particular_versions]
+  jobs: []
+  exemptions: []
+
+- name: check_service
+  doc: docs/services/check-service.md
+  level: L0
+  phase: 5
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/checks
+  capabilities: [finding.resolve, finding.waive]
+  publishes: [check.result-changed, check.document-requested, finding.resolved,
+              finding.waived, finding.remediation-requested]
+  consumes: [particular.verified, particular.corrected, particular.added,
+             particular.blocked, content.definition-approved,
+             content.definition-retired, party.screening-completed]
+  metered: []
+  owns_tables: [checks, check_resolutions, check_remediation_links, cross_checks,
+                cross_check_bindings]
+  jobs: []
+  exemptions: []
+
+- name: task_service
+  doc: docs/services/task-service.md
+  level: L0
+  phase: 5
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/workflows
+  capabilities: [step.complete, step.override, requirement.review]
+  publishes: [workflow.instantiated, workflow.setup-failed, workflow.step-completed,
+              workflow.step-overridden, workflow.step-stale,
+              workflow.applicability-changed, workflow.run-stale,
+              workflow.run-superseded, workflow.phase-changed,
+              workflow.requirement-changed, workflow.readiness-changed,
+              workflow.blocking-changed, workflow.review-requested,
+              workflow.signing-scheduled]
+  consumes: [matter.created, matter.classification-changed, matter.activated,
+             particular.verified, particular.corrected, particular.added,
+             particular.blocked, particular.evidence-stale,
+             document.processing-completed, document.version-superseded,
+             check.result-changed, finding.remediation-requested, finding.resolved,
+             finding.waived, obligation.status-changed, instrument.attested,
+             instrument.registration-acknowledged, content.definition-approved,
+             content.definition-retired, party.identity-evidence-recorded,
+             matter.reopened, obligation.cancelled]
+  metered: []
+  owns_tables: [workflow_runs, step_runs, document_requirements,
+                readiness_evaluations, question_responses]
+  jobs: []
+  exemptions: []
+
+- name: obligations_service
+  doc: docs/services/obligations-service.md
+  level: L0
+  phase: 5
+  matter_scoped: false
+  routes_prefix: /api/v1/obligations
+  capabilities: [deadline.confirm, compliance.view, compliance.act]
+  publishes: [obligation.created, obligation.deadline-calculated,
+              obligation.deadline-confirmed, obligation.deadline-corrected,
+              obligation.status-changed, obligation.cancelled,
+              obligation.reminder-due, obligation.escalated]
+  consumes: [instrument.attested, instrument.registration-submitted,
+             instrument.registration-acknowledged, instrument.collection-ready,
+             register.monthly-period-closed, check.document-requested,
+             workflow.review-requested, workflow.signing-scheduled,
+             workflow.requirement-changed, matter.activated, matter.closed,
+             matter.assigned-notary-changed,
+             party.identity-document-expiry-recorded,
+             party.designated-person-confirmed, draft.review-requested,
+             retention.review-due, retention.hold-placed, retention.hold-released,
+             user.suspended, workflow.step-completed, matter.membership-changed]
+  metered: []
+  owns_tables: [obligations, reminder_occurrences, lawyer_confirmations]
+  jobs: [obligation.emit-reminders]
+  exemptions: []
+
+- name: notarial_register_service
+  doc: docs/services/notarial-register-service.md
+  level: L0
+  phase: 5B
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/attestations
+  capabilities: [instrument.attest, register.certify-return]
+  publishes: [instrument.attested, instrument.protocol-recorded,
+              instrument.registration-submitted,
+              instrument.registration-acknowledged, instrument.collection-ready,
+              register.monthly-period-closed]
+  consumes: [draft.approved, export.rendered, retention.hold-placed]
+  metered: [{feature: attestation.enabled, metric: attestations.monthly}]
+  owns_tables: [attestations, register_entries, protocol_records,
+                monthly_return_periods]
+  jobs: [register.close-month]
+  exemptions: []
+
+- name: content_governance_service
+  doc: docs/services/content-governance-service.md
+  level: L0
+  phase: 5
+  matter_scoped: false
+  routes_prefix: /api/v1
+  capabilities: [content.author, content.approve, content.retire]
+  publishes: [content.definition-versioned, content.definition-approved,
+              content.definition-retired]
+  consumes: []
+  metered: []
+  owns_tables: [form_templates, supporting_document_templates, workflow_definitions,
+                workflow_modules, deadline_rules, check_rule_definitions,
+                retention_policies, question_sets, questions]
+  jobs: []
+  exemptions:
+    - test: test_tenancy.test_every_table_has_organisation_id
+      tables: [form_templates, workflow_definitions, workflow_modules,
+               deadline_rules, check_rule_definitions, retention_policies,
+               question_sets, questions]
+      reason: >-
+        Governed content is platform-wide, not tenant data. Firm-policy modules
+        are the exception and do carry organisation_id.
+
+- name: corpus_governance_service
+  doc: docs/services/corpus-governance-service.md
+  level: L0
+  phase: 6
+  matter_scoped: false
+  routes_prefix: /api/v1/corpus
+  capabilities: [corpus.review, corpus.approve, corpus.quarantine]
+  publishes: [corpus.source-approved, corpus.source-quarantined,
+              corpus.source-policy-changed, corpus.release-published,
+              corpus.release-retired]
+  consumes: []
+  metered: []
+  owns_tables: [legal_sources, corpus_releases, corpus_release_entries,
+                draftly_editorial_records]
+  jobs: [corpus.rebuild-index]
+  exemptions:
+    - test: test_tenancy.test_every_table_has_organisation_id
+      tables: [legal_sources, corpus_releases, corpus_release_entries]
+      reason: The legal corpus is platform-wide; approved statutes are not customer data.
+
+- name: library_service
+  doc: docs/services/library-service.md
+  level: L0
+  phase: 6
+  matter_scoped: false
+  routes_prefix: /api/v1/library
+  capabilities: []
+  publishes: []
+  consumes: [corpus.source-approved, corpus.source-quarantined,
+             corpus.source-policy-changed, corpus.release-published]
+  metered: []
+  owns_tables: []
+  jobs: []
+  exemptions:
+    - test: test_tenancy.test_every_table_has_organisation_id
+      tables: []
+      reason: Owns no tables; reads the public-catalogue release only.
+
+- name: research_service
+  doc: docs/services/research-service.md
+  level: L0
+  phase: 6
+  matter_scoped: true
+  routes_prefix: /api/v1/assistant
+  capabilities: []
+  publishes: [assistant.question-asked, assistant.answer-composed]
+  consumes: [corpus.source-quarantined, corpus.source-policy-changed,
+             corpus.release-published, corpus.release-retired]
+  metered: [{feature: research.enabled, metric: research_queries.monthly}]
+  owns_tables: [research_conversations, research_messages, research_branches,
+                tool_call_records, answer_jobs, stream_events, grounded_answers]
+  jobs: [research.compose-answer]
+  exemptions: []
+
+- name: memory_service
+  doc: docs/services/memory-service.md
+  level: L0
+  phase: 6
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/memory
+  capabilities: []
+  publishes: []
+  consumes: [document.version-superseded, particular.corrected,
+             corpus.source-quarantined, corpus.source-policy-changed,
+             corpus.release-retired, assistant.answer-composed,
+             voice.transcript-partial-superseded, voice.transcript-finalised,
+             voice.transcript-revised, voice.transcript-confirmed,
+             retention.destruction-approved]
+  metered: []
+  owns_tables: [memory_episodes, memory_notes, memory_note_episodes,
+                memory_embeddings]
+  jobs: [memory.ingest, memory.compact]
+  exemptions: []
+
+- name: draft_service
+  doc: docs/services/draft-service.md
+  level: L0
+  phase: 7
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/drafts
+  capabilities: [draft.create, draft.save, draft.restore, draft.submit-for-review]
+  publishes: [draft.created, draft.version-saved, draft.version-restored,
+              draft.review-requested]
+  consumes: [document.version-superseded, particular.evidence-stale,
+             workflow.readiness-changed, content.definition-approved]
+  metered: []
+  owns_tables: [drafts, draft_versions]
+  jobs: []
+  exemptions: []
+
+- name: approval_service
+  doc: docs/services/approval-service.md
+  level: L0
+  phase: 7
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/drafts
+  capabilities: [draft.approve]
+  publishes: [draft.approved, draft.approval-invalidated]
+  consumes: [document.version-superseded, particular.evidence-stale,
+             check.result-changed, workflow.step-stale, draft.version-saved]
+  metered: []
+  owns_tables: [approvals]
+  jobs: []
+  exemptions:
+    - test: test_api_conventions.test_if_match_required
+      routes: ["POST /api/v1/matters/{matterId}/drafts/{draftId}/approve"]
+      reason: >-
+        Approval pins submittedVersionId server-side; a client-supplied version
+        is never trusted, so a conditional header would be misleading.
+
+- name: export_service
+  doc: docs/services/export-service.md
+  level: L0
+  phase: 7
+  matter_scoped: true
+  routes_prefix: /api/v1/exports
+  capabilities: [export.create]
+  publishes: [export.requested, export.rendered, export.failed]
+  consumes: [draft.approved, draft.approval-invalidated, retention.hold-placed,
+             retention.hold-released]
+  metered: [{feature: export.enabled, metric: exports.monthly}]
+  owns_tables: [exports, export_manifests]
+  jobs: [export.render, report.render, export.expire]
+  exemptions: []
+
+- name: notification_service
+  doc: docs/services/notification-service.md
+  level: L0
+  phase: 5
+  matter_scoped: false
+  routes_prefix: /api/v1
+  capabilities: []
+  publishes: [notification.delivered, notification.failed, notification.suppressed,
+              notification.preference-changed]
+  consumes: [obligation.reminder-due, obligation.escalated,
+             obligation.deadline-confirmed, obligation.deadline-corrected,
+             matter.membership-changed, matter.assigned-notary-changed,
+             workflow.review-requested, workflow.setup-failed,
+             workflow.signing-scheduled, document.processing-failed,
+             document.replaced, instrument.collection-ready, draft.review-requested,
+             draft.approved, draft.approval-invalidated, export.rendered,
+             export.failed, user.invited, user.activated, user.suspended,
+             party.designated-person-confirmed, billing.trial-ending,
+             billing.payment-failed, billing.grace-period-ending,
+             billing.plan-changed, billing.subscription-cancelled,
+             billing.subscription-restricted]
+  metered: []
+  owns_tables: [notification_preferences, notification_deliveries,
+                template_deployments, provider_events]
+  jobs: [notification.deliver]
+  exemptions: []
+
+- name: voice_service
+  doc: docs/services/voice-service.md
+  level: L0
+  phase: schedule-gated
+  matter_scoped: true
+  routes_prefix: /api/v1/transcriptions
+  capabilities: []
+  publishes: [voice.transcript-partial-superseded, voice.transcript-finalised,
+              voice.transcript-revised, voice.transcript-confirmed]
+  consumes: []
+  metered: [{feature: voice.enabled, metric: transcription_minutes.monthly}]
+  owns_tables: [voice_captures, transcription_sessions, transcript_events,
+                candidate_transcripts, transcript_revisions, confirmed_transcripts]
+  jobs: [voice.finalise]
+  exemptions:
+    - test: test_tenancy.test_matter_scoped_routes_404_for_non_member
+      routes: [POST /api/v1/transcriptions/sessions]
+      reason: >-
+        Standalone dictation has no matter; it is capturing-user scoped and
+        still organisation-scoped.
+
+- name: retention_service
+  doc: docs/services/retention-service.md
+  level: L0
+  phase: 7B
+  matter_scoped: false
+  routes_prefix: /api/v1/retention
+  capabilities: [retention.hold, retention.release, retention.approve-destruction]
+  publishes: [retention.hold-placed, retention.hold-released, retention.review-due,
+              retention.destruction-approved]
+  consumes: [matter.closed, matter.archived, instrument.protocol-recorded,
+             export.rendered, content.definition-approved]
+  metered: []
+  owns_tables: [retention_schedules, legal_holds, tombstones, erasure_requests]
+  jobs: [retention.evaluate]
+  exemptions: []
+
+- name: audit_service
+  doc: docs/services/audit-service.md
+  level: L0
+  phase: all
+  matter_scoped: true
+  routes_prefix: /api/v1
+  capabilities: []
+  publishes: []
+  consumes: []
+  metered: []
+  owns_tables: [audit_events]
+  jobs: [audit.verify-chain]
+  exemptions:
+    - test: test_audit_coverage.test_every_mutation_audited
+      reason: >-
+        This service is the audit sink; the test is applied to every other
+        service and would be circular here.

@@ -7,4 +7,3 @@
 - Fix: gave the title a full-width row below 1200 px and kept the dense inline
   header above that breakpoint.
 - Result: the full synthetic document title is visible with no overlap.
-

@@ -4,7 +4,7 @@ out/
 coverage/
 playwright-report/
 test-results/
-references/
+/references/
 screenshots/
 .env*
 !.env.example

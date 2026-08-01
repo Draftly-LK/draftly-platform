@@ -9,4 +9,3 @@
   linking, and manual fact entry are present and interactive.
 - PASS Visual: the ledger and marginal evidence treatment remain dense and
   legible without decorative cards.
-

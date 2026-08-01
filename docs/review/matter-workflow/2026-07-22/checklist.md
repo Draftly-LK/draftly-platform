@@ -9,4 +9,3 @@
   decision note, blocked override gate, and assistant rail are present.
 - PASS Responsive: assistant is visible at 1440 and collapsed at 1024 while the
   step rail and center remain usable.
-

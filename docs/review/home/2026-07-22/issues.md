@@ -7,4 +7,3 @@
 - Fix: terminated the workspace-owned listener and restarted the development
   server cleanly on the required port.
 - Result: both browser reviews passed; no screen defect remained.
-

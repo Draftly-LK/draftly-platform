@@ -8,4 +8,3 @@
   exact evidence, authority type/level/weight/verification, corpus limits,
   downstream actions, and insufficient-authority state are present.
 - PASS Responsive: evidence rail is visible at 1440 and collapsed at 1024.
-

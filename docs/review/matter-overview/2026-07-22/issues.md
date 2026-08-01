@@ -7,4 +7,3 @@
 - Fix: selected stable store arrays and derived matter-specific collections
   after selection.
 - Result: console is clean and both target viewports pass.
-

@@ -6,4 +6,3 @@
   type, privacy-safe references, optional upload, and matter creation work.
 - PASS Privacy: defaults and labels identify all entered demo content as
   synthetic and the store creates only local deterministic records.
-
