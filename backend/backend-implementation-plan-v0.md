@@ -13,17 +13,44 @@ usable backend structure, the order in which it should be built, the contracts
 that must be stable, and the gates that prevent an attractive demo from
 becoming an unsafe legal system.
 
+### 1.1 Relationship to the service designs
+
+Per-service implementation detail lives in `backend/docs/services/`, indexed by
+[`docs/services/README.md`](docs/services/README.md). Rules that apply to every
+service were extracted out of the individual docs and live in five
+cross-cutting files, which this plan defers to rather than restating:
+
+| Document | Holds |
+| --- | --- |
+| [`docs/security-model.md`](docs/security-model.md) | Organisation boundary, capability catalogue, role map, 404-not-403 |
+| [`docs/api-conventions.md`](docs/api-conventions.md) | Paths, pagination, concurrency, idempotency, errors, job envelopes |
+| [`docs/events.md`](docs/events.md) | Every domain event: name, payload, publisher, consumers |
+| [`docs/jobs-and-workers.md`](docs/jobs-and-workers.md) | Outbox, claim protocol, retries, scheduled jobs |
+| [`docs/service-definition-of-done.md`](docs/service-definition-of-done.md) | How a service is judged finished, and the conformance suite |
+
+Where this plan and a service doc disagree on detail, the service doc is more
+current. Where a service doc and one of the five cross-cutting files disagree,
+the cross-cutting file wins.
+
 ## 2. Scope and Boundary
 
 ### 2.1 V0 backend scope
 
 The V0 backend shall provide:
 
-- authenticated users, organisation workspaces, roles, and matter membership
-  checks;
+- authenticated users, organisation workspaces, roles, capability-based
+  authorisation, and matter membership checks;
 - organisation-owned subscriptions, plan entitlements, usage quotas, and
   provider-neutral recurring billing;
 - matter creation, assignment, lifecycle, and privacy-safe references;
+- a protected party tier holding identity evidence, beneficial ownership, CDD,
+  and screening outcomes;
+- the notarial register: attestation records, protocol custody, Form F entries,
+  and monthly returns;
+- dated obligations driven by governed deadline rules, with lawyer confirmation;
+- notification preferences, templates, and delivery;
+- retention policies, legal holds, and an approval-gated disposition path;
+- non-authoritative per-matter session memory;
 - immutable document upload and versioning;
 - asynchronous document-processing jobs with visible states;
 - a provider adapter for Google Document AI OCR and quality analysis;
@@ -43,11 +70,15 @@ The V0 backend shall provide:
 ### 2.2 Explicit non-goals
 
 V0 does not provide registration filing, autonomous legal advice, historical
-title-chain reconstruction, AT-form extraction, reliable automatic acceptance
-of handwriting or severely degraded scans, or voice input. Voice dictation and
-playback remain conditional V1 work. Any later voice feature must create a
-reviewable candidate and cannot silently verify facts, alter prescribed
-wording, approve a draft, or bypass audit.
+title-chain reconstruction, AT-form extraction, or reliable automatic acceptance
+of handwriting or severely degraded scans.
+
+**Voice is schedule-gated rather than a non-goal.** Its design, guardrails, and
+contracts are settled in [`docs/services/voice-service.md`](docs/services/voice-service.md);
+it ships in V0 if the schedule allows and otherwise in V1. Either way a voice
+feature creates a reviewable candidate and cannot silently verify facts, alter
+prescribed wording, approve a draft, or bypass audit. Nothing else may depend on
+it, and `memory_service` treats its events as a conditional contract.
 
 The existing static frontend remains a consumer of mock data until each slice
 is connected. The backend must not import frontend code, fixtures, or UI
@@ -139,16 +170,25 @@ backend/
 │     │  ├─ auth_service.py
 │     │  ├─ billing_service.py
 │     │  ├─ matter_service.py
+│     │  ├─ party_service.py
 │     │  ├─ document_service.py
 │     │  ├─ verification_service.py
 │     │  ├─ check_service.py
 │     │  ├─ task_service.py
+│     │  ├─ obligations_service.py
+│     │  ├─ notarial_register_service.py
+│     │  ├─ content_governance_service.py
 │     │  ├─ corpus_governance_service.py
 │     │  ├─ library_service.py
 │     │  ├─ research_service.py
+│     │  ├─ memory_service.py
 │     │  ├─ draft_service.py
 │     │  ├─ approval_service.py
-│     │  └─ export_service.py
+│     │  ├─ export_service.py
+│     │  ├─ notification_service.py
+│     │  ├─ voice_service.py
+│     │  ├─ retention_service.py
+│     │  └─ audit_service.py
 │     ├─ domain/
 │     │  ├─ enums.py
 │     │  ├─ organisations.py
@@ -180,11 +220,19 @@ backend/
 │     │  ├─ repositories.py
 │     │  ├─ object_storage.py
 │     │  ├─ jobs.py
+│     │  ├─ events.py
+│     │  ├─ audit.py
+│     │  ├─ clock.py
 │     │  ├─ document_processing.py
 │     │  ├─ legal_retrieval.py
 │     │  ├─ legal_catalogue.py
+│     │  ├─ session_memory.py
 │     │  ├─ identity.py
 │     │  ├─ billing.py
+│     │  ├─ email.py
+│     │  ├─ transcription.py
+│     │  ├─ screening.py
+│     │  ├─ destruction.py
 │     │  └─ rendering.py
 │     ├─ infrastructure/
 │     │  ├─ db/
@@ -206,17 +254,27 @@ backend/
 │     │  └─ rendering/
 │     │     └─ office_renderer.py
 │     ├─ workers/
-│     │  ├─ runner.py
+│     │  ├─ runner.py                # also the leader-elected scheduler mode
 │     │  ├─ document_jobs.py
 │     │  ├─ research_jobs.py
-│     │  └─ export_jobs.py
+│     │  ├─ export_jobs.py
+│     │  ├─ notification_jobs.py
+│     │  ├─ obligation_reminder_jobs.py
+│     │  ├─ memory_jobs.py
+│     │  ├─ corpus_jobs.py
+│     │  └─ voice_jobs.py
 │     └─ observability/
 │        ├─ logging.py
 │        ├─ metrics.py
 │        └─ tracing.py
+├─ contracts/
+│  ├─ openapi.v1.json
+│  └─ services.yaml               # the registry the conformance suite reads
+├─ email-templates/               # separate pnpm project, React Email
 ├─ tests/
 │  ├─ unit/
 │  ├─ contract/
+│  ├─ conformance/                # cross-service, parameterised over services.yaml
 │  ├─ integration/
 │  ├─ security/
 │  └─ e2e/
@@ -280,6 +338,12 @@ The first domain tests must enforce:
 9. No legal source enters a production catalogue or retrieval index without an
    approved provenance record, rights policy, reviewed checksum, and corpus
    release entry.
+10. Every row belonging to a customer carries an organisation id, and every
+    query filters on it before any other check.
+11. A record under an active legal hold cannot be destroyed, merged, expired, or
+    collected by any sweep.
+12. Every state in a lifecycle has exactly one owning service that can enter it.
+    No state may be reachable only from a service that refuses to enter it.
 
 ## 6. Implementation Phases
 
@@ -359,6 +423,22 @@ Exit gate:
 - a typical 15-document test matter reaches review or explicit failure within
   the approved V0 target.
 
+### Phase 3B — Protected party tier
+
+Implement `party_service`: party records, encrypted identity evidence pinned to
+immutable document versions, beneficial ownership, CDD assessments against a
+pinned policy version, and screening results at `restricted-compliance`. Reading
+a full identifier is a capability-gated, purpose-recorded, audited read.
+
+Exit gate:
+
+- no plaintext identifier appears in a dump of the party tables;
+- a list response never returns a full identifier;
+- identity evidence cannot reach `verified` without a pinned document version;
+- screening detail is invisible to an ordinary matter member, with no existence
+  signal; and
+- no automatic identity merge occurs on a name match.
+
 ### Phase 4 — Verification and structured matter record
 
 Implement source-span retrieval, candidate review, conflict comparison,
@@ -387,6 +467,32 @@ Exit gate:
 - pass, warning, fail, and needs-review remain distinct;
 - unresolved blockers prevent approval; and
 - lawyer-labelled evaluation reports precision, recall, and abstentions.
+
+### Phase 5B — Register, obligations, and notifications
+
+Implement `notarial_register_service` (attestation, gapless per-notary register
+serials, protocol custody, monthly return periods, registration lifecycle),
+`obligations_service` over governed deadline rules, and `notification_service`
+with the console adapter, then Resend.
+
+This phase exists because Phase 5 as originally written had nowhere to record an
+attestation, which left the monthly return and the registration deadline — two
+of the ten V0 obligations — with no input.
+
+Exit gate:
+
+- register serials are gapless per notary and year, and a cancelled entry
+  retains its serial;
+- attestation requires an approved and exported instrument, a current practice
+  certificate, and identity-verified executants;
+- practising jurisdiction is snapshotted at attestation;
+- each of the deed 30-day, deed 60-day, and RTA seven-working-day branches
+  resolves correctly on fixtures, and an unknown regime produces no
+  authoritative deadline;
+- a nil month still produces a return period and an obligation;
+- no hard legal deadline becomes authoritative without lawyer confirmation; and
+- a delivery failure never mutates an obligation, and each channel sends at most
+  once.
 
 ### Phase 6 — Grounded research
 
@@ -430,10 +536,29 @@ the first active V0 instrument; legal wording remains lawyer-owned.
 
 Exit gate:
 
+- a draft travels create → submit → approve → export end to end, and no state in
+  that chain is reachable only from a service that refuses to enter it;
 - no unverified mandatory fact can reach approval;
 - every approved export identifies the exact draft/template/fact versions;
-- English and Sinhala output survives reopen validation; and
+- English and Sinhala output survives reopen validation;
+- superseding a bound fact's source document invalidates the approval and stops
+  a queued render; and
 - any edit after approval creates a new unapproved version.
+
+### Phase 7B — Retention and legal hold
+
+Implement `retention_service`: governed retention policies, scope-based legal
+holds, schedule evaluation, the approval-gated disposition path, tombstones, and
+the `DestructionCommandPort` each owning service implements.
+
+Exit gate:
+
+- nothing is destroyed by a timer; maturity creates a human review obligation;
+- a hold blocks disposition at both approval and execution, and blocks the
+  orphan-blob sweep and party merge;
+- a tombstone is written before any bytes are removed, and tombstones survive;
+- a partial destruction failure never reports `destroyed`; and
+- a restore followed by tombstone reconciliation detects reinstated records.
 
 ### Phase 8 — Frontend integration and release hardening
 
@@ -464,21 +589,36 @@ map:
 | Auth/session | `GET /me` | Identity provider owns authentication; API derives role and memberships |
 | Billing | `GET /billing/plans`, `GET /billing/subscription`, `GET /billing/usage`, `POST /billing/checkout`, `POST /billing/customer-portal`, `POST /billing/cancel`, `POST /billing/reactivate` | Organisation owner/admin policy; server-side plan data; audit changes |
 | Billing webhooks | `POST /billing/webhooks/payhere` | Provider checksum/signature, body limit, idempotency, transactional state and outbox |
-| Matters | `GET/POST /matters`, `GET/PATCH /matters/{id}` | Membership and role policy; audit create, assignment, archive |
-| Documents | `POST /matters/{id}/documents`, `GET /documents/{id}`, `POST /documents/{id}/versions` | Original preservation, checksum, type/size validation, replacement history |
+| Matters | `GET/POST /matters`, `GET/PATCH /matters/{id}`, lifecycle commands | Membership and role policy; audit create, assignment, archive |
+| Parties | `GET/POST /parties`, `GET/PATCH /parties/{id}`, `POST /parties/{id}/identity-evidence`, `/cdd`, `/screening` | Capability plus recorded purpose to read an identifier; screening restricted |
+| Documents | `GET/POST /matters/{id}/documents`, `GET /documents/{id}`, `POST /documents/{id}/versions`, `GET /document-versions/{id}/manifest` | Original preservation, checksum, type/size validation, replacement history |
 | Processing | `GET /documents/{id}/processing`, `POST /processing/{job}/retry` | Matter-scoped access, idempotent retry, audit outcome |
-| Particulars | `GET /matters/{id}/particulars`, `POST /particulars/{id}/verify`, `POST /particulars/{id}/correct` | Lawyer verification policy, source span, optimistic concurrency |
-| Findings | `GET /matters/{id}/findings`, `POST /findings/{id}/resolve`, `POST /findings/{id}/override` | Rule version, authority, lawyer reason, audit |
-| Tasks | `GET /matters/{id}/tasks`, `POST /tasks/{id}/run`, `POST /tasks/{id}/decision` | Applicability, blocking behaviour, decision role |
-| Research | `POST /research/search`, `POST /research/answers/{job}` | Corpus version, citation validation, abstention |
-| Drafts | `GET/POST /matters/{id}/drafts`, `POST /drafts/{id}/versions` | Verified fact bindings, locked wording, version hash |
-| Approval | `POST /draft-versions/{id}/approve` | Lawyer role, latest hash, blockers, placeholders |
-| Exports | `POST /approvals/{id}/exports`, `GET /exports/{id}` | Manifest, checksum, expiry, audit |
-| Audit | `GET /matters/{id}/audit` | Read access only; ordinary users cannot edit/delete |
+| Particulars | `GET /matters/{id}/facts`, `POST /matters/{id}/facts/{id}/verify`, `/correct` | Lawyer verification policy, source span, optimistic concurrency |
+| Findings | `GET /matters/{id}/checks`, `/cross-checks`, `POST …/{id}/resolve`, `/remediation` | Rule version, authority, lawyer reason, audit |
+| Tasks | `GET/POST /matters/{id}/workflows`, `POST …/steps/{id}/complete`, `/document-requirements`, `/readiness` | Applicability, blocking behaviour, decision role |
+| Obligations | `GET/POST /obligations`, `POST /obligations/{id}/confirm`, `/complete`, `/cancel` | Approved rule, lawyer confirmation, restricted visibility |
+| Register | `POST /matters/{id}/attestations`, `POST /attestations/{id}/*`, `GET /register/*` | Practising notary, approved instrument, gapless serial |
+| Governed content | `GET/POST /templates`, `/questions`, `/question-sets`, `/workflow-definitions`, `/deadline-rules`, `/check-rules`, `/retention-policies` plus `versions`/`approve`/`retire` | Maintainer gate; approved-only reads for matter work |
+| Research | `POST /assistant/conversations/{id}/messages`, `GET /assistant/jobs/{id}/events`, `GET /assistant/answers` | Corpus version, citation validation, abstention |
+| Library | `GET /library`, `GET /library/{id}` | Policy-filtered representation; public release only |
+| Memory | `GET /matters/{id}/memory/context`, `/memory/search` | Read-only, non-authoritative, matter-scoped |
+| Drafts | `GET/POST /matters/{id}/drafts`, `POST …/versions`, `/restore`, `/submit`, `/withdraw` | Verified fact bindings, locked wording, version hash |
+| Approval | `POST /matters/{id}/drafts/{id}/approve` | Approver capability, practising notary, submitted hash, blockers, placeholders |
+| Exports | `POST /matters/{id}/drafts/{id}/exports`, `POST /reports`, `GET /exports/{id}` | Manifest, checksum, expiry, audit |
+| Voice | `POST /transcriptions/sessions`, `POST /transcriptions/{id}/finalise`, `/revisions`, `/confirm` | Candidate only; no downstream action |
+| Retention | `GET/POST /retention/policies`, `/holds`, `/dispositions/{id}/approve` | Hold beats policy; destruction needs approval |
+| Notifications | `GET/PATCH /notification-preferences`, `GET /notifications` | Own records only; no arbitrary recipient |
+| Audit | `GET /matters/{id}/audit`, `GET /history` | Read access only; ordinary users cannot edit/delete |
+| Jobs | `GET /jobs/{jobId}` | Uniform job envelope for every long-running operation |
 | Health | `GET /health/live`, `GET /health/ready` | No matter data or secret leakage |
 
 Long-running endpoints return a job identifier and current state. They do not
-hold an HTTP request open while OCR, retrieval, or rendering runs.
+hold an HTTP request open while OCR, retrieval, rendering, or transcription
+runs.
+
+Pagination, optimistic concurrency, idempotency keys, the error envelope, and
+the 404-not-403 rule are uniform across every row above and are specified in
+[`docs/api-conventions.md`](docs/api-conventions.md) rather than per resource.
 
 ## 8. Frontend Integration Order
 
@@ -504,26 +644,40 @@ successful HTTP response means a fact is legally verified.
 
 - Unit: domain state transitions, policies, normalisation, check rules,
   citation validation, template binding, and export gates.
-- Contract: OpenAPI schemas, frontend fixtures, job messages, provider result
-  normalisation, and export manifests.
+- Contract: OpenAPI schemas, frontend fixtures, job messages, event payloads,
+  provider result normalisation, and export manifests.
+- **Conformance: the cross-service suite in
+  [`docs/service-definition-of-done.md`](docs/service-definition-of-done.md) §4,
+  parameterised over `contracts/services.yaml` — tenancy, audit coverage, event
+  registry parity, API conventions, job contract, metering, and privacy. A new
+  service is covered the day it is registered.**
 - Integration: PostgreSQL transactions, migrations, object storage, queue
   retries, Document AI adapter, legal index, identity adapter, billing adapter,
   webhook replay, and renderer.
-- Security: cross-organisation and cross-matter isolation, role escalation,
-  forged entitlements, invalid billing webhooks, upload validation, signed URL
-  expiry, CSRF/CORS policy, secret/log inspection, and approval bypass.
-- End-to-end: the complete V0 path from matter creation to approved export.
+- Security: cross-organisation and cross-matter isolation, capability
+  escalation, forged entitlements, invalid billing webhooks, upload validation,
+  signed URL expiry, CSRF/CORS policy, secret and log inspection, and approval
+  bypass.
+- End-to-end: the complete V0 path from matter creation to approved export,
+  including the submit step.
 - Domain evaluation: lawyer-labelled extraction, provenance, checks, citation
   support, draft correctness, abstentions, and disagreements.
+
+A service is judged finished by the five-level ladder in
+`service-definition-of-done.md`, not by whether its endpoints respond.
 
 ### 9.2 Release-blocking failures
 
 The backend cannot be accepted if it permits an invented citation, unsupported
-retained legal claim, cross-matter disclosure, silent original loss, mandatory
-unverified fact in an approved export, altered locked wording, hidden
-placeholder, missing audit event, approval attached to changed content, or a
-legal source crossing its approved audience, indexing, quotation, display, or
-download boundary.
+retained legal claim, cross-matter or cross-organisation disclosure, silent
+original loss, mandatory unverified fact in an approved export, altered locked
+wording, hidden placeholder, missing audit event, approval attached to changed
+content, destruction of a record under a legal hold, or a legal source crossing
+its approved audience, indexing, quotation, display, or download boundary.
+
+Each blocker maps to a named test in `service-definition-of-done.md` §7. Those
+tests run on every pull request and every merge, and are never skipped, marked
+`xfail`, or quarantined.
 
 ## 10. Operational Requirements
 
@@ -562,6 +716,9 @@ The V0 backend implementation is complete only when these are present:
 
 ## 12. Decisions Requiring Approval
 
+Items marked **[closed]** were resolved by the service designs and the
+cross-cutting documents; they are kept here for the record.
+
 - The exact Python package boundary for the existing retrieval engine.
 - The written production source policy and legal review for official texts,
   historical reports, NLR/SLR, and any licensed third-party corpus.
@@ -573,8 +730,21 @@ The V0 backend implementation is complete only when these are present:
   allowances, taxes, refunds, grace period, and restricted-mode policy.
 - Google Document AI processor version, region, and approved document classes.
 - Form 8 schema, wording, legal rules, and template approval.
-- Retention, deletion, backup, and external-processing policy.
+- Retention periods per record class, and the erasure-assessment policy. The
+  mechanism is **[closed]** in `retention_service`; the periods are a legal
+  review item and the service ships with an empty approved-policy set.
 - Numerical holdout thresholds and lawyer-review ownership.
+- Whether a drafting lawyer may approve their own draft, and whether four-eyes
+  approval is configurable per organisation.
+- Voice ship date — V0 or V1. The design is **[closed]**; only the schedule is
+  open.
+- Screening provider, or manual-entry adapter, for sanctions and PEP checks.
+
+**[closed]** by the service designs: queue technology for V0 (PostgreSQL outbox
+with `SKIP LOCKED`, swappable behind `JobQueuePort`); the identity provider
+(Clerk); the payment provider adapter (PayHere); the capability catalogue and
+role map; the event registry and naming rule; API conventions; and the
+definition of done.
 
 Until these decisions are approved, adapters may use local test doubles, but
 the domain contracts and safety gates must remain real.
