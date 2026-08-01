@@ -102,6 +102,11 @@ everything traces back:
 | User-edited transcript | `TranscriptRevision` id |
 | Confirmed transcript | `ConfirmedTranscript` id |
 
+The four voice rows are a **conditional** contract: `voice_service` ships in V0
+or V1 by schedule (`voice-service.md` §1). Memory must function with no voice
+publisher at all — the `voice.*` subscriptions simply never fire — and must not
+treat their absence as an error.
+
 Voice partials are stored as episodes in a dedicated `voice-live` thread. Every
 partial remains verbatim and source-linked. A newer partial supersedes the
 earlier current fragment; the final transcript supersedes all partials for
@@ -137,7 +142,7 @@ switched on blind.
 This is what the benchmark module lacked and this service must add. Session
 memory subscribes to authoritative-tier events:
 
-- `document.version_superseded` (from `document_service`) — the episodes and
+- `document.version-superseded` (from `document_service`) — the episodes and
   notes derived from the old document version are invalidated and refreshed from
   the successor.
 - particular corrected or rejected (from `verification_service`) — memory
@@ -147,11 +152,11 @@ memory subscribes to authoritative-tier events:
   source passage is invalidated and excluded from replay.
 - `corpus.release-retired` — episodes pinned only to that release are
   revalidated against an active approved release before use.
-- `voice.transcript_partial_superseded` (from `voice_service`) — the earlier
+- `voice.transcript-partial-superseded` (from `voice_service`) — the earlier
   partial remains in history but is excluded from current-context retrieval.
-- `voice.transcript_finalised` — all partial episodes for that session are
+- `voice.transcript-finalised` — all partial episodes for that session are
   superseded by the final candidate transcript.
-- `voice.transcript_revised` or `voice.transcript_confirmed` — current
+- `voice.transcript-revised` or `voice.transcript-confirmed` — current
   retrieval follows the latest user-reviewed version while preserving the
   provider transcript and earlier edits.
 
@@ -185,7 +190,24 @@ Provider-neutral port so the store is swappable, mirroring the benchmark's
 - `ingest_voice_event(scope_id, transcript_event_ref) -> None`
 - `retrieve(matter_id, probe) -> RetrievalResult` (episodes plus provenance)
 - `invalidate(matter_id, source_ref)` and `supersede(matter_id, old, new)`
-- per-matter scoping on every call
+- `purge(scope)` — called by `retention_service` on an approved destruction
+- organisation and per-matter scoping on every call
+
+### 10.1 The read surface
+
+Memory previously had no endpoints at all, which made "resume the matter"
+unreachable from the browser. Two read routes, both organisation- and
+matter-scoped and both paginated:
+
+```text
+GET /api/v1/matters/{id}/memory/context      what were we working on
+GET /api/v1/matters/{id}/memory/search?q=    retrieve with provenance
+```
+
+Both return episodes with their source pointers and supersession state, and both
+are explicitly labelled non-authoritative in the response envelope so no client
+can mistake a remembered value for a verified one. There is **no write route**:
+memory is populated by events, never by a browser.
 
 The application service orchestrates the port; it imports no SQLAlchemy and no
 embedding SDK.
@@ -216,7 +238,12 @@ another matter's memory query.
   transcript version.
 - Partial transcript history is stored, but only the latest non-superseded
   transcript state participates in ordinary current-context retrieval.
-- Per-matter isolation is absolute.
+- Per-matter isolation is absolute, and organisation isolation sits outside it:
+  every episode, note, and embedding row carries `organisation_id` and every
+  query filters on it before the matter key (`security-model.md` §2).
+- Memory is purged when `retention_service` destroys a scope, and rebuilt from
+  the surviving authoritative stores when the scope itself survives
+  (`retention-service.md` §6).
 
 ## 13. Test list
 
@@ -226,7 +253,7 @@ another matter's memory query.
 - **Contract:** `SessionMemoryPort` operations; `RetrievalResult` provenance
   fields.
 - **Integration:** ingest to retrieve over Postgres;
-  `document.version_superseded` invalidates the right episodes; cross-matter
+  `document.version-superseded` invalidates the right episodes; cross-matter
   isolation; reconstruct memory from the authoritative stores after a wipe;
   ingest an ordered partial-transcript stream, supersede it with the final
   transcript, and preserve historical retrieval.

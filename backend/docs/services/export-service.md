@@ -106,7 +106,15 @@ In `ports/`:
 2. Load the Approval. **Reject unless the target draft version is `approved`**
    (seam to `approval_service`; Phase 7). An export can only run on an approved
    version — never on `working` or `in-review`.
-3. Validate `format` against the `"docx" | "pdf"` allowlist.
+3. Validate `format` against the `"docx" | "pdf"` allowlist, then pass the two
+   gates: `authorize(ctx, "export.create", matter_id)` and
+   `require_feature(org, "export.enabled")`, followed by
+   `reserve_usage(org, "exports.monthly", 1, operation_id=export_id)`. The
+   reservation is consumed when the render succeeds and released on
+   `dead_letter` — a failed render is not billable
+   (`billing-service.md` §7.2). An organisation in `restricted` mode cannot
+   create a new export but can still download every export it already has
+   (`billing-service.md` §10).
 4. Create the Export row (`state=queued`) bound to `approval_id`,
    `draft_version_id`, and the pinned content hash, plus an outbox row for the
    render message, in one transaction. This mirrors `document_service`: never
@@ -157,6 +165,10 @@ but no URL.
 | Checksum on every rendered file (§5.2) | SHA-256 computed over the rendered bytes, stored on Export and in the manifest |
 | Exports isolated in their own prefix (§10, infrastructure.md) | `put_immutable` writes under `exports/{export_id}/…`, separate retention from originals and derivatives |
 | Download only via expiring signed URL | `get_export` returns a short-lived `signed_url`, never a raw path; expired exports return no URL |
+| Organisation isolation | Every query filters `ctx.organisationId` before matter membership |
+| Paid renders are metered | `exports.monthly` reserved at request, consumed on success, released on `dead_letter` |
+| An invalidated approval stops a queued render | The worker re-checks the Approval and refuses after `draft.approval-invalidated` |
+| Held exports are not expired away | Objects under an active retention hold are retained past `expires_at`; only the URL expires |
 | Every export audited (inv. 8) | `AuditPort.record` on `export.requested` and `export.rendered` |
 
 ## 8. Failure modes to handle explicitly
@@ -188,7 +200,49 @@ but no URL.
   read denied; 404-not-403 existence hiding; expired-URL rejection; no raw
   storage path and no client data in logs.
 
-## 10. Open decisions
+## 10. Supporting-document renders
+
+`content-governance-service.md` §4.2 marks title reports, the verified
+particulars report, the matter fact sheet, the property schedule, the execution
+pack, the registration pack, the evidence manifest, and the export manifest as
+`mvp` outputs. Nothing rendered them: this service only ever rendered an
+approved `DraftVersion` from an `approval_id`, and no second renderer existed.
+
+Rather than build a second renderer with a second manifest and checksum path,
+this service generalises. `Export` gains a target discriminator:
+
+```text
+ExportTarget =
+  { kind: "draft-version", approvalId, draftVersionId }
+| { kind: "supporting-document", templateId, templateVersion, matterId, params }
+```
+
+The two paths differ in exactly one place — the gate:
+
+| Target kind | Gate |
+| --- | --- |
+| `draft-version` | Must be `approved`; hash re-verified before render (§5, §6) |
+| `supporting-document` | Template must be `approved`; the caller needs `export.create`; **no approval gate**, because a Draftly report is not a legal instrument |
+
+Everything else is shared: the job queue, the `exports/` prefix, the checksum,
+the manifest, the signed URL, the expiry, and the audit events.
+
+Two rules keep the distinction honest:
+
+- **A supporting document is labelled as a Draftly output**, never as a
+  statutory form (`content-governance-service.md` §8). The renderer stamps the
+  category from the template and refuses a template whose category claims
+  official status without the corresponding governed provenance.
+- **A report's manifest records what it drew on** — the fact versions, check
+  evaluation versions, and document versions it read — so a title report can be
+  re-derived and audited exactly as a draft export can. A report that quotes an
+  unverified particular marks it as unverified in the output rather than
+  presenting it flat.
+
+The job type is `report.render`, sharing the worker module with
+`export.render` (`jobs-and-workers.md` §5).
+
+## 11. Open decisions
 
 Recommended defaults in bold; confirm or override before coding.
 

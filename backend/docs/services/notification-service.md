@@ -248,6 +248,11 @@ the template project is implemented.
 
 ## 4. Event contract
 
+This service consumes the events listed in §8.1.1, all registered in
+`events.md`. They share the envelope in `events.md` §2 and the same idempotent
+consumer; only the template selection differs. The reminder event is shown in
+full because it is the richest.
+
 The obligations module publishes one event when a configured reminder becomes
 eligible:
 
@@ -590,17 +595,51 @@ drafts and approvals
   - approval recorded
   - export ready
 
-account and security
+account
   - invitation
-  - email verification
-  - password or sign-in security notice
 
 restricted compliance
   - neutral action required
 ```
 
+Email verification, magic links, login codes, account recovery, password
+changes, and sign-in security notices are **not** in this inventory. Clerk owns
+them (`auth-service.md` §2). An earlier version of this list included them,
+which contradicted that rule; only the invitation stays here, because an
+invitation is a Draftly product event rather than an authentication token.
+
 The inventory describes product events, not approved final copy. Templates are
 implemented only when their owning workflow exists.
+
+### 8.1.1 Every template needs a registered trigger event
+
+A template with no publisher is dead copy. Each category above maps to an event
+in `events.md`; this service consumes them all through the same idempotent
+handler as `obligation.reminder-due`:
+
+| Template category | Trigger event |
+| --- | --- |
+| Upcoming deadline, due today, overdue | `obligation.reminder-due` |
+| Escalation | `obligation.escalated` |
+| Deadline confirmed or corrected | `obligation.deadline-confirmed`, `obligation.deadline-corrected` |
+| Assignment | `matter.membership-changed`, `matter.assigned-notary-changed` |
+| Review requested | `workflow.review-requested`, `draft.review-requested` |
+| Workflow setup failed | `workflow.setup-failed` |
+| Signing appointment | `workflow.signing-scheduled` |
+| Processing failed | `document.processing-failed` (terminal only) |
+| Replacement ready for review | `document.replaced` |
+| Registered document ready for collection | `instrument.collection-ready` |
+| Approval recorded | `draft.approved` |
+| Approval invalidated | `draft.approval-invalidated` |
+| Export ready | `export.rendered` |
+| Export failed | `export.failed` (terminal only) |
+| Invitation | `user.invited` |
+| Billing notices | `billing.*` (`events.md` §5.12) |
+| Restricted action required | `party.designated-person-confirmed`, restricted `obligation.reminder-due` |
+
+Comment and mention notifications have no publisher because Draftly has no
+commenting feature. That template is deferred until one exists, rather than
+carried as an unreachable entry.
 
 ### 8.2 Restricted compliance notifications
 
@@ -757,6 +796,8 @@ There is no public "send email" endpoint in V0.
 | Restricted alerts reveal no sensitive context | Dedicated delivery policy, neutral template, and compliance-role allowlist |
 | Preferences are respected | Preferences are checked before delivery creation |
 | Provider code stays at the boundary | EmailPort and infrastructure adapters |
+| Every notification is organisation-scoped | Preferences, deliveries, and the in-app list filter on `ctx.organisationId` before the recipient |
+| Paid channels are metered | Email and in-app are included; SMS and WhatsApp, when added, pass `require_feature` and `reserve_usage` per message before send |
 | Message copy is governed | Notification-owned React Email source, typed variables, approval, and one-way publication |
 | Every material outcome is traceable | Correlation ids, delivery records, audit outcomes, and operational metrics |
 

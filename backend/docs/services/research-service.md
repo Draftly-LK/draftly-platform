@@ -349,6 +349,30 @@ The action names the frontend already emits are `added-to-matter`,
 `question-asked`. Turning those into real side effects (creating a check,
 persisting to the library) is out of this method's scope — see §9.
 
+## 5A. Entitlement and metering
+
+Research is the second most expensive thing Draftly does, and this document
+previously named no gate at all, so `billing-service.md`'s `research.enabled`
+and `research_queries.monthly` keys had no caller.
+
+```text
+auth_service.authorize(ctx, capability, matter_id?)
+billing_service.require_feature(org, "research.enabled")
+billing_service.reserve_usage(org, "research_queries.monthly", 1,
+                              operation_id=answer_job_id)
+   -> compose in the worker
+   -> consume on a terminal answer, grounded or abstained
+   -> release when the job fails without producing an answer
+```
+
+An **abstention still consumes a query**: the retrieval ran, and pricing an
+honest `insufficient-authority` at zero would create a quiet incentive against
+abstaining. A memory-served answer (§6) consumes nothing, because no retrieval
+ran — that is the point of the cache.
+
+Quota exhaustion returns 429 `quota_exhausted` before the job is created, never
+a degraded or partial answer.
+
 ## 6. The "don't re-query" seam
 
 This is the integration with `memory-service` (its §9). The first ask for a
@@ -383,6 +407,8 @@ authoritative.
 | Tool access follows the actor | MCP tools derive identity and scope from the authenticated service session and repeat matter membership checks |
 | Conversation history is preserved | Edits and branches create successors; previous messages, answers, tool calls, and audit records are not overwritten |
 | Streaming cannot bypass grounding | Partial events are presentation state; only the final citation-validated answer is persisted as GroundedAnswer |
+| Organisation isolation | Conversations, messages, jobs, and stream events filter on `ctx.organisationId` before anything else; the corpus release is the one deliberately non-tenant store (`security-model.md` §2) |
+| Research is metered | `research.enabled` plus `research_queries.monthly`; an abstention consumes, a memory-served answer does not (§5A) |
 | Every ask and action audited (inv. 8) | `AuditPort.record` on `ask` and `record_action` |
 
 ## 8. Failure modes to handle explicitly
@@ -447,9 +473,12 @@ Recommended defaults in bold; confirm or override before coding.
    /research/answers/{job}` separately. Does the frontend `ask` map to a single
    composed call, or expose raw search first? Lean **single `ask` for the
    assistant, keep raw `search` available for the library/browse path**.
-3. **Voice dictation (Mic).** The composer shows a Mic button; voice is
-   explicitly V1 and out of V0 scope (plan §2.2). Any later voice input must
-   create a reviewable candidate — it cannot silently ask or verify.
+3. **Voice dictation (Mic) — scope closed, date open.** The composer's Mic
+   button is backed by `voice-service.md`, which ships in V0 if the schedule
+   allows and otherwise in V1. Either way the transcript is a candidate the user
+   must confirm and explicitly submit; voice never asks the assistant a question
+   on its own (`voice-service.md` §9). This service needs no change when voice
+   lands — it receives ordinary composer text.
 4. **Corpus-version pinning per answer.** Whether a persisted `GroundedAnswer`
    records the exact corpus version it was composed against (recommended, for
    reproducibility and re-run).

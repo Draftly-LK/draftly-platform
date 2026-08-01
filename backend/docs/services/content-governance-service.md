@@ -3,10 +3,18 @@
 Companion to `backend/backend-implementation-plan-v0.md`, `library-service.md`,
 and the task-service design. This service is the **maintainer's tier**: it
 governs the controlled legal *content* that per-matter work consumes across
-five families: legal document/form templates, workflow definitions and
-modules, question/checklist sets, deadline-rule templates, and internal reports
-or supporting documents. It owns the guarantee that approved wording changes
-only through a new approved version.
+seven families: legal document/form templates, internal reports and supporting
+documents, workflow definitions and modules, question/checklist sets,
+deadline-rule templates, **deterministic check-rule definitions**, and
+**retention policies**. It owns the guarantee that approved wording and approved
+rules change only through a new approved version.
+
+The last two families are additions. `CheckRuleDefinition` previously lived only
+behind `check_service`'s own `RuleCatalogPort` with no approval state, no
+maintainer gate, and no governance audit — which made the deterministic legal
+rules the one governed artefact that failed the Phase 5 exit gate it was written
+to satisfy. `RetentionPolicy` was sketched in `obligations-service.md` and owned
+by nobody. Both now use the same lifecycle as everything else here.
 
 Maps to plan **Phase 5** ("versioned rule definitions with authority metadata,
 version, effective date"), the maintainer role, invariant **§5.3.6**, the
@@ -79,6 +87,25 @@ In `domain/content.py`, mirroring the frontend contract exactly:
   applicability, calculation policy, timezone/calendar references, authority
   references, effective dates, confirmation policy, approval state, owner, and
   version. `obligations_service` executes it and owns generated obligations.
+- **CheckRuleDefinition** — a versioned deterministic consistency rule:
+  `{ id, category, titleKey, descriptionKey, suggestedResolutionKey,
+  applicability, requiredFactKeys, predicateRef, severityPolicy,
+  authorityReferences, blocking, approvalState, effectiveFrom?, effectiveTo?,
+  ownerId, version }`. `category` is the frontend `CheckCategory`;
+  `predicateRef` names a registered, typed Python predicate in
+  `domain/findings` — the definition never carries executable code (§8).
+  `check_service` loads approved versions through `RuleCatalogPort` and owns
+  evaluation, findings, and resolutions. Approval additionally validates that
+  the predicate is registered, that every `requiredFactKey` is a known stable
+  key, that authority and effective date are present, and that the rule has
+  passing fixture tests — the four things Phase 5 requires of an active rule.
+- **RetentionPolicy** — `{ id, recordClass, jurisdiction, triggerEvent,
+  retentionPeriod, minimumPeriod?, authority, sourceUrl, sourceSection,
+  effectiveFrom, effectiveTo?, approvalState, ownerId, version }`.
+  `retention_service` evaluates approved versions into schedules and owns holds
+  and destruction (`retention-service.md` §4.2). Approval validates the
+  authority reference and rejects a policy with no source section, because a
+  retention period with no cited basis is a guess.
 - **Question** (from `frontend/src/types/question.ts`) — `{ id, prompt, scope,
   language, frequentlyWrong }` where `scope` is `matter | step | standalone`.
 - **QuestionSet** — `{ id, titleKey, descriptionKey, questionIds, approvalState,
@@ -500,11 +527,19 @@ In `ports/`:
 
 - `ContentRepository` — persist and load `FormTemplate`,
   `SupportingDocumentTemplate`, `WorkflowDefinition`, `WorkflowModule`,
-  `DeadlineRule`, and `QuestionSet`/`Question` definitions with their versions; list by
+  `DeadlineRule`, `CheckRuleDefinition`, `RetentionPolicy`, and
+  `QuestionSet`/`Question` definitions with their versions; list by
   `approvalState`; fetch the applicable `approved` version for a per-matter
   consumer.
-- `AuditPort` — `record(event)`; every governance transition writes a *content
-  governance* audit event (§5.2).
+- `PredicateRegistryPort` — resolve a `CheckRuleDefinition.predicateRef` to a
+  registered, typed predicate and report whether its fixture tests pass. Used at
+  approval time only; `check_service` executes.
+- `EventPort` — publish `content.definition-versioned`,
+  `content.definition-approved`, and `content.definition-retired`
+  (`events.md` §5.11), so consumers refresh their catalogues instead of polling.
+- `AuditPort` — `record(event)`; every governance transition writes a
+  content-governance audit event with `targetType: "content-definition"`
+  (§5.2, `audit-service.md` §3.1).
 
 No object storage, no retrieval, no processing. Governance is metadata and
 versioning; it touches neither matter storage nor the legal corpus index.
@@ -568,8 +603,11 @@ content-governance-service          consuming service
 ──────────────────────────          ─────────────────
 Workflow definition/module       ──▶ task-service WorkflowRun and StepRuns
 DeadlineRule                     ──▶ obligations-service calculation
+CheckRuleDefinition              ──▶ check-service evaluation and findings
+RetentionPolicy                  ──▶ retention-service schedules
 FormTemplate (approved, locked)  ──▶ draft bound to that template version
-SupportingDocumentTemplate      ──▶ report/export renderer
+SupportingDocumentTemplate       ──▶ export-service report render
+QuestionSet                      ──▶ task-service question responses
 ```
 
 A per-matter run may consume an `approved` definition only. It cannot pull a
@@ -654,10 +692,11 @@ Recommended defaults in bold; confirm or override before coding.
    explicitly-marked placeholder block, or must block until the lawyer supplies
    final text. Lean **block approval of a `FormTemplate` whose locked blocks are
    still placeholders** — an approved template must carry real prescribed wording.
-2. **One service or three.** Templates, workflows, and question sets share one
-   `approvalState` lifecycle and one maintainer gate. Lean **one service with a
-   `kind` discriminator** over three near-identical services; revisit if their
-   validation rules diverge.
+2. **One service or several — closed.** All seven families share one
+   `approvalState` lifecycle, one maintainer gate, and one audit shape, so they
+   are one service with a `kind` discriminator and per-kind approval validation.
+   Revisit only if the validation rules diverge far enough that the shared
+   lifecycle stops carrying its weight.
 3. **Effective-date semantics.** Whether `approved` content activates
    immediately or on a recorded effective date (Phase 5 lists effective date as
    required metadata) — recommend **record the effective date, activate on it**.
@@ -673,9 +712,11 @@ Recommended defaults in bold; confirm or override before coding.
 6. **Workflow vocabulary.** Use the ten canonical phases and modular
    compilation. Preserve the current four-function frontend type only as a
    temporary grouped read model during migration.
-7. **Supporting-document renderer.** Keep the definition lifecycle here, while
-   a dedicated renderer/export adapter owns DOCX/PDF generation. Do not couple
-   governance to a document-conversion library.
+7. **Supporting-document renderer — closed.** The definition lifecycle stays
+   here; `export_service` renders it through its generalised
+   `ExportTarget.kind = "supporting-document"` path, reusing one manifest,
+   checksum, and signed-URL implementation (`export-service.md` §10).
+   Governance stays uncoupled from any document-conversion library.
 8. **MVP legal-content readiness.** The catalogue marks Transfer and Gift
    structures as MVP, but neither may become `approved` until the authorized
    conveyancing lawyer supplies and approves the actual wording. Static M2

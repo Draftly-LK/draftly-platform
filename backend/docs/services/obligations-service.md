@@ -70,9 +70,11 @@ Examples:
 ```text
 check_service finds a missing survey plan
   -> lawyer requests the plan by an agreed date
+  -> check.document-requested
   -> obligations_service tracks that dated commitment
 
-task_service records attestation and the verified registration regime
+notarial_register_service records the attestation
+  -> instrument.attested carries the verified regime and both jurisdictions
   -> governed regime-specific rule calculates a registration date
   -> lawyer confirms the calculation
   -> obligations_service tracks the legal deadline
@@ -81,6 +83,10 @@ obligation reminder becomes due
   -> obligations_service emits obligation.reminder-due
   -> notification_service delivers allowed channels
 ```
+
+Attestation is recorded by `notarial_register_service`, not `task_service`.
+That service did not exist when this document was written, which is why §7.2's
+monthly return and §7.3's registration deadline had no input.
 
 ## 3. What it owns
 
@@ -380,9 +386,12 @@ components:
 hardness: hard
 ```
 
-The aggregate is generated from deeds attested in the previous month. Draftly
-must retain the included deed ids and versions as completion evidence without
-exposing client data in reminder text.
+The aggregate is generated from the `register.monthly-period-closed` event that
+`notarial_register_service` publishes on the first of the following month
+(`notarial-register-service.md` §3.4). It carries the instrument ids attested in
+the period, or an empty set for a nil return — a nil month still produces an
+obligation. Draftly retains the included instrument ids and versions as
+completion evidence without exposing client data in reminder text.
 
 ### 7.3 Registration after attestation
 
@@ -439,6 +448,11 @@ calculated due date
 source section and rule version
 lawyer confirmation
 ```
+
+All four inputs arrive on `instrument.attested`, which snapshots the practising
+jurisdiction **at the moment of attestation** so a later change to the notary's
+profile cannot retroactively move a deadline
+(`notarial-register-service.md` §3.1).
 
 Jurisdiction classification must never be guessed from an address string.
 Registration regime and jurisdiction come from verified matter and
@@ -585,29 +599,28 @@ transaction, correspondence, and FIU-report records, with longer retention for
 records subject to an ongoing investigation, litigation, court requirement, or
 other authority requirement until release is communicated.
 
-These are lifecycle controls:
+These are lifecycle controls owned by **`retention_service`**, not by this
+service. `RetentionPolicy`, `LegalHold`, `RetentionSchedule`, and the
+destruction workflow are defined in `retention-service.md`; this document
+previously sketched the first two and then disclaimed owning destruction, which
+left the whole area unowned.
+
+The relationship is one event in each direction:
 
 ```text
-RetentionPolicy
-  recordClass
-  triggerEvent
-  retentionPeriod
-  authority
-  version
+retention_service   retention.review-due   ──▶  obligations_service
+                    (a schedule matured)         creates a retention-review
+                                                 obligation for a human
 
-LegalHold
-  id
-  recordScope
-  sourceAuthority
-  placedAt
-  releasedAt?
-  releaseEvidenceRef?
+obligations_service completion / cancellation ─▶ retention_service
+                    of that obligation           records the review outcome
 ```
 
-The retention engine prevents deletion. It creates a user-facing
-`retention-review` obligation only when human review, legal-hold release, or
-secure-destruction approval is required. Retention expiry must never cause
-automatic destruction of a record under an active hold.
+`retention_service` prevents deletion; nothing here does. A `retention-review`
+obligation exists only when human review, legal-hold release, or
+secure-destruction approval is required. Retention expiry never causes automatic
+destruction, and never at all under an active hold
+(`retention-service.md` §2).
 
 ## 11. Matter and operational commitments
 
@@ -761,19 +774,32 @@ source and confirmation controls.
 
 ## 15. Events
 
+Every name below is registered in `events.md`, and each consumed event now has a
+named publisher. Nine of these previously had none, which meant the entire
+trigger surface of this service was inert.
+
 The service consumes:
 
 ```text
-document.attested
-document.registration-acknowledged
-document.collection-ready
-check.document-requested
-task.review-requested
-matter.signing-scheduled
-matter.closed
-identity-document.expiry-recorded
-retention.hold-placed
-retention.hold-released
+instrument.attested                          (notarial_register_service)
+instrument.registration-submitted            (notarial_register_service)
+instrument.registration-acknowledged         (notarial_register_service)
+instrument.collection-ready                  (notarial_register_service)
+register.monthly-period-closed               (notarial_register_service)
+check.document-requested                     (check_service)
+workflow.review-requested                    (task_service)
+workflow.signing-scheduled                   (task_service)
+workflow.requirement-changed                 (task_service)
+matter.activated                             (matter_service)
+matter.closed                                (matter_service)
+matter.assigned-notary-changed               (matter_service)
+party.identity-document-expiry-recorded      (party_service)
+party.designated-person-confirmed            (party_service)
+draft.review-requested                       (draft_service)
+retention.review-due                         (retention_service)
+retention.hold-placed                        (retention_service)
+retention.hold-released                      (retention_service)
+user.suspended                               (auth_service)
 ```
 
 It publishes:
@@ -783,12 +809,19 @@ obligation.created
 obligation.deadline-calculated
 obligation.deadline-confirmed
 obligation.deadline-corrected
-obligation.due
-obligation.overdue
-obligation.completed
+obligation.status-changed
 obligation.cancelled
 obligation.reminder-due
+obligation.escalated
 ```
+
+`obligation.status-changed` replaces the separate `obligation.due`,
+`obligation.overdue`, and `obligation.completed` events. §12 states that
+`upcoming`, `due`, and `overdue` are query projections from `dueAt` and server
+time rather than persisted transitions, so publishing an event per date crossing
+contradicted the model and would have required the hourly sweep §12 rules out.
+The persisted transitions — completion, cancellation, correction, suspension —
+are what the single event reports, carrying `beforeStatus` and `afterStatus`.
 
 Consumers use event ids and obligation ids idempotently. Events contain
 identifiers and classification metadata, not private matter values.
@@ -822,6 +855,9 @@ matter reference, property, deed number, or source excerpt.
 
 ## 17. Authorization and privacy
 
+- Every obligation, reminder occurrence, and rule selection is
+  organisation-scoped first; matter, user, and firm scope apply within that
+  boundary (`security-model.md` §2).
 - User-scoped duties are visible to the owner and approved administrators.
 - Matter-scoped duties require current matter membership.
 - Firm-scoped duties require an approved firm role.

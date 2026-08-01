@@ -448,11 +448,11 @@ capability, distinct from a firm administrator.
 `billing_service` emits state events; `notification_service` owns delivery:
 
 ```text
-billing.trial_ending
-billing.payment_failed
-billing.grace_period_ending
-billing.plan_changed
-billing.subscription_cancelled
+billing.trial-ending
+billing.payment-failed
+billing.grace-period-ending
+billing.plan-changed
+billing.subscription-cancelled
 ```
 
 The audit trail records actor-initiated checkout, plan, cancellation,

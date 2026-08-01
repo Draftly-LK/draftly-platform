@@ -47,6 +47,7 @@ It owns:
 - the compilation record, including definition, fact, and document versions;
 - the run state of each compiled step;
 - matter-specific document requirements and their lawyer-review state;
+- matter-specific responses to governed question and checklist sets;
 - explainable readiness evaluations for drafting, execution, registration,
   and closure;
 - the operational phase and blocking projections exposed to `matter_service`;
@@ -331,7 +332,46 @@ DocumentRequirementState =
 make a requirement `present`; it never makes it `accepted`. Acceptance is a
 recorded lawyer decision against one immutable document version.
 
-### 4.4 ReadinessEvaluation
+### 4.4 QuestionResponse
+
+Question and checklist **sets** are governed content
+(`content-governance-service.md` §4.4). A matter's **answers** to them are step
+state, and they live here — no other service claimed them, which left the CDD
+and beneficial-owner "mandatory gates" with nothing to gate on.
+
+```text
+QuestionResponse
+  id
+  matterId
+  workflowRunId
+  stepRunId
+  questionSetId
+  questionSetVersion
+  questionId
+  answerValue
+  answerKind = boolean | choice | text | date | number | party-ref | document-ref
+  evidenceRefs
+  answeredBy
+  answeredAt
+  supersedesResponseId?
+  state = draft | submitted | superseded
+  version
+```
+
+Rules:
+
+- Responses are append-only. A changed answer creates a successor and marks the
+  predecessor `superseded`; the history is what shows a lawyer changed their
+  mind and when.
+- The set version is pinned, so a later governed revision of the question set
+  does not silently re-interpret an existing answer.
+- A step whose `completionPolicy` requires a question set cannot complete until
+  every applicable mandatory question has a `submitted` response. That is the
+  gate `content-governance-service.md` §4.4 describes.
+- Free-text answers are matter content: they never enter an event payload, an
+  audit `before`/`after`, or a notification (`events.md` §2).
+
+### 4.5 ReadinessEvaluation
 
 Readiness is a derived, explainable evaluation rather than an editable flag:
 
@@ -469,8 +509,11 @@ instantiate_workflow(ctx, matter_id) -> WorkflowRunRead
 8. Compile document requirements and preserve not-applicable requirements for
    audit.
 9. Calculate the initial phase, blocking summary, and readiness evaluations.
-10. Persist the run, steps, requirements, projections, and
-    `workflow.instantiated` audit event in one transaction.
+10. Persist the run, steps, requirements, projections, the
+    `workflow.instantiated` audit row, **and** the `workflow.instantiated`
+    outbox event in one transaction. On failure, persist the failure state and
+    publish `workflow.setup-failed` so the matter projection shows `failed`
+    rather than staying `pending` forever.
 
 Ambiguous or missing governed content is a configuration error. The compiler
 must not choose a matching definition by list order.
@@ -661,16 +704,29 @@ approval.
 
 ## 9. Events and invalidation
 
-The service consumes at least:
+Every name below is registered in `events.md`; this service must not invent one.
+It consumes at least:
 
 ```text
+matter.created
+matter.classification-changed
+matter.activated
+particular.verified
 particular.corrected
+particular.added
+particular.blocked
+particular.evidence-stale
 document.processing-completed
-document.version_superseded
-matter.classification_changed
+document.version-superseded
 check.result-changed
 finding.remediation-requested
+finding.resolved
+finding.waived
 obligation.status-changed
+instrument.attested
+instrument.registration-acknowledged
+content.definition-approved
+content.definition-retired
 ```
 
 For each event, find StepRuns whose recorded dependencies contain the changed
@@ -686,6 +742,10 @@ fact, document, or classification version.
 Publish:
 
 ```text
+workflow.instantiated
+workflow.setup-failed
+workflow.step-completed
+workflow.step-overridden
 workflow.step-stale
 workflow.applicability-changed
 workflow.run-stale
@@ -693,9 +753,23 @@ workflow.run-superseded
 workflow.phase-changed
 workflow.requirement-changed
 workflow.readiness-changed
+workflow.blocking-changed
+workflow.review-requested
+workflow.signing-scheduled
 ```
 
-Events are written through the same outbox transaction as the state change.
+Events are written through the same outbox transaction as the state change
+(`jobs-and-workers.md` §2).
+
+`workflow.instantiated`, `workflow.setup-failed`, and
+`workflow.blocking-changed` were previously written only as audit rows while
+`matter_service` consumed them as domain events, so its projection never
+updated. Both are now required: the audit row is the record, the outbox event is
+the notification. An audit write is not a publication (`events.md` §3).
+
+`workflow.review-requested` and `workflow.signing-scheduled` are new. They are
+the publishers `obligations_service` was waiting for under the unregistered
+names `task.review-requested` and `matter.signing-scheduled`.
 
 ## 10. Invariants
 
@@ -712,6 +786,7 @@ Events are written through the same outbox transaction as the state change.
 | Material reclassification preserves history | Transaction or regime changes supersede and link the old run; conditional changes re-evaluate the pinned run |
 | Dependency changes preserve decisions | Affected completed steps become stale and retain their earlier state and applicability records |
 | Every material transition is audited | Instantiate, applicability change, stale marking, completion, re-evaluation, and override write separate events |
+| Organisation isolation | Every query filters `ctx.organisationId` before matter membership; a cross-organisation resource is a 404 (`security-model.md` §2) |
 | Matter isolation | Membership is re-checked and cross-matter access is denied |
 | Content is governed elsewhere | Only approved definitions compile; authoring remains in `content-governance-service` |
 

@@ -151,7 +151,7 @@ CommonLII harvest and unreviewed NLR/SLR
 | Read-only | The service exposes no write method; governance of corpus content is not here |
 | Rights policy is enforced server-side | Response shape is selected from the approved source policy; the browser cannot request a broader representation |
 | Every listed authority carries verification status + weight | `Authority.verified` and `weight` returned on every row and detail; unverified case-rules visibly marked |
-| Corpus separate from matter data (§5.2) | Reads only through `LegalRetrievalPort`; no matter-storage access on the port |
+| Corpus separate from matter data (§5.2) | Reads only through `LegalCataloguePort`, which exposes no matter-storage method; the library never joins to a matter-scoped table |
 | Machine-derived case-rules not silently authoritative | `weight = unverified-candidate` / `verified = false` shown, never hidden |
 | Corpus access audited | `AuditPort.record` on browse and lookup where policy requires |
 | Restricted research storage is unreachable | Catalogue adapter reads the public release only and has no path to restricted source text |
@@ -187,10 +187,14 @@ CommonLII harvest and unreviewed NLR/SLR
 
 Recommended defaults in bold; confirm or override before coding.
 
-1. **Own service or read facade.** Keep library as a thin read facade over the
-   approved corpus release, with `LegalCataloguePort` enforcing catalogue
-   policy and `LegalRetrievalPort` enforcing research indexing and quotation
-   policy.
+1. **Own service or read facade — closed.** Library is a thin read facade over
+   the approved **public-catalogue** release and depends on
+   `LegalCataloguePort` only. `LegalRetrievalPort` belongs to
+   `research_service` and reads the **internal-research** release; the two ports
+   are deliberately different because the two audiences have different rights
+   (`corpus-governance-service.md` §1). An earlier version of the invariant
+   table in §7 named the retrieval port here, which would have given the public
+   catalogue a path to restricted case-law text.
 2. **Topic taxonomy for the topic filter.** The frontend filters by
    `AuthorityType` today; a topic dimension needs a controlled vocabulary. Open
    pending the corpus source registry — do not invent topics.

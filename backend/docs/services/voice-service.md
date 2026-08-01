@@ -6,10 +6,33 @@ Official model reference:
 Companion to `backend/backend-implementation-plan-v0.md`,
 `research-service.md`, `document-service.md`, and `memory-service.md`.
 
-## 1. V0 decision
+## 1. Scope decision
 
-V0 uses **Gemini Live API with `gemini-3.1-flash-live-preview` as the primary
-voice model**. Input transcription is enabled with:
+**Voice ships in V0 if the schedule allows, otherwise in V1.** The design,
+guardrails, and contracts below are settled either way; only the delivery date
+is open, and it is a scheduling call rather than a design one.
+
+This was previously stated three different ways: plan §2.2 listed voice as an
+explicit non-goal, `research-service.md` open decision 3 repeated "explicitly
+V1", and §1 of this document made Gemini Live the committed primary V0 model.
+All three now read from this section, and plan §2.2 has been updated to
+"schedule-gated" rather than "non-goal".
+
+Two consequences for other services:
+
+- `memory_service` carries the voice hooks in §6 and §8 of its own document as a
+  **conditional** contract. The four `voice.*` events are registered
+  (`events.md` §5.12), and a build without the voice service simply has no
+  publisher for them. Memory must not require them to function.
+- Nothing else may depend on voice. The guardrails in §9 are what make that
+  safe: voice produces a candidate transcript and never reaches another service
+  on its own.
+
+### Engine
+
+When it ships, it uses the **Gemini Live API with
+`gemini-3.1-flash-live-preview`** as the primary voice model. Input
+transcription is enabled with:
 
 ```python
 input_audio_transcription={}
@@ -32,13 +55,13 @@ The transcript is never submitted automatically. Voice does not directly ask
 the assistant a question, create or verify a matter fact, edit prescribed
 wording, clear a finding, or approve a draft.
 
-Google Speech-to-Text `chirp_2` and `gemini-3.6-flash` are not active V0
-runtime engines. They remain possible benchmark or fallback adapters if the
-primary model fails the approved evaluation.
+Google Speech-to-Text `chirp_2` and `gemini-3.6-flash` are not active runtime
+engines. They remain possible benchmark or fallback adapters if the primary
+model fails the approved evaluation (§12).
 
-The current SRS and backend implementation plan classify voice as conditional
-V1 scope. They must be updated before the microphone is represented as a
-committed V0 feature.
+The SRS still classifies voice as conditional V1 scope and must be updated to
+the schedule-gated position before the microphone is shown as a committed
+feature.
 
 ## 2. Languages
 
@@ -279,7 +302,7 @@ transcript.
 `POST /api/v1/transcriptions/sessions`
 
 Authorise the user, create the capture/session records, issue narrowly scoped
-ephemeral access for the Live API flow, and audit `voice.session_created`.
+ephemeral access for the Live API flow, and audit `voice.session-created`.
 Permanent provider credentials never reach the browser.
 
 ### finalise_transcription
