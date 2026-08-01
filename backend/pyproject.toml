@@ -47,6 +47,7 @@ testpaths = ["tests"]
 target-version = "py312"
 src = ["src", "tests"]
 line-length = 100
+exclude = [".venv", "docs", "contracts"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
