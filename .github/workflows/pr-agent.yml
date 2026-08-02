@@ -12,7 +12,11 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}
+  # Each issue comment gets its own group so progress or integration comments
+  # cannot cancel an automatic pull-request review that is already running.
+  group: >-
+    pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}-${{
+    github.event_name == 'issue_comment' && github.event.comment.id || 'pull-request' }}
   cancel-in-progress: true
 
 jobs:
