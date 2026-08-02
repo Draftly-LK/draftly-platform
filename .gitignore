@@ -12,3 +12,6 @@ screenshots/
 *.tsbuildinfo
 docs/review/**/intermediate-*
 docs/review/**/raw-*
+
+# Claude Code local settings (per-machine, never committed)
+.claude/
