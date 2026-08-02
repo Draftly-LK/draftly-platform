@@ -1,0 +1,182 @@
+- generic [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - complementary [ref=f4e3]:
+      - generic [ref=f4e4]:
+        - generic [ref=f4e5]: D
+        - generic [ref=f4e6]:
+          - generic [ref=f4e7]: Draftly
+          - generic [ref=f4e8]: Notarial workspace
+      - generic [ref=f4e9]:
+        - button "Search workspace Ctrl+K" [ref=f4e10] [cursor=pointer]:
+          - generic [ref=f4e14]: Search workspace
+          - generic [ref=f4e15]: Ctrl+K
+        - link "Create matter" [ref=f4e16] [cursor=pointer]:
+          - /url: /new
+      - navigation "Notarial workspace" [ref=f4e18]:
+        - link "Home" [ref=f4e19] [cursor=pointer]:
+          - /url: /
+        - link "Matters" [ref=f4e23] [cursor=pointer]:
+          - /url: /matters
+        - link "Workflows" [ref=f4e29] [cursor=pointer]:
+          - /url: /workflows
+        - link "Legal sources" [ref=f4e34] [cursor=pointer]:
+          - /url: /library
+        - link "History" [ref=f4e37] [cursor=pointer]:
+          - /url: /history
+      - generic [ref=f4e41]:
+        - generic [ref=f4e42]: Recent matters
+        - link "RTA-2026-HOM-0020" [ref=f4e43] [cursor=pointer]:
+          - /url: /matters/matter-rta-001
+      - generic [ref=f4e44]:
+        - button "Reset demo" [ref=f4e45] [cursor=pointer]
+        - link "Settings" [ref=f4e49] [cursor=pointer]:
+          - /url: /settings
+        - link "Help" [ref=f4e53] [cursor=pointer]:
+          - /url: /help
+    - generic [ref=f4e57]:
+      - banner [ref=f4e58]:
+        - generic [ref=f4e59]:
+          - generic [ref=f4e60]:
+            - generic [ref=f4e61]:
+              - generic [ref=f4e62]: RTA
+              - generic [ref=f4e63]: Transfer
+              - generic [ref=f4e64]: ·
+              - generic [ref=f4e65]: In review
+            - heading "RTA-2026-HOM-0020" [level=1] [ref=f4e66]
+            - generic [ref=f4e67]: BGN Property Development (Pvt) Ltd ↔ W. A. Ishani Prasadini Dheerasinghe · Updated 2026-07-22
+          - generic [ref=f4e68]:
+            - group "Interface language" [ref=f4e69]:
+              - button "EN" [pressed] [ref=f4e74] [cursor=pointer]
+              - button "සිං" [ref=f4e75] [cursor=pointer]
+            - button "Matter actions" [ref=f4e76] [cursor=pointer]
+        - navigation "RTA-2026-HOM-0020" [ref=f4e81]:
+          - link "Overview" [ref=f4e82] [cursor=pointer]:
+            - /url: /matters/matter-rta-001
+          - link "Documents" [ref=f4e83] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/documents
+          - link "Verified facts" [ref=f4e84] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/facts
+          - link "Workflow" [ref=f4e85] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/workflow
+          - link "Checks" [ref=f4e86] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/checks
+          - link "Drafts" [ref=f4e87] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/drafts
+          - link "Activity" [ref=f4e88] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/activity
+      - main [ref=f4e89]:
+        - generic [ref=f4e90]:
+          - generic [ref=f4e91]:
+            - heading "Drafts" [level=1] [ref=f4e92]
+            - paragraph [ref=f4e93]: Generate and review approved outputs from lawyer-verified facts.
+          - button "New draft" [active] [ref=f4e94] [cursor=pointer]
+          - group "Interface language" [ref=f4e98]:
+            - button "EN" [pressed] [ref=f4e103] [cursor=pointer]
+            - button "සිං" [ref=f4e104] [cursor=pointer]
+        - table [ref=f4e107]:
+          - rowgroup [ref=f4e108]:
+            - row [ref=f4e109]:
+              - columnheader "Draft" [ref=f4e110]
+              - columnheader "Template" [ref=f4e111]
+              - columnheader "Version" [ref=f4e112]
+              - columnheader "Approval state" [ref=f4e113]
+              - columnheader "Actions" [ref=f4e114]
+          - rowgroup [ref=f4e115]:
+            - row [ref=f4e116]:
+              - cell "Form 8 transfer — parcel 0020 (working)" [ref=f4e117]
+              - cell "Form 8 transfer" [ref=f4e118]
+              - cell "v2 · c41e09" [ref=f4e119]
+              - cell "In review" [ref=f4e120]
+              - cell [ref=f4e122]:
+                - link "Open editor" [ref=f4e123] [cursor=pointer]:
+                  - /url: /matters/matter-rta-001/drafts/draft-form8-001
+        - dialog [ref=f4e126]:
+          - heading "Select an approved template" [level=2] [ref=f4e127]
+          - button "Approved template Form 8 transfer Transfer" [pressed] [ref=f4e128] [cursor=pointer]:
+            - generic [ref=f4e129]: Approved template
+            - generic [ref=f4e130]: Form 8 transfer
+            - generic [ref=f4e131]: Transfer
+          - region [ref=f4e132]:
+            - generic [ref=f4e133]:
+              - heading "Details this form requires" [level=3] [ref=f4e134]
+              - generic [ref=f4e135]: 21 of 21 required details ready
+            - paragraph [ref=f4e136]: Every required particular must be verified or corrected before the instrument can be generated.
+            - list [ref=f4e137]:
+              - listitem [ref=f4e138]:
+                - generic [ref=f4e139]: District
+                - generic [ref=f4e140]: Colombo
+              - listitem [ref=f4e141]:
+                - generic [ref=f4e142]: Divisional Secretary's Division
+                - generic [ref=f4e143]: Homagama
+              - listitem [ref=f4e144]:
+                - generic [ref=f4e145]: Grama Niladhari Division
+                - generic [ref=f4e146]: 485 — Mawathgama
+              - listitem [ref=f4e147]:
+                - generic [ref=f4e148]: Village or town
+                - generic [ref=f4e149]: Mawathgama
+              - listitem [ref=f4e150]:
+                - generic [ref=f4e151]:
+                  - text: Assessment number
+                  - generic [ref=f4e152]: optional
+                - generic [ref=f4e153]: "0"
+              - listitem [ref=f4e154]:
+                - generic [ref=f4e155]: Cadastral map number
+                - generic [ref=f4e156]: "520005"
+              - listitem [ref=f4e157]:
+                - generic [ref=f4e158]: Block number
+                - generic [ref=f4e159]: "03"
+              - listitem [ref=f4e160]:
+                - generic [ref=f4e161]: Sheet number
+                - generic [ref=f4e162]: "00029"
+              - listitem [ref=f4e163]:
+                - generic [ref=f4e164]: Parcel number
+                - generic [ref=f4e165]: "0020"
+              - listitem [ref=f4e166]:
+                - generic [ref=f4e167]: Parcel extent
+                - generic [ref=f4e168]: 0.0153 hectares
+              - listitem [ref=f4e169]:
+                - generic [ref=f4e170]: Extent subject to transfer
+                - generic [ref=f4e171]: Full
+              - listitem [ref=f4e172]:
+                - generic [ref=f4e173]:
+                  - text: Land name
+                  - generic [ref=f4e174]: optional
+                - generic [ref=f4e175]: Katukurunduhena
+              - listitem [ref=f4e176]:
+                - generic [ref=f4e177]: Place of registration
+                - generic [ref=f4e178]: Title Registry, Homagama
+              - listitem [ref=f4e179]:
+                - generic [ref=f4e180]: Title certificate number
+                - generic [ref=f4e181]: "00030085090"
+              - listitem [ref=f4e182]:
+                - generic [ref=f4e183]: Class of title
+                - generic [ref=f4e184]: First
+              - listitem [ref=f4e185]:
+                - generic [ref=f4e186]: Transferor name
+                - generic [ref=f4e187]: BGN Property Development (Pvt) Ltd
+              - listitem [ref=f4e188]:
+                - generic [ref=f4e189]: Transferor registration number
+                - generic [ref=f4e190]: PV 00247076
+              - listitem [ref=f4e191]:
+                - generic [ref=f4e192]: Transferor address
+                - generic [ref=f4e193]: No. 11, 1st Floor, Ingiriya Road, Padukka
+              - listitem [ref=f4e194]:
+                - generic [ref=f4e195]: Transferee name
+                - generic [ref=f4e196]: Wedippuli Arachchige Ishani Prasadini Dheerasinghe
+              - listitem [ref=f4e197]:
+                - generic [ref=f4e198]: Transferee identity card number
+                - generic [ref=f4e199]: 945873370V
+              - listitem [ref=f4e200]:
+                - generic [ref=f4e201]: Transferee address
+                - generic [ref=f4e202]: No. 606/1, Pahathgama, Hanwella
+              - listitem [ref=f4e203]:
+                - generic [ref=f4e204]: Consideration
+                - generic [ref=f4e205]: Rs. 4,590,000/=
+              - listitem [ref=f4e206]:
+                - generic [ref=f4e207]: Consideration in words
+                - generic [ref=f4e208]: Rupees Four Million Five Hundred and Ninety Thousand
+          - generic [ref=f4e209]:
+            - button "Cancel" [ref=f4e210] [cursor=pointer]
+            - button "Generate draft" [ref=f4e211] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=f4e217] [cursor=pointer]
+  - alert [ref=f4e221]
