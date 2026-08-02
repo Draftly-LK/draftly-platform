@@ -12,12 +12,12 @@ permissions:
   pull-requests: write
 
 concurrency:
-  # Each issue comment gets its own group so progress or integration comments
-  # cannot cancel an automatic pull-request review that is already running.
+  # Keep automatic and comment-triggered reviews separate. Comment runs are
+  # serialized so PR-Agent's own progress comment cannot cancel its review.
   group: >-
     pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}-${{
-    github.event_name == 'issue_comment' && github.event.comment.id || 'pull-request' }}
-  cancel-in-progress: true
+    github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'issue_comment' }}
 
 jobs:
   # Fails a pull request that edits the review configuration unless its author is
