@@ -81,16 +81,8 @@ Return at most five findings, ordered by severity. For each finding:
 Do not assign a numerical score, approve the pull request, or present model
 confidence as lawyer verification or human approval.
 
-## Confirm what loaded
+## Respect the output contract
 
-End every review with exactly one of these lines, on its own, as the last line:
-
-```text
-draftly-code-review v1 · context: loaded
-draftly-code-review v1 · context: missing
-```
-
-Write `missing` when the repository context from `CODE_REVIEW_CONTEXT.md` was
-not supplied. The rubric and the context load through separate mechanisms and
-each can fail silently, so this line is the only signal that the review ran with
-the rules it was supposed to use. Do not omit it, and do not reword it.
+Return findings only through the output fields requested by PR-Agent. Do not
+append text outside its YAML schema: the renderer discards extra text instead
+of publishing it in the pull-request comment.
