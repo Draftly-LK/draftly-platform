@@ -1,0 +1,94 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]: D
+        - generic [ref=e6]:
+          - generic [ref=e7]: Draftly
+          - generic [ref=e8]: Notarial workspace
+      - generic [ref=e9]:
+        - button "Search workspace Ctrl+K" [ref=e10] [cursor=pointer]:
+          - generic [ref=e14]: Search workspace
+          - generic [ref=e15]: Ctrl+K
+        - link "Create matter" [ref=e16] [cursor=pointer]:
+          - /url: /new
+      - navigation "Notarial workspace" [ref=e18]:
+        - link "Home" [ref=e19] [cursor=pointer]:
+          - /url: /
+        - link "Matters" [ref=e23] [cursor=pointer]:
+          - /url: /matters
+        - link "Workflows" [ref=e29] [cursor=pointer]:
+          - /url: /workflows
+        - link "Legal sources" [ref=e34] [cursor=pointer]:
+          - /url: /library
+        - link "History" [ref=e37] [cursor=pointer]:
+          - /url: /history
+      - generic [ref=e41]:
+        - generic [ref=e42]: Recent matters
+        - link "RTA-2026-HOM-0020" [ref=e43] [cursor=pointer]:
+          - /url: /matters/matter-rta-001
+      - generic [ref=e44]:
+        - button "Reset demo" [ref=e45] [cursor=pointer]
+        - link "Settings" [ref=e49] [cursor=pointer]:
+          - /url: /settings
+        - link "Help" [ref=e53] [cursor=pointer]:
+          - /url: /help
+    - generic [ref=e57]:
+      - banner [ref=e58]:
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: RTA
+              - generic [ref=e63]: Transfer
+              - generic [ref=e64]: ·
+              - generic [ref=e65]: In review
+            - heading "RTA-2026-HOM-0020" [level=1] [ref=e66]
+            - generic [ref=e67]: BGN Property Development (Pvt) Ltd ↔ W. A. Ishani Prasadini Dheerasinghe · Updated 2026-07-22
+          - generic [ref=e68]:
+            - group "Interface language" [ref=e69]:
+              - button "EN" [pressed] [ref=e74] [cursor=pointer]
+              - button "සිං" [ref=e75] [cursor=pointer]
+            - button "Matter actions" [ref=e76] [cursor=pointer]
+        - navigation "RTA-2026-HOM-0020" [ref=e81]:
+          - link "Overview" [ref=e82] [cursor=pointer]:
+            - /url: /matters/matter-rta-001
+          - link "Documents" [ref=e83] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/documents
+          - link "Verified facts" [ref=e84] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/facts
+          - link "Workflow" [ref=e85] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/workflow
+          - link "Checks" [ref=e86] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/checks
+          - link "Drafts" [ref=e87] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/drafts
+          - link "Activity" [ref=e88] [cursor=pointer]:
+            - /url: /matters/matter-rta-001/activity
+      - main [ref=e89]:
+        - generic [ref=e90]:
+          - generic [ref=e91]:
+            - heading "Drafts" [level=1] [ref=e92]
+            - paragraph [ref=e93]: Generate and review approved outputs from lawyer-verified facts.
+          - button "New draft" [ref=e94] [cursor=pointer]
+          - group "Interface language" [ref=e98]:
+            - button "EN" [pressed] [ref=e103] [cursor=pointer]
+            - button "සිං" [ref=e104] [cursor=pointer]
+        - table [ref=e107]:
+          - rowgroup [ref=e108]:
+            - row [ref=e109]:
+              - columnheader "Draft" [ref=e110]
+              - columnheader "Template" [ref=e111]
+              - columnheader "Version" [ref=e112]
+              - columnheader "Approval state" [ref=e113]
+              - columnheader "Actions" [ref=e114]
+          - rowgroup [ref=e115]:
+            - row [ref=e116]:
+              - cell "Form 8 transfer — parcel 0020 (working)" [ref=e117]
+              - cell "Form 8 transfer" [ref=e118]
+              - cell "v2 · c41e09" [ref=e119]
+              - cell "In review" [ref=e120]
+              - cell [ref=e122]:
+                - link "Open editor" [ref=e123] [cursor=pointer]:
+                  - /url: /matters/matter-rta-001/drafts/draft-form8-001
+  - button "Open Next.js Dev Tools" [ref=e131] [cursor=pointer]
+  - alert [ref=e135]
