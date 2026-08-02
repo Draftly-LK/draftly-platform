@@ -92,15 +92,21 @@ after a PR-to-Linear linking convention is documented here.
 The rubric and the repository context load through two different mechanisms —
 `skills.paths` in the workflow, and `repo_context_files` in `.pr_agent.toml` —
 and each can fail silently, leaving a review that looks normal but was not
-governed by these rules. The skill therefore requires every review to end with:
+governed by these rules. PR-Agent renders a fixed review schema and discards
+extra model text, so a confirmation footer in the model response is not a
+reliable signal.
 
-```text
-draftly-code-review v1 · context: loaded
-```
+After changing review configuration, inspect one live Actions run. The
+`Run PR-Agent review` log must show all of the following:
 
-`context: missing` means the skill loaded but `CODE_REVIEW_CONTEXT.md` did not.
-**No line at all means the skill did not load**, and the review should be
-discarded and rerun after the cause is fixed.
+- `Generating prediction with gpt-5.4-mini`
+- an `Organizational standards and review skills` prompt section containing
+  `### Skill: draftly-code-review`
+- a repository-context section containing
+  `<file path="CODE_REVIEW_CONTEXT.md" scope="repo-root">`
+- no `Skills path does not exist` warning
+
+Discard the review and fix the configuration if any of those checks fail.
 
 ### What is and is not protected
 
