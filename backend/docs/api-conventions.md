@@ -107,9 +107,9 @@ One envelope, on every non-2xx response:
 }
 ```
 
-- `code` is a stable, machine-readable snake_case identifier from a closed
-  catalogue in `domain/errors.py`. The frontend switches on `code`, never on
-  `message`.
+- `code` is a stable, machine-readable snake_case identifier from the owning
+  module's `domain/errors.py`. Shared HTTP mapping is in `platform/errors.py`.
+  The frontend switches on `code`, never on `message`.
 - `message` is safe to display. It never contains a raw client value, a storage
   path, a provider response, a stack frame, or a SQL fragment.
 - `details` is typed per `code` — for example `{"missingFactKeys": ["extent"]}`
@@ -177,8 +177,9 @@ an upgrade rather than a retry.
 
 ## 9. Schema and contract discipline
 
-- Pydantic models in `schemas/` are the wire contract. Domain objects are never
-  serialised directly.
+- Pydantic models in the owning module's `api/schemas.py` (or flat
+  `schemas.py` while the module is small) are the wire contract. Domain objects
+  are never serialised directly.
 - OpenAPI is generated on every build and committed as
   `backend/contracts/openapi.v1.json`. A diff that removes or renames a field
   fails CI unless the change is accompanied by a version bump or an entry in

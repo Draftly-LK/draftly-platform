@@ -17,9 +17,9 @@ One FastAPI deployable and one worker process, both from the same image and the
 same settings module.
 
 ```text
-api        uvicorn draftly_api.main:app        HTTP only, never blocks on a job
-worker     draftly_api.workers.runner          claims and executes queued jobs
-scheduler  draftly_api.workers.runner --sched  one leader, fires timed jobs
+api        uvicorn main:app --app-dir src       HTTP only, never blocks on a job
+worker     python -m workers.runner             claims and executes queued jobs
+scheduler  python -m workers.runner --sched     one leader, fires timed jobs
 ```
 
 The scheduler is a mode of the same runner, not a third image. It elects a
@@ -115,15 +115,15 @@ Rules that hold for every job type:
 
 | Job type | Trigger | Worker module | Lease | Notes |
 | --- | --- | --- | --- | --- |
-| `document.process` | `document.uploaded` | `workers/document_jobs.py` | 900s | Rasterise, classify, OCR ladder, extract |
-| `document.rebuild-derivatives` | Operator | `workers/document_jobs.py` | 900s | Never touches the original |
-| `research.compose-answer` | `ask` / `append_message` | `workers/research_jobs.py` | 300s | Emits resumable stream events |
-| `export.render` | `export.requested` | `workers/export_jobs.py` | 600s | Re-verifies approval and hash before rendering |
-| `report.render` | `report.requested` | `workers/export_jobs.py` | 600s | Supporting-document outputs (`export-service.md` §11) |
-| `notification.deliver` | `obligation.reminder-due` and other notify events | `workers/notification_jobs.py` | 120s | Provider idempotency key = delivery id |
-| `voice.finalise` | Session close | `workers/voice_jobs.py` | 300s | Persists recording and candidate transcript |
-| `memory.ingest` | Any memory-relevant event | `workers/memory_jobs.py` | 60s | Non-authoritative; failure never blocks the publisher |
-| `corpus.rebuild-index` | `corpus.release-published` | `workers/corpus_jobs.py` | 3600s | Builds per-audience index from the signed manifest |
+| `document.process` | `document.uploaded` | `modules/document/jobs.py` | 900s | Rasterise, classify, OCR ladder, extract |
+| `document.rebuild-derivatives` | Operator | `modules/document/jobs.py` | 900s | Never touches the original |
+| `research.compose-answer` | `ask` / `append_message` | `modules/research/jobs.py` | 300s | Emits resumable stream events |
+| `export.render` | `export.requested` | `modules/export/jobs.py` | 600s | Re-verifies approval and hash before rendering |
+| `report.render` | `report.requested` | `modules/export/jobs.py` | 600s | Supporting-document outputs (`export-service.md` §11) |
+| `notification.deliver` | `obligation.reminder-due` and other notify events | `modules/notification/jobs.py` | 120s | Provider idempotency key = delivery id |
+| `voice.finalise` | Session close | `modules/voice/jobs.py` | 300s | Persists recording and candidate transcript |
+| `memory.ingest` | Any memory-relevant event | `modules/memory/jobs.py` | 60s | Non-authoritative; failure never blocks the publisher |
+| `corpus.rebuild-index` | `corpus.release-published` | `modules/corpus_governance/jobs.py` | 3600s | Builds per-audience index from the signed manifest |
 
 ## 6. Scheduled job registry
 

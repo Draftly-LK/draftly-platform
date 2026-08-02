@@ -26,6 +26,13 @@ domain models, ports, methods, entitlement and metering where relevant,
 invariants, failure modes, tests, and decisions. When a doc and one of the four
 cross-cutting files disagree, the cross-cutting file wins and the doc is wrong.
 
+Implementation is a modular monolith organised under
+`src/modules/<owner>/`. Older diagrams use horizontal shorthand
+such as `application/document_service.py`, `domain/documents.py`, `ports/`, or
+`workers/document_jobs.py`; resolve each path inside its owning module according
+to `backend-implementation-plan-v0.md` §4. Only technical shared-kernel code
+belongs under `platform/`.
+
 ## 2. The services
 
 Status levels are defined in `service-definition-of-done.md` §1. The machine

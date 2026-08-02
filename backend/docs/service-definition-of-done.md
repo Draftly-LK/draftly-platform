@@ -58,8 +58,9 @@ same.
 
 ## 3. L1 — contracted
 
-- [ ] Pydantic request and response schemas exist in `schemas/`, and no domain
-      object is serialised directly.
+- [ ] Pydantic request and response schemas exist in the owning module's `api/`
+      package (or its flat `schemas.py` while small), and no domain object is
+      serialised directly.
 - [ ] Every legal-state field is a closed enum, not a free string.
 - [ ] OpenAPI regenerated into `backend/contracts/openapi.v1.json`, and the diff
       is either additive or accompanied by an entry in
@@ -67,7 +68,8 @@ same.
 - [ ] Contract fixtures exist under `tests/contract/fixtures/<service>/` and are
       the only example payloads referenced by frontend work.
 - [ ] Event payload schemas registered and validated against `events.md` §2.
-- [ ] Error codes added to the closed catalogue in `domain/errors.py`.
+- [ ] Error codes added to the owning module's `domain/errors.py`; shared safe
+      HTTP mapping remains in `platform/errors.py`.
 - [ ] Any frontend type this service breaks is recorded in
       `frontend-contract-migration.md` with a mapping.
 

@@ -111,7 +111,7 @@ uv add python-multipart httpx structlog
 uv add google-cloud-documentai google-cloud-storage
 uv add --dev pytest pytest-asyncio httpx ruff mypy
 uv lock
-uv run uvicorn draftly_api.main:app --reload
+uv run uvicorn main:app --app-dir src --reload
 ```
 
 The exact Google Cloud packages and authentication library must be confirmed
@@ -132,6 +132,10 @@ that capability.
 
 ## 4. Target Backend Structure
 
+Draftly is a **modular monolith**: one FastAPI deployment, one worker runtime,
+one PostgreSQL database, and explicit service packages. The service registry
+defines ownership boundaries, not separately deployed microservices.
+
 Create this structure before implementing endpoint logic:
 
 ```text
@@ -143,139 +147,59 @@ backend/
 ├─ Dockerfile
 ├─ migrations/
 │  ├─ env.py
-│  └─ versions/
+│  └─ versions/                    # globally ordered; filename starts with owner
 ├─ src/
-│  └─ draftly_api/
-│     ├─ __init__.py
-│     ├─ main.py                 # FastAPI application factory and lifespan
-│     ├─ config.py               # typed settings and environment validation
-│     ├─ api/
-│     │  ├─ deps.py              # request context, auth, DB session
-│     │  ├─ errors.py            # safe error mapping
-│     │  └─ v1/
-│     │     ├─ router.py
-│     │     ├─ auth.py
-│     │     ├─ billing.py
-│     │     ├─ matters.py
-│     │     ├─ documents.py
-│     │     ├─ particulars.py
-│     │     ├─ checks.py
-│     │     ├─ tasks.py
-│     │     ├─ research.py
-│     │     ├─ drafts.py
-│     │     ├─ exports.py
-│     │     ├─ audit.py
-│     │     └─ health.py
-│     ├─ application/
-│     │  ├─ auth_service.py
-│     │  ├─ billing_service.py
-│     │  ├─ matter_service.py
-│     │  ├─ party_service.py
-│     │  ├─ document_service.py
-│     │  ├─ storage_service.py
-│     │  ├─ verification_service.py
-│     │  ├─ check_service.py
-│     │  ├─ task_service.py
-│     │  ├─ obligations_service.py
-│     │  ├─ notarial_register_service.py
-│     │  ├─ content_governance_service.py
-│     │  ├─ corpus_governance_service.py
-│     │  ├─ library_service.py
-│     │  ├─ research_service.py
-│     │  ├─ memory_service.py
-│     │  ├─ draft_service.py
-│     │  ├─ approval_service.py
-│     │  ├─ export_service.py
-│     │  ├─ notification_service.py
-│     │  ├─ voice_service.py
-│     │  ├─ retention_service.py
-│     │  └─ audit_service.py
-│     ├─ domain/
-│     │  ├─ enums.py
-│     │  ├─ organisations.py
-│     │  ├─ billing.py
-│     │  ├─ matter.py
-│     │  ├─ documents.py
-│     │  ├─ evidence.py
-│     │  ├─ particulars.py
-│     │  ├─ entities.py
-│     │  ├─ findings.py
-│     │  ├─ tasks.py
-│     │  ├─ legal_sources.py
-│     │  ├─ drafts.py
-│     │  ├─ approvals.py
-│     │  ├─ audit.py
-│     │  └─ invariants.py
-│     ├─ schemas/
-│     │  ├─ common.py
-│     │  ├─ billing.py
-│     │  ├─ matter.py
-│     │  ├─ document.py
-│     │  ├─ particular.py
-│     │  ├─ finding.py
-│     │  ├─ research.py
-│     │  ├─ draft.py
-│     │  ├─ export.py
-│     │  └─ audit.py
-│     ├─ ports/
-│     │  ├─ repositories.py
-│     │  ├─ object_storage.py
-│     │  ├─ jobs.py
-│     │  ├─ events.py
-│     │  ├─ audit.py
-│     │  ├─ clock.py
-│     │  ├─ document_processing.py
-│     │  ├─ legal_retrieval.py
-│     │  ├─ legal_catalogue.py
-│     │  ├─ session_memory.py
-│     │  ├─ identity.py
-│     │  ├─ billing.py
-│     │  ├─ email.py
-│     │  ├─ transcription.py
-│     │  ├─ screening.py
-│     │  ├─ destruction.py
-│     │  └─ rendering.py
-│     ├─ infrastructure/
-│     │  ├─ db/
-│     │  │  ├─ session.py
-│     │  │  ├─ models.py
-│     │  │  └─ repositories/
-│     │  ├─ storage/
-│     │  │  └─ object_store.py
-│     │  ├─ queue/
-│     │  │  └─ adapter.py
-│     │  ├─ document_ai/
-│     │  │  └─ google_adapter.py
-│     │  ├─ retrieval/
-│     │  │  └─ engine_adapter.py
-│     │  ├─ identity/
-│     │  │  └─ clerk_adapter.py
-│     │  ├─ billing/
-│     │  │  └─ payhere_adapter.py
-│     │  └─ rendering/
-│     │     └─ office_renderer.py
-│     ├─ workers/
-│     │  ├─ runner.py                # also the leader-elected scheduler mode
-│     │  ├─ document_jobs.py
-│     │  ├─ research_jobs.py
-│     │  ├─ export_jobs.py
-│     │  ├─ notification_jobs.py
-│     │  ├─ obligation_reminder_jobs.py
-│     │  ├─ memory_jobs.py
-│     │  ├─ corpus_jobs.py
-│     │  └─ voice_jobs.py
-│     └─ observability/
-│        ├─ logging.py
-│        ├─ metrics.py
-│        └─ tracing.py
+│  ├─ main.py                      # FastAPI factory and lifespan
+│  ├─ bootstrap.py                 # composition root; wires ports to adapters
+│  ├─ platform/                    # technical shared kernel only
+│  │  ├─ config.py
+│  │  ├─ request_context.py
+│  │  ├─ errors.py
+│  │  ├─ db/
+│  │  │  ├─ session.py
+│  │  │  └─ unit_of_work.py
+│  │  ├─ messaging/
+│  │  │  ├─ envelope.py
+│  │  │  ├─ outbox.py
+│  │  │  └─ registry.py
+│  │  └─ observability/
+│  │     ├─ logging.py
+│  │     ├─ metrics.py
+│  │     └─ tracing.py
+│  ├─ modules/                     # one package per services.yaml owner
+│  │  ├─ auth/
+│  │  ├─ billing/
+│  │  ├─ matter/
+│  │  ├─ party/
+│  │  ├─ document/
+│  │  ├─ storage/
+│  │  ├─ verification/
+│  │  ├─ check/
+│  │  ├─ task/
+│  │  ├─ obligations/
+│  │  ├─ notarial_register/
+│  │  ├─ content_governance/
+│  │  ├─ corpus_governance/
+│  │  ├─ library/
+│  │  ├─ research/
+│  │  ├─ memory/
+│  │  ├─ draft/
+│  │  ├─ approval/
+│  │  ├─ export/
+│  │  ├─ notification/
+│  │  ├─ voice/
+│  │  ├─ retention/
+│  │  └─ audit/
+│  └─ workers/
+│     ├─ runner.py                 # generic job runner only
+│     └─ scheduler.py              # leader-elected scheduler only
 ├─ contracts/
 │  ├─ openapi.v1.json
-│  └─ services.yaml               # the registry the conformance suite reads
-├─ email-templates/               # separate pnpm project, React Email
+│  └─ services.yaml               # conformance registry
+├─ email-templates/                # separate pnpm project, React Email
 ├─ tests/
-│  ├─ unit/
-│  ├─ contract/
-│  ├─ conformance/                # cross-service, parameterised over services.yaml
+│  ├─ contract/                    # cross-module contracts and fixtures
+│  ├─ conformance/
 │  ├─ integration/
 │  ├─ security/
 │  └─ e2e/
@@ -284,9 +208,50 @@ backend/
    └─ rebuild_legal_index.py
 ```
 
-The folders are boundaries, not a requirement to implement every module on
-day one. Empty packages should not be created only for visual completeness;
-each added package must have a test or a concrete next implementation task.
+Each registered service owns one module. A substantial module uses layers
+inside the feature boundary:
+
+```text
+modules/document/
+├─ contracts.py                    # only public cross-module imports
+├─ api/
+│  ├─ router.py
+│  └─ schemas.py
+├─ application/
+│  ├─ commands.py
+│  ├─ queries.py
+│  └─ handlers.py
+├─ domain/
+│  ├─ models.py
+│  ├─ policies.py
+│  ├─ events.py
+│  └─ errors.py
+├─ ports.py
+├─ infrastructure/
+│  ├─ orm.py
+│  └─ repository.py
+├─ jobs.py                         # owned handlers; runner stays generic
+└─ tests/                          # unit and module-local integration tests
+```
+
+Provider adapters live with their owning module. For example,
+`modules/storage/infrastructure/` contains the GCS, MinIO, filesystem, ORM, and
+repository adapters; `modules/billing/infrastructure/` contains PayHere.
+
+Every module starts with the same `api`, `application`, `domain`,
+`infrastructure`, and `tests` boundaries, but only adds implementation files it
+actually needs. Module unit tests and module-local integration tests stay beside
+the owner. Cross-module contract, conformance, integration, security, and E2E
+suites remain under `backend/tests/`. The committed `.gitkeep` files establish
+the approved directory boundaries and are removed from a directory when its
+first real file is added.
+
+Older service plans use shorthand such as `application/document_service.py`,
+`domain/documents.py`, `ports/`, and `workers/document_jobs.py`. Resolve that
+shorthand inside the owning package: respectively
+`modules/document/application/`, `modules/document/domain/`,
+`modules/document/ports.py`, and `modules/document/jobs.py`. Cross-cutting
+technical primitives are the only code permitted under `platform/`.
 
 ## 5. Architecture Rules
 
@@ -303,6 +268,18 @@ HTTP/API → application services → domain + ports
                                       ↑
                              infrastructure adapters
 ```
+
+Within a module, `api` may import `application`; `application` may import
+`domain`, its own `ports`, and another module's `contracts.py`; infrastructure
+implements ports and is wired only by `bootstrap.py`. A module must not import
+another module's domain, ORM models, repositories, infrastructure, or jobs.
+Cross-module asynchronous work uses registered events. Synchronous work uses a
+small public contract and never reaches across to another owner's tables.
+
+The `platform` package is deliberately narrow: configuration, request context,
+database session and unit-of-work primitives, event envelopes and outbox,
+safe error mapping, and observability. Business entities, legal policies,
+provider decisions, and service repositories do not belong there.
 
 ### 5.2 Trust and data boundaries
 
@@ -703,7 +680,7 @@ tests run on every pull request and every merge, and are never skipped, marked
 The V0 backend implementation is complete only when these are present:
 
 1. `pyproject.toml` and committed `uv.lock`.
-2. The structured `src/draftly_api` package and migration history.
+2. The structured `src/` modular-monolith packages and migration history.
 3. Versioned OpenAPI output and frontend contract fixtures.
 4. Working organisation, billing, matter, document, verification, checks,
    corpus-governance, library, research, drafting, approval, export, audit, and
