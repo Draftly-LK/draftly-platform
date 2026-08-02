@@ -12,8 +12,12 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}
-  cancel-in-progress: true
+  # Keep automatic and comment-triggered reviews separate. Comment runs are
+  # serialized so PR-Agent's own progress comment cannot cancel its review.
+  group: >-
+    pr-agent-${{ github.event.pull_request.number || github.event.issue.number }}-${{
+    github.event_name }}
+  cancel-in-progress: ${{ github.event_name != 'issue_comment' }}
 
 jobs:
   # Fails a pull request that edits the review configuration unless its author is
@@ -105,11 +109,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
-          # `${{ }}` is expanded by the runner. `$GITHUB_WORKSPACE` would not be:
-          # values in `env:` are not shell-expanded, so the literal string would
-          # be passed and the skill would silently fail to load.
+          # PR-Agent runs inside a Docker action. The checked-out repository is
+          # mounted at /github/workspace inside that container.
           skills.paths: >-
-            ["${{ github.workspace }}/.agents/skills/draftly-code-review/SKILL.md"]
+            ["/github/workspace/.agents/skills/draftly-code-review/SKILL.md"]
           github_action_config.auto_review: "true"
           github_action_config.auto_describe: "false"
           github_action_config.auto_improve: "false"
