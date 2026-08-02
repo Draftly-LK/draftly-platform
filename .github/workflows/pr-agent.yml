@@ -81,7 +81,7 @@ jobs:
         github.event.issue.pull_request &&
         github.event.issue.state == 'open' &&
         contains(fromJSON('["/review","/review --config.reasoning_effort=\"high\""]'),
-                 trim(github.event.comment.body)) &&
+                 github.event.comment.body) &&
         contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'),
                  github.event.comment.author_association)))
     runs-on: ubuntu-latest
