@@ -44,6 +44,7 @@ OCR escalation ladder is large enough to need one.
 | [matter-service](matter-service.md) | Matter identity, classification, lifecycle, party references | 2 | L0 |
 | [party-service](party-service.md) | Party records, identity evidence, beneficial ownership, CDD, screening | 2 | L0 |
 | [document-service](document-service.md) | Immutable upload, versioning, processing state, viewer manifest | 3 | L0 |
+| [storage-service](storage-service.md) | Provider-neutral blob metadata, immutable operations, signed grants, reconciliation | 3 | L0 |
 | [document-processing](document-processing.md) | Worker pipeline: rasterise, classify, OCR ladder, extract | 3 | L0 |
 | [verification-service](verification-service.md) | The verified fact tier — verify, correct, conflicts, evidence spans | 4 | L0 |
 | [check-service](check-service.md) | Deterministic rules, findings, cross-document reconciliation | 5 | L0 |
@@ -74,7 +75,8 @@ The question these docs get asked most often is "which service owns X".
 | What a document says about a person | `verification_service` | `party_service` |
 | Matter and organisation membership rows | `auth_service` | `matter_service` |
 | Transaction role of a party in a matter | `matter_service` | `party_service` |
-| Uploaded bytes and versions | `document_service` | `notarial_register_service` |
+| Logical documents and versions | `document_service` | `storage_service`, `notarial_register_service` |
+| Stored bytes, provider references, and upload reservations | `storage_service` | `document_service`, `export_service` |
 | OCR, classification, extraction | `document-processing` worker | `document_service` |
 | Candidate particulars | `document-processing` → `verification_service` | anyone else |
 | Verified facts | `verification_service` | `check_service`, `task_service` |
@@ -116,6 +118,7 @@ Every path is under `/api/v1` (`api-conventions.md` §1).
 | matter | `GET`, `POST /matters`; `GET`, `PATCH /matters/{id}`; `POST /matters/{id}/activate`, `/reclassify`, `/close`, `/reopen`, `/archive` |
 | party | `GET`, `POST /parties`; `GET`, `PATCH /parties/{id}`; `POST /parties/{id}/identity-evidence`, `/beneficial-owners`, `/cdd`, `/screening`; `GET /matters/{id}/parties` |
 | document | `GET`, `POST /matters/{id}/documents`; `GET /documents/{id}`; `POST /documents/{id}/versions`; `GET /documents/{id}/processing`; `GET /document-versions/{id}/manifest`; `POST /processing/{job}/retry` |
+| storage | No public routes; called through `ObjectStoragePort` after the owning service authorizes access |
 | verification | `GET`, `POST /matters/{id}/facts`; `POST /matters/{id}/facts/{factId}/verify`, `/correct` |
 | check | `GET /matters/{id}/checks`, `/cross-checks`; `POST /matters/{id}/checks/{id}/resolve`, `/remediation` |
 | task | `GET`, `POST /matters/{id}/workflows`; `POST …/re-evaluate`; `POST …/steps/{id}/complete`; `GET`, `POST /matters/{id}/document-requirements`; `GET /matters/{id}/readiness`; question responses |

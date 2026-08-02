@@ -137,7 +137,7 @@ successful run, and each is safe to run late.
 | every 15m | `obligation.emit-reminders` | `obligations_service` | The `emit_due_reminders(as_of)` sweep |
 | hourly | `billing.reconcile-subscriptions` | `billing_service` | Repair drift from missed webhooks |
 | hourly | `export.expire` | `export_service` | Mark exports past `expires_at` |
-| daily 02:00 Asia/Colombo | `storage.collect-orphans` | `document_service` | Blobs with no committed row, older than 24h |
+| daily 02:00 Asia/Colombo | `storage.collect-orphans` | `storage_service` | Hold-aware reconciliation of expired reservations, missing objects, and unclaimed blobs older than 24h |
 | daily 02:30 Asia/Colombo | `retention.evaluate` | `retention_service` | Policy evaluation and `retention.review-due` |
 | daily 03:00 Asia/Colombo | `memory.compact` | `memory_service` | Note reconsolidation and superseded-episode pruning |
 | monthly, 1st 00:15 Asia/Colombo | `register.close-month` | `notarial_register_service` | Emits `register.monthly-period-closed` |
@@ -153,7 +153,7 @@ each has a named sweep rather than a hope:
 
 | Failure | Sweep |
 | --- | --- |
-| Storage put succeeded, DB commit failed → orphan blob | `storage.collect-orphans`: delete blobs with no row, age > 24h, never under a legal hold |
+| Storage put succeeded, DB commit failed → orphan blob | `storage.collect-orphans`: reconcile reservations and provider inventory; delete only mapped blobs older than 24h after a fail-closed hold check |
 | DB commit succeeded, enqueue failed | `outbox.drain` retries; the row was never lost because it was in the same transaction |
 | Provider accepted, local persist failed | Idempotency key replay: re-send with the same key, provider returns the original result |
 

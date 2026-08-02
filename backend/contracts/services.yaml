@@ -105,7 +105,21 @@
     - {feature: document_processing.enabled, metric: document_pages.monthly}
     - {feature: document_processing.enabled, metric: storage_bytes.max}
   owns_tables: [documents, document_versions, processing_runs, derivatives]
-  jobs: [document.process, document.rebuild-derivatives, storage.collect-orphans]
+  jobs: [document.process, document.rebuild-derivatives]
+  exemptions: []
+
+- name: storage_service
+  doc: docs/services/storage-service.md
+  level: L0
+  phase: 3
+  matter_scoped: true
+  routes_prefix: null
+  capabilities: []
+  publishes: []
+  consumes: []
+  metered: []
+  owns_tables: [storage_objects, storage_upload_reservations]
+  jobs: [storage.collect-orphans]
   exemptions: []
 
 - name: verification_service

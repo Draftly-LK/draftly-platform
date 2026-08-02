@@ -252,7 +252,8 @@ deleted without the same four-condition gate in §2.
 
 | Service | Contract |
 | --- | --- |
-| `document_service` | Consumes `retention.hold-placed/released`; refuses orphan-blob collection and any deletion inside a held scope; implements `DestructionCommandPort` for originals and derivatives separately |
+| `document_service` | Consumes `retention.hold-placed/released`; owns the logical document/version destruction command and delegates physical blob deletion through `ObjectStoragePort` |
+| `storage_service` | Owns hold-aware orphan reconciliation and physical deletion; re-checks `HoldStatusPort` immediately before deleting an exact object generation and returns a `DeletionReceipt` to the record-owning service |
 | `export_service` | Approved exports have their own retention class; expiry of a signed URL is not destruction |
 | `party_service` | Refuses merge and identifier purge inside a held scope; supports `crypto-erase` of `identifierValue` as a destruction method |
 | `notarial_register_service` | Protocol and register records carry long statutory retention; destruction is effectively never in V0 |
@@ -305,7 +306,7 @@ deleted without the same four-condition gate in §2.
   `DestructionCommandPort` contract each owning service implements.
 - **Integration:** matter closure creates a schedule; maturity creates one
   obligation and is idempotent on replay; a hold blocks orphan collection in
-  `document_service` and merge in `party_service`; approved disposition
+  `storage_service` and merge in `party_service`; approved disposition
   destroys through the owning service and records the tombstone; partial failure
   does not mark `destroyed`; restore-then-reconcile detects reinstated records.
 - **Security:** only `retention.hold` / `retention.release` /

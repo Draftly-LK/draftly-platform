@@ -172,6 +172,7 @@ backend/
 │     │  ├─ matter_service.py
 │     │  ├─ party_service.py
 │     │  ├─ document_service.py
+│     │  ├─ storage_service.py
 │     │  ├─ verification_service.py
 │     │  ├─ check_service.py
 │     │  ├─ task_service.py

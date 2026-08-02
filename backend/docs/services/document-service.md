@@ -88,8 +88,11 @@ In `ports/`:
 
 - `DocumentRepository` — persist and load Document, DocumentVersion, and
   ProcessingRun; matter-scoped queries only.
-- `ObjectStoragePort` — `put_immutable(key, stream) -> stored_ref` and
-  `signed_url(key, ttl)`. The put must fail if the key already exists.
+- `ObjectStoragePort` — the provider-neutral facade owned by
+  `storage_service`; `put_immutable(scope, owner, stream, metadata)` and
+  `issue_download_grant(stored_ref, purpose, ttl)`. The put must fail if the
+  trusted key already exists, and the returned reference pins the provider
+  generation.
 - `JobQueuePort` — `enqueue(ProcessingMessage)` with an authenticated, signed
   message body.
 - `AuditPort` — `record(event)`; every mutation goes through here.
@@ -450,8 +453,9 @@ viewer decision applies when real protected uploads are connected in M3/E8.10.
 
 - Duplicate upload (same checksum in the matter) — dedupe policy, see open
   decisions.
-- Storage put succeeds, database commit fails — orphan blob — reconciliation or
-  garbage-collection sweep.
+- Storage put succeeds, database commit fails — the reservation/object becomes
+  unclaimed and `storage_service` reconciles it after the hold-aware grace
+  period; `document_service` never deletes it directly.
 - Database commit succeeds, enqueue fails — the outbox sweeper re-drains.
 - Worker crash mid-run — lease expiry re-queues; the idempotent claim prevents
   double-processing.

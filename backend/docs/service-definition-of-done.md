@@ -201,6 +201,7 @@ service.
 | `matter_service` | 2 | Client cannot write phase, progress, blocking, or readiness; reclassification appends and never overwrites | L0 |
 | `party_service` | 2 | Full identifier never returned without capability plus recorded purpose; no plaintext identifier in a table dump; no automatic identity merge | L0 |
 | `document_service` | 3 | Upload acknowledgement independent of OCR; provider failure preserves the original; 15-document matter reaches review or explicit failure within the V0 target | L0 |
+| `storage_service` | 3 | Every original is a conditional write pinned to an exact provider generation; cross-tenant grants fail; held records and unknown inventory are never deleted; Neon/GCS partial failures reconcile without data loss | L0 |
 | `document-processing` | 3 | Ladder routes correctly per confidence and box state; coordinates map exactly across DPI and rotation; no auto-accept; adapter refuses real data before the provider approval flag is set | L0 |
 | `verification_service` | 4 | Every accepted particular opens the exact source version, page, and region; unreadable evidence stays blocked; record rebuilds without changing decisions | L0 |
 | `check_service` | 5 | Every active rule has authority, version, effective date, and passing fixture tests; pass/warning/fail/needs-review stay distinct; labelled evaluation reports precision, recall, abstentions | L0 |
