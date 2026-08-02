@@ -11,6 +11,7 @@ dependencies = [
     "cryptography>=50.0.0",
     "fastapi[standard]>=0.141.1",
     "httpx>=0.28.1",
+    "psycopg2-binary>=2.9.12",
     "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.14.2",
     "pyjwt>=2.13.0",

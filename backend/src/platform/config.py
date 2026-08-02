@@ -6,7 +6,16 @@ defaults to a production value (per infrastructure.md §Configuration).
 
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Support running from backend/ or repo root.  The real .env lives at the repo
+# root alongside the frontend workspace.
+_here = Path(__file__).resolve().parent  # backend/src/platform/
+_root_env = _here.parents[2] / ".env"  # repo-root/.env
+_backend_env = _here.parents[1] / ".env"  # backend/.env
 
 
 class Settings(BaseSettings):
@@ -16,7 +25,8 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Try backend/.env first, then the repo-root .env
+        env_file=[str(_backend_env), str(_root_env)],
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
