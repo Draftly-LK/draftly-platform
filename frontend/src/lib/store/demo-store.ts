@@ -11,8 +11,11 @@ import {
   drafts,
   facts,
   matters,
+  templates,
   workflows,
 } from "@/lib/mocks";
+import { buildTemplateDocument } from "@/lib/templates/build-document";
+import { deriveTemplateReadiness } from "@/lib/templates/readiness";
 import type {
   AuditEvent,
   Check,
@@ -98,7 +101,11 @@ interface DemoState {
     overrideReason?: string,
     matterId?: string,
   ) => void;
-  createDraft: (matterId: string, templateId: string) => string | null;
+  createDraft: (
+    matterId: string,
+    templateId: string,
+    labels?: Record<string, string>,
+  ) => string | null;
   saveDraftVersion: (draftId: string, document: EditorDocument) => void;
   restoreDraftVersion: (draftId: string, versionId: string) => void;
   approveDraft: (draftId: string) => void;
@@ -455,46 +462,25 @@ export const useDemoStore = create<DemoState>()(
           }),
         })),
       // TODO(api): POST /api/matters/{matterId}/drafts
-      createDraft: (matterId, templateId) => {
-        const eligible = get().facts.filter(
-          (fact) =>
-            fact.matterId === matterId &&
-            ["verified", "corrected"].includes(fact.verificationState),
-        );
-        if (
-          !eligible.some((fact) => fact.key === "transferee") ||
-          !eligible.some((fact) => fact.key === "extent")
-        )
-          return null;
+      createDraft: (matterId, templateId, labels = {}) => {
+        const template = templates.find((entry) => entry.id === templateId);
+        if (!template) return null;
+        const matterFacts = get().facts.filter((fact) => fact.matterId === matterId);
+        // The form itself decides what it needs; the same derivation drives the
+        // pre-flight checklist, so the gate can never disagree with the UI.
+        if (!deriveTemplateReadiness(template, matterFacts).canGenerate) return null;
         const id = `draft-live-${String(get().drafts.length + 1).padStart(3, "0")}`;
         set((state) => {
           const createdAt = deterministicTimestamp(state.auditEvents.length);
-          const document: EditorDocument = {
-            type: "doc",
-            content: [
-              {
-                type: "heading",
-                attrs: { level: 1 },
-                content: [{ type: "text", text: "Form 8 — synthetic draft" }],
-              },
-              {
-                type: "paragraph",
-                content: eligible.map((fact) => ({
-                  type: "factChip" as const,
-                  attrs: {
-                    fact_id: fact.id,
-                    verification_state: fact.verificationState as
-                      | "verified"
-                      | "corrected",
-                  },
-                })),
-              },
-            ],
-          };
+          const document: EditorDocument = buildTemplateDocument(
+            template,
+            matterFacts,
+            labels,
+          );
           const draft: Draft = {
             id,
             matterId,
-            title: "Form 8 transfer — synthetic",
+            title: `${template.formNumber} transfer`,
             templateId,
             approvalState: "working",
             activeVersionId: `${id}-v1`,
@@ -667,7 +653,7 @@ export const useDemoStore = create<DemoState>()(
     {
       name: "draftly-m2-demo",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
     },
   ),
 );

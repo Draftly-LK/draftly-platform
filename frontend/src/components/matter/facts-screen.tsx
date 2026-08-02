@@ -3,6 +3,7 @@
 import { FileSearch, Link2, Plus, ShieldCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
+import { factLabelKey } from "@/lib/i18n/fact-label-keys";
 import { useDemoStore } from "@/lib/store";
 import type { VerifiedFact } from "@/types";
 import { AppShell } from "@/components/shell/app-shell";
@@ -10,12 +11,6 @@ import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 
-type FactKey =
-  | "deedNumber"
-  | "transferor"
-  | "transferee"
-  | "extent"
-  | "assessmentNumber";
 type Filter = "all" | "unreviewed" | "low" | "conflict" | "missing";
 
 export function FactsScreen({ matterId }: { matterId: string }) {
@@ -33,7 +28,10 @@ export function FactsScreen({ matterId }: { matterId: string }) {
   const [editId, setEditId] = useState<string>();
   const [editValue, setEditValue] = useState("");
   const [editReason, setEditReason] = useState("");
-  const [manual, setManual] = useState(false);
+  // `true` adds a brand-new fact; a fact id supplies the value of a blocked
+  // one, so resolving a missing particular clears it rather than leaving it
+  // blocked beside an unrelated manual entry.
+  const [manual, setManual] = useState<boolean | string>(false);
   const [announcement, setAnnouncement] = useState("");
   const correctionInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -49,7 +47,7 @@ export function FactsScreen({ matterId }: { matterId: string }) {
       (filter === "missing" && fact.verificationState === "blocked"),
   );
   const label = (fact: VerifiedFact) =>
-    t(fact.labelKey.split(".").at(-1) as FactKey, { fallback: fact.key });
+    t(factLabelKey(fact.labelKey), { fallback: fact.key });
   const beginCorrection = (fact: VerifiedFact) => {
     setEditId(fact.id);
     setEditValue(String(fact.value ?? ""));
@@ -202,7 +200,7 @@ export function FactsScreen({ matterId }: { matterId: string }) {
                         ) : fact.verificationState === "blocked" ? (
                           <Button
                             className="min-h-8 px-2 py-1 text-xs"
-                            onClick={() => setManual(true)}
+                            onClick={() => setManual(fact.id)}
                           >
                             {t("resolve")}
                           </Button>
@@ -347,13 +345,14 @@ export function FactsScreen({ matterId }: { matterId: string }) {
           <ManualFactDialog
             onClose={() => setManual(false)}
             onAdd={(value, reason) => {
-              const id = addManualFact(
-                "facts.manualValue",
-                value,
-                reason,
-                matterId,
-              );
-              setSelectedId(id);
+              if (typeof manual === "string") {
+                correctFact(manual, value, reason);
+                setSelectedId(manual);
+              } else {
+                setSelectedId(
+                  addManualFact("facts.manualValue", value, reason, matterId),
+                );
+              }
               setManual(false);
               setAnnouncement(t("manualAdded"));
             }}
