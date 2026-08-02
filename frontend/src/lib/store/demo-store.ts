@@ -13,25 +13,11 @@ import {
   matters,
   workflows,
 } from "@/lib/mocks";
-import {
-  classifyFileName,
-  identityDisplayName,
-  identityFileName,
-  type IdentityPairAssignment,
-} from "@/lib/documents/mock-pipeline";
-import { mergeIdentityFields } from "@/lib/documents/identity-groups";
-import { relationForKind } from "@/lib/documents/authorization";
-import type { ProcessDocumentResponse } from "@/lib/api/documents";
 import type {
   AuditEvent,
   Check,
-  DocumentKind,
-  DocumentRelation,
   Draft,
   EditorDocument,
-  ExtractedFields,
-  IdentityExtractedFields,
-  IdentitySide,
   Matter,
   MatterDocument,
   MatterType,
@@ -63,18 +49,6 @@ type CreateMatterInput = {
   type: MatterType;
 };
 
-export type AddDocumentOptions = {
-  kind?: DocumentKind;
-  matterId?: string;
-  relation?: DocumentRelation;
-  identitySide?: IdentitySide;
-  identityGroupId?: string;
-  displayName?: string;
-  previewUrl?: string;
-};
-
-export type { IdentityPairAssignment };
-
 interface DemoState {
   matters: Matter[];
   documents: MatterDocument[];
@@ -84,28 +58,16 @@ interface DemoState {
   drafts: Draft[];
   auditEvents: AuditEvent[];
   createMatter: (input: CreateMatterInput) => string;
-  addDocument: (fileName: string, options?: AddDocumentOptions) => string;
+  addDocument: (
+    fileName: string,
+    kind?: MatterDocument["kind"],
+    matterId?: string,
+  ) => string;
   setDocumentProcessingState: (
     documentId: string,
     processingState: ProcessingState,
     confidence?: number,
   ) => void;
-  completeDocumentExtraction: (documentId: string) => void;
-  applyDocumentPipelineResult: (
-    documentId: string,
-    result: ProcessDocumentResponse,
-  ) => void;
-  updateDocumentExtraction: (
-    documentId: string,
-    extractedText: string,
-    extractedFields?: ExtractedFields,
-  ) => void;
-  updateIdentityFields: (
-    identityGroupId: string,
-    extractedFields: IdentityExtractedFields,
-  ) => void;
-  assignDocumentKind: (documentId: string, kind: DocumentKind) => void;
-  setIdentityPairing: (assignments: IdentityPairAssignment[]) => void;
   retryDocument: (documentId: string) => void;
   replaceDocument: (
     documentId: string,
@@ -227,16 +189,7 @@ export const useDemoStore = create<DemoState>()(
         return id;
       },
       // TODO(api): POST /api/matters/{matterId}/documents
-      addDocument: (fileName, options = {}) => {
-        const matterId = options.matterId ?? DEMO_MATTER_ID;
-        const matter = get().matters.find((item) => item.id === matterId);
-        const regime = matter?.regime ?? "rta";
-        const type = matter?.type ?? "transfer";
-        const classified = classifyFileName(fileName, regime, type);
-        const kind = options.kind ?? classified.kind;
-        const identitySide = options.identitySide ?? classified.identitySide;
-        const relation =
-          options.relation ?? relationForKind(kind, regime, type);
+      addDocument: (fileName, kind = "other", matterId = DEMO_MATTER_ID) => {
         const id = `doc-upload-${String(get().documents.length + 1).padStart(3, "0")}`;
         set((state) => {
           const document: MatterDocument = {
@@ -250,13 +203,6 @@ export const useDemoStore = create<DemoState>()(
             qualityProblems: [],
             versions: [],
             uploadedAt: deterministicTimestamp(state.auditEvents.length),
-            relation,
-            identitySide:
-              options.identitySide ??
-              (kind === "identity" ? identitySide : undefined),
-            identityGroupId: options.identityGroupId,
-            displayName: options.displayName,
-            previewUrl: options.previewUrl,
           };
           return {
             documents: [...state.documents, document],
@@ -296,338 +242,6 @@ export const useDemoStore = create<DemoState>()(
               targetId: documentId,
               before,
               after: updated.find((document) => document.id === documentId),
-            }),
-          };
-        }),
-      // TODO(api): POST /api/matters/{matterId}/documents/{documentId}/extract
-      completeDocumentExtraction: (documentId) =>
-        set((state) => {
-          const before = state.documents.find(
-            (document) => document.id === documentId,
-          );
-          if (!before) return state;
-          const matter = state.matters.find(
-            (item) => item.id === before.matterId,
-          );
-          const regime = matter?.regime ?? "rta";
-          const type = matter?.type ?? "transfer";
-          const classified = classifyFileName(before.fileName, regime, type);
-          const kind = before.kind === "other" ? classified.kind : before.kind;
-          const identitySide =
-            before.identitySide && before.identitySide !== "unknown"
-              ? before.identitySide
-              : classified.identitySide;
-          const relation = relationForKind(kind, regime, type);
-          const emptyIdentity: IdentityExtractedFields = {
-            nicNumber: null,
-            nameSi: null,
-            nameEn: null,
-            sex: null,
-            dateOfBirth: null,
-            addressEn: null,
-            serialNumber: null,
-            dateOfIssue: null,
-            placeOfBirthEn: null,
-          };
-          let patch: Partial<MatterDocument> = {
-            kind,
-            relation,
-            identitySide: kind === "identity" ? identitySide : undefined,
-            processingState: "ready-for-review",
-            extractionConfidence: 0.5,
-          };
-          if (kind === "identity") {
-            patch = {
-              ...patch,
-              displayName: "Identity card (unidentified)",
-              extractedText: before.extractedText ?? "",
-              extractedFields: before.extractedFields ?? emptyIdentity,
-            };
-          }
-          const updated = state.documents.map((document) =>
-            document.id === documentId ? { ...document, ...patch } : document,
-          );
-          return {
-            documents: updated,
-            auditEvents: appendEvent(state, {
-              matterId: before.matterId,
-              action: "document.ready-for-review",
-              targetType: "document",
-              targetId: documentId,
-              before,
-              after: updated.find((document) => document.id === documentId),
-            }),
-          };
-        }),
-      applyDocumentPipelineResult: (documentId, result) =>
-        set((state) => {
-          const before = state.documents.find(
-            (document) => document.id === documentId,
-          );
-          if (!before) return state;
-          const matter = state.matters.find(
-            (item) => item.id === before.matterId,
-          );
-          const regime = matter?.regime ?? "rta";
-          const type = matter?.type ?? "transfer";
-          const kind = result.kind;
-          const relation = relationForKind(kind, regime, type);
-          // Prefer filename front/back hints (e.g. nic2b) over model side guesses.
-          const fileHint = classifyFileName(before.fileName, regime, type);
-          const identitySide =
-            kind === "identity"
-              ? fileHint.identitySide !== "unknown"
-                ? fileHint.identitySide
-                : (result.identity_side ?? before.identitySide ?? "unknown")
-              : undefined;
-          const nameEn =
-            result.extracted_fields &&
-            "nameEn" in result.extracted_fields &&
-            typeof result.extracted_fields.nameEn === "string"
-              ? result.extracted_fields.nameEn
-              : null;
-          const displayName =
-            result.display_name ??
-            (kind === "identity"
-              ? nameEn
-                ? identityDisplayName(nameEn)
-                : "Identity card (unidentified)"
-              : before.displayName);
-          const fileName =
-            kind === "identity" && nameEn
-              ? identityFileName(nameEn, identitySide ?? "unknown")
-              : before.fileName;
-          const updated = state.documents.map((document) =>
-            document.id === documentId
-              ? {
-                  ...document,
-                  kind,
-                  relation,
-                  identitySide,
-                  displayName: displayName ?? undefined,
-                  fileName,
-                  extractedText: result.extracted_text,
-                  extractedFields: result.extracted_fields,
-                  extractionConfidence: result.extraction_confidence,
-                  processingState: "ready-for-review" as const,
-                }
-              : document,
-          );
-          return {
-            documents: updated,
-            auditEvents: appendEvent(state, {
-              matterId: before.matterId,
-              action: "document.ready-for-review",
-              targetType: "document",
-              targetId: documentId,
-              before,
-              after: updated.find((document) => document.id === documentId),
-            }),
-          };
-        }),
-      // TODO(api): PATCH /api/matters/{matterId}/documents/{documentId}/extraction
-      updateDocumentExtraction: (documentId, extractedText, extractedFields) =>
-        set((state) => {
-          const before = state.documents.find(
-            (document) => document.id === documentId,
-          );
-          if (!before) return state;
-          const fields = extractedFields ?? before.extractedFields;
-          const nameEn =
-            fields &&
-            "nameEn" in fields &&
-            typeof fields.nameEn === "string" &&
-            fields.nameEn
-              ? fields.nameEn
-              : undefined;
-          const displayName = nameEn
-            ? identityDisplayName(nameEn)
-            : before.displayName;
-          const fileName =
-            before.kind === "identity" && nameEn
-              ? identityFileName(nameEn, before.identitySide ?? "unknown")
-              : before.fileName;
-          const updated = state.documents.map((document) =>
-            document.id === documentId
-              ? {
-                  ...document,
-                  extractedText,
-                  extractedFields: fields,
-                  displayName,
-                  fileName,
-                }
-              : document,
-          );
-          return {
-            documents: updated,
-            auditEvents: appendEvent(state, {
-              matterId: before.matterId,
-              action: "document.extraction.edited",
-              targetType: "document",
-              targetId: documentId,
-              before,
-              after: updated.find((document) => document.id === documentId),
-            }),
-          };
-        }),
-      // TODO(api): PATCH /api/matters/{matterId}/identity-documents/{identityGroupId}
-      updateIdentityFields: (identityGroupId, extractedFields) =>
-        set((state) => {
-          const members = state.documents.filter(
-            (document) => document.identityGroupId === identityGroupId,
-          );
-          if (members.length === 0) return state;
-          const nameEn = extractedFields.nameEn ?? undefined;
-          const displayName = nameEn
-            ? identityDisplayName(nameEn)
-            : "Identity card (unidentified)";
-          const updated = state.documents.map((document) =>
-            document.identityGroupId === identityGroupId
-              ? {
-                  ...document,
-                  extractedFields,
-                  displayName,
-                  fileName: nameEn
-                    ? identityFileName(
-                        nameEn,
-                        document.identitySide ?? "unknown",
-                      )
-                    : document.fileName,
-                }
-              : document,
-          );
-          return {
-            documents: updated,
-            auditEvents: appendEvent(state, {
-              matterId: members[0]?.matterId ?? DEMO_MATTER_ID,
-              action: "document.identity-fields.edited",
-              targetType: "document",
-              targetId: identityGroupId,
-              before: members,
-              after: updated.filter(
-                (document) => document.identityGroupId === identityGroupId,
-              ),
-            }),
-          };
-        }),
-      // TODO(api): PATCH /api/matters/{matterId}/documents/{documentId}/kind
-      assignDocumentKind: (documentId, kind) =>
-        set((state) => {
-          const before = state.documents.find(
-            (document) => document.id === documentId,
-          );
-          if (!before) return state;
-          const matter = state.matters.find(
-            (item) => item.id === before.matterId,
-          );
-          const relation = relationForKind(
-            kind,
-            matter?.regime ?? "rta",
-            matter?.type ?? "transfer",
-          );
-          const updated = state.documents.map((document) =>
-            document.id === documentId
-              ? {
-                  ...document,
-                  kind,
-                  relation,
-                  identitySide:
-                    kind === "identity"
-                      ? (document.identitySide ?? "unknown")
-                      : undefined,
-                }
-              : document,
-          );
-          return {
-            documents: updated,
-            auditEvents: appendEvent(state, {
-              matterId: before.matterId,
-              action: "document.kind-assigned",
-              targetType: "document",
-              targetId: documentId,
-              before,
-              after: updated.find((document) => document.id === documentId),
-            }),
-          };
-        }),
-      // TODO(api): POST /api/matters/{matterId}/documents/identity-pairing
-      setIdentityPairing: (assignments) =>
-        set((state) => {
-          if (assignments.length === 0) return state;
-          const first = state.documents.find(
-            (document) => document.id === assignments[0]?.documentId,
-          );
-          const paired = state.documents.map((document) => {
-            const assignment = assignments.find(
-              (item) => item.documentId === document.id,
-            );
-            if (!assignment) return document;
-            const nameEn =
-              document.extractedFields &&
-              "nameEn" in document.extractedFields &&
-              typeof document.extractedFields.nameEn === "string"
-                ? document.extractedFields.nameEn
-                : null;
-            const displayName = nameEn
-              ? identityDisplayName(nameEn)
-              : (document.displayName ?? "Identity card (unidentified)");
-            return {
-              ...document,
-              kind: "identity" as const,
-              relation: relationForKind(
-                "identity",
-                state.matters.find((item) => item.id === document.matterId)
-                  ?.regime ?? "rta",
-                state.matters.find((item) => item.id === document.matterId)
-                  ?.type ?? "transfer",
-              ),
-              identityGroupId: assignment.identityGroupId,
-              identitySide: assignment.identitySide,
-              displayName,
-              fileName: nameEn
-                ? identityFileName(nameEn, assignment.identitySide)
-                : document.fileName,
-            };
-          });
-          const groupIds = [
-            ...new Set(
-              assignments.map((assignment) => assignment.identityGroupId),
-            ),
-          ];
-          const mergedByGroup = new Map(
-            groupIds.map((groupId) => [
-              groupId,
-              mergeIdentityFields(
-                paired.filter(
-                  (document) => document.identityGroupId === groupId,
-                ),
-              ).fields,
-            ]),
-          );
-          const updated = paired.map((document) => {
-            if (!document.identityGroupId) return document;
-            const fields = mergedByGroup.get(document.identityGroupId);
-            if (!fields) return document;
-            const nameEn = fields.nameEn ?? undefined;
-            return {
-              ...document,
-              extractedFields: fields,
-              displayName: nameEn
-                ? identityDisplayName(nameEn)
-                : "Identity card (unidentified)",
-              fileName: nameEn
-                ? identityFileName(nameEn, document.identitySide ?? "unknown")
-                : document.fileName,
-            };
-          });
-          return {
-            documents: updated,
-            auditEvents: appendEvent(state, {
-              matterId: first?.matterId ?? DEMO_MATTER_ID,
-              action: "document.identity-paired",
-              targetType: "document",
-              targetId: first?.id ?? "identity-pairing",
-              after: { assignments },
             }),
           };
         }),
@@ -672,7 +286,7 @@ export const useDemoStore = create<DemoState>()(
                 ? {
                     ...item,
                     fileName,
-                    processingState: "uploaded" as const,
+                    processingState: "uploaded",
                     versions: [...item.versions, version],
                   }
                 : item,
@@ -1053,11 +667,7 @@ export const useDemoStore = create<DemoState>()(
     {
       name: "draftly-m2-demo",
       storage: createJSONStorage(() => localStorage),
-      version: 3,
-      migrate: (persisted, version) => {
-        if (version < 3) return seed();
-        return persisted as ReturnType<typeof seed>;
-      },
+      version: 1,
     },
   ),
 );

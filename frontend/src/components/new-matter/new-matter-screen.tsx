@@ -14,15 +14,9 @@ import Image from "next/image";
 import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { hasAuthorizedDocumentCatalog } from "@/lib/documents/authorization";
-import { classifyFileName } from "@/lib/documents/mock-pipeline";
-import {
-  queueDocumentFile,
-  simulateDocumentProcessing,
-  useDemoStore,
-} from "@/lib/store";
-import type { DocumentKind, DocumentRelation, MatterType } from "@/types";
+import { useState } from "react";
+import { simulateDocumentProcessing, useDemoStore } from "@/lib/store";
+import type { MatterType } from "@/types";
 import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { Button } from "@/components/ui/button";
 
@@ -34,37 +28,8 @@ const transactionTypes: MatterType[] = [
   "other",
 ];
 
-const kindKeys: Record<
-  DocumentKind,
-  | "kindDeed"
-  | "kindPlan"
-  | "kindIdentity"
-  | "kindAssessment"
-  | "kindRegistry"
-  | "kindAt"
-  | "kindOther"
-> = {
-  deed: "kindDeed",
-  "survey-plan": "kindPlan",
-  identity: "kindIdentity",
-  assessment: "kindAssessment",
-  "registry-extract": "kindRegistry",
-  "at-form": "kindAt",
-  other: "kindOther",
-};
-
-const relationKeys: Record<
-  DocumentRelation,
-  "relationAuthorized" | "relationUnrelated" | "relationUnclassified"
-> = {
-  authorized: "relationAuthorized",
-  unrelated: "relationUnrelated",
-  unclassified: "relationUnclassified",
-};
-
 export function NewMatterScreen() {
   const t = useTranslations("newMatter");
-  const td = useTranslations("documents");
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const createMatter = useDemoStore((state) => state.createMatter);
@@ -74,14 +39,6 @@ export function NewMatterScreen() {
   const [reference, setReference] = useState("");
   const [clientReference, setClientReference] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const classifiedFiles = useMemo(
-    () =>
-      files.map((file) => ({
-        file,
-        result: classifyFileName(file.name, "rta", type),
-      })),
-    [files, type],
-  );
   const finish = () => {
     const id = createMatter({
       reference: reference.trim() || t("matterPlaceholder"),
@@ -89,23 +46,11 @@ export function NewMatterScreen() {
       regime: "rta",
       type,
     });
-    const hasFiles = files.length > 0;
     files.forEach((file) => {
-      const previewUrl = URL.createObjectURL(file);
-      const hint = classifyFileName(file.name, "rta", type);
-      const documentId = addDocument(file.name, {
-        matterId: id,
-        kind: "other",
-        relation: "unclassified",
-        identitySide: hint.identitySide,
-        previewUrl,
-      });
-      queueDocumentFile(documentId, file);
+      const documentId = addDocument(file.name, "other", id);
       simulateDocumentProcessing(documentId);
     });
-    router.push(
-      hasFiles ? `/matters/${id}/documents?pair=1` : `/matters/${id}`,
-    );
+    router.push(`/matters/${id}`);
   };
   if (step === 1)
     return (
@@ -251,11 +196,6 @@ export function NewMatterScreen() {
           <section className="mt-3">
             <h1 className="text-4xl font-semibold">{t("documentsTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("documentsBody")}</p>
-            <p className="text-muted-ink mt-3 text-sm">
-              {hasAuthorizedDocumentCatalog("rta", type)
-                ? t("authorizedHintTransfer")
-                : t("authorizedHintEmpty")}
-            </p>
             <label className="border-border-strong bg-surface hover:bg-hover-bg mt-6 flex min-h-40 cursor-pointer flex-col items-center justify-center rounded border border-dashed p-6 text-center">
               <Upload className="text-forest size-6" strokeWidth={1.5} />
               <span className="mt-2 font-medium">{t("chooseDocuments")}</span>
@@ -272,21 +212,11 @@ export function NewMatterScreen() {
                 }
               />
             </label>
-            {classifiedFiles.length > 0 && (
+            {files.length > 0 && (
               <ul className="divide-border border-border mt-4 divide-y border-y">
-                {classifiedFiles.map(({ file, result }) => (
-                  <li
-                    key={file.name}
-                    className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-                  >
-                    <span>{file.name}</span>
-                    <span className="text-muted-ink">
-                      {t("detectedAs", {
-                        name: file.name,
-                        kind: td(kindKeys[result.kind]),
-                        relation: td(relationKeys[result.relation]),
-                      })}
-                    </span>
+                {files.map((file) => (
+                  <li key={file.name} className="py-2 text-sm">
+                    {file.name}
                   </li>
                 ))}
               </ul>
