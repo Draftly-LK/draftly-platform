@@ -10,8 +10,15 @@ screenshots/
 !.env.example
 *.log
 *.tsbuildinfo
+*.py[cod]
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
 docs/review/**/intermediate-*
 docs/review/**/raw-*
 
 # Claude Code local settings (per-machine, never committed)
 .claude/
+/.playwright-mcp
