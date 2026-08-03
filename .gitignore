@@ -15,3 +15,10 @@ docs/review/**/raw-*
 
 # Claude Code local settings (per-machine, never committed)
 .claude/
+
+# Real client case files for local testing — NEVER commit (privacy rule in CLAUDE.md)
+
+inputs/
+
+# Playwright MCP session artifacts
+.playwright-mcp/

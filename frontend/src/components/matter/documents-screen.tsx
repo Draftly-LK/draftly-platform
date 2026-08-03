@@ -3,6 +3,7 @@
 import { FileImage, History, RefreshCw, Replace, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { factLabelKey } from "@/lib/i18n/fact-label-keys";
 import { simulateDocumentProcessing, useDemoStore } from "@/lib/store";
 import type { DocumentKind } from "@/types";
 import { AppShell } from "@/components/shell/app-shell";
@@ -38,6 +39,15 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
   const retryDocument = useDemoStore((state) => state.retryDocument);
   const replaceDocument = useDemoStore((state) => state.replaceDocument);
   const resolveCheck = useDemoStore((state) => state.resolveCheck);
+  // Resolved from the store so the action still targets the right check on a
+  // matter created by cloning, where check ids carry a matter prefix.
+  const missingDocumentCheckId = useDemoStore(
+    (state) =>
+      state.checks.find(
+        (check) =>
+          check.matterId === matterId && check.category === "missing-document",
+      )?.id,
+  );
   const documents = allDocuments.filter(
     (document) => document.matterId === matterId,
   );
@@ -217,14 +227,7 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
                     <div key={fact.id} className="py-3">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium">
-                          {tf(
-                            fact.labelKey.split(".").at(-1) as
-                              | "deedNumber"
-                              | "transferor"
-                              | "transferee"
-                              | "extent"
-                              | "assessmentNumber",
-                          )}
+                          {tf(factLabelKey(fact.labelKey))}
                         </span>
                         <StatusBadge status={fact.verificationState} />
                       </div>
@@ -277,11 +280,13 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
           <Button
             className="mt-3"
             onClick={() => {
-              resolveCheck(
-                "check-registry",
-                "document-requested",
-                t("requestReady"),
-              );
+              if (missingDocumentCheckId) {
+                resolveCheck(
+                  missingDocumentCheckId,
+                  "document-requested",
+                  t("requestReady"),
+                );
+              }
               setAnnouncement(t("requestReady"));
             }}
           >
