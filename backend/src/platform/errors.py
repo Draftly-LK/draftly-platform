@@ -14,7 +14,6 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-
 # ── Wire models ─────────────────────────────────────────────────────────────
 
 

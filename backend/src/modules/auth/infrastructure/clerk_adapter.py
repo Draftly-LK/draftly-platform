@@ -9,11 +9,8 @@ Falls back gracefully when CLERK_SECRET_KEY is absent — see stub_adapter.py.
 
 from __future__ import annotations
 
-import time
-from functools import lru_cache
 from typing import Any
 
-import httpx
 import jwt
 from jwt import PyJWKClient, PyJWKClientError
 
@@ -44,8 +41,8 @@ class ClerkIdentityAdapter:
         Raises IdentityValidationError on any validation failure.
         """
         try:
-            # Decode header to get kid without verifying signature
-            header = jwt.get_unverified_header(token)
+            # Validate header structure before fetching signing key
+            jwt.get_unverified_header(token)
         except jwt.DecodeError as exc:
             raise IdentityValidationError("Malformed token header.") from exc
 

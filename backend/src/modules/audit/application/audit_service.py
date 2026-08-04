@@ -13,12 +13,12 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 
-from src.modules.auth.ports import AuditEventInput
 from src.modules.audit.infrastructure.repository import SqlAuditRepository
+from src.modules.auth.ports import AuditEventInput
 
 log = structlog.get_logger(__name__)
 
@@ -32,7 +32,7 @@ class AuditService:
     async def record(self, event: AuditEventInput) -> None:
         """Append an audit event in the current transaction with hash chaining."""
         event_id = f"ae_{uuid.uuid4().hex}"
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # Retrieve prev_hash for this organisation's chain
         prev_hash = await self._repo.get_last_hash(event.organisation_id)

@@ -5,27 +5,24 @@ These tests use in-memory fakes so they run instantly in CI.
 
 from __future__ import annotations
 
-import pytest
-from datetime import datetime, timezone
-from dataclasses import dataclass
+from datetime import UTC, datetime
 
+import pytest
+
+from src.modules.auth.application.auth_service import AuthService
 from src.modules.auth.domain.errors import (
-    AccountPendingError,
     CapabilityDeniedError,
     NotFoundError,
 )
 from src.modules.auth.domain.models import (
     AccountStatus,
-    MatterMembership,
     MatterMembershipRole,
     OrgRole,
     Role,
     User,
 )
-from src.modules.auth.application.auth_service import AuthService
 from src.modules.auth.ports import AuditEventInput
 from src.platform.request_context import MatterMembershipCtx, RequestContext
-
 
 # ── Fakes ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +30,7 @@ from src.platform.request_context import MatterMembershipCtx, RequestContext
 class FakeIdentityPort:
     async def validate_token(self, token: str):  # type: ignore[no-untyped-def]
         from src.modules.auth.ports import IdentityClaims
+
         return IdentityClaims(issuer="stub", subject=token, verified_email="t@t.com")
 
 
@@ -140,16 +138,16 @@ def make_ctx(
 
 
 def make_service(**kwargs) -> AuthService:  # type: ignore[no-untyped-def]
-    defaults = dict(
-        identity_port=FakeIdentityPort(),
-        user_identity_repo=FakeUserIdentityRepo(),
-        user_repo=FakeUserRepo(),
-        org_repo=FakeOrgRepo(),
-        org_membership_repo=FakeOrgMembershipRepo(),
-        matter_membership_repo=FakeMatterMembershipRepo(),
-        invitation_repo=FakeInvitationRepo(),
-        audit_port=FakeAuditPort(),
-    )
+    defaults: dict = {
+        "identity_port": FakeIdentityPort(),
+        "user_identity_repo": FakeUserIdentityRepo(),
+        "user_repo": FakeUserRepo(),
+        "org_repo": FakeOrgRepo(),
+        "org_membership_repo": FakeOrgMembershipRepo(),
+        "matter_membership_repo": FakeMatterMembershipRepo(),
+        "invitation_repo": FakeInvitationRepo(),
+        "audit_port": FakeAuditPort(),
+    }
     defaults.update(kwargs)
     return AuthService(**defaults)
 
@@ -237,7 +235,7 @@ class TestAdminLockout:
             organisation_id="org_test",
             user_id="usr_test",
             org_role=OrgRole.OWNER,
-            joined_at=datetime.now(tz=timezone.utc),
+            joined_at=datetime.now(tz=UTC),
         )
         user = User(
             id="usr_test",
@@ -246,8 +244,8 @@ class TestAdminLockout:
             role=Role.ADMINISTRATOR,
             notary_registration=None,
             jurisdiction=None,
-            created_at=datetime.now(tz=timezone.utc),
-            updated_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
+            updated_at=datetime.now(tz=UTC),
         )
         org_membership_repo = FakeOrgMembershipRepo(membership=owner_membership)
         org_membership_repo._owner_count = 1

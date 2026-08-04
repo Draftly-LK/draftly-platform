@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass, field
-from datetime import datetime
-
+from datetime import UTC, datetime
 
 # ── Enumerations ─────────────────────────────────────────────────────────────
 
@@ -154,9 +153,8 @@ class Invitation:
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        from datetime import timezone
 
-        return datetime.now(tz=timezone.utc) > self.expires_at
+        return datetime.now(tz=UTC) > self.expires_at
 
     @property
     def is_accepted(self) -> bool:

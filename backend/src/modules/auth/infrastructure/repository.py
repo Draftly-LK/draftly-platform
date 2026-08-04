@@ -7,7 +7,7 @@ ORM objects outside this file — the application layer sees only domain types.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +34,6 @@ from src.modules.auth.infrastructure.orm import (
     UserIdentityRow,
     UserRow,
 )
-
 
 # ── Mapper helpers ────────────────────────────────────────────────────────────
 
@@ -223,9 +222,7 @@ class SqlMatterMembershipRepository:
         result = await self._session.execute(stmt)
         return [_row_to_matter_membership(r) for r in result.scalars()]
 
-    async def find(
-        self, org_id: str, matter_id: str, user_id: str
-    ) -> MatterMembership | None:
+    async def find(self, org_id: str, matter_id: str, user_id: str) -> MatterMembership | None:
         stmt = select(MatterMembershipRow).where(
             MatterMembershipRow.organisation_id == org_id,
             MatterMembershipRow.matter_id == matter_id,
@@ -290,5 +287,5 @@ class SqlInvitationRepository:
     async def mark_accepted(self, invitation_id: str) -> None:
         row = await self._session.get(InvitationRow, invitation_id)
         if row:
-            row.accepted_at = datetime.now(tz=timezone.utc)
+            row.accepted_at = datetime.now(tz=UTC)
             await self._session.flush()

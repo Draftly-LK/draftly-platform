@@ -33,7 +33,9 @@ class UserRow(Base):
     notary_registration: Mapped[str | None] = mapped_column(String(64), nullable=True)
     jurisdiction: Mapped[str | None] = mapped_column(String(128), nullable=True)
     # Practising certificate currency — checked by require_practising_notary
-    certificate_valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    certificate_valid_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -44,12 +46,10 @@ class UserRow(Base):
         nullable=False,
     )
 
-    identities: Mapped[list["UserIdentityRow"]] = relationship(
+    identities: Mapped[list[UserIdentityRow]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    org_memberships: Mapped[list["OrganisationMembershipRow"]] = relationship(
-        back_populates="user"
-    )
+    org_memberships: Mapped[list[OrganisationMembershipRow]] = relationship(back_populates="user")
 
 
 class UserIdentityRow(Base):
@@ -75,7 +75,7 @@ class UserIdentityRow(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    user: Mapped["UserRow"] = relationship(back_populates="identities")
+    user: Mapped[UserRow] = relationship(back_populates="identities")
 
 
 class OrganisationRow(Base):
@@ -89,7 +89,7 @@ class OrganisationRow(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    memberships: Mapped[list["OrganisationMembershipRow"]] = relationship(
+    memberships: Mapped[list[OrganisationMembershipRow]] = relationship(
         back_populates="organisation"
     )
 
@@ -102,9 +102,7 @@ class OrganisationMembershipRow(Base):
 
     __tablename__ = "organisation_memberships"
     __table_args__ = (
-        UniqueConstraint(
-            "organisation_id", "user_id", name="uq_org_membership_org_user"
-        ),
+        UniqueConstraint("organisation_id", "user_id", name="uq_org_membership_org_user"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -121,8 +119,8 @@ class OrganisationMembershipRow(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    organisation: Mapped["OrganisationRow"] = relationship(back_populates="memberships")
-    user: Mapped["UserRow"] = relationship(back_populates="org_memberships")
+    organisation: Mapped[OrganisationRow] = relationship(back_populates="memberships")
+    user: Mapped[UserRow] = relationship(back_populates="org_memberships")
 
 
 class MatterMembershipRow(Base):
@@ -159,21 +157,15 @@ class InvitationRow(Base):
     """Admin-issued invitation required to activate a pending account."""
 
     __tablename__ = "invitations"
-    __table_args__ = (
-        Index("ix_invitations_org_email", "organisation_id", "email"),
-    )
+    __table_args__ = (Index("ix_invitations_org_email", "organisation_id", "email"),)
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     organisation_id: Mapped[str] = mapped_column(String(64), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     assigned_role: Mapped[str] = mapped_column(String(32), nullable=False)
     invited_by: Mapped[str] = mapped_column(String(64), nullable=False, default="")
-    expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    accepted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_expired: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

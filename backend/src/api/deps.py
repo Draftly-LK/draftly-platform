@@ -10,12 +10,12 @@ first parameter.
 
 from __future__ import annotations
 
-from functools import lru_cache
-
 import structlog
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from src.modules.audit.application.audit_service import AuditService
+from src.modules.audit.infrastructure.repository import SqlAuditRepository
 from src.modules.auth.application.auth_service import AuthService
 from src.modules.auth.infrastructure.repository import (
     SqlInvitationRepository,
@@ -25,8 +25,6 @@ from src.modules.auth.infrastructure.repository import (
     SqlUserIdentityRepository,
     SqlUserRepository,
 )
-from src.modules.audit.application.audit_service import AuditService
-from src.modules.audit.infrastructure.repository import SqlAuditRepository
 from src.platform.db.session import AsyncSession, get_db
 from src.platform.errors import UnauthenticatedError
 from src.platform.observability.logging import bind_request_context
@@ -100,7 +98,6 @@ async def get_request_context(
     init_services(session)
 
     auth_service = get_auth_service_instance()
-    from fastapi import Request
     import uuid
 
     correlation_id = str(uuid.uuid4())

@@ -19,7 +19,7 @@ class MatterMembershipCtx:
     """Compact membership snapshot carried in the request context."""
 
     matter_id: str
-    role: "MatterMembershipRole"
+    role: MatterMembershipRole
 
 
 @dataclass(frozen=True)
@@ -33,15 +33,15 @@ class RequestContext:
 
     actor_id: str
     organisation_id: str
-    account_role: "Role"
-    organisation_role: "OrgRole"
+    account_role: Role
+    organisation_role: OrgRole
     matter_memberships: frozenset[MatterMembershipCtx] = field(default_factory=frozenset)
     correlation_id: str = ""
 
     def has_matter_membership(self, matter_id: str) -> bool:
         return any(m.matter_id == matter_id for m in self.matter_memberships)
 
-    def matter_role(self, matter_id: str) -> "MatterMembershipRole | None":
+    def matter_role(self, matter_id: str) -> MatterMembershipRole | None:
         for m in self.matter_memberships:
             if m.matter_id == matter_id:
                 return m.role

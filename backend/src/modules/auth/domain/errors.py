@@ -106,9 +106,7 @@ class PracticeStatusError(DomainRuleError):
 
     code = "practice_status_required"
     http_status = 403
-    message = (
-        "This action requires an active practising certificate and matching jurisdiction."
-    )
+    message = "This action requires an active practising certificate and matching jurisdiction."
 
 
 class StepUpRequiredError(DomainRuleError):

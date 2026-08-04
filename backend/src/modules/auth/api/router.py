@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
+from src.api.deps import get_auth_service_instance, get_request_context
 from src.modules.auth.api.schemas import (
     AccountStatusRead,
     MatterMembershipRequest,
@@ -23,7 +24,6 @@ from src.modules.auth.api.schemas import (
 from src.modules.auth.domain.models import MatterMembershipRole, Role
 from src.platform.errors import DraftlyError
 from src.platform.request_context import RequestContext
-from src.api.deps import get_request_context, get_auth_service_instance
 
 router = APIRouter(tags=["auth"])
 
@@ -72,9 +72,7 @@ async def assign_membership(
     try:
         role = MatterMembershipRole(body.role)
     except ValueError:
-        raise DraftlyError(
-            f"Invalid role '{body.role}'. Valid values: assignee, supervisor."
-        )
+        raise DraftlyError(f"Invalid role '{body.role}'. Valid values: assignee, supervisor.")
     membership = await auth_service.assign_membership(ctx, matter_id, body.user_id, role)
     return MembershipRead(
         matter_id=membership.matter_id,

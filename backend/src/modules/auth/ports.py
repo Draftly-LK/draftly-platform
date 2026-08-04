@@ -10,11 +10,8 @@ from typing import Any, Protocol
 
 from src.modules.auth.domain.models import (
     MatterMembership,
-    MatterMembershipRole,
     Organisation,
     OrganisationMembership,
-    OrgRole,
-    Role,
     User,
     UserIdentity,
 )
@@ -90,9 +87,7 @@ class MatterMembershipRepository(Protocol):
 
     async def list_for_user(self, org_id: str, user_id: str) -> list[MatterMembership]: ...
 
-    async def find(
-        self, org_id: str, matter_id: str, user_id: str
-    ) -> MatterMembership | None: ...
+    async def find(self, org_id: str, matter_id: str, user_id: str) -> MatterMembership | None: ...
 
     async def create(self, membership: MatterMembership) -> MatterMembership: ...
 
@@ -127,7 +122,7 @@ class AuditPort(Protocol):
     Writes in the same database transaction as the mutation (audit-service.md §5).
     """
 
-    async def record(self, event: "AuditEventInput") -> None: ...
+    async def record(self, event: AuditEventInput) -> None: ...
 
 
 class AuditEventInput:

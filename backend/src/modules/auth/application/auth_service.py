@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 
@@ -25,7 +25,6 @@ from src.modules.auth.domain.errors import (
     AccountSuspendedError,
     AdminLockoutError,
     CapabilityDeniedError,
-    MembershipNotFoundError,
     NotFoundError,
     OrganisationNotFoundError,
     OrganisationSuspendedError,
@@ -134,8 +133,7 @@ class AuthService:
             requested_org_id, identity.user_id
         )
         membership_ctx = frozenset(
-            MatterMembershipCtx(matter_id=m.matter_id, role=m.role)
-            for m in matter_memberships
+            MatterMembershipCtx(matter_id=m.matter_id, role=m.role) for m in matter_memberships
         )
 
         return RequestContext(
@@ -194,8 +192,8 @@ class AuthService:
             role=None,
             notary_registration=None,
             jurisdiction=None,
-            created_at=datetime.now(tz=timezone.utc),
-            updated_at=datetime.now(tz=timezone.utc),
+            created_at=datetime.now(tz=UTC),
+            updated_at=datetime.now(tz=UTC),
         )
         user = await self._users.create(user)
 
@@ -206,7 +204,7 @@ class AuthService:
             issuer=claims.issuer,
             subject=claims.subject,
             verified_email=claims.verified_email,
-            linked_at=datetime.now(tz=timezone.utc),
+            linked_at=datetime.now(tz=UTC),
         )
         await self._user_identities.create(identity)
 
@@ -286,9 +284,7 @@ class AuthService:
         """Administrator-only. Audited as a permission change."""
         await self.authorize(ctx, "matter.membership.assign")
 
-        existing = await self._matter_memberships.find(
-            ctx.organisation_id, matter_id, user_id
-        )
+        existing = await self._matter_memberships.find(ctx.organisation_id, matter_id, user_id)
         if existing:
             before = existing.role.value
             updated = MatterMembership(
@@ -306,7 +302,7 @@ class AuthService:
                 matter_id=matter_id,
                 user_id=user_id,
                 role=role,
-                assigned_at=datetime.now(tz=timezone.utc),
+                assigned_at=datetime.now(tz=UTC),
             )
             result = await self._matter_memberships.create(new_membership)
 
@@ -346,9 +342,7 @@ class AuthService:
         if before_role == Role.ADMINISTRATOR and new_role != Role.ADMINISTRATOR:
             # Count remaining admins in this org (including the actor)
             # If actor is the only admin they cannot demote themselves
-            org_membership = await self._org_memberships.find(
-                ctx.organisation_id, user_id
-            )
+            org_membership = await self._org_memberships.find(ctx.organisation_id, user_id)
             if org_membership and org_membership.org_role == OrgRole.OWNER:
                 owner_count = await self._org_memberships.count_owners(ctx.organisation_id)
                 if owner_count <= 1:
@@ -388,9 +382,7 @@ class AuthService:
         """
         user = await self._users.get(ctx.actor_id)
         if user is None or not user.notary_registration:
-            raise PracticeStatusError(
-                "A notary registration is required for this action."
-            )
+            raise PracticeStatusError("A notary registration is required for this action.")
 
         # Certificate currency check — simplified for V0; the obligations_service
         # owns the annual certificate obligation (obligations-service.md §7.1).
@@ -416,25 +408,17 @@ class AuthService:
         """
         settings = get_settings()
         if token is None:
-            raise StepUpRequiredError(
-                f"Step-up authentication is required for '{action}'."
-            )
+            raise StepUpRequiredError(f"Step-up authentication is required for '{action}'.")
 
         try:
             claims = await self._identity.validate_token(token)
         except Exception:
-            raise StepUpRequiredError(
-                f"Step-up authentication is required for '{action}'."
-            )
+            raise StepUpRequiredError(f"Step-up authentication is required for '{action}'.")
 
         auth_time = claims.auth_time
         if auth_time is None:
-            raise StepUpRequiredError(
-                f"Session age cannot be verified for '{action}'."
-            )
+            raise StepUpRequiredError(f"Session age cannot be verified for '{action}'.")
 
         age_seconds = int(time.time()) - auth_time
         if age_seconds > settings.step_up_max_age_seconds:
-            raise StepUpRequiredError(
-                f"Session is too old for '{action}'. Please re-authenticate."
-            )
+            raise StepUpRequiredError(f"Session is too old for '{action}'. Please re-authenticate.")

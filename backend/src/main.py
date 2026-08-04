@@ -7,8 +7,8 @@ echoed by health routes.
 from __future__ import annotations
 
 import uuid
-from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request
@@ -17,7 +17,11 @@ from fastapi.responses import JSONResponse
 
 from src.platform.config import get_settings
 from src.platform.errors import DraftlyError, draftly_exception_handler, unhandled_exception_handler
-from src.platform.observability.logging import bind_request_context, clear_request_context, configure_logging
+from src.platform.observability.logging import (
+    bind_request_context,
+    clear_request_context,
+    configure_logging,
+)
 
 
 @asynccontextmanager

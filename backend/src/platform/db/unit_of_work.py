@@ -22,7 +22,7 @@ class UnitOfWork:
     def session(self) -> AsyncSession:
         return self._session
 
-    async def __aenter__(self) -> "UnitOfWork":
+    async def __aenter__(self) -> UnitOfWork:
         return self
 
     async def __aexit__(

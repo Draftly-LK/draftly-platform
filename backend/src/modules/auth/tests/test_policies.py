@@ -7,8 +7,6 @@ release-gating invariants.
 
 from __future__ import annotations
 
-import pytest
-
 from src.modules.auth.domain.models import Role
 from src.modules.auth.domain.policies import is_capability_granted
 
