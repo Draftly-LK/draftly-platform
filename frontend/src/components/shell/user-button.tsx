@@ -1,24 +1,15 @@
 "use client";
 
 /**
- * UserButton — shows the signed-in user's profile image from Clerk.
- *
- * Behaviour:
- * - When Clerk is configured (NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is set):
- *   renders <UserButton> from @clerk/nextjs, which shows the user's real
- *   profile photo and opens Clerk's user management modal on click.
- * - When Clerk is not configured (demo / CI mode):
- *   renders a styled avatar with the user's initials and role badge.
+ * Sidebar profile control — navigates to /profile.
+ * Clerk: real name + photo from session. Demo: "My profile" label only.
  */
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Show, useUser } from "@clerk/nextjs";
+import { useTranslations } from "next-intl";
+import { hasClerkPublishableKey } from "@/lib/auth/clerk";
 
-/* ── Clerk env guard ────────────────────────────────────────────────────────
- * Public key is safe to read at module scope — it is a build-time env var.
- */
-const CLERK_PK = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
-
-/** Produce 1-2 uppercase initials from a display name. */
 function getInitials(name: string): string {
   return name
     .split(" ")
@@ -28,75 +19,99 @@ function getInitials(name: string): string {
     .join("");
 }
 
-/** Role → Tailwind badge colour classes. */
-const ROLE_COLOURS: Record<string, string> = {
-  approver: "bg-green-100 text-green-800",
-  administrator: "bg-amber-100 text-amber-800",
-  maintainer: "bg-violet-100 text-violet-800",
-  reviewer: "bg-sky-100 text-sky-800",
-};
+function clerkDisplayName(user: {
+  fullName: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+}): string {
+  const full = user.fullName?.trim();
+  if (full) return full;
+  const parts = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  if (parts) return parts;
+  return user.username?.trim() ?? "";
+}
 
-/** Static demo-mode identity — no store subscription needed. */
-const DEMO_USER = { name: "N. M. Silva", role: "approver" } as const;
-
-export function UserButton() {
-  const [ClerkUserButton, setClerkUserButton] = useState<React.ComponentType<{
-    appearance?: object;
-    afterSignOutUrl?: string;
-  }> | null>(null);
-
-  useEffect(() => {
-    if (!CLERK_PK) return;
-    // Lazy-load so the Clerk SDK is only active when the publishable key exists.
-    import("@clerk/nextjs")
-      .then((mod) => {
-        setClerkUserButton(() => mod.UserButton as typeof ClerkUserButton);
-      })
-      .catch(() => {
-        // Clerk unavailable — remain on the initials fallback.
-      });
-  }, []); // ← empty deps: run once on mount only
-
-  // ── Live Clerk user button ────────────────────────────────────────────────
-  if (CLERK_PK && ClerkUserButton) {
-    return (
-      <div className="flex items-center gap-3 px-3 py-2">
-        <ClerkUserButton
-          afterSignOutUrl="/"
-          appearance={{
-            elements: {
-              avatarBox: "size-9 rounded-full ring-2 ring-green-700/30",
-            },
-          }}
-        />
-        <span className="text-muted-ink truncate text-sm">My profile</span>
-      </div>
-    );
-  }
-
-  // ── Demo / initials fallback ──────────────────────────────────────────────
-  const initials = getInitials(DEMO_USER.name);
-  const roleClass = ROLE_COLOURS[DEMO_USER.role] ?? "bg-slate-100 text-slate-600";
+function ProfileLinkRow({
+  name,
+  subtitle,
+  imageUrl,
+}: {
+  name: string;
+  subtitle: string;
+  imageUrl?: string | null;
+}) {
+  const initials = name.trim() ? getInitials(name) : "?";
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2">
-      {/* Avatar circle with initials */}
-      <div
-        aria-hidden="true"
-        className="grid size-9 shrink-0 place-items-center rounded-full bg-green-800 text-sm font-semibold text-white"
-      >
-        {initials}
-      </div>
+    <Link
+      href="/profile"
+      className="hover:bg-hover-bg focus-visible:outline-ring flex items-center gap-3 rounded-[6px] px-3 py-2"
+    >
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- Clerk CDN
+        <img
+          src={imageUrl}
+          alt=""
+          width={36}
+          height={36}
+          className="ring-forest/30 size-9 rounded-full object-cover ring-2"
+        />
+      ) : (
+        <div
+          aria-hidden="true"
+          className="bg-forest grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold text-white"
+        >
+          {initials}
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium leading-tight">
-          {DEMO_USER.name}
+          {name.trim() || subtitle}
         </div>
-        <span
-          className={`mt-0.5 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium capitalize ${roleClass}`}
-        >
-          {DEMO_USER.role}
-        </span>
+        {name.trim() ? (
+          <span className="text-muted-ink text-xs">{subtitle}</span>
+        ) : null}
       </div>
-    </div>
+    </Link>
   );
+}
+
+function ClerkSidebarProfile() {
+  const t = useTranslations("auth");
+  const { user } = useUser();
+
+  return (
+    <>
+      <Show when="signed-in">
+        <ProfileLinkRow
+          name={user ? clerkDisplayName(user) : ""}
+          subtitle={t("myProfile")}
+          imageUrl={user?.imageUrl}
+        />
+      </Show>
+      <Show when="signed-out">
+        <div className="px-3 py-2">
+          <Link
+            href="/sign-in"
+            className="text-forest hover:bg-hover-bg focus-visible:outline-ring inline-flex rounded-[6px] px-2 py-1.5 text-sm font-medium"
+          >
+            {t("signIn")}
+          </Link>
+        </div>
+      </Show>
+    </>
+  );
+}
+
+function DemoSidebarProfile() {
+  const t = useTranslations("auth");
+  return <ProfileLinkRow name="" subtitle={t("myProfile")} />;
+}
+
+export function UserButton({ demoMode = false }: { demoMode?: boolean }) {
+  if (demoMode || !hasClerkPublishableKey()) {
+    return <DemoSidebarProfile />;
+  }
+  return <ClerkSidebarProfile />;
 }

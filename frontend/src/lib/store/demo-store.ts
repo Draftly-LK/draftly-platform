@@ -23,9 +23,24 @@ import type {
   MatterType,
   ProcessingState,
   RegistrationRegime,
+  User,
   VerifiedFact,
   Workflow,
 } from "@/types";
+
+const seedProfile = (): User => ({
+  id: DEMO_USER_ID,
+  // Name/email/photo come from Clerk when signed in — not seeded here.
+  displayName: "",
+  role: "approver",
+  notaryRegistration: "",
+  jurisdiction: "",
+  qualifications: "",
+  professionalTitles: "",
+  addressLine1: "",
+  addressLine2: "",
+  phone: "",
+});
 
 const seed = () => ({
   matters: structuredClone(matters),
@@ -35,6 +50,7 @@ const seed = () => ({
   workflows: structuredClone(workflows),
   drafts: structuredClone(drafts),
   auditEvents: structuredClone(auditEvents),
+  profile: seedProfile(),
 });
 
 const deterministicTimestamp = (eventCount: number) =>
@@ -57,6 +73,7 @@ interface DemoState {
   workflows: Workflow[];
   drafts: Draft[];
   auditEvents: AuditEvent[];
+  profile: User;
   createMatter: (input: CreateMatterInput) => string;
   addDocument: (
     fileName: string,
@@ -108,6 +125,8 @@ interface DemoState {
     action: string,
     matterId?: string,
   ) => void;
+  /** TODO(api): PATCH /api/v1/me */
+  updateProfile: (patch: Partial<User>) => void;
   resetDemo: () => void;
 }
 
@@ -644,6 +663,12 @@ export const useDemoStore = create<DemoState>()(
             targetId: answerId,
           }),
         })),
+      // TODO(api): PATCH /api/v1/me
+      updateProfile: (patch) => {
+        set((state) => ({
+          profile: { ...state.profile, ...patch },
+        }));
+      },
       // TODO(api): POST /api/demo/reset
       resetDemo: () => {
         const reset = seed();
@@ -667,7 +692,10 @@ export const useDemoStore = create<DemoState>()(
     {
       name: "draftly-m2-demo",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 3,
+      migrate: () => ({
+        ...seed(),
+      }),
     },
   ),
 );

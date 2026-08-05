@@ -27,6 +27,11 @@ export const users: User[] = [
     role: "approver",
     notaryRegistration: "SYN-NP-0042",
     jurisdiction: "Western Province (synthetic)",
+    qualifications: "LL.B (Sri Lanka) LL.M (synthetic) M CL (synthetic)",
+    professionalTitles: "Attorney-at-Law · Notary Public",
+    addressLine1: "No. 12, Synthetic Avenue",
+    addressLine2: "Colombo (synthetic)",
+    phone: "0700000000",
   },
 ];
 
