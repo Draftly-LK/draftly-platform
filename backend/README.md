@@ -25,8 +25,9 @@ GET /health/ready  → {"status": "ok", "db": "ok"}
 
 ## Environment variables
 
-Copy `.env.example` to `.env` and fill in your values. The real `.env` is at
-the repo root alongside `frontend/`. Never commit secrets.
+Copy `backend/.env.example` to `backend/.env` and fill in your values.
+Never commit secrets. The frontend has its own file:
+`frontend/.env` (from `frontend/.env.example`).
 
 | Variable | Required | Description |
 |---|---|---|
@@ -34,8 +35,9 @@ the repo root alongside `frontend/`. Never commit secrets.
 | `DATABASE_URL_DIRECT` | ✅ | Direct Neon URL (Alembic migrations) |
 | `CLERK_ISSUER` | After Clerk setup | Frontend API URL from Clerk dashboard |
 | `CLERK_SECRET_KEY` | After Clerk setup | `sk_test_…` secret key |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | After Clerk setup | Frontend public key |
-| `USE_STUB_IDENTITY` | `true` locally | Skip Clerk, use synthetic demo identity |
+| `USE_STUB_IDENTITY` | `true` locally | Skip Clerk JWT, use synthetic demo identity |
+
+Clerk publishable key and `AUTH_BYPASS` live only in `frontend/.env`.
 
 ## Project structure
 
@@ -83,6 +85,10 @@ uv run pytest -v
 1. Create an app at [dashboard.clerk.com](https://dashboard.clerk.com)
 2. Enable Google OAuth + Email verification code
 3. Enable **Restricted sign-up** (require invitations)
-4. Add `CLERK_ISSUER`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-   to `.env`
-5. Set `USE_STUB_IDENTITY=false`
+4. **Sessions → Multi-session handling OFF**; prefer single-session / revoke
+   other sessions on sign-in if the dashboard offers it
+5. Add `CLERK_ISSUER` and `CLERK_SECRET_KEY` to `backend/.env`, and
+   `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` to
+   `frontend/.env`
+6. Set `USE_STUB_IDENTITY=false` in `backend/.env`
+7. Allowed origins: `http://localhost:3000` and `http://localhost:4310`

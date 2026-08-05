@@ -10,22 +10,17 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Support running from backend/ or repo root.  The real .env lives at the repo
-# root alongside the frontend workspace.
-_here = Path(__file__).resolve().parent  # backend/src/platform/
-_root_env = _here.parents[2] / ".env"  # repo-root/.env
-_backend_env = _here.parents[1] / ".env"  # backend/.env
+_backend_env = Path(__file__).resolve().parents[2] / ".env"  # backend/.env
 
 
 class Settings(BaseSettings):
-    """All settings are read from the environment or a .env file.
+    """All settings are read from the environment or backend/.env.
 
     Secrets are never committed — see backend/.env.example for the full list.
     """
 
     model_config = SettingsConfigDict(
-        # Try backend/.env first, then the repo-root .env
-        env_file=[str(_backend_env), str(_root_env)],
+        env_file=str(_backend_env),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
