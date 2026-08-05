@@ -8,23 +8,14 @@ from __future__ import annotations
 import pytest
 
 from src.modules.auth.domain.errors import CapabilityDeniedError, NotFoundError
-from src.modules.auth.domain.models import MatterMembershipRole, OrgRole, Role
-from src.modules.auth.application.auth_service import AuthService
-from src.platform.request_context import MatterMembershipCtx, RequestContext
+from src.modules.auth.domain.models import MatterMembershipRole, Role
 
 # Reuse fakes from test_auth_service
 from src.modules.auth.tests.test_auth_service import (
-    FakeAuditPort,
-    FakeIdentityPort,
-    FakeInvitationRepo,
-    FakeMatterMembershipRepo,
-    FakeOrgMembershipRepo,
-    FakeOrgRepo,
-    FakeUserIdentityRepo,
-    FakeUserRepo,
     make_ctx,
     make_service,
 )
+from src.platform.request_context import MatterMembershipCtx
 
 
 class TestSecurityIsolation:

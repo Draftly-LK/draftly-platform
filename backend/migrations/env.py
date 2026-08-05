@@ -17,8 +17,8 @@ from sqlalchemy import create_engine, pool
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Import ORM metadata so Alembic can autogenerate migrations
-from src.modules.auth.infrastructure.orm import Base as AuthBase  # noqa: E402
 from src.modules.audit.infrastructure.orm import Base as AuditBase  # noqa: E402
+from src.modules.auth.infrastructure.orm import Base as AuthBase  # noqa: E402
 from src.platform.config import get_settings  # noqa: E402
 
 config = context.config
