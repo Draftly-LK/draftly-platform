@@ -48,6 +48,11 @@ def _row_to_user(row: UserRow) -> User:
         jurisdiction=row.jurisdiction,
         created_at=row.created_at,
         updated_at=row.updated_at,
+        qualifications=row.qualifications,
+        professional_titles=row.professional_titles,
+        address_line1=row.address_line1,
+        address_line2=row.address_line2,
+        phone=row.phone,
     )
 
 
@@ -123,6 +128,11 @@ class SqlUserRepository:
             role=user.role.value if user.role else None,
             notary_registration=user.notary_registration,
             jurisdiction=user.jurisdiction,
+            qualifications=user.qualifications,
+            professional_titles=user.professional_titles,
+            address_line1=user.address_line1,
+            address_line2=user.address_line2,
+            phone=user.phone,
         )
         self._session.add(row)
         await self._session.flush()
@@ -137,6 +147,11 @@ class SqlUserRepository:
         row.role = user.role.value if user.role else None
         row.notary_registration = user.notary_registration
         row.jurisdiction = user.jurisdiction
+        row.qualifications = user.qualifications
+        row.professional_titles = user.professional_titles
+        row.address_line1 = user.address_line1
+        row.address_line2 = user.address_line2
+        row.phone = user.phone
         await self._session.flush()
         return user
 

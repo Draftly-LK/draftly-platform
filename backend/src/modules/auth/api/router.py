@@ -21,32 +21,36 @@ from src.modules.auth.api.schemas import (
     SetRoleRequest,
     UserRead,
 )
-from src.modules.auth.domain.models import MatterMembershipRole, Role
+from src.modules.auth.domain.models import MatterMembershipRole, Role, User
 from src.platform.errors import DraftlyError
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["auth"])
 
 
-@router.get("/me", response_model=UserRead)
-async def get_current_user(
-    ctx: RequestContext = Depends(get_request_context),
-) -> UserRead:
-    """Return the authenticated user's profile.
-
-    Mirrors frontend User shape exactly:
-      id, displayName, role, notaryRegistration, jurisdiction
-    Used by the frontend sidebar profile display.
-    """
-    auth_service = get_auth_service_instance()
-    user = await auth_service.get_current_user(ctx)
+def _to_user_read(user: User) -> UserRead:
     return UserRead(
         id=user.id,
         display_name=user.display_name,
         role=user.role.value if user.role else "pending",
         notary_registration=user.notary_registration,
         jurisdiction=user.jurisdiction,
+        qualifications=user.qualifications,
+        professional_titles=user.professional_titles,
+        address_line1=user.address_line1,
+        address_line2=user.address_line2,
+        phone=user.phone,
     )
+
+
+@router.get("/me", response_model=UserRead)
+async def get_current_user(
+    ctx: RequestContext = Depends(get_request_context),
+) -> UserRead:
+    """Return the authenticated user's profile (frontend User shape)."""
+    auth_service = get_auth_service_instance()
+    user = await auth_service.get_current_user(ctx)
+    return _to_user_read(user)
 
 
 @router.get("/account-status", response_model=AccountStatusRead)
@@ -96,10 +100,4 @@ async def set_user_role(
             f"Invalid role '{body.role}'. Valid: reviewer, approver, maintainer, administrator."
         )
     user = await auth_service.set_user_role(ctx, user_id, new_role)
-    return UserRead(
-        id=user.id,
-        display_name=user.display_name,
-        role=user.role.value if user.role else "pending",
-        notary_registration=user.notary_registration,
-        jurisdiction=user.jurisdiction,
-    )
+    return _to_user_read(user)

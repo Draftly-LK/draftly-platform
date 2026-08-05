@@ -1,12 +1,10 @@
 """Contract test: GET /me response matches frontend User shape.
 
-This test verifies that UserRead serialises to exactly the camelCase fields
-the frontend expects (id, displayName, role, notaryRegistration, jurisdiction).
+This test verifies that UserRead serialises to camelCase fields the frontend
+expects (see frontend/src/types/user.ts).
 """
 
 from __future__ import annotations
-
-import pytest
 
 from src.modules.auth.api.schemas import UserRead
 
@@ -20,22 +18,31 @@ class TestMeContract:
             role="approver",
             notary_registration="NP-0042",
             jurisdiction="Western Province",
+            qualifications="LL.B (Sri Lanka)",
+            professional_titles="Attorney-at-Law · Notary Public",
+            address_line1="No. 12, Synthetic Avenue",
+            address_line2="Colombo",
+            phone="0700000000",
         )
         data = read.model_dump(by_alias=True)
 
-        # These keys must match frontend/src/types/user.ts User interface exactly
         assert data["id"] == "usr_123"
         assert data["displayName"] == "N. M. Silva"
         assert data["role"] == "approver"
         assert data["notaryRegistration"] == "NP-0042"
         assert data["jurisdiction"] == "Western Province"
+        assert data["qualifications"] == "LL.B (Sri Lanka)"
+        assert data["professionalTitles"] == "Attorney-at-Law · Notary Public"
+        assert data["addressLine1"] == "No. 12, Synthetic Avenue"
+        assert data["addressLine2"] == "Colombo"
+        assert data["phone"] == "0700000000"
 
-        # No snake_case keys at the top level
         assert "display_name" not in data
         assert "notary_registration" not in data
+        assert "professional_titles" not in data
 
     def test_user_read_nullable_fields(self):
-        """notaryRegistration and jurisdiction are optional in the frontend type."""
+        """Extended profile fields are optional."""
         read = UserRead(
             id="usr_456",
             display_name="Pending User",
@@ -46,6 +53,8 @@ class TestMeContract:
         data = read.model_dump(by_alias=True)
         assert data["notaryRegistration"] is None
         assert data["jurisdiction"] is None
+        assert data["qualifications"] is None
+        assert data["phone"] is None
 
     def test_role_values_match_frontend_enum(self):
         """Role values must be the four strings in frontend user.ts."""

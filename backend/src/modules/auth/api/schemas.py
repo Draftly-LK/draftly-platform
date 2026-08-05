@@ -1,8 +1,6 @@
 """API response/request schemas for the auth module.
 
-UserRead matches the frontend User type exactly:
-  id, displayName, role, notaryRegistration, jurisdiction
-so the frontend can call GET /api/v1/me and use the result directly.
+UserRead matches the frontend User type exactly (camelCase aliases).
 """
 
 from __future__ import annotations
@@ -12,7 +10,7 @@ from pydantic.alias_generators import to_camel
 
 
 class UserRead(BaseModel):
-    """Mirrors frontend/src/types/user.ts User interface exactly.
+    """Mirrors frontend/src/types/user.ts User interface.
 
     model_dump(by_alias=True) → camelCase keys matching the frontend type.
     """
@@ -27,6 +25,11 @@ class UserRead(BaseModel):
     role: str
     notary_registration: str | None = None
     jurisdiction: str | None = None
+    qualifications: str | None = None
+    professional_titles: str | None = None
+    address_line1: str | None = None
+    address_line2: str | None = None
+    phone: str | None = None
 
 
 class AccountStatusRead(BaseModel):
@@ -50,4 +53,4 @@ class MatterMembershipRequest(BaseModel):
 
 
 class SetRoleRequest(BaseModel):
-    role: str  # "reviewer" | "approver" | "maintainer" | "administrator"
+    role: str

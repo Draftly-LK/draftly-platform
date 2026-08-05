@@ -80,6 +80,11 @@ class User:
     jurisdiction: str | None
     created_at: datetime
     updated_at: datetime
+    qualifications: str | None = None
+    professional_titles: str | None = None
+    address_line1: str | None = None
+    address_line2: str | None = None
+    phone: str | None = None
 
 
 @dataclass

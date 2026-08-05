@@ -32,6 +32,11 @@ class UserRow(Base):
     role: Mapped[str | None] = mapped_column(String(32), nullable=True)
     notary_registration: Mapped[str | None] = mapped_column(String(64), nullable=True)
     jurisdiction: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    qualifications: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    professional_titles: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address_line1: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    address_line2: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # Practising certificate currency — checked by require_practising_notary
     certificate_valid_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
