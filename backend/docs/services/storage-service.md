@@ -110,11 +110,8 @@ UploadReservation
   id
   organisationId
   matterId?
-  ownerService
-  ownerType
-  ownerId
-  objectClass
-  objectKey
+  storageObjectId       # one-to-one reference to the reserved StorageObject
+  uploadMethod          # PUT in V0
   expectedSizeBytes
   allowedMediaTypes
   expectedSha256?
@@ -123,8 +120,12 @@ UploadReservation
   createdBy
 ```
 
-A reservation constrains one exact key, HTTP method, expiry, maximum size, and
-media type. It cannot be reused for another organisation, matter, or owner.
+A reservation constrains the linked object's exact key, HTTP method, expiry,
+size, and media type. Owner and object-class metadata live on the linked
+`StorageObject` rather than being copied into both rows. The reservation repeats
+the organisation and optional matter scope so every lookup remains tenant- and
+matter-scoped without first trusting a join. It cannot be reused for another
+organisation, matter, object, or owner.
 
 ### DeletionCommand and DeletionReceipt
 
@@ -151,6 +152,166 @@ DeletionReceipt
 The command is supplied by the record-owning service after
 `retention_service` approval. The storage service re-checks the hold through
 `HoldStatusPort` immediately before every destructive provider operation.
+
+### Database schema
+
+This is the proposed Phase 1 relational shape. It is intentionally limited to
+the two tables owned by `storage_service` in `contracts/services.yaml`:
+`storage_objects` and `storage_upload_reservations`. PostgreSQL stores control
+plane metadata only. Object bytes, signed URLs, credentials, and provider
+response bodies never enter these tables.
+
+```mermaid
+erDiagram
+    STORAGE_OBJECTS ||--o| STORAGE_UPLOAD_RESERVATIONS : "reserved through"
+    DOCUMENT_VERSIONS }o..|| STORAGE_OBJECTS : "stores object ID"
+    DERIVATIVES }o..|| STORAGE_OBJECTS : "stores object ID"
+    EXPORTS }o..|| STORAGE_OBJECTS : "stores object ID"
+    RETENTION_SCHEDULES }o..o{ STORAGE_OBJECTS : "authorises deletion"
+
+    STORAGE_OBJECTS {
+        uuid id PK
+        uuid organisation_id
+        uuid matter_id "nullable for corpus objects"
+        text owner_service
+        text owner_type
+        uuid owner_id
+        text object_class
+        text provider
+        text bucket_ref
+        text object_key
+        text provider_generation
+        char_64 sha256
+        text provider_checksum
+        bigint size_bytes
+        text media_type
+        text state
+        uuid deletion_command_id
+        integer row_version
+        timestamptz created_at
+        timestamptz finalised_at
+        timestamptz deleted_at
+    }
+
+    STORAGE_UPLOAD_RESERVATIONS {
+        uuid id PK
+        uuid organisation_id
+        uuid matter_id "nullable for corpus objects"
+        uuid storage_object_id FK
+        text upload_method
+        bigint expected_size_bytes
+        text_array allowed_media_types
+        char_64 expected_sha256
+        text state
+        timestamptz expires_at
+        uuid created_by
+        integer row_version
+        timestamptz created_at
+        timestamptz finalised_at
+    }
+```
+
+The dotted relationships cross service boundaries and are logical references,
+not database foreign keys. For example, `document_versions.storage_object_id`
+may point to `storage_objects.id`, but `storage_service` does not query or
+mutate the document table. The owning service resolves its own record and then
+calls `ObjectStoragePort` with a scoped Draftly storage ID.
+
+#### `storage_objects`
+
+One row represents one immutable provider object throughout reservation,
+verification, availability, quarantine, and authorised deletion.
+
+| Column | PostgreSQL shape | Null | Purpose |
+| --- | --- | --- | --- |
+| `id` | `uuid` primary key | no | Stable Draftly reference returned to owning services. |
+| `organisation_id` | `uuid` | no | Tenant boundary used on every lookup and mutation. |
+| `matter_id` | `uuid` | yes | Required for matter evidence, matter exports, and voice captures; absent for organisation corpus objects. |
+| `owner_service` | `text` | no | Registry service name, such as `document_service` or `export_service`. |
+| `owner_type` | `text` | no | Owning aggregate type, such as `document_version` or `export`. |
+| `owner_id` | `uuid` | no | Opaque ID from the owning service; intentionally not a cross-service foreign key. |
+| `object_class` | constrained `text` | no | `original`, `derivative`, `export`, `voice`, or `corpus`. |
+| `provider` | constrained `text` | no | `filesystem`, `minio`, or `gcs`. |
+| `bucket_ref` | `text` | no | Logical configured bucket alias, never a credential or URL. |
+| `object_key` | `text` | no | Server-built, opaque provider key. |
+| `provider_generation` | `text` | yes | Exact provider version; null only before finalisation. Text accommodates GCS generations and S3 version IDs. |
+| `sha256` | `char(64)` | yes | Server-verified lowercase SHA-256; null while reserved. |
+| `provider_checksum` | `text` | yes | Provider checksum, such as GCS CRC32C, retained as supporting integrity metadata. |
+| `size_bytes` | `bigint` | yes | Verified byte count; null while reserved. |
+| `media_type` | `text` | yes | Server-verified media type; null while reserved. |
+| `state` | constrained `text` | no | `reserved`, `available`, `quarantined`, `pending-deletion`, `deleted`, or `integrity-failed`. |
+| `deletion_command_id` | `uuid` | yes | Last authorised destruction command, used for idempotency and receipt reconstruction. |
+| `row_version` | `integer` | no | Optimistic concurrency token, starting at `1`. |
+| `created_at` | `timestamptz` | no | Reservation or immutable-put creation time. |
+| `finalised_at` | `timestamptz` | yes | Time provider metadata and Draftly SHA-256 were verified. |
+| `deleted_at` | `timestamptz` | yes | Time deletion of the exact generation was confirmed. |
+
+Recommended constraints and indexes:
+
+- unique `(provider, bucket_ref, object_key, provider_generation)` for an exact
+  provider reference;
+- unique `(provider, bucket_ref, object_key)` to enforce Draftly's write-once
+  key policy, including after logical deletion;
+- index `(organisation_id, matter_id, owner_service, owner_type, owner_id)` for
+  scoped owner lookups;
+- index `(organisation_id, state, created_at)` for reconciliation; and
+- checks for non-negative `size_bytes`, a 64-character lowercase hexadecimal
+  SHA-256, valid state values, and required finalisation metadata whenever
+  `state` is `available`.
+
+Every repository method includes `organisation_id`. Matter-scoped methods also
+include `matter_id`; loading by `id` alone is not an allowed repository
+operation. Provider generation stays `text` at the domain boundary even when a
+specific adapter returns a numeric value.
+
+#### `storage_upload_reservations`
+
+One row represents a single-use, short-lived permission to upload the bytes for
+one reserved `storage_objects` row.
+
+| Column | PostgreSQL shape | Null | Purpose |
+| --- | --- | --- | --- |
+| `id` | `uuid` primary key | no | Reservation ID accepted by finalisation. |
+| `organisation_id` | `uuid` | no | Duplicated deliberately so tenancy is enforced without joining first. |
+| `matter_id` | `uuid` | yes | Matter scope when the target object is matter-owned. |
+| `storage_object_id` | `uuid` foreign key | no | Unique reference to the reserved row in `storage_objects`. |
+| `upload_method` | constrained `text` | no | Exact permitted method; initially `PUT`. |
+| `expected_size_bytes` | `bigint` | no | Declared exact size, already bounded by the owning service and deployment maximum. |
+| `allowed_media_types` | `text[]` | no | Non-empty allowlist used during grant creation and finalisation. |
+| `expected_sha256` | `char(64)` | yes | Optional predeclared checksum; finalisation still verifies server-side. |
+| `state` | constrained `text` | no | `active`, `finalised`, `expired`, or `rejected`. |
+| `expires_at` | `timestamptz` | no | Hard expiry checked before provider access and while finalising. |
+| `created_by` | `uuid` | no | Actor ID for audit correlation; not an identity-service foreign key. |
+| `row_version` | `integer` | no | Optimistic concurrency token, starting at `1`. |
+| `created_at` | `timestamptz` | no | Creation time. |
+| `finalised_at` | `timestamptz` | yes | Set in the same transaction that makes the object available. |
+
+Recommended constraints and indexes:
+
+- unique `storage_object_id`, making the reservation-to-object relation
+  one-to-one;
+- foreign key `storage_object_id -> storage_objects.id` with deletion
+  restricted;
+- index `(organisation_id, state, expires_at)` for expiry and orphan sweeps;
+- checks for positive `expected_size_bytes`, a non-empty media-type allowlist,
+  a future expiry at creation, and valid state values; and
+- repository validation that reservation and object rows have identical
+  `organisation_id` and `matter_id` values before finalisation.
+
+`reserve_upload` creates the `storage_objects` row in `reserved` state and the
+linked reservation in one transaction. `finalise_upload` locks both rows,
+verifies the exact provider object, changes the object to `available`, and
+changes the reservation to `finalised` in one transaction. Expiry changes only
+the reservation state; reconciliation decides whether an unfinalised provider
+object must be quarantined or removed.
+
+There is no separate deletion-receipt table in the initial schema. The exact
+object result is retained on `storage_objects`, the full security event belongs
+to `audit_service`, and the legal destruction outcome belongs to
+`retention_service` as a tombstone. If retries or partial-failure history later
+requires multiple attempts per object, add a registered storage-owned attempt
+table through a contract and migration change rather than hiding that history
+in JSON.
 
 ## 4. Ports
 
