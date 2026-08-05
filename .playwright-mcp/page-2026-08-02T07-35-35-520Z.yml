@@ -1,0 +1,624 @@
+- generic [ref=f2e2]:
+  - complementary [ref=f2e3]:
+    - generic [ref=f2e4]:
+      - generic [ref=f2e5]: D
+      - generic [ref=f2e6]:
+        - generic [ref=f2e7]: Draftly
+        - generic [ref=f2e8]: Notarial workspace
+    - generic [ref=f2e9]:
+      - button "Search workspace Ctrl+K" [ref=f2e10] [cursor=pointer]:
+        - generic [ref=f2e14]: Search workspace
+        - generic [ref=f2e15]: Ctrl+K
+      - link "Create matter" [ref=f2e16] [cursor=pointer]:
+        - /url: /new
+    - navigation "Notarial workspace" [ref=f2e18]:
+      - link "Home" [ref=f2e19] [cursor=pointer]:
+        - /url: /
+      - link "Matters" [ref=f2e23] [cursor=pointer]:
+        - /url: /matters
+      - link "Workflows" [ref=f2e29] [cursor=pointer]:
+        - /url: /workflows
+      - link "Legal sources" [ref=f2e34] [cursor=pointer]:
+        - /url: /library
+      - link "History" [ref=f2e37] [cursor=pointer]:
+        - /url: /history
+    - generic [ref=f2e41]:
+      - generic [ref=f2e42]: Recent matters
+      - link "RTA-2026-HOM-0020" [ref=f2e43] [cursor=pointer]:
+        - /url: /matters/matter-rta-001
+    - generic [ref=f2e44]:
+      - button "Reset demo" [ref=f2e45] [cursor=pointer]
+      - link "Settings" [ref=f2e49] [cursor=pointer]:
+        - /url: /settings
+      - link "Help" [ref=f2e53] [cursor=pointer]:
+        - /url: /help
+  - generic [ref=f2e57]:
+    - banner [ref=f2e58]:
+      - generic [ref=f2e59]:
+        - generic [ref=f2e60]:
+          - generic [ref=f2e61]:
+            - generic [ref=f2e62]: RTA
+            - generic [ref=f2e63]: Transfer
+            - generic [ref=f2e64]: ·
+            - generic [ref=f2e65]: In review
+          - heading "RTA-2026-HOM-0020" [level=1] [ref=f2e66]
+          - generic [ref=f2e67]: BGN Property Development (Pvt) Ltd ↔ W. A. Ishani Prasadini Dheerasinghe · Updated 2026-07-22
+        - generic [ref=f2e68]:
+          - group "Interface language" [ref=f2e69]:
+            - button "EN" [pressed] [ref=f2e74] [cursor=pointer]
+            - button "සිං" [ref=f2e75] [cursor=pointer]
+          - button "Matter actions" [ref=f2e76] [cursor=pointer]
+      - navigation "RTA-2026-HOM-0020" [ref=f2e81]:
+        - link "Overview" [ref=f2e82] [cursor=pointer]:
+          - /url: /matters/matter-rta-001
+        - link "Documents" [ref=f2e83] [cursor=pointer]:
+          - /url: /matters/matter-rta-001/documents
+        - link "Verified facts" [ref=f2e84] [cursor=pointer]:
+          - /url: /matters/matter-rta-001/facts
+        - link "Workflow" [ref=f2e85] [cursor=pointer]:
+          - /url: /matters/matter-rta-001/workflow
+        - link "Checks" [ref=f2e86] [cursor=pointer]:
+          - /url: /matters/matter-rta-001/checks
+        - link "Drafts" [ref=f2e87] [cursor=pointer]:
+          - /url: /matters/matter-rta-001/drafts
+        - link "Activity" [ref=f2e88] [cursor=pointer]:
+          - /url: /matters/matter-rta-001/activity
+    - main [ref=f2e89]:
+      - generic [ref=f2e90]:
+        - generic [ref=f2e91]:
+          - heading "Verified facts" [level=1] [ref=f2e92]
+          - paragraph [ref=f2e93]: Build the lawyer-approved record used by every downstream step.
+        - button "Add manual fact" [ref=f2e94] [cursor=pointer]
+        - group "Interface language" [ref=f2e96]:
+          - button "EN" [pressed] [ref=f2e101] [cursor=pointer]
+          - button "සිං" [ref=f2e102] [cursor=pointer]
+      - generic [ref=f2e104]:
+        - generic [ref=f2e105]:
+          - group "Verified facts" [ref=f2e106]:
+            - button "All facts" [pressed] [ref=f2e107] [cursor=pointer]
+            - button "Unreviewed" [ref=f2e108] [cursor=pointer]
+            - button "Low confidence" [ref=f2e109] [cursor=pointer]
+            - button "Conflicting" [ref=f2e110] [cursor=pointer]
+            - button "Missing" [ref=f2e111] [cursor=pointer]
+          - button "Verify reviewed batch" [ref=f2e112] [cursor=pointer]
+          - button "Link duplicates" [ref=f2e116] [cursor=pointer]
+        - table [ref=f2e122]:
+          - rowgroup [ref=f2e123]:
+            - row [ref=f2e124]:
+              - columnheader "Fact" [ref=f2e125]
+              - columnheader "Value" [ref=f2e126]
+              - columnheader "Source" [ref=f2e127]
+              - columnheader "Pinpoint" [ref=f2e128]
+              - columnheader "Confidence" [ref=f2e129]
+              - columnheader "Reviewer" [ref=f2e130]
+              - columnheader "Verification status" [ref=f2e131]
+              - columnheader "Actions" [ref=f2e132]
+          - rowgroup [ref=f2e133]:
+            - row [ref=f2e134]:
+              - cell [ref=f2e135]:
+                - button "District" [ref=f2e136] [cursor=pointer]
+              - cell "Colombo" [ref=f2e137]
+              - cell "doc-form8-7347" [ref=f2e138]
+              - cell "Page 2" [ref=f2e139]
+              - cell "98%" [ref=f2e140]
+              - cell "N. M. Silva (synthetic)" [ref=f2e141]
+              - cell [ref=f2e142]
+              - cell [ref=f2e146]:
+                - generic [ref=f2e147]:
+                  - button "Open evidence for District" [ref=f2e148] [cursor=pointer]
+                  - button "Correct" [ref=f2e154] [cursor=pointer]
+            - row [ref=f2e155]:
+              - cell [ref=f2e156]:
+                - button "Divisional Secretary's Division" [ref=f2e157] [cursor=pointer]
+              - cell "Homagama" [ref=f2e158]
+              - cell "doc-form8-7347" [ref=f2e159]
+              - cell "Page 2" [ref=f2e160]
+              - cell "97%" [ref=f2e161]
+              - cell "N. M. Silva (synthetic)" [ref=f2e162]
+              - cell [ref=f2e163]
+              - cell [ref=f2e167]:
+                - generic [ref=f2e168]:
+                  - button "Open evidence for Divisional Secretary's Division" [ref=f2e169] [cursor=pointer]
+                  - button "Correct" [ref=f2e175] [cursor=pointer]
+            - row [ref=f2e176]:
+              - cell [ref=f2e177]:
+                - button "Grama Niladhari Division" [ref=f2e178] [cursor=pointer]
+              - cell "485 — Mawathgama" [ref=f2e179]
+              - cell "doc-form8-7347" [ref=f2e180]
+              - cell "Page 2" [ref=f2e181]
+              - cell "95%" [ref=f2e182]
+              - cell "N. M. Silva (synthetic)" [ref=f2e183]
+              - cell [ref=f2e184]
+              - cell [ref=f2e188]:
+                - generic [ref=f2e189]:
+                  - button "Open evidence for Grama Niladhari Division" [ref=f2e190] [cursor=pointer]
+                  - button "Correct" [ref=f2e196] [cursor=pointer]
+            - row [ref=f2e197]:
+              - cell [ref=f2e198]:
+                - button "Village or town" [ref=f2e199] [cursor=pointer]
+              - cell "Mawathgama" [ref=f2e200]
+              - cell "doc-form8-7347" [ref=f2e201]
+              - cell "Page 2" [ref=f2e202]
+              - cell "94%" [ref=f2e203]
+              - cell "N. M. Silva (synthetic)" [ref=f2e204]
+              - cell [ref=f2e205]
+              - cell [ref=f2e209]:
+                - generic [ref=f2e210]:
+                  - button "Open evidence for Village or town" [ref=f2e211] [cursor=pointer]
+                  - button "Correct" [ref=f2e217] [cursor=pointer]
+            - row [ref=f2e218]:
+              - cell [ref=f2e219]:
+                - button "Assessment number" [ref=f2e220] [cursor=pointer]
+              - cell "0" [ref=f2e221]
+              - cell "doc-form8-7347" [ref=f2e222]
+              - cell "Page 2" [ref=f2e223]
+              - cell "81%" [ref=f2e224]
+              - cell "N. M. Silva (synthetic)" [ref=f2e225]
+              - cell [ref=f2e226]
+              - cell [ref=f2e230]:
+                - generic [ref=f2e231]:
+                  - button "Open evidence for Assessment number" [ref=f2e232] [cursor=pointer]
+                  - button "Correct" [ref=f2e238] [cursor=pointer]
+            - row [ref=f2e239]:
+              - cell [ref=f2e240]:
+                - button "Cadastral map number" [ref=f2e241] [cursor=pointer]
+              - cell "520005" [ref=f2e242]
+              - cell "doc-sale-0020" [ref=f2e243]
+              - cell "Page 1" [ref=f2e244]
+              - cell "93%" [ref=f2e245]
+              - cell "N. M. Silva (synthetic)" [ref=f2e246]
+              - cell [ref=f2e247]
+              - cell [ref=f2e251]:
+                - generic [ref=f2e252]:
+                  - button "Open evidence for Cadastral map number" [ref=f2e253] [cursor=pointer]
+                  - button "Correct" [ref=f2e259] [cursor=pointer]
+            - row [ref=f2e260]:
+              - cell [ref=f2e261]:
+                - button "Block number" [ref=f2e262] [cursor=pointer]
+              - cell "03" [ref=f2e263]
+              - cell "doc-sale-0020" [ref=f2e264]
+              - cell "Page 1" [ref=f2e265]
+              - cell "90%" [ref=f2e266]
+              - cell "N. M. Silva (synthetic)" [ref=f2e267]
+              - cell [ref=f2e268]
+              - cell [ref=f2e272]:
+                - generic [ref=f2e273]:
+                  - button "Open evidence for Block number" [ref=f2e274] [cursor=pointer]
+                  - button "Correct" [ref=f2e280] [cursor=pointer]
+            - row [ref=f2e281]:
+              - cell [ref=f2e282]:
+                - button "Sheet number" [ref=f2e283] [cursor=pointer]
+              - cell "00029" [ref=f2e284]
+              - cell "doc-sale-0020" [ref=f2e285]
+              - cell "Page 1" [ref=f2e286]
+              - cell "92%" [ref=f2e287]
+              - cell "N. M. Silva (synthetic)" [ref=f2e288]
+              - cell [ref=f2e289]
+              - cell [ref=f2e293]:
+                - generic [ref=f2e294]:
+                  - button "Open evidence for Sheet number" [ref=f2e295] [cursor=pointer]
+                  - button "Correct" [ref=f2e301] [cursor=pointer]
+            - row [ref=f2e302]:
+              - cell [ref=f2e303]:
+                - button "Parcel number" [ref=f2e304] [cursor=pointer]
+              - cell "0020" [ref=f2e305]
+              - cell "doc-sale-0020" [ref=f2e306]
+              - cell "Page 1" [ref=f2e307]
+              - cell "89%" [ref=f2e308]
+              - cell "N. M. Silva (synthetic)" [ref=f2e309]
+              - cell [ref=f2e310]
+              - cell [ref=f2e314]:
+                - generic [ref=f2e315]:
+                  - button "Open evidence for Parcel number" [ref=f2e316] [cursor=pointer]
+                  - button "Correct" [ref=f2e322] [cursor=pointer]
+            - row [ref=f2e323]:
+              - cell [ref=f2e324]:
+                - button "Parcel extent" [ref=f2e325] [cursor=pointer]
+              - cell "0.0153 hectares" [ref=f2e326]
+              - cell "doc-plan-2338" [ref=f2e327]
+              - cell "Page 1" [ref=f2e328]
+              - cell "74%" [ref=f2e329]
+              - cell "Not yet reviewed" [ref=f2e330]
+              - cell [ref=f2e331]
+              - cell [ref=f2e335]:
+                - generic [ref=f2e336]:
+                  - button "Open evidence for Parcel extent" [ref=f2e337] [cursor=pointer]
+                  - button "Compare sources" [ref=f2e343] [cursor=pointer]
+            - row [ref=f2e344]:
+              - cell [ref=f2e345]:
+                - button "Extent subject to transfer" [ref=f2e346] [cursor=pointer]
+              - cell "Full" [ref=f2e347]
+              - cell "doc-form8-7347" [ref=f2e348]
+              - cell "Page 2" [ref=f2e349]
+              - cell "96%" [ref=f2e350]
+              - cell "N. M. Silva (synthetic)" [ref=f2e351]
+              - cell [ref=f2e352]
+              - cell [ref=f2e356]:
+                - generic [ref=f2e357]:
+                  - button "Open evidence for Extent subject to transfer" [ref=f2e358] [cursor=pointer]
+                  - button "Correct" [ref=f2e364] [cursor=pointer]
+            - row [ref=f2e365]:
+              - cell [ref=f2e366]:
+                - button "Land name" [ref=f2e367] [cursor=pointer]
+              - cell "Katukurunduhena" [ref=f2e368]
+              - cell "doc-plan-2338" [ref=f2e369]
+              - cell "Page 1" [ref=f2e370]
+              - cell "87%" [ref=f2e371]
+              - cell "N. M. Silva (synthetic)" [ref=f2e372]
+              - cell [ref=f2e373]
+              - cell [ref=f2e377]:
+                - generic [ref=f2e378]:
+                  - button "Open evidence for Land name" [ref=f2e379] [cursor=pointer]
+                  - button "Correct" [ref=f2e385] [cursor=pointer]
+            - row [ref=f2e386]:
+              - cell [ref=f2e387]:
+                - button "Place of registration" [ref=f2e388] [cursor=pointer]
+              - cell "Title Registry, Homagama" [ref=f2e389]
+              - cell "doc-form8-7347" [ref=f2e390]
+              - cell "Page 2" [ref=f2e391]
+              - cell "95%" [ref=f2e392]
+              - cell "N. M. Silva (synthetic)" [ref=f2e393]
+              - cell [ref=f2e394]
+              - cell [ref=f2e398]:
+                - generic [ref=f2e399]:
+                  - button "Open evidence for Place of registration" [ref=f2e400] [cursor=pointer]
+                  - button "Correct" [ref=f2e406] [cursor=pointer]
+            - row [ref=f2e407]:
+              - cell [ref=f2e408]:
+                - button "Title certificate number" [ref=f2e409] [cursor=pointer]
+              - cell "—" [ref=f2e410]
+              - cell "Missing source" [ref=f2e411]
+              - cell "—" [ref=f2e412]
+              - cell "0%" [ref=f2e413]
+              - cell "Not yet reviewed" [ref=f2e414]
+              - cell [ref=f2e415]
+              - cell [ref=f2e419]:
+                - generic [ref=f2e420]:
+                  - button "Open evidence for Title certificate number" [ref=f2e421] [cursor=pointer]
+                  - button "Resolve issue" [ref=f2e427] [cursor=pointer]
+            - row [ref=f2e428]:
+              - cell [ref=f2e429]:
+                - button "Class of title" [ref=f2e430] [cursor=pointer]
+              - cell "First" [ref=f2e431]
+              - cell "doc-form8-7347" [ref=f2e432]
+              - cell "Page 2" [ref=f2e433]
+              - cell "94%" [ref=f2e434]
+              - cell "N. M. Silva (synthetic)" [ref=f2e435]
+              - cell [ref=f2e436]
+              - cell [ref=f2e440]:
+                - generic [ref=f2e441]:
+                  - button "Open evidence for Class of title" [ref=f2e442] [cursor=pointer]
+                  - button "Correct" [ref=f2e448] [cursor=pointer]
+            - row [ref=f2e449]:
+              - cell [ref=f2e450]:
+                - button "Survey plan number" [ref=f2e451] [cursor=pointer]
+              - cell "2338" [ref=f2e452]
+              - cell "doc-plan-2338" [ref=f2e453]
+              - cell "Page 1" [ref=f2e454]
+              - cell "96%" [ref=f2e455]
+              - cell "N. M. Silva (synthetic)" [ref=f2e456]
+              - cell [ref=f2e457]
+              - cell [ref=f2e461]:
+                - generic [ref=f2e462]:
+                  - button "Open evidence for Survey plan number" [ref=f2e463] [cursor=pointer]
+                  - button "Correct" [ref=f2e469] [cursor=pointer]
+            - row [ref=f2e470]:
+              - cell [ref=f2e471]:
+                - button "Licensed surveyor" [ref=f2e472] [cursor=pointer]
+              - cell "S. V. A. N. Samanthi" [ref=f2e473]
+              - cell "doc-plan-2338" [ref=f2e474]
+              - cell "Page 1" [ref=f2e475]
+              - cell "88%" [ref=f2e476]
+              - cell "N. M. Silva (synthetic)" [ref=f2e477]
+              - cell [ref=f2e478]
+              - cell [ref=f2e482]:
+                - generic [ref=f2e483]:
+                  - button "Open evidence for Licensed surveyor" [ref=f2e484] [cursor=pointer]
+                  - button "Correct" [ref=f2e490] [cursor=pointer]
+            - row [ref=f2e491]:
+              - cell [ref=f2e492]:
+                - button "Surveyor registration number" [ref=f2e493] [cursor=pointer]
+              - cell "2001373" [ref=f2e494]
+              - cell "doc-plan-2338" [ref=f2e495]
+              - cell "Page 1" [ref=f2e496]
+              - cell "90%" [ref=f2e497]
+              - cell "N. M. Silva (synthetic)" [ref=f2e498]
+              - cell [ref=f2e499]
+              - cell [ref=f2e503]:
+                - generic [ref=f2e504]:
+                  - button "Open evidence for Surveyor registration number" [ref=f2e505] [cursor=pointer]
+                  - button "Correct" [ref=f2e511] [cursor=pointer]
+            - row [ref=f2e512]:
+              - cell [ref=f2e513]:
+                - button "Lot number" [ref=f2e514] [cursor=pointer]
+              - cell "17" [ref=f2e515]
+              - cell "doc-plan-2338" [ref=f2e516]
+              - cell "Page 1" [ref=f2e517]
+              - cell "93%" [ref=f2e518]
+              - cell "N. M. Silva (synthetic)" [ref=f2e519]
+              - cell [ref=f2e520]
+              - cell [ref=f2e524]:
+                - generic [ref=f2e525]:
+                  - button "Open evidence for Lot number" [ref=f2e526] [cursor=pointer]
+                  - button "Correct" [ref=f2e532] [cursor=pointer]
+            - row [ref=f2e533]:
+              - cell [ref=f2e534]:
+                - button "Boundary — north" [ref=f2e535] [cursor=pointer]
+              - cell "Lot 9 herein (Road)" [ref=f2e536]
+              - cell "doc-plan-2338" [ref=f2e537]
+              - cell "Page 1" [ref=f2e538]
+              - cell "85%" [ref=f2e539]
+              - cell "N. M. Silva (synthetic)" [ref=f2e540]
+              - cell [ref=f2e541]
+              - cell [ref=f2e545]:
+                - generic [ref=f2e546]:
+                  - button "Open evidence for Boundary — north" [ref=f2e547] [cursor=pointer]
+                  - button "Correct" [ref=f2e553] [cursor=pointer]
+            - row [ref=f2e554]:
+              - cell [ref=f2e555]:
+                - button "Boundary — east" [ref=f2e556] [cursor=pointer]
+              - cell "Lot 18 herein" [ref=f2e557]
+              - cell "doc-plan-2338" [ref=f2e558]
+              - cell "Page 1" [ref=f2e559]
+              - cell "85%" [ref=f2e560]
+              - cell "N. M. Silva (synthetic)" [ref=f2e561]
+              - cell [ref=f2e562]
+              - cell [ref=f2e566]:
+                - generic [ref=f2e567]:
+                  - button "Open evidence for Boundary — east" [ref=f2e568] [cursor=pointer]
+                  - button "Correct" [ref=f2e574] [cursor=pointer]
+            - row [ref=f2e575]:
+              - cell [ref=f2e576]:
+                - button "Boundary — south" [ref=f2e577] [cursor=pointer]
+              - cell "Lot 13 herein" [ref=f2e578]
+              - cell "doc-plan-2338" [ref=f2e579]
+              - cell "Page 1" [ref=f2e580]
+              - cell "84%" [ref=f2e581]
+              - cell "N. M. Silva (synthetic)" [ref=f2e582]
+              - cell [ref=f2e583]
+              - cell [ref=f2e587]:
+                - generic [ref=f2e588]:
+                  - button "Open evidence for Boundary — south" [ref=f2e589] [cursor=pointer]
+                  - button "Correct" [ref=f2e595] [cursor=pointer]
+            - row [ref=f2e596]:
+              - cell [ref=f2e597]:
+                - button "Boundary — west" [ref=f2e598] [cursor=pointer]
+              - cell "Lot 16 herein" [ref=f2e599]
+              - cell "doc-plan-2338" [ref=f2e600]
+              - cell "Page 1" [ref=f2e601]
+              - cell "84%" [ref=f2e602]
+              - cell "N. M. Silva (synthetic)" [ref=f2e603]
+              - cell [ref=f2e604]
+              - cell [ref=f2e608]:
+                - generic [ref=f2e609]:
+                  - button "Open evidence for Boundary — west" [ref=f2e610] [cursor=pointer]
+                  - button "Correct" [ref=f2e616] [cursor=pointer]
+            - row [ref=f2e617]:
+              - cell [ref=f2e618]:
+                - button "Transferor name" [ref=f2e619] [cursor=pointer]
+              - cell "BGN Property Development (Pvt) Ltd" [ref=f2e620]
+              - cell "doc-resolution-bgn" [ref=f2e621]
+              - cell "Page 1" [ref=f2e622]
+              - cell "95%" [ref=f2e623]
+              - cell "N. M. Silva (synthetic)" [ref=f2e624]
+              - cell [ref=f2e625]
+              - cell [ref=f2e630]:
+                - generic [ref=f2e631]:
+                  - button "Open evidence for Transferor name" [ref=f2e632] [cursor=pointer]
+                  - button "Correct" [ref=f2e638] [cursor=pointer]
+            - row [ref=f2e639]:
+              - cell [ref=f2e640]:
+                - button "Transferor registration number" [ref=f2e641] [cursor=pointer]
+              - cell "PV 00247076" [ref=f2e642]
+              - cell "doc-resolution-bgn" [ref=f2e643]
+              - cell "Page 1" [ref=f2e644]
+              - cell "94%" [ref=f2e645]
+              - cell "N. M. Silva (synthetic)" [ref=f2e646]
+              - cell [ref=f2e647]
+              - cell [ref=f2e651]:
+                - generic [ref=f2e652]:
+                  - button "Open evidence for Transferor registration number" [ref=f2e653] [cursor=pointer]
+                  - button "Correct" [ref=f2e659] [cursor=pointer]
+            - row [ref=f2e660]:
+              - cell [ref=f2e661]:
+                - button "Transferor address" [ref=f2e662] [cursor=pointer]
+              - cell "No. 11, 1st Floor, Ingiriya Road, Padukka" [ref=f2e663]
+              - cell "doc-resolution-bgn" [ref=f2e664]
+              - cell "Page 1" [ref=f2e665]
+              - cell "91%" [ref=f2e666]
+              - cell "N. M. Silva (synthetic)" [ref=f2e667]
+              - cell [ref=f2e668]
+              - cell [ref=f2e672]:
+                - generic [ref=f2e673]:
+                  - button "Open evidence for Transferor address" [ref=f2e674] [cursor=pointer]
+                  - button "Correct" [ref=f2e680] [cursor=pointer]
+            - row [ref=f2e681]:
+              - cell [ref=f2e682]:
+                - button "Authority to transfer" [ref=f2e683] [cursor=pointer]
+              - cell "Board resolution dated 20 July 2026" [ref=f2e684]
+              - cell "doc-resolution-bgn" [ref=f2e685]
+              - cell "Page 1" [ref=f2e686]
+              - cell "92%" [ref=f2e687]
+              - cell "N. M. Silva (synthetic)" [ref=f2e688]
+              - cell [ref=f2e689]
+              - cell [ref=f2e693]:
+                - generic [ref=f2e694]:
+                  - button "Open evidence for Authority to transfer" [ref=f2e695] [cursor=pointer]
+                  - button "Correct" [ref=f2e701] [cursor=pointer]
+            - row [ref=f2e702]:
+              - cell [ref=f2e703]:
+                - button "Authorised signatories" [ref=f2e704] [cursor=pointer]
+              - cell "Bope Gamage Nandana; Mallaha Vidanalage Shalika Gayathri Karunasena" [ref=f2e705]
+              - cell "doc-resolution-bgn" [ref=f2e706]
+              - cell "Page 1" [ref=f2e707]
+              - cell "89%" [ref=f2e708]
+              - cell "N. M. Silva (synthetic)" [ref=f2e709]
+              - cell [ref=f2e710]
+              - cell [ref=f2e714]:
+                - generic [ref=f2e715]:
+                  - button "Open evidence for Authorised signatories" [ref=f2e716] [cursor=pointer]
+                  - button "Correct" [ref=f2e722] [cursor=pointer]
+            - row [ref=f2e723]:
+              - cell [ref=f2e724]:
+                - button "Transferee name" [ref=f2e725] [cursor=pointer]
+              - cell "Wedippuli Arachchige Ishani Prasadini Dheerasinghe" [ref=f2e726]
+              - cell "doc-resolution-bgn" [ref=f2e727]
+              - cell "Page 1" [ref=f2e728]
+              - cell "90%" [ref=f2e729]
+              - cell "N. M. Silva (synthetic)" [ref=f2e730]
+              - cell [ref=f2e731]
+              - cell [ref=f2e736]:
+                - generic [ref=f2e737]:
+                  - button "Open evidence for Transferee name" [ref=f2e738] [cursor=pointer]
+                  - button "Correct" [ref=f2e744] [cursor=pointer]
+            - row [ref=f2e745]:
+              - cell [ref=f2e746]:
+                - button "Transferee identity card number" [ref=f2e747] [cursor=pointer]
+              - cell "945873370V" [ref=f2e748]
+              - cell "doc-form8-7347" [ref=f2e749]
+              - cell "Page 2" [ref=f2e750]
+              - cell "86%" [ref=f2e751]
+              - cell "Not yet reviewed" [ref=f2e752]
+              - cell [ref=f2e753]
+              - cell [ref=f2e764]:
+                - generic [ref=f2e765]:
+                  - button "Verify" [ref=f2e766] [cursor=pointer]
+                  - button "Open evidence for Transferee identity card number" [ref=f2e767] [cursor=pointer]
+                  - button "Correct" [ref=f2e773] [cursor=pointer]
+            - row [ref=f2e774]:
+              - cell [ref=f2e775]:
+                - button "Transferee address" [ref=f2e776] [cursor=pointer]
+              - cell "No. 606/1, Pahathgama, Hanwella" [ref=f2e777]
+              - cell "doc-form8-7347" [ref=f2e778]
+              - cell "Page 2" [ref=f2e779]
+              - cell "88%" [ref=f2e780]
+              - cell "N. M. Silva (synthetic)" [ref=f2e781]
+              - cell [ref=f2e782]
+              - cell [ref=f2e786]:
+                - generic [ref=f2e787]:
+                  - button "Open evidence for Transferee address" [ref=f2e788] [cursor=pointer]
+                  - button "Correct" [ref=f2e794] [cursor=pointer]
+            - row [ref=f2e795]:
+              - cell [ref=f2e796]:
+                - button "Consideration" [ref=f2e797] [cursor=pointer]
+              - cell "Rs. 4,590,000/=" [ref=f2e798]
+              - cell "doc-resolution-bgn" [ref=f2e799]
+              - cell "Page 1" [ref=f2e800]
+              - cell "93%" [ref=f2e801]
+              - cell "N. M. Silva (synthetic)" [ref=f2e802]
+              - cell [ref=f2e803]
+              - cell [ref=f2e807]:
+                - generic [ref=f2e808]:
+                  - button "Open evidence for Consideration" [ref=f2e809] [cursor=pointer]
+                  - button "Correct" [ref=f2e815] [cursor=pointer]
+            - row [ref=f2e816]:
+              - cell [ref=f2e817]:
+                - button "Consideration in words" [ref=f2e818] [cursor=pointer]
+              - cell "Rupees Four Million Five Hundred and Ninety Thousand" [ref=f2e819]
+              - cell "doc-resolution-bgn" [ref=f2e820]
+              - cell "Page 1" [ref=f2e821]
+              - cell "90%" [ref=f2e822]
+              - cell "N. M. Silva (synthetic)" [ref=f2e823]
+              - cell [ref=f2e824]
+              - cell [ref=f2e828]:
+                - generic [ref=f2e829]:
+                  - button "Open evidence for Consideration in words" [ref=f2e830] [cursor=pointer]
+                  - button "Correct" [ref=f2e836] [cursor=pointer]
+            - row [ref=f2e837]:
+              - cell [ref=f2e838]:
+                - button "Payment received" [ref=f2e839] [cursor=pointer]
+              - cell "Rs. 2,400,000.00" [ref=f2e840]
+              - cell "doc-cheque-7125" [ref=f2e841]
+              - cell "Page 1" [ref=f2e842]
+              - cell "92%" [ref=f2e843]
+              - cell "N. M. Silva (synthetic)" [ref=f2e844]
+              - cell [ref=f2e845]
+              - cell [ref=f2e849]:
+                - generic [ref=f2e850]:
+                  - button "Open evidence for Payment received" [ref=f2e851] [cursor=pointer]
+                  - button "Correct" [ref=f2e857] [cursor=pointer]
+            - row [ref=f2e858]:
+              - cell [ref=f2e859]:
+                - button "Balance outstanding" [ref=f2e860] [cursor=pointer]
+              - cell "Rs. 2,190,000.00" [ref=f2e861]
+              - cell "Missing source" [ref=f2e862]
+              - cell "—" [ref=f2e863]
+              - cell "70%" [ref=f2e864]
+              - cell "Not yet reviewed" [ref=f2e865]
+              - cell [ref=f2e866]
+              - cell [ref=f2e877]:
+                - generic [ref=f2e878]:
+                  - button "Verify" [ref=f2e879] [cursor=pointer]
+                  - button "Open evidence for Balance outstanding" [ref=f2e880] [cursor=pointer]
+                  - button "Correct" [ref=f2e886] [cursor=pointer]
+            - row [ref=f2e887]:
+              - cell [ref=f2e888]:
+                - button "Notary" [ref=f2e889] [cursor=pointer]
+              - cell "W. W. Anura Dhanaratna" [ref=f2e890]
+              - cell "doc-form8-7347" [ref=f2e891]
+              - cell "Page 1" [ref=f2e892]
+              - cell "94%" [ref=f2e893]
+              - cell "N. M. Silva (synthetic)" [ref=f2e894]
+              - cell [ref=f2e895]
+              - cell [ref=f2e899]:
+                - generic [ref=f2e900]:
+                  - button "Open evidence for Notary" [ref=f2e901] [cursor=pointer]
+                  - button "Correct" [ref=f2e907] [cursor=pointer]
+            - row [ref=f2e908]:
+              - cell [ref=f2e909]:
+                - button "Notary code" [ref=f2e910] [cursor=pointer]
+              - cell "1/1/03/1985" [ref=f2e911]
+              - cell "doc-form8-7347" [ref=f2e912]
+              - cell "Page 1" [ref=f2e913]
+              - cell "95%" [ref=f2e914]
+              - cell "N. M. Silva (synthetic)" [ref=f2e915]
+              - cell [ref=f2e916]
+              - cell [ref=f2e920]:
+                - generic [ref=f2e921]:
+                  - button "Open evidence for Notary code" [ref=f2e922] [cursor=pointer]
+                  - button "Correct" [ref=f2e928] [cursor=pointer]
+            - row [ref=f2e929]:
+              - cell [ref=f2e930]:
+                - button "Prior instrument consideration" [ref=f2e931] [cursor=pointer]
+              - cell "Rs. 3,126,000/=" [ref=f2e932]
+              - cell "doc-sale-0020" [ref=f2e933]
+              - cell "Page 2" [ref=f2e934]
+              - cell "79%" [ref=f2e935]
+              - cell "N. M. Silva (synthetic)" [ref=f2e936]
+              - cell [ref=f2e937]
+              - cell [ref=f2e941]:
+                - generic [ref=f2e942]:
+                  - button "Open evidence for Prior instrument consideration" [ref=f2e943] [cursor=pointer]
+                  - button "Correct" [ref=f2e949] [cursor=pointer]
+        - generic [ref=f2e950]:
+          - generic [ref=f2e951]:
+            - heading "Evidence beside fact" [level=2] [ref=f2e952]
+            - generic [ref=f2e953]:
+              - generic [ref=f2e954]: Synthetic document page 1
+              - generic [ref=f2e955]:
+                - generic [ref=f2e956]: Highlighted source region
+                - paragraph [ref=f2e957]: Lot 17 — Hectares 0.0153 (A0 R0 P6.00)
+          - complementary [ref=f2e958]:
+            - generic [ref=f2e959]:
+              - heading "Parcel extent" [level=2] [ref=f2e960]
+              - generic [ref=f2e961]: Conflict
+            - generic [ref=f2e964]:
+              - generic [ref=f2e965]:
+                - term [ref=f2e966]: Extracted value
+                - definition [ref=f2e967]: 0.0153 hectares
+              - generic [ref=f2e968]:
+                - term [ref=f2e969]: Corrected value
+                - definition [ref=f2e970]: 0.0153 hectares
+            - generic [ref=f2e971]:
+              - heading "Source conflict comparison" [level=3] [ref=f2e972]
+              - generic [ref=f2e973]:
+                - generic [ref=f2e974]:
+                  - generic [ref=f2e975]: Candidate 1 · Page 1
+                  - generic [ref=f2e976]: 0.0153 hectares
+                  - generic [ref=f2e977]: Lot 17 — Hectares 0.0153 (A0 R0 P6.00)
+                  - button "Use this value" [ref=f2e978] [cursor=pointer]
+                - generic [ref=f2e979]:
+                  - generic [ref=f2e980]: Candidate 2 · Page 1
+                  - generic [ref=f2e981]: 0.0159 hectares
+                  - generic [ref=f2e982]: "ඉඩමේ විශාලත්වය : 0.0159 හෙක්ටයාර"
+                  - button "Use this value" [ref=f2e983] [cursor=pointer]
