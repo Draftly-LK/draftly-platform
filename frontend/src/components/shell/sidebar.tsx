@@ -23,7 +23,7 @@ import { CommandPalette } from "./command-palette";
 import { UserButton } from "./user-button";
 
 
-export function Sidebar() {
+export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
   const t = useTranslations("shell");
   const app = useTranslations("app");
   const pathname = usePathname();
@@ -121,7 +121,7 @@ export function Sidebar() {
         </div>
         <div className="border-border mt-auto border-t pt-3">
           {/* ── Profile / user button ──────────────────────────── */}
-          <UserButton />
+          <UserButton demoMode={demoMode} />
           {/* ── Utility links ──────────────────────────────────── */}
           <div className="border-border mt-2 space-y-1 border-t pt-2">
             <button

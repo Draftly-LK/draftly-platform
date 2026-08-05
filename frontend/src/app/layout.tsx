@@ -5,8 +5,10 @@ import {
   Noto_Sans_Sinhala,
   Noto_Serif_Sinhala,
 } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { hasClerkPublishableKey } from "@/lib/auth/clerk";
 import "@/styles/globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -41,19 +43,23 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const body = (
+    <NextIntlClientProvider locale={locale} messages={messages} timeZone="Asia/Colombo">
+      {children}
+    </NextIntlClientProvider>
+  );
+
   return (
     <html
       lang={locale}
       className={`${plex.variable} ${newsreader.variable} ${notoSansSi.variable} ${notoSerifSi.variable}`}
     >
       <body>
-        <NextIntlClientProvider
-          locale={locale}
-          messages={messages}
-          timeZone="Asia/Colombo"
-        >
-          {children}
-        </NextIntlClientProvider>
+        {hasClerkPublishableKey() ? (
+          <ClerkProvider afterSignOutUrl="/sign-in">{body}</ClerkProvider>
+        ) : (
+          body
+        )}
       </body>
     </html>
   );
