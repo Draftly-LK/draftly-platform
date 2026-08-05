@@ -13,6 +13,7 @@ from __future__ import annotations
 import structlog
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.audit.application.audit_service import AuditService
 from src.modules.audit.infrastructure.repository import SqlAuditRepository
@@ -25,7 +26,7 @@ from src.modules.auth.infrastructure.repository import (
     SqlUserIdentityRepository,
     SqlUserRepository,
 )
-from src.platform.db.session import AsyncSession, get_db
+from src.platform.db.session import get_db
 from src.platform.errors import UnauthenticatedError
 from src.platform.observability.logging import bind_request_context
 from src.platform.request_context import RequestContext

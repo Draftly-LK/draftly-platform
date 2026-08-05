@@ -460,8 +460,7 @@ class EmailPort(Protocol):
         locale: str,
         variables: Mapping[str, str],
         idempotency_key: str,
-    ) -> DeliveryResult:
-        ...
+    ) -> DeliveryResult: ...
 ```
 
 Provider adapters translate this contract into provider-specific requests.

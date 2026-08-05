@@ -9,7 +9,7 @@ Falls back gracefully when CLERK_SECRET_KEY is absent — see stub_adapter.py.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import jwt
 from jwt import PyJWKClient, PyJWKClientError
@@ -51,11 +51,14 @@ class ClerkIdentityAdapter:
         except PyJWKClientError as exc:
             raise IdentityValidationError("Could not retrieve signing key.") from exc
 
-        decode_options: dict[str, Any] = {
-            "verify_exp": True,
-            "verify_iat": True,
-            "verify_iss": True,
-        }
+        decode_options = cast(
+            Any,
+            {
+                "verify_exp": True,
+                "verify_iat": True,
+                "verify_iss": True,
+            },
+        )
 
         try:
             payload: dict[str, Any] = jwt.decode(

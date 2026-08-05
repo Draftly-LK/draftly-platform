@@ -62,10 +62,12 @@
 ## Frontend change
 
 `components/shell/user-button.tsx`:
+
 - **With Clerk** (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` set): renders `<UserButton>` from `@clerk/nextjs` — shows real profile photo, opens Clerk modal on click
 - **Without Clerk** (demo/CI): renders initials avatar with role badge from demo store
 
 `components/shell/sidebar.tsx`:
+
 - `<UserButton>` placed at the top of the sidebar footer, above Settings / Help / Reset
 
 ---
@@ -75,11 +77,13 @@
 1. **Create a Clerk application** at [dashboard.clerk.com](https://dashboard.clerk.com)
    - Enable Google OAuth, Email OTP, Restricted sign-up
 2. **Add keys to `.env`**:
-   ```
+
+   ```env
    CLERK_ISSUER=https://...
    CLERK_SECRET_KEY=sk_test_...
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
    USE_STUB_IDENTITY=false
    ```
+
 3. Run `uv run alembic upgrade head` (already done against current Neon)
 4. Start the backend: `uv run uvicorn src.main:app --reload --port 8000`

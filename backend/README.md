@@ -18,7 +18,7 @@ uv run uvicorn src.main:app --reload --port 8000
 
 Health checks:
 
-```
+```text
 GET /health/live   → {"status": "ok"}
 GET /health/ready  → {"status": "ok", "db": "ok"}
 ```
@@ -41,7 +41,7 @@ Clerk publishable key and `AUTH_BYPASS` live only in `frontend/.env`.
 
 ## Project structure
 
-```
+```text
 backend/
 ├── src/
 │   ├── main.py            FastAPI factory, health routes, CORS

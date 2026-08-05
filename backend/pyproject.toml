@@ -53,7 +53,7 @@ quote-style = "double"
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
-exclude = ["migrations/"]
+exclude = ["migrations/", "src/modules/.*/tests/"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from src.modules.auth.ports import IdentityPort
 from src.platform.config import get_settings
 
 
@@ -19,7 +20,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix="/api/v1")
 
 
-def build_identity_adapter():  # type: ignore[no-untyped-def]
+def build_identity_adapter() -> IdentityPort:
     """Return the appropriate IdentityPort implementation for this environment."""
     settings = get_settings()
     if settings.use_stub_identity or not settings.clerk_configured:
