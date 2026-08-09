@@ -224,8 +224,11 @@ Each of these is re-derived server-side.
 
 ## 7. Tests every service inherits
 
-These live in `tests/security/` and run against every matter-scoped service.
-They are parameterised over the service list in `services/README.md`.
+Auth capability checks currently live in `tests/unit/` (CI collects
+`tests/unit`, `tests/contract`, and `tests/conformance`). The shared
+cross-service security suite will land under `tests/security/` and run
+against every matter-scoped service, parameterised over the service list in
+`services/README.md`.
 
 1. Cross-user read and write are denied for every route.
 2. Cross-matter read and write are denied for every matter-scoped route.

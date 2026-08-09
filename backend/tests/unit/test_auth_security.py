@@ -6,7 +6,7 @@ import pytest
 
 from src.modules.auth.domain.errors import CapabilityDeniedError
 from src.modules.auth.domain.models import Role
-from src.modules.auth.tests.test_auth_service import make_ctx, make_service
+from tests.unit.test_auth_service import make_ctx, make_service
 
 
 class TestSecurityCapabilities:
