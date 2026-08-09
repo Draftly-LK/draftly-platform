@@ -12,7 +12,7 @@ from typing import Any
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ── Wire models ─────────────────────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ from pydantic import BaseModel
 class ErrorDetail(BaseModel):
     code: str
     message: str
-    details: dict[str, Any] = {}
+    details: dict[str, Any] = Field(default_factory=dict)
     correlation_id: str = ""
 
 

@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends
 from src.api.deps import get_auth_service_instance, get_request_context
 from src.modules.auth.api.schemas import AccountStatusRead, SetRoleRequest, UserRead
 from src.modules.auth.domain.models import Role, User
-from src.platform.errors import DraftlyError
+from src.platform.errors import DomainRuleError
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["auth"])
@@ -69,7 +69,7 @@ async def set_user_role(
     try:
         new_role = Role(body.role)
     except ValueError:
-        raise DraftlyError(
+        raise DomainRuleError(
             f"Invalid role '{body.role}'. Valid: reviewer, approver, maintainer, administrator."
         )
     user = await auth_service.set_user_role(ctx, user_id, new_role)

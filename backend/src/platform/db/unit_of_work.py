@@ -1,8 +1,10 @@
 """Unit of Work — groups a set of repository operations under one transaction.
 
-Application services obtain a UoW from the dependency injection layer and call
-commit() exactly once on the happy path. On any exception the context manager
-rolls back automatically.
+Application services obtain a UoW from the dependency injection layer and use
+it as an async context manager. On success, ``__aexit__`` commits the
+transaction automatically; callers do not need to call ``commit()`` on every
+happy path. Use explicit ``commit()`` only when a mid-block early commit is
+required. On any exception the context manager rolls back automatically.
 """
 
 from __future__ import annotations

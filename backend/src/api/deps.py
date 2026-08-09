@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 
 import structlog
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -62,6 +62,7 @@ def init_services(session: AsyncSession) -> None:
 
 
 async def get_request_context(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_http_bearer),
     session: AsyncSession = Depends(get_db),
 ) -> RequestContext:
@@ -72,7 +73,7 @@ async def get_request_context(
     init_services(session)
 
     auth_service = get_auth_service_instance()
-    correlation_id = str(uuid.uuid4())
+    correlation_id = getattr(request.state, "correlation_id", None) or str(uuid.uuid4())
 
     ctx = await auth_service.build_request_context(
         token=credentials.credentials,
