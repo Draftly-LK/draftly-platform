@@ -22,15 +22,9 @@ __all__ = [
     "UnauthenticatedError",
     "IdentityValidationError",
     "IdentityNotFoundError",
-    "InvitationNotFoundError",
-    "InvitationExpiredError",
-    "InvitationAlreadyAcceptedError",
     "AccountPendingError",
     "AccountSuspendedError",
-    "OrganisationSuspendedError",
-    "OrganisationNotFoundError",
-    "MembershipNotFoundError",
-    "AdminLockoutError",
+    "EmailRequiredError",
     "PracticeStatusError",
     "StepUpRequiredError",
 ]
@@ -48,23 +42,8 @@ class IdentityNotFoundError(NotFoundError):
     message = "No Draftly account is linked to this identity."
 
 
-class InvitationNotFoundError(NotFoundError):
-    code = "invitation_not_found"
-    message = "No valid invitation was found for this identity."
-
-
-class InvitationExpiredError(DomainRuleError):
-    code = "invitation_expired"
-    message = "This invitation has expired. Please request a new one."
-
-
-class InvitationAlreadyAcceptedError(DomainRuleError):
-    code = "invitation_already_accepted"
-    message = "This invitation has already been used."
-
-
 class AccountPendingError(DomainRuleError):
-    """Account is authenticated but not yet approved (no role, no memberships)."""
+    """Account is authenticated but not yet linked or approved."""
 
     code = "account_pending"
     http_status = 403
@@ -77,28 +56,12 @@ class AccountSuspendedError(DomainRuleError):
     message = "Your account has been suspended."
 
 
-class OrganisationSuspendedError(DomainRuleError):
-    code = "organisation_suspended"
-    http_status = 403
-    message = "This organisation is suspended."
+class EmailRequiredError(DomainRuleError):
+    """Google sign-in must yield a verified email before provisioning."""
 
-
-class OrganisationNotFoundError(NotFoundError):
-    code = "organisation_not_found"
-    message = "Organisation not found or you are not a member."
-
-
-class MembershipNotFoundError(NotFoundError):
-    code = "membership_not_found"
-    message = "Matter membership not found."
-
-
-class AdminLockoutError(DomainRuleError):
-    """Raised when an operation would remove the last organisation owner."""
-
-    code = "admin_lockout_blocked"
+    code = "email_required"
     http_status = 422
-    message = "Cannot remove the last owner of an organisation."
+    message = "A verified email address is required to create your account."
 
 
 class PracticeStatusError(DomainRuleError):

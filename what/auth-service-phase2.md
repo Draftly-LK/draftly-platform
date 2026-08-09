@@ -87,3 +87,18 @@
 
 3. Run `uv run alembic upgrade head` (already done against current Neon)
 4. Start the backend: `uv run uvicorn src.main:app --reload --port 8000`
+
+---
+
+## Phase 2.1 — Solo-user Gmail auth (documentation and schema)
+
+**Completed:** 2026-08-09
+
+The product model for V0 auth is **one verified Gmail → one User**. Organisation,
+`OrganisationMembership`, matter membership in auth, and `Invitation` are removed
+from the auth boundary. `RequestContext` carries `actor_id`, `account_role`, and
+`correlation_id` only. Customer rows use `user_id` as the tenancy key; subscriptions
+attach to the user. First Google login with verified email auto-provisions an
+**ACTIVE** user with role **APPROVER** (including `billing.manage`, `retention.*`,
+and `user.role.set`). Service docs under `backend/docs/` were rewritten to match;
+see `auth-service.md` and `security-model.md`.

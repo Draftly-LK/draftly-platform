@@ -2,15 +2,15 @@
 
 Revision ID: audit0001
 Revises: auth0001
-Create Date: 2026-08-02
+Create Date: 2026-08-09
 
-Depends on the auth migration (organisation_id is in every event row).
+Depends on the auth migration (user_id is in every event row).
 """
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "audit0001"
 down_revision = "auth0001"
@@ -22,7 +22,7 @@ def upgrade() -> None:
     op.create_table(
         "audit_events",
         sa.Column("id", sa.String(64), primary_key=True),
-        sa.Column("organisation_id", sa.String(64), nullable=False),
+        sa.Column("user_id", sa.String(64), nullable=False),
         sa.Column("matter_id", sa.String(64), nullable=True),
         sa.Column("actor", sa.String(64), nullable=True),
         sa.Column("action", sa.String(128), nullable=False),
@@ -43,14 +43,14 @@ def upgrade() -> None:
         ),
     )
     op.create_index(
-        "ix_audit_events_org_timestamp",
+        "ix_audit_events_user_timestamp",
         "audit_events",
-        ["organisation_id", "timestamp"],
+        ["user_id", "timestamp"],
     )
     op.create_index(
-        "ix_audit_events_org_matter",
+        "ix_audit_events_user_matter",
         "audit_events",
-        ["organisation_id", "matter_id"],
+        ["user_id", "matter_id"],
     )
 
 

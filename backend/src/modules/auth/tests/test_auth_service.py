@@ -1,7 +1,4 @@
-"""Unit tests for AuthService.authorize — no DB required.
-
-These tests use in-memory fakes so they run instantly in CI.
-"""
+"""Unit tests for AuthService — no DB required."""
 
 from __future__ import annotations
 
@@ -11,148 +8,120 @@ import pytest
 
 from src.modules.auth.application.auth_service import AuthService
 from src.modules.auth.domain.errors import (
+    AccountPendingError,
     CapabilityDeniedError,
-    NotFoundError,
+    EmailRequiredError,
 )
 from src.modules.auth.domain.models import (
     AccountStatus,
-    MatterMembershipRole,
-    OrgRole,
     Role,
     User,
+    UserIdentity,
 )
-from src.modules.auth.ports import AuditEventInput
-from src.platform.request_context import MatterMembershipCtx, RequestContext
+from src.modules.auth.ports import AuditEventInput, IdentityClaims
+from src.platform.request_context import RequestContext
 
 # ── Fakes ─────────────────────────────────────────────────────────────────────
 
 
 class FakeIdentityPort:
-    async def validate_token(self, token: str):  # type: ignore[no-untyped-def]
-        from src.modules.auth.ports import IdentityClaims
+    def __init__(self, claims: IdentityClaims | None = None) -> None:
+        self._claims = claims
 
-        return IdentityClaims(issuer="stub", subject=token, verified_email="t@t.com")
+    async def validate_token(self, token: str) -> IdentityClaims:
+        if self._claims is not None:
+            return self._claims
+        return IdentityClaims(
+            issuer="stub",
+            subject=token,
+            verified_email="solo@example.com",
+        )
 
 
 class FakeUserIdentityRepo:
-    def __init__(self, identity=None):  # type: ignore[no-untyped-def]
-        self._identity = identity
+    def __init__(
+        self,
+        *,
+        by_subject: UserIdentity | None = None,
+        by_email: UserIdentity | None = None,
+    ) -> None:
+        self._by_subject = by_subject
+        self._by_email = by_email
+        self.created: list[UserIdentity] = []
 
-    async def find_by_subject(self, issuer, subject):  # type: ignore[no-untyped-def]
-        return self._identity
+    async def find_by_subject(self, issuer: str, subject: str) -> UserIdentity | None:
+        return self._by_subject
 
-    async def create(self, identity):  # type: ignore[no-untyped-def]
+    async def find_by_verified_email(self, email: str) -> UserIdentity | None:
+        return self._by_email
+
+    async def create(self, identity: UserIdentity) -> UserIdentity:
+        self.created.append(identity)
+        if self._by_subject is None:
+            self._by_subject = identity
         return identity
 
 
 class FakeUserRepo:
-    def __init__(self, user=None):  # type: ignore[no-untyped-def]
-        self._user = user
+    def __init__(self, users: dict[str, User] | None = None) -> None:
+        self._users: dict[str, User] = users or {}
+        self.created: list[User] = []
 
-    async def get(self, user_id):  # type: ignore[no-untyped-def]
-        return self._user
+    async def get(self, user_id: str) -> User | None:
+        return self._users.get(user_id)
 
-    async def get_by_email(self, email):  # type: ignore[no-untyped-def]
+    async def get_by_email(self, email: str) -> User | None:
         return None
 
-    async def create(self, user):  # type: ignore[no-untyped-def]
+    async def create(self, user: User) -> User:
+        self._users[user.id] = user
+        self.created.append(user)
         return user
 
-    async def update(self, user):  # type: ignore[no-untyped-def]
+    async def update(self, user: User) -> User:
+        self._users[user.id] = user
         return user
-
-
-class FakeOrgRepo:
-    def __init__(self, org=None):  # type: ignore[no-untyped-def]
-        self._org = org
-
-    async def get(self, org_id):  # type: ignore[no-untyped-def]
-        return self._org
-
-
-class FakeOrgMembershipRepo:
-    def __init__(self, membership=None):  # type: ignore[no-untyped-def]
-        self._membership = membership
-
-    async def find(self, org_id, user_id):  # type: ignore[no-untyped-def]
-        return self._membership
-
-    async def create(self, m):  # type: ignore[no-untyped-def]
-        return m
-
-    async def count_owners(self, org_id):  # type: ignore[no-untyped-def]
-        return 1
-
-
-class FakeMatterMembershipRepo:
-    def __init__(self, memberships=None):  # type: ignore[no-untyped-def]
-        self._memberships = memberships or []
-        self._created = []
-
-    async def list_for_user(self, org_id, user_id):  # type: ignore[no-untyped-def]
-        return self._memberships
-
-    async def find(self, org_id, matter_id, user_id):  # type: ignore[no-untyped-def]
-        for m in self._memberships:
-            if m.matter_id == matter_id and m.user_id == user_id:
-                return m
-        return None
-
-    async def create(self, m):  # type: ignore[no-untyped-def]
-        self._created.append(m)
-        return m
-
-    async def update(self, m):  # type: ignore[no-untyped-def]
-        return m
-
-
-class FakeInvitationRepo:
-    async def find_active(self, org_id, email):  # type: ignore[no-untyped-def]
-        return None
-
-    async def mark_accepted(self, invitation_id):  # type: ignore[no-untyped-def]
-        pass
 
 
 class FakeAuditPort:
-    def __init__(self):  # type: ignore[no-untyped-def]
+    def __init__(self) -> None:
         self.events: list[AuditEventInput] = []
 
     async def record(self, event: AuditEventInput) -> None:
         self.events.append(event)
 
 
-def make_ctx(
-    role: Role = Role.REVIEWER,
-    org_role: OrgRole = OrgRole.MEMBER,
-    matter_memberships: frozenset = frozenset(),
-) -> RequestContext:
+def make_ctx(role: Role = Role.REVIEWER) -> RequestContext:
     return RequestContext(
         actor_id="usr_test",
-        organisation_id="org_test",
         account_role=role,
-        organisation_role=org_role,
-        matter_memberships=matter_memberships,
         correlation_id="corr_test",
     )
 
 
-def make_service(**kwargs) -> AuthService:  # type: ignore[no-untyped-def]
+def make_service(**kwargs: object) -> AuthService:
     defaults: dict = {
         "identity_port": FakeIdentityPort(),
         "user_identity_repo": FakeUserIdentityRepo(),
         "user_repo": FakeUserRepo(),
-        "org_repo": FakeOrgRepo(),
-        "org_membership_repo": FakeOrgMembershipRepo(),
-        "matter_membership_repo": FakeMatterMembershipRepo(),
-        "invitation_repo": FakeInvitationRepo(),
         "audit_port": FakeAuditPort(),
     }
     defaults.update(kwargs)
     return AuthService(**defaults)
 
 
-# ── authorize tests ───────────────────────────────────────────────────────────
+def _active_user(user_id: str = "usr_existing", role: Role = Role.APPROVER) -> User:
+    now = datetime.now(tz=UTC)
+    return User(
+        id=user_id,
+        display_name="Existing",
+        account_status=AccountStatus.ACTIVE,
+        role=role,
+        notary_registration=None,
+        jurisdiction=None,
+        created_at=now,
+        updated_at=now,
+    )
 
 
 class TestAuthorize:
@@ -167,97 +136,134 @@ class TestAuthorize:
     async def test_approver_granted_approve_capability(self):
         svc = make_service()
         ctx = make_ctx(role=Role.APPROVER)
-        await svc.authorize(ctx, "draft.approve")  # must not raise
+        await svc.authorize(ctx, "draft.approve")
 
     @pytest.mark.asyncio
-    async def test_non_member_matter_returns_404(self):
-        """Non-member must get 404, not 403, to hide matter existence."""
+    async def test_matter_id_does_not_affect_capability_check(self):
+        """V0: authorize ignores matter membership; matter_id is accepted for API compat."""
         svc = make_service()
-        ctx = make_ctx(role=Role.REVIEWER, matter_memberships=frozenset())
-        with pytest.raises(NotFoundError):
-            await svc.authorize(ctx, "particular.verify", matter_id="matter-secret")
+        ctx = make_ctx(role=Role.APPROVER)
+        await svc.authorize(ctx, "draft.approve", matter_id="any-matter")
 
+
+class TestProvisionIdentity:
     @pytest.mark.asyncio
-    async def test_member_matter_denied_capability_returns_403(self):
-        """A member who lacks the capability gets 403, not 404."""
-        matter_ctx = frozenset(
-            [MatterMembershipCtx(matter_id="m1", role=MatterMembershipRole.ASSIGNEE)]
-        )
-        svc = make_service()
-        ctx = make_ctx(role=Role.REVIEWER, matter_memberships=matter_ctx)
-        with pytest.raises(CapabilityDeniedError):
-            await svc.authorize(ctx, "draft.approve", matter_id="m1")
-
-    @pytest.mark.asyncio
-    async def test_member_matter_granted_capability_passes(self):
-        matter_ctx = frozenset(
-            [MatterMembershipCtx(matter_id="m1", role=MatterMembershipRole.ASSIGNEE)]
-        )
-        svc = make_service()
-        ctx = make_ctx(role=Role.REVIEWER, matter_memberships=matter_ctx)
-        await svc.authorize(ctx, "particular.verify", matter_id="m1")
-
-
-# ── assign_membership tests ───────────────────────────────────────────────────
-
-
-class TestAssignMembership:
-    @pytest.mark.asyncio
-    async def test_assignment_is_audited(self):
+    async def test_auto_provisions_active_approver(self):
         audit = FakeAuditPort()
-        svc = make_service(audit_port=audit)
-        ctx = make_ctx(role=Role.ADMINISTRATOR)
-        await svc.assign_membership(ctx, "matter-1", "usr_target", MatterMembershipRole.ASSIGNEE)
-        assert len(audit.events) == 1
-        event = audit.events[0]
-        assert event.action == "matter.membership.assigned"
-        assert event.target_type == "permission"
-        assert event.target_id == "usr_target"
-
-    @pytest.mark.asyncio
-    async def test_reviewer_cannot_assign_membership(self):
-        svc = make_service()
-        ctx = make_ctx(role=Role.REVIEWER)
-        with pytest.raises(CapabilityDeniedError):
-            await svc.assign_membership(ctx, "m1", "usr2", MatterMembershipRole.ASSIGNEE)
-
-
-# ── admin lockout guard ───────────────────────────────────────────────────────
-
-
-class TestAdminLockout:
-    @pytest.mark.asyncio
-    async def test_last_owner_cannot_be_demoted(self):
-        from src.modules.auth.domain.errors import AdminLockoutError
-        from src.modules.auth.domain.models import OrganisationMembership
-
-        owner_membership = OrganisationMembership(
-            organisation_id="org_test",
-            user_id="usr_test",
-            org_role=OrgRole.OWNER,
-            joined_at=datetime.now(tz=UTC),
-        )
-        user = User(
-            id="usr_test",
-            display_name="Admin",
-            account_status=AccountStatus.ACTIVE,
-            role=Role.ADMINISTRATOR,
-            notary_registration=None,
-            jurisdiction=None,
-            created_at=datetime.now(tz=UTC),
-            updated_at=datetime.now(tz=UTC),
-        )
-        org_membership_repo = FakeOrgMembershipRepo(membership=owner_membership)
-        org_membership_repo._owner_count = 1
-
-        class SingleOwnerOrgRepo(FakeOrgMembershipRepo):
-            async def count_owners(self, org_id):  # type: ignore[no-untyped-def]
-                return 1
-
+        users = FakeUserRepo()
+        identities = FakeUserIdentityRepo()
         svc = make_service(
-            user_repo=FakeUserRepo(user=user),
-            org_membership_repo=SingleOwnerOrgRepo(membership=owner_membership),
+            user_repo=users,
+            user_identity_repo=identities,
+            audit_port=audit,
         )
-        ctx = make_ctx(role=Role.ADMINISTRATOR)
-        with pytest.raises(AdminLockoutError):
-            await svc.set_user_role(ctx, "usr_test", Role.REVIEWER)
+        user = await svc.provision_identity("token-new")
+        assert user.account_status == AccountStatus.ACTIVE
+        assert user.role == Role.APPROVER
+        assert len(users.created) == 1
+        assert len(identities.created) == 1
+        assert audit.events[0].action == "user.provisioned"
+        assert audit.events[0].user_id == user.id
+
+    @pytest.mark.asyncio
+    async def test_missing_verified_email_raises(self):
+        port = FakeIdentityPort(IdentityClaims(issuer="stub", subject="s1", verified_email=None))
+        svc = make_service(identity_port=port)
+        with pytest.raises(EmailRequiredError):
+            await svc.provision_identity("t")
+
+    @pytest.mark.asyncio
+    async def test_links_identity_when_email_already_registered(self):
+        existing = _active_user("usr_existing")
+        existing_identity = UserIdentity(
+            user_id="usr_existing",
+            provider="clerk",
+            issuer="other",
+            subject="sub-old",
+            verified_email="solo@example.com",
+            linked_at=datetime.now(tz=UTC),
+        )
+        users = FakeUserRepo({"usr_existing": existing})
+        identities = FakeUserIdentityRepo(by_email=existing_identity)
+        audit = FakeAuditPort()
+        svc = make_service(
+            user_repo=users,
+            user_identity_repo=identities,
+            audit_port=audit,
+        )
+        user = await svc.provision_identity("token-new-subject")
+        assert user.id == "usr_existing"
+        assert len(users.created) == 0
+        assert len(identities.created) == 1
+        assert identities.created[0].subject == "token-new-subject"
+        assert audit.events[0].action == "user.identity.linked"
+
+    @pytest.mark.asyncio
+    async def test_idempotent_when_subject_already_linked(self):
+        user = _active_user()
+        identity = UserIdentity(
+            user_id=user.id,
+            provider="clerk",
+            issuer="stub",
+            subject="token-1",
+            verified_email="solo@example.com",
+            linked_at=datetime.now(tz=UTC),
+        )
+        svc = make_service(
+            user_repo=FakeUserRepo({user.id: user}),
+            user_identity_repo=FakeUserIdentityRepo(by_subject=identity),
+        )
+        result = await svc.provision_identity("token-1")
+        assert result.id == user.id
+
+
+class TestBuildRequestContext:
+    @pytest.mark.asyncio
+    async def test_context_has_no_org_fields(self):
+        user = _active_user("usr_ctx", Role.REVIEWER)
+        identity = UserIdentity(
+            user_id=user.id,
+            provider="clerk",
+            issuer="stub",
+            subject="tok",
+            verified_email="solo@example.com",
+            linked_at=datetime.now(tz=UTC),
+        )
+        svc = make_service(
+            identity_port=FakeIdentityPort(
+                IdentityClaims(issuer="stub", subject="tok", verified_email="solo@example.com")
+            ),
+            user_identity_repo=FakeUserIdentityRepo(by_subject=identity),
+            user_repo=FakeUserRepo({user.id: user}),
+        )
+        ctx = await svc.build_request_context("tok")
+        assert ctx.actor_id == user.id
+        assert ctx.account_role == Role.REVIEWER
+        assert not hasattr(ctx, "organisation_id")
+
+    @pytest.mark.asyncio
+    async def test_unknown_identity_raises_pending(self):
+        svc = make_service()
+        with pytest.raises(AccountPendingError):
+            await svc.build_request_context("unknown")
+
+
+class TestSetUserRole:
+    @pytest.mark.asyncio
+    async def test_role_change_is_audited_with_user_id(self):
+        actor = _active_user("usr_actor", Role.APPROVER)
+        target = _active_user("usr_target", Role.REVIEWER)
+        audit = FakeAuditPort()
+        svc = make_service(
+            user_repo=FakeUserRepo({actor.id: actor, target.id: target}),
+            audit_port=audit,
+        )
+        ctx = make_ctx(role=Role.APPROVER)
+        ctx = RequestContext(
+            actor_id=actor.id,
+            account_role=Role.APPROVER,
+            correlation_id="c1",
+        )
+        await svc.set_user_role(ctx, target.id, Role.MAINTAINER)
+        assert audit.events[0].user_id == actor.id
+        assert audit.events[0].action == "user.role.changed"

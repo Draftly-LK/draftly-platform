@@ -21,16 +21,14 @@ class AuditEventRow(Base):
 
     __tablename__ = "audit_events"
     __table_args__ = (
-        Index("ix_audit_events_org_timestamp", "organisation_id", "timestamp"),
-        Index("ix_audit_events_org_matter", "organisation_id", "matter_id"),
+        Index("ix_audit_events_user_timestamp", "user_id", "timestamp"),
+        Index("ix_audit_events_user_matter", "user_id", "matter_id"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    organisation_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
     matter_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    actor: Mapped[str | None] = mapped_column(
-        String(64), nullable=True
-    )  # null for scheduler-originated events
+    actor: Mapped[str | None] = mapped_column(String(64), nullable=True)
     action: Mapped[str] = mapped_column(String(128), nullable=False)
     target_type: Mapped[str] = mapped_column(String(64), nullable=False)
     target_id: Mapped[str] = mapped_column(String(64), nullable=False)

@@ -73,6 +73,12 @@ CAPABILITY_MAP: dict[Role, frozenset[str]] = {
             "register.certify-return",
             "party.read-identity",
             "party.record-identity",
+            # Solo practitioner admin surface
+            "billing.manage",
+            "retention.hold",
+            "retention.release",
+            "retention.approve-destruction",
+            "user.role.set",
         }
     ),
     Role.MAINTAINER: frozenset(
@@ -88,8 +94,7 @@ CAPABILITY_MAP: dict[Role, frozenset[str]] = {
     ),
     Role.ADMINISTRATOR: frozenset(
         {
-            # Accounts, roles, memberships
-            "matter.membership.assign",
+            # Accounts and roles
             "user.role.set",
             # Matter lifecycle
             "matter.create",

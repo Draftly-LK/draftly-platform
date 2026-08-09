@@ -1,9 +1,4 @@
-"""Unit tests for the capability policy map.
-
-These tests run with no DB, no Clerk, no FastAPI. They verify the exact
-grants from security-model.md §3.2 and the negative cases that are
-release-gating invariants.
-"""
+"""Unit tests for the capability policy map."""
 
 from __future__ import annotations
 
@@ -22,7 +17,6 @@ class TestReviewerCapabilities:
         assert is_capability_granted(Role.REVIEWER, "document.upload")
 
     def test_reviewer_cannot_approve_draft(self):
-        """Security invariant: reviewer must not approve final drafts."""
         assert not is_capability_granted(Role.REVIEWER, "draft.approve")
 
     def test_reviewer_cannot_export(self):
@@ -45,11 +39,14 @@ class TestApproverCapabilities:
     def test_approver_can_waive_finding(self):
         assert is_capability_granted(Role.APPROVER, "finding.waive")
 
-    def test_approver_cannot_manage_billing(self):
-        assert not is_capability_granted(Role.APPROVER, "billing.manage")
+    def test_approver_can_manage_billing(self):
+        assert is_capability_granted(Role.APPROVER, "billing.manage")
 
-    def test_approver_cannot_set_user_role(self):
-        assert not is_capability_granted(Role.APPROVER, "user.role.set")
+    def test_approver_can_set_user_role(self):
+        assert is_capability_granted(Role.APPROVER, "user.role.set")
+
+    def test_approver_can_place_retention_hold(self):
+        assert is_capability_granted(Role.APPROVER, "retention.hold")
 
 
 class TestMaintainerCapabilities:
@@ -60,7 +57,6 @@ class TestMaintainerCapabilities:
         assert is_capability_granted(Role.MAINTAINER, "corpus.approve")
 
     def test_maintainer_cannot_approve_draft(self):
-        """Maintainer is for content governance only — not legal workflow."""
         assert not is_capability_granted(Role.MAINTAINER, "draft.approve")
 
     def test_maintainer_cannot_create_matter(self):
@@ -74,14 +70,13 @@ class TestAdministratorCapabilities:
     def test_administrator_can_set_user_role(self):
         assert is_capability_granted(Role.ADMINISTRATOR, "user.role.set")
 
-    def test_administrator_can_assign_membership(self):
-        assert is_capability_granted(Role.ADMINISTRATOR, "matter.membership.assign")
+    def test_administrator_cannot_assign_matter_membership(self):
+        assert not is_capability_granted(Role.ADMINISTRATOR, "matter.membership.assign")
 
     def test_administrator_can_manage_billing(self):
         assert is_capability_granted(Role.ADMINISTRATOR, "billing.manage")
 
     def test_administrator_cannot_approve_draft(self):
-        """Administrator is not a legal approver — separate from Approver role."""
         assert not is_capability_granted(Role.ADMINISTRATOR, "draft.approve")
 
 

@@ -1,7 +1,7 @@
 """SQLAlchemy repository for audit events — insert-only, no update or delete.
 
-get_last_hash() reads the most recent event in the organisation's chain
-so that insert() can compute the prevHash for chaining.
+get_last_hash() reads the most recent event in the user's chain so that
+insert() can compute the prevHash for chaining.
 """
 
 from __future__ import annotations
@@ -18,23 +18,23 @@ class SqlAuditRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_last_hash(self, organisation_id: str) -> str:
-        """Return the hash of the most recent event in this org's audit chain."""
+    async def get_last_hash(self, user_id: str) -> str:
+        """Return the hash of the most recent event in this user's audit chain."""
         stmt = (
             select(AuditEventRow.hash)
-            .where(AuditEventRow.organisation_id == organisation_id)
+            .where(AuditEventRow.user_id == user_id)
             .order_by(AuditEventRow.timestamp.desc())
             .limit(1)
         )
         result = await self._session.execute(stmt)
         row = result.scalar_one_or_none()
-        return row or ""  # empty string for the genesis event
+        return row or ""
 
     async def insert(
         self,
         *,
         event_id: str,
-        organisation_id: str,
+        user_id: str,
         action: str,
         target_type: str,
         target_id: str,
@@ -52,7 +52,7 @@ class SqlAuditRepository:
         """Append an audit event — no update or delete is allowed (insert-only)."""
         row = AuditEventRow(
             id=event_id,
-            organisation_id=organisation_id,
+            user_id=user_id,
             matter_id=matter_id,
             actor=actor,
             action=action,

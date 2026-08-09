@@ -22,7 +22,7 @@ cross-cutting files, which this plan defers to rather than restating:
 
 | Document | Holds |
 | --- | --- |
-| [`docs/security-model.md`](docs/security-model.md) | Organisation boundary, capability catalogue, role map, 404-not-403 |
+| [`docs/security-model.md`](docs/security-model.md) | User boundary, capability catalogue, role map, 404-not-403 |
 | [`docs/api-conventions.md`](docs/api-conventions.md) | Paths, pagination, concurrency, idempotency, errors, job envelopes |
 | [`docs/events.md`](docs/events.md) | Every domain event: name, payload, publisher, consumers |
 | [`docs/jobs-and-workers.md`](docs/jobs-and-workers.md) | Outbox, claim protocol, retries, scheduled jobs |
@@ -38,9 +38,10 @@ the cross-cutting file wins.
 
 The V0 backend shall provide:
 
-- authenticated users, organisation workspaces, roles, capability-based
-  authorisation, and matter membership checks;
-- organisation-owned subscriptions, plan entitlements, usage quotas, and
+- authenticated users, Google-linked identity, roles, capability-based
+  authorisation, and user-scoped matter ownership (no organisation workspace in
+  V0 auth);
+- user-owned subscriptions, plan entitlements, usage quotas, and
   provider-neutral recurring billing;
 - matter creation, assignment, lifecycle, and privacy-safe references;
 - a protected party tier holding identity evidence, beneficial ownership, CDD,
@@ -295,7 +296,7 @@ The backend must keep these stores and concepts separate:
 | Draft | Versioned snapshot bound to exact fact and template versions |
 | Approval/export | Approval targets one content hash; export records its manifest and checksum |
 | Audit | Append-only events for upload, review, correction, override, approval, export, access, and content governance |
-| Organisation | Every matter and subscription belongs to one server-verified workspace; cross-organisation access is denied |
+| User tenancy | Every matter and subscription belongs to one `user_id`; cross-user access is denied |
 | Billing | Provider events are verified and idempotent; role permission and paid entitlement are independent gates |
 
 ### 5.3 State invariants
@@ -316,7 +317,7 @@ The first domain tests must enforce:
 9. No legal source enters a production catalogue or retrieval index without an
    approved provenance record, rights policy, reviewed checksum, and corpus
    release entry.
-10. Every row belonging to a customer carries an organisation id, and every
+10. Every row belonging to a customer carries a `user_id`, and every
     query filters on it before any other check.
 11. A record under an active legal hold cannot be destroyed, merged, expired, or
     collected by any sweep.
@@ -339,9 +340,8 @@ Exit gate:
 
 ### Phase 1 — Contracts and database
 
-Implement Pydantic request/response schemas and domain enums for Organisation,
-OrganisationMembership, PlanVersion, PlanEntitlement, Subscription, usage,
-Matter, Document, DocumentVersion, SourceSpan, Particular,
+Implement Pydantic request/response schemas and domain enums for PlanVersion,
+PlanEntitlement, Subscription, usage, Matter, Document, DocumentVersion, SourceSpan, Particular,
 ParticularVersion, Party, Parcel, Instrument, Interest, Finding, StepRun,
 LegalSource, CorpusReleaseManifest, Draft, Approval, Export, and AuditEvent.
 Add SQLAlchemy models, Alembic migrations, optimistic version columns, and
@@ -351,38 +351,38 @@ Exit gate:
 
 - schemas reject invalid state transitions;
 - migrations build an empty database and roll back in a disposable database;
-- repository tests prove matter membership isolation; and
+- repository tests prove user-scoped matter isolation; and
 - corrections and document replacements preserve history.
 
 ### Phase 2 — Authentication, authorisation, and matters
 
 Add Clerk-compatible OIDC identity validation, user and role mapping,
-organisation and matter membership, server-side policy checks, safe 404/403
-behaviour, and matter CRUD. The browser never supplies a trusted role,
-organisation boundary, or unrestricted matter access.
+server-side policy checks, safe 404/403 behaviour, and matter CRUD. The
+browser never supplies a trusted role, user tenancy boundary, or unrestricted
+matter access.
 
 Exit gate:
 
 - a reviewer cannot approve;
 - an unauthorised user cannot infer another matter's existence;
-- all account, role, assignment, and matter mutations are audited; and
-- cross-organisation and cross-matter security tests pass.
+- all account and role mutations are audited; and
+- cross-user and cross-matter security tests pass.
 
-### Phase 2B — Organisation billing and entitlements
+### Phase 2B — User billing and entitlements
 
-Add immutable plan versions, organisation subscriptions, feature entitlements,
+Add immutable plan versions, user subscriptions, feature entitlements,
 atomic usage reservations and consumption, PayHere checkout behind
 `BillingProviderPort`, verified webhook processing, billing audit/outbox
 events, and grace/restricted policy. Payment details remain provider-hosted.
 
 Exit gate:
 
-- a subscription belongs to an organisation, never directly to a user;
+- a subscription belongs to a user, not to a separate organisation entity;
 - forged checkout-return state cannot grant an entitlement;
 - duplicate or out-of-order provider events cannot duplicate or regress state;
-- role, organisation, matter, feature, and quota gates are server-enforced;
+- role, user tenancy, matter, feature, and quota gates are server-enforced;
 - payment failure preserves existing legal records and approved exports; and
-- cross-organisation billing and usage tests pass.
+- cross-user billing and usage tests pass.
 
 ### Phase 3 — Evidence intake and asynchronous processing
 
@@ -632,7 +632,7 @@ successful HTTP response means a fact is legally verified.
 - Integration: PostgreSQL transactions, migrations, object storage, queue
   retries, Document AI adapter, legal index, identity adapter, billing adapter,
   webhook replay, and renderer.
-- Security: cross-organisation and cross-matter isolation, capability
+- Security: cross-user and cross-matter isolation, capability
   escalation, forged entitlements, invalid billing webhooks, upload validation,
   signed URL expiry, CSRF/CORS policy, secret and log inspection, and approval
   bypass.
@@ -647,7 +647,7 @@ A service is judged finished by the five-level ladder in
 ### 9.2 Release-blocking failures
 
 The backend cannot be accepted if it permits an invented citation, unsupported
-retained legal claim, cross-matter or cross-organisation disclosure, silent
+retained legal claim, cross-matter or cross-user disclosure, silent
 original loss, mandatory unverified fact in an approved export, altered locked
 wording, hidden placeholder, missing audit event, approval attached to changed
 content, destruction of a record under a legal hold, or a legal source crossing
@@ -682,7 +682,7 @@ The V0 backend implementation is complete only when these are present:
 1. `pyproject.toml` and committed `uv.lock`.
 2. The structured `src/` modular-monolith packages and migration history.
 3. Versioned OpenAPI output and frontend contract fixtures.
-4. Working organisation, billing, matter, document, verification, checks,
+4. Working user-scoped billing, matter, document, verification, checks,
    corpus-governance, library, research, drafting, approval, export, audit, and
    health endpoints.
 5. Authenticated workers for document, research, and export jobs.
@@ -703,7 +703,7 @@ cross-cutting documents; they are kept here for the record.
 - PostgreSQL and object-storage deployment choices for the reference
   environment.
 - Queue technology and worker runtime.
-- Clerk environment and account, organisation, and matter role mapping.
+- Clerk environment and Google account-to-user role mapping.
 - PayHere business onboarding, settlement account, plan prices, currencies,
   allowances, taxes, refunds, grace period, and restricted-mode policy.
 - Google Document AI processor version, region, and approved document classes.
@@ -713,7 +713,7 @@ cross-cutting documents; they are kept here for the record.
   review item and the service ships with an empty approved-policy set.
 - Numerical holdout thresholds and lawyer-review ownership.
 - Whether a drafting lawyer may approve their own draft, and whether four-eyes
-  approval is configurable per organisation.
+  approval is configurable per user account.
 - Voice ship date — V0 or V1. The design is **[closed]**; only the schedule is
   open.
 - Screening provider, or manual-entry adapter, for sanctions and PEP checks.

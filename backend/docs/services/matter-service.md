@@ -48,7 +48,7 @@ readiness flag through a matter patch.
 
 The service owns:
 
-- matter id, organisation, privacy-safe reference, and client reference;
+- matter id, `user_id`, privacy-safe reference, and client reference;
 - the association between the matter and its team, expressed by calling
   `auth_service`; the membership table itself is owned there;
 - transaction type and registration regime;
@@ -107,7 +107,7 @@ POST  /matters/{id}/archive
 ```
 
 The router authenticates and parses only. The application service takes an
-authenticated `RequestContext` containing actor, organisation, roles, and
+authenticated `RequestContext` containing actor, role, and
 matter memberships. It imports no FastAPI, SQLAlchemy, task-service domain
 objects, or identity-provider SDK.
 
@@ -121,7 +121,7 @@ objects, or identity-provider SDK.
 ```text
 Matter
   id
-  organisationId
+  user_id
   reference
   clientReference?
   transactionType
@@ -225,7 +225,7 @@ referenced here and documented nowhere.
 `MembershipCommandPort`.
 
 Membership roles are application roles, distinct from transaction-party roles.
-Every matter-scoped service re-checks organisation scope and then membership
+Every matter-scoped service re-checks `user_id` scope and then ownership
 server-side. `ownerId` is a primary responsibility pointer; it is not the
 authorization policy.
 
@@ -342,7 +342,7 @@ blockingStatus = blocked
 list_matters(ctx, filters) -> page[MatterRead]
 ```
 
-Returns only matters visible through organisation and membership policy.
+Returns only matters visible through `user_id` and ownership policy.
 Filters include lifecycle, transaction type, regime, assigned notary, and
 projected phase. Projection joins are server-side.
 
@@ -362,9 +362,9 @@ workflow.
 create_matter(ctx, input) -> MatterRead
 ```
 
-1. Validate organisation, privacy-safe reference, transaction type, and
+1. Validate `user_id`, privacy-safe reference, transaction type, and
    registration regime.
-2. Require the organisation's `matter.create` entitlement and atomically check
+2. Require the actor's `matter.create` entitlement and atomically check
    any active-matter quota through `BillingEntitlementPort`.
 3. Create `Matter(lifecycleStatus=inquiry, classificationVersion=1)`.
 4. Create the initial MatterClassification.
@@ -376,7 +376,7 @@ create_matter(ctx, input) -> MatterRead
 7. Return `workflowSetupStatus=pending`.
 
 The creation transaction does not create StepRuns, seed facts, or clone checks.
-Subscription state never grants matter access; `auth_service` organisation and
+Subscription state never grants matter access; `auth_service` capability and
 role checks run before this entitlement gate.
 
 `task_service` consumes `matter.created` idempotently and compiles the approved
@@ -483,7 +483,7 @@ matter.archived
 `matter.membership-changed` is **not** published here. `auth_service` owns every
 membership write and publishes that event (`security-model.md` §4).
 
-Consumers must be idempotent. Events carry matter, organisation,
+Consumers must be idempotent. Events carry matter, user_id,
 classification, actor, version, and correlation identifiers. They do not carry
 raw party identity, property descriptions, or private evidence.
 
@@ -511,7 +511,7 @@ aggregate.
 
 | Invariant | Enforcement |
 | --- | --- |
-| Matter is the access root | Every matter-scoped operation re-checks organisation and membership |
+| Matter is the access root | Every matter-scoped operation re-checks `user_id` and ownership |
 | Lifecycle is not workflow state | Inquiry/active/closed/archived only; blocking and readiness are projections |
 | Current phase is task-owned | Matter exposes a projection and rejects client phase/progress writes |
 | Classification history is immutable | Reclassification appends a version and emits an event |
@@ -574,8 +574,8 @@ aggregate.
 
 ### Security
 
-- Cross-organisation and cross-matter isolation.
-- Matter creation enforces the organisation entitlement and active-matter
+- Cross-user and cross-matter isolation.
+- Matter creation enforces the user entitlement and active-matter
   quota server-side.
 - Non-member receives 404.
 - Browser cannot assign itself a role or team membership.

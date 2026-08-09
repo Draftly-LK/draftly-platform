@@ -33,23 +33,10 @@ class UserRead(BaseModel):
 
 
 class AccountStatusRead(BaseModel):
-    """Returned for authenticated-but-pending accounts."""
+    """Returned for authenticated accounts."""
 
     status: str  # "pending" | "active" | "suspended"
     message: str
-
-
-class MembershipRead(BaseModel):
-    """Returned after a successful membership assignment."""
-
-    matter_id: str
-    user_id: str
-    role: str
-
-
-class MatterMembershipRequest(BaseModel):
-    user_id: str
-    role: str = "assignee"  # "assignee" | "supervisor"
 
 
 class SetRoleRequest(BaseModel):

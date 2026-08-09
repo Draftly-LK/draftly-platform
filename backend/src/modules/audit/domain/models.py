@@ -36,7 +36,7 @@ class AuditTargetType(str, enum.Enum):
     LEGAL_SOURCE = "legal-source"
     SUBSCRIPTION = "subscription"
     TRANSCRIPT = "transcript"
-    ORGANISATION = "organisation"
+    USER = "user"
     RETENTION = "retention"
 
 
@@ -85,7 +85,7 @@ class AuditEvent:
     """Domain representation of a persisted audit event."""
 
     id: str
-    organisation_id: str
+    user_id: str
     action: str
     target_type: str
     target_id: str

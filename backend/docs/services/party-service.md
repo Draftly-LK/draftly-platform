@@ -18,7 +18,7 @@ capability set, and its own retention rule.
 ## 1. What it owns
 
 The **protected identity tier**: a Party record per real-world person or entity
-known to an organisation, the identity evidence that supports it, beneficial
+known to a user account, the identity evidence that supports it, beneficial
 ownership, the CDD risk assessment, and screening outcomes. It owns the link
 between a Party and the matters it appears in, and the role it plays in each.
 
@@ -54,7 +54,7 @@ silent overwrite in either direction.
 ## 2. Where it sits
 
 ```text
-GET   /api/v1/parties                       (organisation-scoped search)
+GET   /api/v1/parties                       (user-scoped search)
 POST  /api/v1/parties
 GET   /api/v1/parties/{id}
 PATCH /api/v1/parties/{id}
@@ -78,7 +78,7 @@ GET   /api/v1/matters/{id}/parties
 ```
 
 The router authenticates and parses only. The service takes a
-`RequestContext` and enforces organisation scope before anything else
+`RequestContext` and enforces `user_id` scope before anything else
 (`security-model.md` §2). It imports no FastAPI, no SQLAlchemy, and no screening
 provider SDK.
 
@@ -89,7 +89,7 @@ provider SDK.
 ```text
 Party
   id
-  organisationId
+  userId
   partyKind = natural-person | company | partnership | trust |
               statutory-body | other
   displayName
@@ -179,7 +179,7 @@ evidence. Cycles are rejected at write time.
 CddAssessment
   id
   partyId
-  matterId?                      # null for organisation-level KYC
+  matterId?                      # null for user-level KYC
   level = standard | simplified | enhanced
   riskFactors
   outcome = pending | complete | blocked
@@ -228,7 +228,7 @@ screening outcome attached to it.
 
 ## 4. Ports
 
-- `PartyRepository` — persist and load parties; organisation-scoped queries
+- `PartyRepository` — persist and load parties; user-scoped queries
   only; optimistic concurrency.
 - `IdentityEvidenceRepository` — append-only evidence, beneficial owners, CDD
   assessments; field-level encryption for `identifierValue`.
@@ -262,7 +262,7 @@ Publishes `party.identity-evidence-recorded`, and
 ### record_beneficial_owner(ctx, party_id, owner) -> BeneficialOwnerRead
 
 Requires `party.record-identity`. Rejects a cycle and rejects an owner party in
-another organisation.
+another user.
 
 ### complete_cdd(ctx, party_id, assessment) -> CddAssessmentRead
 
@@ -275,7 +275,7 @@ whether the matter may proceed.
 Requires `compliance.act`. A `confirmed-match` publishes
 `party.designated-person-confirmed`, which is the trigger for the restricted
 24-hour escalation in `obligations-service.md` §8.2. The event carries the party
-id, the organisation, and the confidentiality level — no name, no list entry, no
+id, the user_id, and the confidentiality level — no name, no list entry, no
 narrative (`events.md` §2).
 
 ### get_party(ctx, party_id) -> PartyRead
@@ -331,7 +331,7 @@ audited, and it is deliberate.
 
 | Invariant | Enforcement |
 | --- | --- |
-| Party data is organisation-scoped | Every query filters `ctx.organisationId` first; a cross-organisation read is a 404 |
+| Party data is user-scoped | Every query filters `ctx.actorId` first; a cross-user read is a 404 |
 | Identifiers are encrypted and rarely returned | `identifierValue` encrypted at rest, excluded from lists, decryption audited with a purpose |
 | Verified evidence has a pinned source | `verified` requires `documentVersionId` and an `evidenceSpan` on an immutable version (inv. 1) |
 | Evidence is append-only | Renewal supersedes; nothing is overwritten or deleted (inv. 7 pattern) |
@@ -344,7 +344,7 @@ audited, and it is deliberate.
 
 ## 10. Failure modes
 
-- Two matters in the same organisation reference the same real person under
+- Two matters for the same user reference the same real person under
   different spellings — duplicate probe surfaces both, neither is merged
   automatically, and a `check_service` identity finding flags the mismatch.
 - An identity document expires mid-matter — evidence moves to `expired`, the
@@ -373,7 +373,7 @@ audited, and it is deliberate.
   produces an obligation; confirmed match produces the restricted escalation and
   hides detail from an ordinary member; merge repoints every dependent record;
   legal hold blocks merge.
-- **Security:** cross-organisation party read denied; a member without
+- **Security:** cross-user party read denied; a member without
   `party.read-identity` never receives a full identifier; every decryption is
   audited with a purpose; no identifier appears in logs, events, or error
   bodies; compliance-restricted rows return no existence signal.
@@ -382,7 +382,7 @@ audited, and it is deliberate.
 
 ## 12. Decisions to confirm before coding
 
-1. Party is organisation-scoped, not matter-scoped, so one person is one record
+1. Party is user-scoped, not matter-scoped, so one person is one record
    across a firm's matters.
 2. Identity evidence is append-only and pins an immutable document version to
    reach `verified`.

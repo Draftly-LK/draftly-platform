@@ -8,13 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from src.modules.auth.domain.models import (
-    MatterMembership,
-    Organisation,
-    OrganisationMembership,
-    User,
-    UserIdentity,
-)
+from src.modules.auth.domain.models import User, UserIdentity
 
 
 class IdentityClaims:
@@ -55,6 +49,8 @@ class UserIdentityRepository(Protocol):
 
     async def find_by_subject(self, issuer: str, subject: str) -> UserIdentity | None: ...
 
+    async def find_by_verified_email(self, email: str) -> UserIdentity | None: ...
+
     async def create(self, identity: UserIdentity) -> UserIdentity: ...
 
 
@@ -66,53 +62,6 @@ class UserRepository(Protocol):
     async def create(self, user: User) -> User: ...
 
     async def update(self, user: User) -> User: ...
-
-
-class OrganisationRepository(Protocol):
-    async def get(self, org_id: str) -> Organisation | None: ...
-
-
-class OrganisationMembershipRepository(Protocol):
-    """Verify active organisation membership and load org role."""
-
-    async def find(self, org_id: str, user_id: str) -> OrganisationMembership | None: ...
-
-    async def create(self, membership: OrganisationMembership) -> OrganisationMembership: ...
-
-    async def count_owners(self, org_id: str) -> int: ...
-
-
-class MatterMembershipRepository(Protocol):
-    """Load and mutate matter memberships — always org-scoped."""
-
-    async def list_for_user(self, org_id: str, user_id: str) -> list[MatterMembership]: ...
-
-    async def find(self, org_id: str, matter_id: str, user_id: str) -> MatterMembership | None: ...
-
-    async def create(self, membership: MatterMembership) -> MatterMembership: ...
-
-    async def update(self, membership: MatterMembership) -> MatterMembership: ...
-
-
-class MembershipCommandPort(Protocol):
-    """Used by matter_service to grant the initial owner membership.
-
-    matter_service never writes the matter_memberships table directly; it calls
-    this port inside its creation transaction (security-model.md §4).
-    """
-
-    async def grant_owner_membership(
-        self,
-        org_id: str,
-        matter_id: str,
-        user_id: str,
-    ) -> None: ...
-
-
-class InvitationRepository(Protocol):
-    async def find_active(self, org_id: str, email: str) -> Any | None: ...
-
-    async def mark_accepted(self, invitation_id: str) -> None: ...
 
 
 class AuditPort(Protocol):
@@ -131,7 +80,7 @@ class AuditEventInput:
     def __init__(
         self,
         *,
-        organisation_id: str,
+        user_id: str,
         action: str,
         target_type: str,
         target_id: str,
@@ -143,7 +92,7 @@ class AuditEventInput:
         correlation_id: str = "",
         causation_id: str | None = None,
     ) -> None:
-        self.organisation_id = organisation_id
+        self.user_id = user_id
         self.action = action
         self.target_type = target_type
         self.target_id = target_id

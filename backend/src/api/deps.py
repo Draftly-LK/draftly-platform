@@ -3,12 +3,11 @@
 The get_request_context dependency is the security perimeter for all
 authenticated API routes. It validates the token, builds the RequestContext,
 and rejects the request before any business logic runs.
-
-Every other service's router should Depends(get_request_context) as its
-first parameter.
 """
 
 from __future__ import annotations
+
+import uuid
 
 import structlog
 from fastapi import Depends
@@ -19,10 +18,6 @@ from src.modules.audit.application.audit_service import AuditService
 from src.modules.audit.infrastructure.repository import SqlAuditRepository
 from src.modules.auth.application.auth_service import AuthService
 from src.modules.auth.infrastructure.repository import (
-    SqlInvitationRepository,
-    SqlMatterMembershipRepository,
-    SqlOrganisationMembershipRepository,
-    SqlOrganisationRepository,
     SqlUserIdentityRepository,
     SqlUserRepository,
 )
@@ -34,9 +29,6 @@ from src.platform.request_context import RequestContext
 log = structlog.get_logger(__name__)
 
 _http_bearer = HTTPBearer(auto_error=False)
-
-# ── Singleton services (instantiated once at startup) ─────────────────────────
-
 
 _auth_service_instance: AuthService | None = None
 
@@ -51,13 +43,8 @@ def get_auth_service_instance() -> AuthService:
 
 def init_services(session: AsyncSession) -> None:
     """Wire services for a request; called inside a session context."""
-    # Per-request wiring — repos hold a session reference
     user_identity_repo = SqlUserIdentityRepository(session)
     user_repo = SqlUserRepository(session)
-    org_repo = SqlOrganisationRepository(session)
-    org_membership_repo = SqlOrganisationMembershipRepository(session)
-    matter_membership_repo = SqlMatterMembershipRepository(session)
-    invitation_repo = SqlInvitationRepository(session)
     audit_repo = SqlAuditRepository(session)
     audit_service = AuditService(repository=audit_repo)
 
@@ -70,48 +57,27 @@ def init_services(session: AsyncSession) -> None:
         identity_port=identity_adapter,
         user_identity_repo=user_identity_repo,
         user_repo=user_repo,
-        org_repo=org_repo,
-        org_membership_repo=org_membership_repo,
-        matter_membership_repo=matter_membership_repo,
-        invitation_repo=invitation_repo,
         audit_port=audit_service,
     )
 
 
-# ── FastAPI dependencies ──────────────────────────────────────────────────────
-
-
 async def get_request_context(
     credentials: HTTPAuthorizationCredentials | None = Depends(_http_bearer),
-    organisation_id: str | None = None,  # from X-Draftly-Organisation header
     session: AsyncSession = Depends(get_db),
 ) -> RequestContext:
-    """Core auth dependency — validates the Bearer token and builds RequestContext.
-
-    Usage in any route:
-        async def my_route(ctx: RequestContext = Depends(get_request_context)):
-            ...
-    """
+    """Core auth dependency — validates the Bearer token and builds RequestContext."""
     if credentials is None:
         raise UnauthenticatedError("Authorization header with Bearer token is required.")
 
-    # Wire per-request services
     init_services(session)
 
     auth_service = get_auth_service_instance()
-    import uuid
-
     correlation_id = str(uuid.uuid4())
-    org_id = organisation_id or ""
 
-    try:
-        ctx = await auth_service.build_request_context(
-            token=credentials.credentials,
-            requested_org_id=org_id,
-            correlation_id=correlation_id,
-        )
-    except Exception:
-        raise
+    ctx = await auth_service.build_request_context(
+        token=credentials.credentials,
+        correlation_id=correlation_id,
+    )
 
-    bind_request_context(ctx.correlation_id, ctx.organisation_id)
+    bind_request_context(ctx.correlation_id, ctx.actor_id)
     return ctx

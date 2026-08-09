@@ -34,14 +34,12 @@ class AuditService:
         event_id = f"ae_{uuid.uuid4().hex}"
         now = datetime.now(tz=UTC)
 
-        # Retrieve prev_hash for this organisation's chain
-        prev_hash = await self._repo.get_last_hash(event.organisation_id)
+        prev_hash = await self._repo.get_last_hash(event.user_id)
 
-        # Compute hash: SHA-256 over canonical JSON + prevHash
         canonical = json.dumps(
             {
                 "id": event_id,
-                "org": event.organisation_id,
+                "user": event.user_id,
                 "action": event.action,
                 "target_type": event.target_type,
                 "target_id": event.target_id,
@@ -54,7 +52,7 @@ class AuditService:
 
         await self._repo.insert(
             event_id=event_id,
-            organisation_id=event.organisation_id,
+            user_id=event.user_id,
             matter_id=event.matter_id,
             actor=event.actor,
             action=event.action,
@@ -74,5 +72,5 @@ class AuditService:
             action=event.action,
             target_type=event.target_type,
             target_id=event.target_id,
-            organisation_id=event.organisation_id,
+            user_id=event.user_id,
         )
