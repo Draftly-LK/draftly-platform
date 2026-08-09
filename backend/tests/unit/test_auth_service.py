@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import time
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -11,6 +12,8 @@ from src.modules.auth.domain.errors import (
     AccountPendingError,
     CapabilityDeniedError,
     EmailRequiredError,
+    PracticeStatusError,
+    StepUpRequiredError,
 )
 from src.modules.auth.domain.models import (
     AccountStatus,
@@ -267,3 +270,69 @@ class TestSetUserRole:
         await svc.set_user_role(ctx, target.id, Role.MAINTAINER)
         assert audit.events[0].user_id == actor.id
         assert audit.events[0].action == "user.role.changed"
+
+
+def _notary_user(
+    user_id: str = "usr_test",
+    *,
+    certificate_valid_until: datetime | None = None,
+    jurisdiction: str | None = "Western Province",
+) -> User:
+    now = datetime.now(tz=UTC)
+    if certificate_valid_until is None:
+        certificate_valid_until = now + timedelta(days=30)
+    return User(
+        id=user_id,
+        display_name="Notary",
+        account_status=AccountStatus.ACTIVE,
+        role=Role.APPROVER,
+        notary_registration="NP-0001",
+        jurisdiction=jurisdiction,
+        certificate_valid_until=certificate_valid_until,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+class TestRequireStepUp:
+    @pytest.mark.asyncio
+    async def test_rejects_token_bound_to_different_user(self):
+        claims = IdentityClaims(
+            issuer="stub",
+            subject="step-up-subject",
+            verified_email="other@example.com",
+            auth_time=int(time.time()),
+        )
+        identity = UserIdentity(
+            user_id="usr_other",
+            provider="clerk",
+            issuer="stub",
+            subject="step-up-subject",
+            verified_email="other@example.com",
+            linked_at=datetime.now(tz=UTC),
+        )
+        svc = make_service(
+            identity_port=FakeIdentityPort(claims),
+            user_identity_repo=FakeUserIdentityRepo(by_subject=identity),
+        )
+        ctx = make_ctx(role=Role.APPROVER)
+        with pytest.raises(StepUpRequiredError):
+            await svc.require_step_up(ctx, "draft.approve", token="step-up-token")
+
+
+class TestRequirePractisingNotary:
+    @pytest.mark.asyncio
+    async def test_rejects_expired_certificate(self):
+        user = _notary_user(certificate_valid_until=datetime.now(tz=UTC) - timedelta(days=1))
+        svc = make_service(user_repo=FakeUserRepo({user.id: user}))
+        ctx = make_ctx(role=Role.APPROVER)
+        with pytest.raises(PracticeStatusError):
+            await svc.require_practising_notary(ctx)
+
+    @pytest.mark.asyncio
+    async def test_rejects_missing_jurisdiction_when_matter_id_set(self):
+        user = _notary_user(jurisdiction=None)
+        svc = make_service(user_repo=FakeUserRepo({user.id: user}))
+        ctx = make_ctx(role=Role.APPROVER)
+        with pytest.raises(PracticeStatusError):
+            await svc.require_practising_notary(ctx, matter_id="mat_001")

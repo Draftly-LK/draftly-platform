@@ -23,6 +23,7 @@ def _row_to_user(row: UserRow) -> User:
         role=Role(row.role) if row.role else None,
         notary_registration=row.notary_registration,
         jurisdiction=row.jurisdiction,
+        certificate_valid_until=row.certificate_valid_until,
         created_at=row.created_at,
         updated_at=row.updated_at,
         qualifications=row.qualifications,
@@ -71,6 +72,7 @@ class SqlUserRepository:
             role=user.role.value if user.role else None,
             notary_registration=user.notary_registration,
             jurisdiction=user.jurisdiction,
+            certificate_valid_until=user.certificate_valid_until,
             qualifications=user.qualifications,
             professional_titles=user.professional_titles,
             address_line1=user.address_line1,
@@ -90,6 +92,7 @@ class SqlUserRepository:
         row.role = user.role.value if user.role else None
         row.notary_registration = user.notary_registration
         row.jurisdiction = user.jurisdiction
+        row.certificate_valid_until = user.certificate_valid_until
         row.qualifications = user.qualifications
         row.professional_titles = user.professional_titles
         row.address_line1 = user.address_line1

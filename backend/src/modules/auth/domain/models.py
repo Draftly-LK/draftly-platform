@@ -49,6 +49,7 @@ class User:
     jurisdiction: str | None
     created_at: datetime
     updated_at: datetime
+    certificate_valid_until: datetime | None = None
     qualifications: str | None = None
     professional_titles: str | None = None
     address_line1: str | None = None

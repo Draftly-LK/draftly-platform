@@ -234,10 +234,20 @@ class AuthService:
         matter_id: str | None = None,
     ) -> None:
         """Assert that the actor holds a current practice certificate."""
-        _ = matter_id
         user = await self._users.get(ctx.actor_id)
         if user is None or not user.notary_registration:
             raise PracticeStatusError("A notary registration is required for this action.")
+
+        now = datetime.now(tz=UTC)
+        if user.certificate_valid_until is None or user.certificate_valid_until <= now:
+            raise PracticeStatusError("A current notary practice certificate is required.")
+
+        if matter_id is not None:
+            if not user.jurisdiction:
+                raise PracticeStatusError(
+                    "Jurisdiction must be set for matter-scoped notary actions."
+                )
+            # TODO(api): enforce matter jurisdiction match via matter_service when available.
 
         log.debug(
             "practising_notary_check",
@@ -254,7 +264,6 @@ class AuthService:
         token: str | None = None,
     ) -> None:
         """Enforce step-up authentication for legally significant actions."""
-        _ = ctx
         settings = get_settings()
         if token is None:
             raise StepUpRequiredError(f"Step-up authentication is required for '{action}'.")
@@ -262,6 +271,10 @@ class AuthService:
         try:
             claims = await self._identity.validate_token(token)
         except Exception:
+            raise StepUpRequiredError(f"Step-up authentication is required for '{action}'.")
+
+        identity = await self._user_identities.find_by_subject(claims.issuer, claims.subject)
+        if identity is None or identity.user_id != ctx.actor_id:
             raise StepUpRequiredError(f"Step-up authentication is required for '{action}'.")
 
         auth_time = claims.auth_time

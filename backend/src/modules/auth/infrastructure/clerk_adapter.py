@@ -9,6 +9,7 @@ Falls back gracefully when CLERK_SECRET_KEY is absent — see stub_adapter.py.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any, cast
 
 import jwt
@@ -16,6 +17,16 @@ from jwt import PyJWKClient, PyJWKClientError
 
 from src.modules.auth.domain.errors import IdentityValidationError
 from src.modules.auth.ports import IdentityClaims
+
+
+def _email_from_payload(payload: dict[str, Any]) -> str | None:
+    """Return email only when Clerk marks it verified."""
+    if payload.get("email_verified") is not True:
+        return None
+    email = payload.get("email")
+    if isinstance(email, str) and email:
+        return email
+    return None
 
 
 class ClerkIdentityAdapter:
@@ -47,7 +58,10 @@ class ClerkIdentityAdapter:
             raise IdentityValidationError("Malformed token header.") from exc
 
         try:
-            signing_key = self._jwks_client.get_signing_key_from_jwt(token)
+            signing_key = await asyncio.to_thread(
+                self._jwks_client.get_signing_key_from_jwt,
+                token,
+            )
         except PyJWKClientError as exc:
             raise IdentityValidationError("Could not retrieve signing key.") from exc
 
@@ -82,7 +96,7 @@ class ClerkIdentityAdapter:
         if not subject:
             raise IdentityValidationError("Token is missing the 'sub' claim.")
 
-        verified_email: str | None = payload.get("email") or None
+        verified_email = _email_from_payload(payload)
         auth_time: int | None = payload.get("auth_time")
 
         return IdentityClaims(
