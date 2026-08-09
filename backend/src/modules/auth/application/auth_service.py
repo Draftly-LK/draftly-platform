@@ -263,8 +263,11 @@ class AuthService:
         action: str,
         token: str | None = None,
     ) -> None:
-        """Enforce step-up authentication for legally significant actions."""
-        settings = get_settings()
+        """Enforce step-up authentication for legally significant actions.
+
+        Bind the token to the current actor before reading Settings, so unit
+        tests (and early auth failures) never need database env vars loaded.
+        """
         if token is None:
             raise StepUpRequiredError(f"Step-up authentication is required for '{action}'.")
 
@@ -281,6 +284,7 @@ class AuthService:
         if auth_time is None:
             raise StepUpRequiredError(f"Session age cannot be verified for '{action}'.")
 
+        settings = get_settings()
         age_seconds = int(time.time()) - auth_time
         if age_seconds > settings.step_up_max_age_seconds:
             raise StepUpRequiredError(f"Session is too old for '{action}'. Please re-authenticate.")
