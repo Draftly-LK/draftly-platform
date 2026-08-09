@@ -1,10 +1,10 @@
 import { SignUp } from "@clerk/nextjs";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
-import { hasClerkPublishableKey } from "@/lib/auth/clerk";
+import { isClerkConfigured } from "@/lib/auth/clerk";
 
 export default async function SignUpPage() {
-  if (!hasClerkPublishableKey()) {
+  if (!isClerkConfigured()) {
     redirect("/");
   }
 

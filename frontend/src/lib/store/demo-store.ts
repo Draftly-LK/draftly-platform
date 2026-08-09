@@ -68,6 +68,20 @@ type CreateMatterInput = {
   type: MatterType;
 };
 
+/** Profile fields editable on the profile screen (not Clerk-owned identity). */
+export type EditableProfilePatch = Partial<
+  Pick<
+    User,
+    | "notaryRegistration"
+    | "jurisdiction"
+    | "qualifications"
+    | "professionalTitles"
+    | "addressLine1"
+    | "addressLine2"
+    | "phone"
+  >
+>;
+
 interface DemoState {
   matters: Matter[];
   documents: MatterDocument[];
@@ -133,7 +147,7 @@ interface DemoState {
     matterId?: string,
   ) => void;
   /** TODO(api): PATCH /api/v1/me */
-  updateProfile: (patch: Partial<User>) => void;
+  updateProfile: (patch: EditableProfilePatch) => void;
   resetDemo: () => void;
 }
 

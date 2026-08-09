@@ -8,7 +8,7 @@ import {
 import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
-import { hasClerkPublishableKey } from "@/lib/auth/clerk";
+import { isClerkConfigured } from "@/lib/auth/clerk";
 import "@/styles/globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -55,7 +55,7 @@ export default async function RootLayout({
       className={`${plex.variable} ${newsreader.variable} ${notoSansSi.variable} ${notoSerifSi.variable}`}
     >
       <body>
-        {hasClerkPublishableKey() ? (
+        {isClerkConfigured() ? (
           <ClerkProvider afterSignOutUrl="/sign-in">{body}</ClerkProvider>
         ) : (
           body

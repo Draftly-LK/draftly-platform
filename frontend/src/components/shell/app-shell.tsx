@@ -1,5 +1,5 @@
 import { isAuthBypassEnabled } from "@/lib/auth/bypass";
-import { hasClerkPublishableKey } from "@/lib/auth/clerk";
+import { isClerkConfigured } from "@/lib/auth/clerk";
 import { MatterHeader } from "./matter-header";
 import { Sidebar } from "./sidebar";
 
@@ -10,7 +10,7 @@ export function AppShell({
   children: React.ReactNode;
   matterId?: string;
 }) {
-  const demoMode = isAuthBypassEnabled() || !hasClerkPublishableKey();
+  const demoMode = isAuthBypassEnabled() || !isClerkConfigured();
 
   return (
     <div className="bg-canvas min-h-screen">
