@@ -21,6 +21,15 @@ from src.modules.auth.infrastructure.repository import (
     SqlUserIdentityRepository,
     SqlUserRepository,
 )
+from src.modules.obligations.application.obligations_service import ObligationsService
+from src.modules.obligations.infrastructure.deadline_rule_fixture import FixtureDeadlineRulePort
+from src.modules.obligations.infrastructure.repository import (
+    SqlNotificationIntentPort,
+    SqlObligationEventPort,
+    SqlObligationRepository,
+    SqlReminderRepository,
+)
+from src.modules.obligations.infrastructure.stubs import SystemClockPort
 from src.platform.db.session import get_db
 from src.platform.errors import UnauthenticatedError
 from src.platform.observability.logging import bind_request_context
@@ -31,6 +40,8 @@ log = structlog.get_logger(__name__)
 _http_bearer = HTTPBearer(auto_error=False)
 
 _auth_service_instance: AuthService | None = None
+_obligations_service_instance: ObligationsService | None = None
+_obligations_org_id: str | None = None
 
 
 def get_auth_service_instance() -> AuthService:
@@ -39,6 +50,15 @@ def get_auth_service_instance() -> AuthService:
     if _auth_service_instance is None:
         raise RuntimeError("AuthService not yet initialized. Call init_services() at startup.")
     return _auth_service_instance
+
+
+def get_obligations_service_instance() -> ObligationsService:
+    global _obligations_service_instance
+    if _obligations_service_instance is None:
+        raise RuntimeError(
+            "ObligationsService not yet initialized. Call init_services() at startup."
+        )
+    return _obligations_service_instance
 
 
 def init_services(session: AsyncSession) -> None:
@@ -82,3 +102,30 @@ async def get_request_context(
 
     bind_request_context(ctx.correlation_id, ctx.actor_id)
     return ctx
+
+
+async def get_obligations_service(
+    ctx: RequestContext = Depends(get_request_context),
+    session: AsyncSession = Depends(get_db),
+) -> ObligationsService:
+    """Per-request obligations service wired to the current organisation scope."""
+    global _obligations_service_instance, _obligations_org_id
+    org_id = f"org_{ctx.actor_id}"
+    if _obligations_service_instance is None or _obligations_org_id != org_id:
+        obligation_repo = SqlObligationRepository(session)
+        reminder_repo = SqlReminderRepository(session)
+        audit_repo = SqlAuditRepository(session)
+        audit_service = AuditService(repository=audit_repo)
+        events = SqlObligationEventPort(session, org_id)
+        notification_intents = SqlNotificationIntentPort()
+        _obligations_service_instance = ObligationsService(
+            obligation_repo=obligation_repo,
+            reminder_repo=reminder_repo,
+            deadline_rules=FixtureDeadlineRulePort(),
+            events=events,
+            audit=audit_service,
+            clock=SystemClockPort(),
+            notification_intents=notification_intents,
+        )
+        _obligations_org_id = org_id
+    return _obligations_service_instance

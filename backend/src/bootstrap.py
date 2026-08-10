@@ -10,14 +10,22 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from src.modules.auth.ports import IdentityPort
+from src.modules.obligations.infrastructure.deadline_rule_fixture import FixtureDeadlineRulePort
 from src.platform.config import get_settings
 
 
 def register_routers(app: FastAPI) -> None:
     """Mount all module routers under /api/v1."""
     from src.modules.auth.api.router import router as auth_router
+    from src.modules.obligations.api.router import router as obligations_router
 
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(obligations_router, prefix="/api/v1")
+
+
+def build_deadline_rule_port() -> FixtureDeadlineRulePort:
+    """Fixture-approved deadline rules for local and test environments."""
+    return FixtureDeadlineRulePort()
 
 
 def build_identity_adapter() -> IdentityPort:
