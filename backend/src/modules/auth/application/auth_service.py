@@ -19,6 +19,7 @@ from src.modules.auth.domain.errors import (
     EmailRequiredError,
     NotFoundError,
     PracticeStatusError,
+    RoleLockoutError,
     StepUpRequiredError,
 )
 from src.modules.auth.domain.models import AccountStatus, Role, User, UserIdentity
@@ -206,6 +207,10 @@ class AuthService:
         user = await self._users.get(user_id)
         if user is None:
             raise NotFoundError("User not found.")
+
+        # Solo model: never let an actor strip their own role-recovery capability.
+        if user_id == ctx.actor_id and not is_capability_granted(new_role, "user.role.set"):
+            raise RoleLockoutError()
 
         before_role = user.role
         user.role = new_role

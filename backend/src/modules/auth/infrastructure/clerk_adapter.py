@@ -29,6 +29,13 @@ def _email_from_payload(payload: dict[str, Any]) -> str | None:
     return None
 
 
+def _assert_authorized_party(payload: dict[str, Any], expected: str) -> None:
+    """Reject tokens whose azp is missing or does not match this Clerk app."""
+    azp = payload.get("azp")
+    if not isinstance(azp, str) or not azp or azp != expected:
+        raise IdentityValidationError("Token authorised party (azp) is missing or not trusted.")
+
+
 class ClerkIdentityAdapter:
     """Validates Clerk-issued JWTs using JWKS discovery."""
 
@@ -37,10 +44,14 @@ class ClerkIdentityAdapter:
         *,
         issuer: str,
         secret_key: str,
+        authorized_party: str,
         audience: str | None = None,
     ) -> None:
+        if not authorized_party:
+            raise ValueError("authorized_party is required for ClerkIdentityAdapter.")
         self._issuer = issuer.rstrip("/")
         self._secret_key = secret_key
+        self._authorized_party = authorized_party
         self._audience = audience
         # Clerk JWKS endpoint
         self._jwks_url = f"{self._issuer}/.well-known/jwks.json"
@@ -95,6 +106,8 @@ class ClerkIdentityAdapter:
         subject: str | None = payload.get("sub")
         if not subject:
             raise IdentityValidationError("Token is missing the 'sub' claim.")
+
+        _assert_authorized_party(payload, self._authorized_party)
 
         verified_email = _email_from_payload(payload)
         auth_time: int | None = payload.get("auth_time")

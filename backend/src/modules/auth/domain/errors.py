@@ -27,6 +27,7 @@ __all__ = [
     "EmailRequiredError",
     "PracticeStatusError",
     "StepUpRequiredError",
+    "RoleLockoutError",
 ]
 
 
@@ -76,3 +77,11 @@ class StepUpRequiredError(DomainRuleError):
     code = "step_up_required"
     http_status = 403
     message = "This action requires recent re-authentication."
+
+
+class RoleLockoutError(DomainRuleError):
+    """Prevents an actor from removing their own role-recovery capability."""
+
+    code = "role_lockout"
+    http_status = 409
+    message = "You cannot demote yourself to a role that cannot change roles."

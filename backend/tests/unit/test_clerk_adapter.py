@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from src.modules.auth.infrastructure.clerk_adapter import _email_from_payload
+import pytest
+
+from src.modules.auth.domain.errors import IdentityValidationError
+from src.modules.auth.infrastructure.clerk_adapter import (
+    _assert_authorized_party,
+    _email_from_payload,
+)
 
 
 class TestEmailFromPayload:
@@ -19,3 +25,20 @@ class TestEmailFromPayload:
 
     def test_returns_none_when_email_missing(self):
         assert _email_from_payload({"email_verified": True}) is None
+
+
+class TestAssertAuthorizedParty:
+    def test_accepts_matching_azp(self):
+        _assert_authorized_party({"azp": "http://localhost:4310"}, "http://localhost:4310")
+
+    def test_rejects_missing_azp(self):
+        with pytest.raises(IdentityValidationError):
+            _assert_authorized_party({"sub": "user_1"}, "http://localhost:4310")
+
+    def test_rejects_empty_azp(self):
+        with pytest.raises(IdentityValidationError):
+            _assert_authorized_party({"azp": ""}, "http://localhost:4310")
+
+    def test_rejects_mismatched_azp(self):
+        with pytest.raises(IdentityValidationError):
+            _assert_authorized_party({"azp": "https://other-app.example"}, "http://localhost:4310")

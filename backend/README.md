@@ -35,6 +35,7 @@ Never commit secrets. The frontend has its own file:
 | `DATABASE_URL_DIRECT` | ✅ | Direct Neon URL (Alembic migrations) |
 | `CLERK_ISSUER` | After Clerk setup | Frontend API URL from Clerk dashboard |
 | `CLERK_SECRET_KEY` | After Clerk setup | `sk_test_…` secret key |
+| `CLERK_AUTHORIZED_PARTY` | When Clerk enabled | Must match JWT `azp` (app origin / authorized party) |
 | `USE_STUB_IDENTITY` | `true` locally | Skip Clerk JWT, use synthetic demo identity |
 
 Clerk publishable key and `AUTH_BYPASS` live only in `frontend/.env`.
@@ -87,7 +88,8 @@ uv run pytest -v
 3. Enable **Restricted sign-up** (require invitations)
 4. **Sessions → Multi-session handling OFF**; prefer single-session / revoke
    other sessions on sign-in if the dashboard offers it
-5. Add `CLERK_ISSUER` and `CLERK_SECRET_KEY` to `backend/.env`, and
+5. Add `CLERK_ISSUER`, `CLERK_SECRET_KEY`, and `CLERK_AUTHORIZED_PARTY`
+   (JWT `azp`, usually your app origin) to `backend/.env`, and
    `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` + `CLERK_SECRET_KEY` to
    `frontend/.env`
 6. Set `USE_STUB_IDENTITY=false` in `backend/.env`

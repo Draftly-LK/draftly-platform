@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     clerk_issuer: str = ""
     clerk_secret_key: str = ""
     clerk_audience: str = ""
+    # Required when using the real Clerk adapter — must match JWT `azp`
+    clerk_authorized_party: str = ""
 
     # ── Object storage ──────────────────────────────────────────────────────
     object_storage_bucket: str = ""

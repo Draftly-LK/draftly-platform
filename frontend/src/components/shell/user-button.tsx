@@ -8,7 +8,6 @@
 import Link from "next/link";
 import { Show, useUser } from "@clerk/nextjs";
 import { useTranslations } from "next-intl";
-import { hasClerkPublishableKey } from "@/lib/auth/clerk";
 
 function getInitials(name: string): string {
   return name
@@ -110,7 +109,8 @@ function DemoSidebarProfile() {
 }
 
 export function UserButton({ demoMode = false }: { demoMode?: boolean }) {
-  if (demoMode || !hasClerkPublishableKey()) {
+  // demoMode is computed server-side via isClerkConfigured() in AppShell.
+  if (demoMode) {
     return <DemoSidebarProfile />;
   }
   return <ClerkSidebarProfile />;

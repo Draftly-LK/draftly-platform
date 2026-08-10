@@ -6,7 +6,6 @@ import { SignOutButton, useUser } from "@clerk/nextjs";
 import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
-import { hasClerkPublishableKey } from "@/lib/auth/clerk";
 import { useDemoStore } from "@/lib/store";
 import type { User } from "@/types";
 
@@ -412,9 +411,8 @@ function DemoProfileBody() {
   );
 }
 
-export function ProfileScreen() {
+export function ProfileScreen({ clerkEnabled = false }: { clerkEnabled?: boolean }) {
   const t = useTranslations("profile");
-  const clerkEnabled = hasClerkPublishableKey();
 
   return (
     <AppShell>

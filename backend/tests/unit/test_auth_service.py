@@ -13,6 +13,7 @@ from src.modules.auth.domain.errors import (
     CapabilityDeniedError,
     EmailRequiredError,
     PracticeStatusError,
+    RoleLockoutError,
     StepUpRequiredError,
 )
 from src.modules.auth.domain.models import (
@@ -270,6 +271,30 @@ class TestSetUserRole:
         await svc.set_user_role(ctx, target.id, Role.MAINTAINER)
         assert audit.events[0].user_id == actor.id
         assert audit.events[0].action == "user.role.changed"
+
+    @pytest.mark.asyncio
+    async def test_rejects_self_demotion_that_removes_role_set(self):
+        actor = _active_user("usr_solo", Role.APPROVER)
+        svc = make_service(user_repo=FakeUserRepo({actor.id: actor}))
+        ctx = RequestContext(
+            actor_id=actor.id,
+            account_role=Role.APPROVER,
+            correlation_id="c1",
+        )
+        with pytest.raises(RoleLockoutError):
+            await svc.set_user_role(ctx, actor.id, Role.REVIEWER)
+
+    @pytest.mark.asyncio
+    async def test_allows_self_switch_between_privileged_roles(self):
+        actor = _active_user("usr_solo", Role.APPROVER)
+        svc = make_service(user_repo=FakeUserRepo({actor.id: actor}))
+        ctx = RequestContext(
+            actor_id=actor.id,
+            account_role=Role.APPROVER,
+            correlation_id="c1",
+        )
+        updated = await svc.set_user_role(ctx, actor.id, Role.ADMINISTRATOR)
+        assert updated.role == Role.ADMINISTRATOR
 
 
 def _notary_user(
