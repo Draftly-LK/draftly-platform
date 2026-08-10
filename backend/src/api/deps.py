@@ -23,25 +23,18 @@ from src.modules.auth.infrastructure.repository import (
 )
 from src.modules.billing.application.billing_service import BillingService
 from src.modules.billing.infrastructure.clock import SystemClock as BillingClock
-from src.modules.billing.infrastructure.event_port import InMemoryEventPort
 from src.modules.billing.infrastructure.repository import (
     SqlBillingWebhookEventRepository,
     SqlPlanRepository,
     SqlSubscriptionRepository,
     SqlUsageRepository,
 )
+from src.modules.billing.infrastructure.user_read import AuthUserReadAdapter
 from src.modules.notarial_register.application.notarial_register_service import (
     NotarialRegisterService,
 )
 from src.modules.notification.application.notification_service import NotificationService
-from src.modules.notification.infrastructure.clock import SystemClock as NotificationClock
-from src.modules.notification.infrastructure.recipient_resolver import (
-    SqlRecipientEmailResolver,
-)
-from src.modules.notification.infrastructure.repository import (
-    SqlDeliveryRepository,
-    SqlPreferenceRepository,
-)
+from src.modules.notification.infrastructure.service_factory import build_notification_service
 from src.modules.obligations.application.obligations_service import ObligationsService
 from src.modules.obligations.infrastructure.deadline_rule_fixture import FixtureDeadlineRulePort
 from src.modules.obligations.infrastructure.repository import (
@@ -52,15 +45,16 @@ from src.modules.obligations.infrastructure.repository import (
 )
 from src.modules.obligations.infrastructure.stubs import SystemClockPort
 from src.modules.party.application.party_service import PartyService
-from src.modules.party.infrastructure.field_encryption import StubFieldEncryptionAdapter
 from src.modules.party.infrastructure.matter_access_stub import StubMatterAccessAdapter
 from src.modules.party.infrastructure.repository import (
     SqlIdentityEvidenceRepository,
     SqlPartyRepository,
 )
 from src.modules.party.infrastructure.stub_screening import ManualScreeningAdapter
+from src.platform.config import get_settings
 from src.platform.db.session import get_db
 from src.platform.errors import UnauthenticatedError
+from src.platform.messaging.outbox import SqlOutboxEventPort
 from src.platform.observability.logging import bind_request_context
 from src.platform.request_context import RequestContext
 
@@ -69,8 +63,6 @@ log = structlog.get_logger(__name__)
 _http_bearer = HTTPBearer(auto_error=False)
 
 _auth_service_instance: AuthService | None = None
-_billing_service_instance: BillingService | None = None
-_event_port_instance: InMemoryEventPort | None = None
 _party_service_instance: PartyService | None = None
 _matter_access_stub: StubMatterAccessAdapter | None = None
 _notification_service_instance: NotificationService | None = None
@@ -80,27 +72,11 @@ _notarial_register_service_instance: NotarialRegisterService | None = None
 
 
 def get_auth_service_instance() -> AuthService:
-    """Return the singleton AuthService wired at startup."""
+    """Return the AuthService wired for the current request."""
     global _auth_service_instance
     if _auth_service_instance is None:
         raise RuntimeError("AuthService not yet initialized. Call init_services() at startup.")
     return _auth_service_instance
-
-
-def get_billing_service_instance() -> BillingService:
-    global _billing_service_instance
-    if _billing_service_instance is None:
-        raise RuntimeError(
-            "BillingService not yet initialized. Call init_services() at startup."
-        )
-    return _billing_service_instance
-
-
-def get_event_port_instance() -> InMemoryEventPort:
-    global _event_port_instance
-    if _event_port_instance is None:
-        raise RuntimeError("EventPort not yet initialized. Call init_services() first.")
-    return _event_port_instance
 
 
 def get_party_service_instance() -> PartyService:
@@ -144,6 +120,33 @@ def get_obligations_service_instance() -> ObligationsService:
     return _obligations_service_instance
 
 
+def build_billing_service(session: AsyncSession) -> BillingService:
+    """Construct a BillingService bound to this request's session."""
+    from src.bootstrap import build_billing_adapter, build_platform_admin_adapter
+
+    settings = get_settings()
+    return BillingService(
+        plan_repo=SqlPlanRepository(session),
+        subscription_repo=SqlSubscriptionRepository(session),
+        usage_repo=SqlUsageRepository(session),
+        webhook_repo=SqlBillingWebhookEventRepository(session),
+        billing_provider=build_billing_adapter(),
+        user_read_port=AuthUserReadAdapter(SqlUserRepository(session)),
+        platform_admin_port=build_platform_admin_adapter(),
+        audit_port=AuditService(repository=SqlAuditRepository(session)),
+        event_port=SqlOutboxEventPort(session),
+        clock=BillingClock(),
+        grace_period_days=settings.billing_grace_period_days,
+    )
+
+
+async def get_billing_service(
+    session: AsyncSession = Depends(get_db),
+) -> BillingService:
+    """FastAPI dependency for billing routes, including the provider webhook."""
+    return build_billing_service(session)
+
+
 def init_services(session: AsyncSession) -> None:
     """Wire services for a request; called inside a session context."""
     user_identity_repo = SqlUserIdentityRepository(session)
@@ -152,43 +155,31 @@ def init_services(session: AsyncSession) -> None:
     audit_service = AuditService(repository=audit_repo)
 
     from src.bootstrap import (
-        build_billing_adapter,
-        build_email_adapter,
+        AuthPractisingNotaryAdapter,
         build_identity_adapter,
+        build_party_event_adapter,
+        build_party_field_encryption,
+        build_party_matter_access,
     )
 
     identity_adapter = build_identity_adapter()
-    billing_adapter = build_billing_adapter()
 
     global \
         _auth_service_instance, \
-        _billing_service_instance, \
-        _event_port_instance, \
         _party_service_instance, \
         _matter_access_stub, \
         _notification_service_instance, \
         _notarial_register_service_instance
 
-    _event_port_instance = InMemoryEventPort()
     _auth_service_instance = AuthService(
         identity_port=identity_adapter,
         user_identity_repo=user_identity_repo,
         user_repo=user_repo,
         audit_port=audit_service,
     )
-    _billing_service_instance = BillingService(
-        plan_repo=SqlPlanRepository(session),
-        subscription_repo=SqlSubscriptionRepository(session),
-        usage_repo=SqlUsageRepository(session),
-        webhook_repo=SqlBillingWebhookEventRepository(session),
-        billing_provider=billing_adapter,
-        audit_port=audit_service,
-        event_port=_event_port_instance,
-        clock=BillingClock(),
-    )
 
-    encryption = StubFieldEncryptionAdapter()
-    _matter_access_stub = StubMatterAccessAdapter()
+    encryption = build_party_field_encryption()
+    _matter_access_stub = build_party_matter_access()
     _party_service_instance = PartyService(
         party_repo=SqlPartyRepository(session),
         identity_repo=SqlIdentityEvidenceRepository(session, encryption),
@@ -196,16 +187,11 @@ def init_services(session: AsyncSession) -> None:
         field_encryption=encryption,
         matter_access=_matter_access_stub,
         audit_port=audit_service,
+        event_port=build_party_event_adapter(),
+        notary_port=AuthPractisingNotaryAdapter(_auth_service_instance),
     )
 
-    _notification_service_instance = NotificationService(
-        preferences=SqlPreferenceRepository(session),
-        deliveries=SqlDeliveryRepository(session),
-        email_port=build_email_adapter(),
-        audit_port=audit_service,
-        clock=NotificationClock(),
-        recipient_resolver=SqlRecipientEmailResolver(session),
-    )
+    _notification_service_instance = build_notification_service(session)
 
     from src.modules.notarial_register.infrastructure.repository import (
         SqlAttestationRepository,
@@ -215,7 +201,11 @@ def init_services(session: AsyncSession) -> None:
         SqlRegisterRepository,
         SqlRegistrationSubmissionRepository,
         StubApprovedInstrumentAdapter,
+    )
+    from src.modules.notarial_register.infrastructure.repository import (
         StubMatterAccessAdapter as NotarialMatterAccess,
+    )
+    from src.modules.notarial_register.infrastructure.repository import (
         SystemClock as NotarialClock,
     )
 
@@ -236,7 +226,7 @@ def init_services(session: AsyncSession) -> None:
 async def init_billing_service(session: AsyncSession) -> BillingService:
     """Initialize services for unauthenticated billing routes (webhooks)."""
     init_services(session)
-    return get_billing_service_instance()
+    return build_billing_service(session)
 
 
 async def get_request_context(

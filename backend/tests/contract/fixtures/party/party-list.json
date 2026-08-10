@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "id": "pty_synthetic_0001",
+      "displayName": "N. M. Silva (synthetic)",
+      "partyKind": "natural-person",
+      "screeningStatus": null,
+      "version": 1
+    },
+    {
+      "id": "pty_synthetic_0002",
+      "displayName": "Synthetic Holdings (demo)",
+      "partyKind": "company",
+      "screeningStatus": null,
+      "version": 1
+    }
+  ],
+  "page": { "nextCursor": null, "hasMore": false, "limit": 50 }
+}

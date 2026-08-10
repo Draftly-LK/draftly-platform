@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from src.modules.auth.ports import AuditEventInput, AuditPort
 from src.modules.notarial_register.domain.errors import (
@@ -491,26 +491,42 @@ class NotarialRegisterService:
         period_start: date,
         period_end: date,
     ) -> MonthlyReturnPeriod:
-        """Helper used by register.close-month job and tests."""
-        instrument_ids: list[str] = []
-        period = MonthlyReturnPeriod(
-            id=f"mrp_{uuid.uuid4().hex}",
-            user_id=ctx.actor_id,
-            notary_user_id=notary_user_id,
-            period_start=period_start,
-            period_end=period_end,
-            instrument_ids=instrument_ids,
-            is_nil_return=True,
-            components=["nil-return"],
-            component_states={"nil-return": "pending"},
-            certified_by=None,
-            certified_at=None,
-            submitted_at=None,
-            acknowledged_at=None,
-            state=MonthlyReturnState.CLOSED,
-            version=1,
+        """Close the open period for the month, or create a nil CLOSED return."""
+        period_start_dt = datetime.combine(period_start, datetime.min.time(), tzinfo=UTC)
+        existing = await self._monthly.find_open_for_month(
+            ctx.actor_id, notary_user_id, period_start_dt
         )
-        saved = await self._monthly.upsert_open_period(period)
+        if existing is not None:
+            instrument_ids = list(existing.instrument_ids)
+            is_nil = len(instrument_ids) == 0
+            existing.is_nil_return = is_nil
+            if is_nil:
+                existing.components = ["nil-return"]
+                existing.component_states = {"nil-return": "pending"}
+            existing.state = MonthlyReturnState.CLOSED
+            existing.version += 1
+            saved = await self._monthly.update(existing)
+        else:
+            instrument_ids = []
+            period = MonthlyReturnPeriod(
+                id=f"mrp_{uuid.uuid4().hex}",
+                user_id=ctx.actor_id,
+                notary_user_id=notary_user_id,
+                period_start=period_start,
+                period_end=period_end,
+                instrument_ids=instrument_ids,
+                is_nil_return=True,
+                components=["nil-return"],
+                component_states={"nil-return": "pending"},
+                certified_by=None,
+                certified_at=None,
+                submitted_at=None,
+                acknowledged_at=None,
+                state=MonthlyReturnState.CLOSED,
+                version=1,
+            )
+            saved = await self._monthly.upsert_open_period(period)
+
         await self._events.publish(
             user_id=ctx.actor_id,
             event_type="register.monthly-period-closed",

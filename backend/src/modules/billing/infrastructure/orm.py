@@ -102,9 +102,7 @@ class SubscriptionRow(Base):
 class UsageLedgerEntryRow(Base):
     __tablename__ = "usage_ledger_entries"
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "metric", "operation_id", name="uq_usage_ledger_operation"
-        ),
+        UniqueConstraint("user_id", "metric", "operation_id", name="uq_usage_ledger_operation"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

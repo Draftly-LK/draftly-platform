@@ -4,16 +4,20 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 from src.modules.auth.ports import AuditPort
 from src.modules.notification.domain.models import (
     DeliveryResult,
     NotificationChannel,
     NotificationDelivery,
+    NotificationLocale,
     NotificationPreference,
     PaginatedDeliveries,
+    ProviderEvent,
+    TemplateDeployment,
 )
+from src.platform.messaging.ports import OutboxPort
 
 
 class ClockPort(Protocol):
@@ -30,6 +34,9 @@ class EmailPort(Protocol):
         locale: str,
         variables: Mapping[str, str],
         idempotency_key: str,
+        subject: str,
+        body: str,
+        provider_template_id: str | None = None,
     ) -> DeliveryResult: ...
 
 
@@ -54,7 +61,7 @@ class DeliveryRepository(Protocol):
         self,
         *,
         organisation_id: str,
-        obligation_id: str,
+        subject_ref: str,
         recipient_user_id: str,
         reminder_type: str,
         channel: NotificationChannel,
@@ -78,17 +85,63 @@ class DeliveryRepository(Protocol):
     ) -> NotificationDelivery | None: ...
 
 
+class ConsumedEventRepository(Protocol):
+    """Inbox side of the outbox: one recorded consumption per event id."""
+
+    async def already_consumed(self, *, event_id: str) -> bool: ...
+
+    async def record(
+        self,
+        *,
+        event_id: str,
+        event_name: str,
+        organisation_id: str,
+        outcome: str,
+        correlation_id: str,
+    ) -> bool: ...
+
+
+class ProviderEventRepository(Protocol):
+    async def find(self, *, provider: str, provider_event_id: str) -> ProviderEvent | None: ...
+
+    async def record(self, event: ProviderEvent) -> ProviderEvent: ...
+
+
+class TemplateDeploymentRepository(Protocol):
+    async def resolve(
+        self, *, environment: str, template_key: str, locale: NotificationLocale
+    ) -> TemplateDeployment | None: ...
+
+
 class RecipientEmailResolver(Protocol):
     """Resolve the current verified email for a user at delivery time."""
 
     async def resolve_email(self, user_id: str) -> str | None: ...
 
 
+class ComplianceRecipientPort(Protocol):
+    """Restricted-compliance alerts go only to allowlisted recipients (§8.2)."""
+
+    async def is_allowlisted(self, user_id: str) -> bool: ...
+
+
+class WebhookVerifierPort(Protocol):
+    """Verify a provider webhook signature and return the parsed payload."""
+
+    def verify(self, *, headers: Mapping[str, str], raw_body: bytes) -> dict[str, Any]: ...
+
+
 __all__ = [
     "AuditPort",
     "ClockPort",
+    "ComplianceRecipientPort",
+    "ConsumedEventRepository",
     "DeliveryRepository",
     "EmailPort",
+    "OutboxPort",
     "PreferenceRepository",
+    "ProviderEventRepository",
     "RecipientEmailResolver",
+    "TemplateDeploymentRepository",
+    "WebhookVerifierPort",
 ]

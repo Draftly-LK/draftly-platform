@@ -1,16 +1,23 @@
-"""SQLAlchemy repositories for the party module."""
+"""SQLAlchemy repositories for the party module.
+
+Every statement filters on `user_id` first. A child row is never reached
+through its parent alone: each party-owned table carries the tenant key so a
+missing join condition cannot silently widen the scope (party-service.md §9).
+"""
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.party.domain.models import (
     BeneficialOwner,
     BeneficialOwnerState,
     CddAssessment,
+    CddLevel,
+    CddOutcome,
     ConfidentialityLevel,
     EvidenceKind,
     EvidenceState,
@@ -24,7 +31,7 @@ from src.modules.party.domain.models import (
     ScreeningResult,
     ScreeningStatus,
 )
-from src.modules.party.infrastructure.field_encryption import StubFieldEncryptionAdapter
+from src.modules.party.infrastructure.field_encryption import LocalFieldEncryptionAdapter
 from src.modules.party.infrastructure.orm import (
     BeneficialOwnerRow,
     CddAssessmentRow,
@@ -33,8 +40,11 @@ from src.modules.party.infrastructure.orm import (
     ScreeningMatchDetailRow,
     ScreeningResultRow,
 )
-from src.modules.party.ports import PartyListFilter
-from src.platform.errors import PreconditionFailedError
+from src.modules.party.ports import PartyListFilter, PartyPage
+from src.platform.errors import NotFoundError, PreconditionFailedError
+
+# Guard against an unbounded in-memory scan in the duplicate probe (§7).
+_PROBE_SCAN_LIMIT = 500
 
 
 def _row_to_party(row: PartyRow) -> Party:
@@ -61,12 +71,13 @@ def _row_to_party(row: PartyRow) -> Party:
     )
 
 
-def _row_to_evidence(row: IdentityEvidenceRow, *, identifier_value: str = "") -> IdentityEvidence:
+def _row_to_evidence(row: IdentityEvidenceRow) -> IdentityEvidence:
+    """Never carries the plaintext identifier — that is a separate audited read."""
     return IdentityEvidence(
         id=row.id,
         party_id=row.party_id,
         evidence_kind=EvidenceKind(row.evidence_kind),
-        identifier_value=identifier_value,
+        identifier_value="",
         identifier_last4=row.identifier_last4,
         issued_on=row.issued_on,
         expires_on=row.expires_on,
@@ -79,6 +90,36 @@ def _row_to_evidence(row: IdentityEvidenceRow, *, identifier_value: str = "") ->
         state=EvidenceState(row.state),
         supersedes_evidence_id=row.supersedes_evidence_id,
         version=row.version,
+    )
+
+
+def _row_to_owner(row: BeneficialOwnerRow) -> BeneficialOwner:
+    return BeneficialOwner(
+        id=row.id,
+        party_id=row.party_id,
+        owner_party_id=row.owner_party_id,
+        ownership_kind=OwnershipKind(row.ownership_kind),
+        percentage=row.percentage,
+        evidence_refs=list(row.evidence_refs or []),
+        determined_by=row.determined_by,
+        determined_at=row.determined_at,
+        state=BeneficialOwnerState(row.state),
+    )
+
+
+def _row_to_screening(row: ScreeningResultRow) -> ScreeningResult:
+    return ScreeningResult(
+        id=row.id,
+        party_id=row.party_id,
+        list_version=row.list_version,
+        provider_ref=row.provider_ref,
+        outcome=ScreeningOutcome(row.outcome),
+        match_count=row.match_count,
+        reviewed_by=row.reviewed_by,
+        reviewed_at=row.reviewed_at,
+        disposition_reason=row.disposition_reason,
+        confidentiality_level=ConfidentialityLevel(row.confidentiality_level),
+        created_at=row.created_at,
     )
 
 
@@ -105,29 +146,49 @@ class SqlPartyRepository:
             confidentiality_level=party.confidentiality_level.value,
             merged_into_party_id=party.merged_into_party_id,
             version=party.version,
+            created_at=party.created_at,
+            updated_at=party.updated_at,
         )
         self._session.add(row)
         await self._session.flush()
         return party
 
     async def get_for_user(self, user_id: str, party_id: str) -> Party | None:
-        stmt = select(PartyRow).where(PartyRow.id == party_id, PartyRow.user_id == user_id)
+        stmt = select(PartyRow).where(PartyRow.user_id == user_id, PartyRow.id == party_id)
         result = await self._session.execute(stmt)
         row = result.scalar_one_or_none()
         return _row_to_party(row) if row else None
 
-    async def list_for_user(self, user_id: str, filter_: PartyListFilter) -> list[Party]:
+    async def list_for_user(self, user_id: str, filter_: PartyListFilter) -> PartyPage:
         stmt = select(PartyRow).where(PartyRow.user_id == user_id)
         if filter_.query:
             stmt = stmt.where(PartyRow.display_name.ilike(f"%{filter_.query}%"))
-        stmt = stmt.order_by(PartyRow.display_name).limit(filter_.limit).offset(filter_.offset)
+        if filter_.cursor is not None:
+            # createdAt descending with id as the tie-breaker (api-conventions.md §2)
+            stmt = stmt.where(
+                or_(
+                    PartyRow.created_at < filter_.cursor.created_at,
+                    (PartyRow.created_at == filter_.cursor.created_at)
+                    & (PartyRow.id < filter_.cursor.id),
+                )
+            )
+        stmt = stmt.order_by(PartyRow.created_at.desc(), PartyRow.id.desc()).limit(
+            filter_.limit + 1
+        )
         result = await self._session.execute(stmt)
-        return [_row_to_party(row) for row in result.scalars().all()]
+        rows = list(result.scalars().all())
+        has_more = len(rows) > filter_.limit
+        return PartyPage(items=[_row_to_party(r) for r in rows[: filter_.limit]], has_more=has_more)
 
     async def update(self, party: Party, expected_version: int) -> Party:
-        row = await self._session.get(PartyRow, party.id)
-        if row is None or row.user_id != party.user_id:
-            raise PreconditionFailedError("Party version conflict.")
+        stmt = select(PartyRow).where(
+            PartyRow.user_id == party.user_id,
+            PartyRow.id == party.id,
+        )
+        result = await self._session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row is None:
+            raise NotFoundError("The requested resource was not found.")
         if row.version != expected_version:
             raise PreconditionFailedError("Party version conflict.")
         row.display_name = party.display_name
@@ -161,7 +222,7 @@ class SqlPartyRepository:
         )
         if exclude_party_id:
             stmt = stmt.where(PartyRow.id != exclude_party_id)
-        result = await self._session.execute(stmt)
+        result = await self._session.execute(stmt.limit(_PROBE_SCAN_LIMIT))
         return [_row_to_party(row) for row in result.scalars().all()]
 
     async def find_by_normalised_name_and_dob(
@@ -178,12 +239,12 @@ class SqlPartyRepository:
         )
         if exclude_party_id:
             stmt = stmt.where(PartyRow.id != exclude_party_id)
-        result = await self._session.execute(stmt)
-        matches: list[Party] = []
-        for row in result.scalars().all():
-            if normalised_name in row.display_name.lower():
-                matches.append(_row_to_party(row))
-        return matches
+        result = await self._session.execute(stmt.limit(_PROBE_SCAN_LIMIT))
+        return [
+            _row_to_party(row)
+            for row in result.scalars().all()
+            if normalised_name in row.display_name.lower()
+        ]
 
     async def find_by_normalised_name_and_address(
         self,
@@ -193,32 +254,60 @@ class SqlPartyRepository:
         *,
         exclude_party_id: str | None = None,
     ) -> list[Party]:
-        stmt = select(PartyRow).where(PartyRow.user_id == user_id)
+        stmt = select(PartyRow).where(
+            PartyRow.user_id == user_id,
+            PartyRow.display_name.ilike(f"%{normalised_name}%"),
+        )
         if exclude_party_id:
             stmt = stmt.where(PartyRow.id != exclude_party_id)
-        result = await self._session.execute(stmt)
+        result = await self._session.execute(stmt.limit(_PROBE_SCAN_LIMIT))
         matches: list[Party] = []
         for row in result.scalars().all():
-            if normalised_name not in row.display_name.lower():
-                continue
-            for addr in row.addresses or []:
-                if address_fingerprint in str(addr).lower():
-                    matches.append(_row_to_party(row))
-                    break
+            if any(address_fingerprint in str(addr).lower() for addr in row.addresses or []):
+                matches.append(_row_to_party(row))
         return matches
+
+    async def repoint_dependents(
+        self,
+        user_id: str,
+        source_party_id: str,
+        target_party_id: str,
+    ) -> int:
+        """Repoint every dependent row from source to target. Nothing is deleted."""
+        moved = 0
+        for table in (IdentityEvidenceRow, BeneficialOwnerRow, CddAssessmentRow):
+            stmt = (
+                update(table)
+                .where(table.user_id == user_id, table.party_id == source_party_id)
+                .values(party_id=target_party_id)
+            )
+            moved += (await self._session.execute(stmt)).rowcount  # type: ignore[attr-defined]
+        owner_stmt = (
+            update(BeneficialOwnerRow)
+            .where(
+                BeneficialOwnerRow.user_id == user_id,
+                BeneficialOwnerRow.owner_party_id == source_party_id,
+            )
+            .values(owner_party_id=target_party_id)
+        )
+        moved += (await self._session.execute(owner_stmt)).rowcount  # type: ignore[attr-defined]
+        # Screening results stay with the record that was actually screened.
+        await self._session.flush()
+        return int(moved)
 
 
 class SqlIdentityEvidenceRepository:
     def __init__(
         self,
         session: AsyncSession,
-        encryption: StubFieldEncryptionAdapter | None = None,
+        encryption: LocalFieldEncryptionAdapter,
     ) -> None:
         self._session = session
-        self._encryption = encryption or StubFieldEncryptionAdapter()
+        self._encryption = encryption
 
     async def append_evidence(
         self,
+        user_id: str,
         party_id: str,
         evidence: IdentityEvidence,
         *,
@@ -228,6 +317,7 @@ class SqlIdentityEvidenceRepository:
         row = IdentityEvidenceRow(
             id=evidence.id,
             party_id=party_id,
+            user_id=user_id,
             evidence_kind=evidence.evidence_kind.value,
             identifier_ciphertext=encrypted_identifier,
             identifier_blind_index=identifier_blind_index,
@@ -246,23 +336,67 @@ class SqlIdentityEvidenceRepository:
         )
         self._session.add(row)
         await self._session.flush()
-        stored = _row_to_evidence(row)
-        stored.identifier_value = ""
-        return stored
+        return _row_to_evidence(row)
 
-    async def get_evidence(self, party_id: str, evidence_id: str) -> IdentityEvidence | None:
+    async def _evidence_row(
+        self,
+        user_id: str,
+        party_id: str,
+        evidence_id: str,
+    ) -> IdentityEvidenceRow | None:
         stmt = select(IdentityEvidenceRow).where(
+            IdentityEvidenceRow.user_id == user_id,
+            IdentityEvidenceRow.party_id == party_id,
             IdentityEvidenceRow.id == evidence_id,
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_evidence(
+        self,
+        user_id: str,
+        party_id: str,
+        evidence_id: str,
+    ) -> IdentityEvidence | None:
+        row = await self._evidence_row(user_id, party_id, evidence_id)
+        return _row_to_evidence(row) if row else None
+
+    async def list_evidence_for_party(
+        self,
+        user_id: str,
+        party_id: str,
+    ) -> list[IdentityEvidence]:
+        stmt = select(IdentityEvidenceRow).where(
+            IdentityEvidenceRow.user_id == user_id,
             IdentityEvidenceRow.party_id == party_id,
         )
         result = await self._session.execute(stmt)
-        row = result.scalar_one_or_none()
-        return _row_to_evidence(row) if row else None
-
-    async def list_evidence_for_party(self, party_id: str) -> list[IdentityEvidence]:
-        stmt = select(IdentityEvidenceRow).where(IdentityEvidenceRow.party_id == party_id)
-        result = await self._session.execute(stmt)
         return [_row_to_evidence(row) for row in result.scalars().all()]
+
+    async def mark_evidence_state(
+        self,
+        user_id: str,
+        party_id: str,
+        evidence_id: str,
+        *,
+        state: str,
+        expected_version: int,
+        verified_by: str | None = None,
+        verified_at: datetime | None = None,
+    ) -> IdentityEvidence:
+        row = await self._evidence_row(user_id, party_id, evidence_id)
+        if row is None:
+            raise NotFoundError("The requested resource was not found.")
+        if row.version != expected_version:
+            raise PreconditionFailedError("Identity evidence version conflict.")
+        row.state = state
+        if verified_by is not None:
+            row.verified_by = verified_by
+        if verified_at is not None:
+            row.verified_at = verified_at
+        row.version = expected_version + 1
+        await self._session.flush()
+        return _row_to_evidence(row)
 
     async def find_by_blind_index(
         self,
@@ -275,28 +409,35 @@ class SqlIdentityEvidenceRepository:
             select(IdentityEvidenceRow, PartyRow)
             .join(PartyRow, PartyRow.id == IdentityEvidenceRow.party_id)
             .where(
+                IdentityEvidenceRow.user_id == user_id,
                 PartyRow.user_id == user_id,
                 IdentityEvidenceRow.identifier_blind_index == blind_index,
             )
         )
         if exclude_party_id:
             stmt = stmt.where(PartyRow.id != exclude_party_id)
-        result = await self._session.execute(stmt)
-        pairs: list[tuple[Party, IdentityEvidence]] = []
-        for evidence_row, party_row in result.all():
-            pairs.append((_row_to_party(party_row), _row_to_evidence(evidence_row)))
-        return pairs
+        result = await self._session.execute(stmt.limit(_PROBE_SCAN_LIMIT))
+        return [
+            (_row_to_party(party_row), _row_to_evidence(evidence_row))
+            for evidence_row, party_row in result.all()
+        ]
 
-    async def decrypt_identifier(self, evidence_id: str) -> str:
-        row = await self._session.get(IdentityEvidenceRow, evidence_id)
+    async def decrypt_identifier(
+        self,
+        user_id: str,
+        party_id: str,
+        evidence_id: str,
+    ) -> str:
+        row = await self._evidence_row(user_id, party_id, evidence_id)
         if row is None:
-            raise ValueError("Evidence not found")
+            raise NotFoundError("The requested resource was not found.")
         return self._encryption.decrypt(row.identifier_ciphertext)
 
-    async def add_beneficial_owner(self, owner: BeneficialOwner) -> BeneficialOwner:
+    async def add_beneficial_owner(self, user_id: str, owner: BeneficialOwner) -> BeneficialOwner:
         row = BeneficialOwnerRow(
             id=owner.id,
             party_id=owner.party_id,
+            user_id=user_id,
             owner_party_id=owner.owner_party_id,
             ownership_kind=owner.ownership_kind.value,
             percentage=owner.percentage,
@@ -309,30 +450,23 @@ class SqlIdentityEvidenceRepository:
         await self._session.flush()
         return owner
 
-    async def list_beneficial_owners(self, party_id: str) -> list[BeneficialOwner]:
-        stmt = select(BeneficialOwnerRow).where(BeneficialOwnerRow.party_id == party_id)
+    async def list_beneficial_owners(
+        self,
+        user_id: str,
+        party_id: str,
+    ) -> list[BeneficialOwner]:
+        stmt = select(BeneficialOwnerRow).where(
+            BeneficialOwnerRow.user_id == user_id,
+            BeneficialOwnerRow.party_id == party_id,
+        )
         result = await self._session.execute(stmt)
-        owners: list[BeneficialOwner] = []
-        for row in result.scalars().all():
-            owners.append(
-                BeneficialOwner(
-                    id=row.id,
-                    party_id=row.party_id,
-                    owner_party_id=row.owner_party_id,
-                    ownership_kind=OwnershipKind(row.ownership_kind),
-                    percentage=row.percentage,
-                    evidence_refs=list(row.evidence_refs or []),
-                    determined_by=row.determined_by,
-                    determined_at=row.determined_at,
-                    state=BeneficialOwnerState(row.state),
-                )
-            )
-        return owners
+        return [_row_to_owner(row) for row in result.scalars().all()]
 
-    async def append_cdd(self, assessment: CddAssessment) -> CddAssessment:
+    async def append_cdd(self, user_id: str, assessment: CddAssessment) -> CddAssessment:
         row = CddAssessmentRow(
             id=assessment.id,
             party_id=assessment.party_id,
+            user_id=user_id,
             matter_id=assessment.matter_id,
             level=assessment.level.value,
             risk_factors=assessment.risk_factors,
@@ -347,14 +481,39 @@ class SqlIdentityEvidenceRepository:
         await self._session.flush()
         return assessment
 
+    async def list_cdd_assessments(self, user_id: str, party_id: str) -> list[CddAssessment]:
+        stmt = select(CddAssessmentRow).where(
+            CddAssessmentRow.user_id == user_id,
+            CddAssessmentRow.party_id == party_id,
+        )
+        result = await self._session.execute(stmt)
+        return [
+            CddAssessment(
+                id=row.id,
+                party_id=row.party_id,
+                matter_id=row.matter_id,
+                level=CddLevel(row.level),
+                risk_factors=list(row.risk_factors or []),
+                outcome=CddOutcome(row.outcome),
+                assessed_by=row.assessed_by,
+                assessed_at=row.assessed_at,
+                review_due_on=row.review_due_on,
+                policy_version=row.policy_version,
+                version=row.version,
+            )
+            for row in result.scalars().all()
+        ]
+
     async def append_screening(
         self,
+        user_id: str,
         result: ScreeningResult,
         match_detail: ScreeningMatchDetail | None,
     ) -> ScreeningResult:
         row = ScreeningResultRow(
             id=result.id,
             party_id=result.party_id,
+            user_id=user_id,
             list_version=result.list_version,
             provider_ref=result.provider_ref,
             outcome=result.outcome.value,
@@ -367,43 +526,37 @@ class SqlIdentityEvidenceRepository:
         )
         self._session.add(row)
         if match_detail is not None:
-            detail_row = ScreeningMatchDetailRow(
-                screening_result_id=result.id,
-                provider_payload=match_detail.provider_payload,
-                match_narrative=match_detail.match_narrative,
-                list_entry_ref=match_detail.list_entry_ref,
+            self._session.add(
+                ScreeningMatchDetailRow(
+                    screening_result_id=result.id,
+                    user_id=user_id,
+                    provider_payload=match_detail.provider_payload,
+                    match_narrative=match_detail.match_narrative,
+                    list_entry_ref=match_detail.list_entry_ref,
+                )
             )
-            self._session.add(detail_row)
         await self._session.flush()
         return result
 
-    async def list_screenings(self, party_id: str) -> list[ScreeningResult]:
-        stmt = select(ScreeningResultRow).where(ScreeningResultRow.party_id == party_id)
+    async def list_screenings(self, user_id: str, party_id: str) -> list[ScreeningResult]:
+        stmt = select(ScreeningResultRow).where(
+            ScreeningResultRow.user_id == user_id,
+            ScreeningResultRow.party_id == party_id,
+        )
         result = await self._session.execute(stmt)
-        screenings: list[ScreeningResult] = []
-        for row in result.scalars().all():
-            screenings.append(
-                ScreeningResult(
-                    id=row.id,
-                    party_id=row.party_id,
-                    list_version=row.list_version,
-                    provider_ref=row.provider_ref,
-                    outcome=ScreeningOutcome(row.outcome),
-                    match_count=row.match_count,
-                    reviewed_by=row.reviewed_by,
-                    reviewed_at=row.reviewed_at,
-                    disposition_reason=row.disposition_reason,
-                    confidentiality_level=ConfidentialityLevel(row.confidentiality_level),
-                    created_at=row.created_at,
-                )
-            )
-        return screenings
+        return [_row_to_screening(row) for row in result.scalars().all()]
 
     async def get_screening_match_detail(
         self,
+        user_id: str,
         screening_id: str,
     ) -> ScreeningMatchDetail | None:
-        row = await self._session.get(ScreeningMatchDetailRow, screening_id)
+        stmt = select(ScreeningMatchDetailRow).where(
+            ScreeningMatchDetailRow.user_id == user_id,
+            ScreeningMatchDetailRow.screening_result_id == screening_id,
+        )
+        result = await self._session.execute(stmt)
+        row = result.scalar_one_or_none()
         if row is None:
             return None
         return ScreeningMatchDetail(

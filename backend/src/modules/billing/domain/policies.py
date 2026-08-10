@@ -2,7 +2,21 @@
 
 from __future__ import annotations
 
-from src.modules.billing.domain.models import SubscriptionStatus
+from datetime import datetime
+
+from src.modules.billing.domain.models import PlanState, SubscriptionStatus
+
+# Registered event names this service publishes (events.md §4).
+EVENT_PAYMENT_FAILED = "billing.payment-failed"
+EVENT_GRACE_PERIOD_ENDING = "billing.grace-period-ending"
+EVENT_PLAN_CHANGED = "billing.plan-changed"
+EVENT_SUBSCRIPTION_CANCELLED = "billing.subscription-cancelled"
+EVENT_SUBSCRIPTION_RESTRICTED = "billing.subscription-restricted"
+EVENT_TRIAL_ENDING = "billing.trial-ending"
+
+# ISO 4217 codes are three letters; the plan's currency is data, not a domain
+# constant, so only the shape is enforced here.
+_CURRENCY_LENGTH = 3
 
 # Controlled entitlement keys (billing-service.md §5.1). Unknown keys fail closed.
 KNOWN_FEATURE_KEYS: frozenset[str] = frozenset(
@@ -105,3 +119,59 @@ def should_enter_grace(from_status: SubscriptionStatus) -> bool:
 
 def should_enter_restricted(from_status: SubscriptionStatus) -> bool:
     return from_status in {SubscriptionStatus.GRACE_PERIOD, SubscriptionStatus.PAST_DUE}
+
+
+def restricted_mode_blocks(feature_key: str) -> bool:
+    """True when restricted mode blocks this new paid operation.
+
+    Reads of existing records, billing inspection, and downloads of already
+    approved exports are not feature-gated at all, so they never reach here
+    (billing-service.md §10).
+    """
+    entitlement = FEATURE_TO_ENTITLEMENT.get(feature_key, feature_key)
+    return entitlement in RESTRICTED_BLOCKED_FEATURES
+
+
+def is_stale_provider_event(
+    event_occurred_at: datetime | None,
+    provider_state_updated_at: datetime | None,
+) -> bool:
+    """True when a provider event describes state older than what is persisted.
+
+    Out-of-order delivery must not regress the subscription
+    (billing-service.md §7.3 step 7). An event with no provider timestamp is not
+    treated as stale; it is applied under the transition rules instead.
+    """
+    if event_occurred_at is None or provider_state_updated_at is None:
+        return False
+    return event_occurred_at < provider_state_updated_at
+
+
+def is_safe_return_path(return_path: str) -> bool:
+    """A checkout return target must be a relative path inside the application.
+
+    It is display-only — a redirect never grants entitlement — but it must not
+    become an open redirect to an attacker's host.
+    """
+    if not return_path.startswith("/"):
+        return False
+    if return_path.startswith("//"):
+        return False
+    return not any(character in return_path for character in ("\\", "\n", "\r", "\t"))
+
+
+def is_valid_money(currency: str, price_minor_units: int) -> bool:
+    """Money is an integer count of minor units plus an ISO currency code.
+
+    ``bool`` is rejected explicitly because it is an ``int`` subclass.
+    """
+    if isinstance(price_minor_units, bool) or not isinstance(price_minor_units, int):
+        return False
+    if price_minor_units < 0:
+        return False
+    return len(currency) == _CURRENCY_LENGTH and currency.isalpha() and currency.isupper()
+
+
+def is_plan_mutable(state: PlanState) -> bool:
+    """Only a draft plan version may be edited or activated."""
+    return state == PlanState.DRAFT

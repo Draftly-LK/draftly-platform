@@ -24,6 +24,7 @@ class TestBillingContract:
             current_period_start=now,
             current_period_end=now,
             cancel_at_period_end=False,
+            version=1,
         )
         data = read.model_dump(by_alias=True)
         assert data["userId"] == "usr_1"
@@ -41,6 +42,7 @@ class TestBillingContract:
             billing_interval="monthly",
             currency="LKR",
             price_minor_units=499900,
+            state="published",
             entitlements=[],
         )
         data = read.model_dump(by_alias=True)

@@ -13,7 +13,7 @@ class TestEmailPortContract:
         adapter = ConsoleEmailAdapter()
         result = await adapter.send(
             recipient_address="synthetic@example.com",
-            template_key="obligation.reminder.due_in_24_hours",
+            template_key="obligation.reminder.due",
             template_version="1.0.0-synthetic",
             locale="en",
             variables={"actionUrl": "https://draftly.local/synthetic"},

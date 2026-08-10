@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
 from src.modules.billing.domain.errors import InvalidWebhookError
 from src.modules.billing.ports import (
@@ -16,6 +18,17 @@ from src.modules.billing.ports import (
     ProviderSubscription,
     RawWebhook,
 )
+
+
+def _occurred_at(value: Any) -> datetime:
+    """Honour a fixture-supplied timestamp so out-of-order tests stay deterministic."""
+    if value is None:
+        return datetime.now(tz=UTC)
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except ValueError:
+        return datetime.now(tz=UTC)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 class StubBillingAdapter:
@@ -41,26 +54,27 @@ class StubBillingAdapter:
         try:
             payload = json.loads(request.body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
-            raise InvalidWebhookError("Invalid webhook payload.")
+            raise InvalidWebhookError()
+        if not isinstance(payload, dict):
+            raise InvalidWebhookError()
 
-        expected = payload.get("checksum")
-        if not expected:
-            raise InvalidWebhookError("Missing checksum.")
+        provided = payload.get("checksum")
+        if not provided:
+            raise InvalidWebhookError()
 
         body_for_hash = {k: v for k, v in payload.items() if k != "checksum"}
         canonical = json.dumps(body_for_hash, sort_keys=True, separators=(",", ":"))
         digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-        if digest != expected:
-            raise InvalidWebhookError("Checksum mismatch.")
+        if not hmac.compare_digest(str(provided), digest):
+            raise InvalidWebhookError()
 
         provider_event_id = str(payload.get("event_id") or payload.get("payment_id") or digest)
-        event_type = str(payload.get("event_type") or "unknown")
         return ProviderEvent(
             provider_event_id=provider_event_id,
-            event_type=event_type,
+            event_type=str(payload.get("event_type") or "unknown"),
             provider_subscription_id=payload.get("subscription_id"),
             provider_customer_id=payload.get("customer_id"),
-            occurred_at=datetime.now(tz=UTC),
+            occurred_at=_occurred_at(payload.get("occurred_at")),
             normalized_status=payload.get("status"),
             payload_hash=digest,
         )

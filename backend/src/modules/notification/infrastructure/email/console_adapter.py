@@ -27,6 +27,9 @@ class ConsoleEmailAdapter:
         locale: str,
         variables: Mapping[str, str],
         idempotency_key: str,
+        subject: str = "",
+        body: str = "",
+        provider_template_id: str | None = None,
     ) -> DeliveryResult:
         provider_id = f"console_{uuid.uuid4().hex}"
         self.sent.append(
@@ -36,6 +39,7 @@ class ConsoleEmailAdapter:
                 "template_version": template_version,
                 "locale": locale,
                 "idempotency_key": idempotency_key,
+                "subject": subject,
             }
         )
         log.info(
@@ -44,5 +48,5 @@ class ConsoleEmailAdapter:
             locale=locale,
             idempotency_key=idempotency_key,
         )
-        _ = variables
+        _ = variables, body, provider_template_id
         return DeliveryResult(provider_message_id=provider_id)

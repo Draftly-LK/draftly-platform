@@ -5,10 +5,11 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import case, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.modules.billing.domain.errors import ConcurrencyError
+from src.modules.billing.domain.errors import ConcurrencyError, PlanImmutableError
 from src.modules.billing.domain.models import (
     BillingInterval,
     BillingWebhookEvent,
@@ -31,6 +32,10 @@ from src.modules.billing.infrastructure.orm import (
     UsageAggregateRow,
     UsageLedgerEntryRow,
 )
+
+
+def _rowcount(result: object) -> int:
+    return int(getattr(result, "rowcount", 0) or 0)
 
 
 def _plan_row_to_domain(row: PlanVersionRow) -> PlanVersion:
@@ -100,6 +105,72 @@ class SqlPlanRepository:
             for r in result.scalars().all()
         ]
 
+    async def find_by_code(self, code: str) -> PlanVersion | None:
+        stmt = select(PlanVersionRow).where(PlanVersionRow.code == code).limit(1)
+        result = await self._session.execute(stmt)
+        row = result.scalar_one_or_none()
+        return _plan_row_to_domain(row) if row else None
+
+    async def next_version_for_family(self, family: str) -> int:
+        stmt = select(func.max(PlanVersionRow.version)).where(PlanVersionRow.family == family)
+        current = (await self._session.execute(stmt)).scalar_one_or_none()
+        return int(current or 0) + 1
+
+    async def create_draft(
+        self, plan: PlanVersion, entitlements: list[PlanEntitlement]
+    ) -> PlanVersion:
+        self._session.add(
+            PlanVersionRow(
+                id=plan.id,
+                code=plan.code,
+                family=plan.family,
+                name=plan.name,
+                version=plan.version,
+                billing_interval=plan.billing_interval.value,
+                currency=plan.currency,
+                price_minor_units=plan.price_minor_units,
+                state=plan.state.value,
+                effective_from=plan.effective_from,
+                effective_to=plan.effective_to,
+            )
+        )
+        for entitlement in entitlements:
+            self._session.add(
+                PlanEntitlementRow(
+                    id=f"ent_{uuid.uuid4().hex[:16]}",
+                    plan_version_id=plan.id,
+                    feature_key=entitlement.feature_key,
+                    limit_value=entitlement.limit_value,
+                    enabled=entitlement.enabled,
+                )
+            )
+        await self._session.flush()
+        return plan
+
+    async def activate(self, plan_version_id: str) -> PlanVersion:
+        """Publish a draft version.
+
+        The conditional update is what makes publication one-way: an already
+        active or retired version matches nothing and the caller sees the
+        immutability refusal.
+        """
+        result = await self._session.execute(
+            update(PlanVersionRow)
+            .where(
+                PlanVersionRow.id == plan_version_id,
+                PlanVersionRow.state == PlanState.DRAFT.value,
+            )
+            .values(state=PlanState.ACTIVE.value)
+        )
+        if _rowcount(result) != 1:
+            raise PlanImmutableError()
+        await self._session.flush()
+        row = await self._session.get(PlanVersionRow, plan_version_id)
+        if row is None:
+            raise PlanImmutableError()
+        await self._session.refresh(row)
+        return _plan_row_to_domain(row)
+
 
 class SqlSubscriptionRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -145,23 +216,38 @@ class SqlSubscriptionRepository:
         return subscription
 
     async def update(self, subscription: Subscription, expected_version: int) -> Subscription:
+        """Conditional update on the expected version.
+
+        The version predicate is in the UPDATE statement, so two concurrent
+        webhook deliveries cannot both win a read-then-write race.
+        """
+        result = await self._session.execute(
+            update(SubscriptionRow)
+            .where(
+                SubscriptionRow.id == subscription.id,
+                SubscriptionRow.version == expected_version,
+            )
+            .values(
+                plan_version_id=subscription.plan_version_id,
+                provider_customer_id=subscription.provider_customer_id,
+                provider_subscription_id=subscription.provider_subscription_id,
+                status=subscription.status.value,
+                current_period_start=subscription.current_period_start,
+                current_period_end=subscription.current_period_end,
+                trial_ends_at=subscription.trial_ends_at,
+                cancel_at_period_end=subscription.cancel_at_period_end,
+                grace_period_ends_at=subscription.grace_period_ends_at,
+                provider_state_updated_at=subscription.provider_state_updated_at,
+                version=expected_version + 1,
+            )
+        )
+        if _rowcount(result) != 1:
+            raise ConcurrencyError()
+        await self._session.flush()
         row = await self._session.get(SubscriptionRow, subscription.id)
         if row is None:
-            raise ConcurrencyError("Subscription not found.")
-        if row.version != expected_version:
-            raise ConcurrencyError("Subscription version mismatch.")
-        row.plan_version_id = subscription.plan_version_id
-        row.provider_customer_id = subscription.provider_customer_id
-        row.provider_subscription_id = subscription.provider_subscription_id
-        row.status = subscription.status.value
-        row.current_period_start = subscription.current_period_start
-        row.current_period_end = subscription.current_period_end
-        row.trial_ends_at = subscription.trial_ends_at
-        row.cancel_at_period_end = subscription.cancel_at_period_end
-        row.grace_period_ends_at = subscription.grace_period_ends_at
-        row.provider_state_updated_at = subscription.provider_state_updated_at
-        row.version = expected_version + 1
-        await self._session.flush()
+            raise ConcurrencyError()
+        await self._session.refresh(row)
         return _sub_row_to_domain(row)
 
 
@@ -240,8 +326,17 @@ class SqlUsageRepository:
             created_at=row.created_at,
         )
 
-    async def get_ledger_entry(self, entry_id: str) -> UsageLedgerEntry | None:
-        row = await self._session.get(UsageLedgerEntryRow, entry_id)
+    async def get_ledger_entry(self, entry_id: str, user_id: str) -> UsageLedgerEntry | None:
+        """Tenancy filter first: another user's reservation id resolves to None."""
+        stmt = (
+            select(UsageLedgerEntryRow)
+            .where(
+                UsageLedgerEntryRow.user_id == user_id,
+                UsageLedgerEntryRow.id == entry_id,
+            )
+            .limit(1)
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
         if row is None:
             return None
         return UsageLedgerEntry(
@@ -278,34 +373,13 @@ class SqlUsageRepository:
             state=UsageLedgerState.RESERVED.value,
         )
         self._session.add(ledger)
-
-        agg_stmt = (
-            select(UsageAggregateRow)
-            .where(
-                UsageAggregateRow.user_id == user_id,
-                UsageAggregateRow.metric == metric,
-                UsageAggregateRow.period_start == period_start,
-                UsageAggregateRow.period_end == period_end,
-            )
-            .limit(1)
+        await self._add_to_aggregate(
+            user_id=user_id,
+            metric=metric,
+            period_start=period_start,
+            period_end=period_end,
+            delta=quantity,
         )
-        result = await self._session.execute(agg_stmt)
-        agg_row = result.scalar_one_or_none()
-        if agg_row is None:
-            agg_row = UsageAggregateRow(
-                id=f"uag_{uuid.uuid4().hex}",
-                user_id=user_id,
-                metric=metric,
-                quantity=quantity,
-                period_start=period_start,
-                period_end=period_end,
-                version=1,
-            )
-            self._session.add(agg_row)
-        else:
-            agg_row.quantity += quantity
-            agg_row.version += 1
-
         await self._session.flush()
         return Reservation(
             id=entry_id,
@@ -315,31 +389,44 @@ class SqlUsageRepository:
             operation_id=operation_id,
         )
 
-    async def consume(self, entry_id: str, actual_quantity: int) -> UsageLedgerEntry:
-        row = await self._session.get(UsageLedgerEntryRow, entry_id)
-        if row is None:
-            raise ConcurrencyError("Ledger entry not found.")
-        reserved = row.quantity
-        delta = actual_quantity - reserved
+    async def re_reserve(self, entry_id: str, user_id: str, quantity: int) -> Reservation:
+        """Return a released ledger row to `reserved` for a retry.
+
+        The operation id stays unique per user and metric, so a retry after a
+        terminal failure reuses the same row instead of charging a second one.
+        """
+        row = await self._own_ledger_row(entry_id, user_id)
+        row.quantity = quantity
+        row.state = UsageLedgerState.RESERVED.value
+        await self._add_to_aggregate(
+            user_id=row.user_id,
+            metric=row.metric,
+            period_start=row.period_start,
+            period_end=row.period_end,
+            delta=quantity,
+        )
+        await self._session.flush()
+        return Reservation(
+            id=row.id,
+            user_id=row.user_id,
+            metric=row.metric,
+            quantity=quantity,
+            operation_id=row.operation_id,
+        )
+
+    async def consume(self, entry_id: str, user_id: str, actual_quantity: int) -> UsageLedgerEntry:
+        row = await self._own_ledger_row(entry_id, user_id)
+        delta = actual_quantity - row.quantity
         row.quantity = actual_quantity
         row.state = UsageLedgerState.CONSUMED.value
-
-        agg_stmt = (
-            select(UsageAggregateRow)
-            .where(
-                UsageAggregateRow.user_id == row.user_id,
-                UsageAggregateRow.metric == row.metric,
-                UsageAggregateRow.period_start == row.period_start,
-                UsageAggregateRow.period_end == row.period_end,
+        if delta != 0:
+            await self._add_to_aggregate(
+                user_id=row.user_id,
+                metric=row.metric,
+                period_start=row.period_start,
+                period_end=row.period_end,
+                delta=delta,
             )
-            .limit(1)
-        )
-        result = await self._session.execute(agg_stmt)
-        agg_row = result.scalar_one_or_none()
-        if agg_row is not None and delta != 0:
-            agg_row.quantity += delta
-            agg_row.version += 1
-
         await self._session.flush()
         return UsageLedgerEntry(
             id=row.id,
@@ -353,28 +440,16 @@ class SqlUsageRepository:
             created_at=row.created_at,
         )
 
-    async def release(self, entry_id: str) -> UsageLedgerEntry:
-        row = await self._session.get(UsageLedgerEntryRow, entry_id)
-        if row is None:
-            raise ConcurrencyError("Ledger entry not found.")
+    async def release(self, entry_id: str, user_id: str) -> UsageLedgerEntry:
+        row = await self._own_ledger_row(entry_id, user_id)
         row.state = UsageLedgerState.RELEASED.value
-
-        agg_stmt = (
-            select(UsageAggregateRow)
-            .where(
-                UsageAggregateRow.user_id == row.user_id,
-                UsageAggregateRow.metric == row.metric,
-                UsageAggregateRow.period_start == row.period_start,
-                UsageAggregateRow.period_end == row.period_end,
-            )
-            .limit(1)
+        await self._add_to_aggregate(
+            user_id=row.user_id,
+            metric=row.metric,
+            period_start=row.period_start,
+            period_end=row.period_end,
+            delta=-row.quantity,
         )
-        result = await self._session.execute(agg_stmt)
-        agg_row = result.scalar_one_or_none()
-        if agg_row is not None:
-            agg_row.quantity = max(0, agg_row.quantity - row.quantity)
-            agg_row.version += 1
-
         await self._session.flush()
         return UsageLedgerEntry(
             id=row.id,
@@ -387,6 +462,66 @@ class SqlUsageRepository:
             state=UsageLedgerState.RELEASED,
             created_at=row.created_at,
         )
+
+    async def _own_ledger_row(self, entry_id: str, user_id: str) -> UsageLedgerEntryRow:
+        """Load a ledger row with the tenancy filter applied before anything else."""
+        stmt = (
+            select(UsageLedgerEntryRow)
+            .where(
+                UsageLedgerEntryRow.user_id == user_id,
+                UsageLedgerEntryRow.id == entry_id,
+            )
+            .with_for_update()
+            .limit(1)
+        )
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is None:
+            raise ConcurrencyError("Ledger entry not found.")
+        return row
+
+    async def _add_to_aggregate(
+        self,
+        *,
+        user_id: str,
+        metric: str,
+        period_start: datetime,
+        period_end: datetime,
+        delta: int,
+    ) -> None:
+        """Apply a signed delta to the period aggregate as a conditional update.
+
+        The `UPDATE … SET quantity = quantity + :delta` form is what makes
+        concurrent reservations unable to overspend the same remaining
+        allowance; the insert path is guarded by the period unique constraint.
+        """
+        result = await self._session.execute(
+            update(UsageAggregateRow)
+            .where(
+                UsageAggregateRow.user_id == user_id,
+                UsageAggregateRow.metric == metric,
+                UsageAggregateRow.period_start == period_start,
+                UsageAggregateRow.period_end == period_end,
+            )
+            .values(
+                quantity=case(
+                    (UsageAggregateRow.quantity + delta < 0, 0),
+                    else_=UsageAggregateRow.quantity + delta,
+                ),
+                version=UsageAggregateRow.version + 1,
+            )
+        )
+        if _rowcount(result) == 0:
+            self._session.add(
+                UsageAggregateRow(
+                    id=f"uag_{uuid.uuid4().hex}",
+                    user_id=user_id,
+                    metric=metric,
+                    quantity=max(delta, 0),
+                    period_start=period_start,
+                    period_end=period_end,
+                    version=1,
+                )
+            )
 
 
 class SqlBillingWebhookEventRepository:
@@ -444,7 +579,12 @@ class SqlBillingWebhookEventRepository:
             payload_hash=payload_hash,
         )
         self._session.add(row)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError:
+            # Concurrent delivery of the same provider event; the unique
+            # (provider, provider_event_id) constraint is the arbiter.
+            raise ConcurrencyError("This provider event is already being processed.")
         return self._to_domain(row)
 
     async def mark_processed(self, event_id: str) -> BillingWebhookEvent:
@@ -456,7 +596,9 @@ class SqlBillingWebhookEventRepository:
         await self._session.flush()
         return self._to_domain(row)
 
-    async def mark_ignored(self, event_id: str, failure_code: str | None = None) -> BillingWebhookEvent:
+    async def mark_ignored(
+        self, event_id: str, failure_code: str | None = None
+    ) -> BillingWebhookEvent:
         row = await self._session.get(BillingWebhookEventRow, event_id)
         if row is None:
             raise ConcurrencyError("Webhook event not found.")

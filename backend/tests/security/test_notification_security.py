@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from src.modules.notification.application.notification_service import NotificationService
 from src.modules.notification.domain.errors import NotificationNotFoundError
 from src.modules.notification.domain.models import (
     DeliveryStatus,
@@ -12,14 +11,10 @@ from src.modules.notification.domain.models import (
     NotificationDelivery,
     NotificationLocale,
 )
-from src.modules.notification.infrastructure.email.console_adapter import ConsoleEmailAdapter
 from tests.unit.test_notification_service import (
     SYNTHETIC_NOW,
-    FakeAudit,
-    FakeClock,
     FakeDeliveries,
     FakePreferences,
-    FakeRecipientResolver,
     make_ctx,
     make_service,
 )
@@ -33,6 +28,7 @@ class TestNotificationSecurity:
             id="nd_other",
             organisation_id="usr_other",
             source_event_id="evt-x",
+            subject_ref="obl-x",
             obligation_id="obl-x",
             matter_id=None,
             recipient_user_id="usr_other",
@@ -41,7 +37,7 @@ class TestNotificationSecurity:
             obligation_class="legal-deadline",
             urgency="normal",
             confidentiality_level="private-matter",
-            template_key="obligation.reminder.due_in_24_hours",
+            template_key="obligation.reminder.due",
             delivery_policy_key="legal-deadline.standard",
             locale=NotificationLocale.EN,
             status=DeliveryStatus.DELIVERED,
@@ -57,14 +53,7 @@ class TestNotificationSecurity:
     @pytest.mark.asyncio
     async def test_preferences_patch_only_affects_actor(self):
         prefs = FakePreferences()
-        svc = NotificationService(
-            preferences=prefs,
-            deliveries=FakeDeliveries(),
-            email_port=ConsoleEmailAdapter(),
-            audit_port=FakeAudit(),
-            clock=FakeClock(),
-            recipient_resolver=FakeRecipientResolver(),
-        )
+        svc = make_service(prefs=prefs)
         ctx = make_ctx("usr_a")
         saved = await svc.patch_preferences(ctx, channel=NotificationChannel.EMAIL, enabled=False)
         assert saved.user_id == "usr_a"

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.obligations.domain.models import (
@@ -192,7 +192,7 @@ class SqlObligationRepository:
         stmt = (
             select(ObligationRow)
             .where(ObligationRow.organisation_id == organisation_id)
-            .order_by(ObligationRow.due_at.asc())
+            .order_by(ObligationRow.due_at.asc(), ObligationRow.id.asc())
             .limit(limit + 1)
         )
         if filters.assignee_user_id:
@@ -204,7 +204,13 @@ class SqlObligationRepository:
         if filters.cursor:
             cursor_row = await self._session.get(ObligationRow, filters.cursor)
             if cursor_row is not None:
-                stmt = stmt.where(ObligationRow.due_at > cursor_row.due_at)
+                stmt = stmt.where(
+                    or_(
+                        ObligationRow.due_at > cursor_row.due_at,
+                        (ObligationRow.due_at == cursor_row.due_at)
+                        & (ObligationRow.id > cursor_row.id),
+                    )
+                )
         result = await self._session.execute(stmt)
         rows = list(result.scalars().all())
         has_more = len(rows) > limit

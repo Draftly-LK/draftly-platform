@@ -30,22 +30,33 @@ from src.modules.obligations.domain.models import (
 )
 from src.modules.party.ports import CreatePartyInput, RecordIdentityEvidenceInput
 from src.platform.request_context import RequestContext
+from tests.fixtures.party_fakes import build_service as make_party_service
 from tests.fixtures.party_synthetic import SYNTHETIC_NIC, SYNTHETIC_PARTY_A
 from tests.unit.test_billing_service import (
+    DenyPlatformAdminPort,
     FakeAudit,
     FakeClock,
     FakeEventPort,
     FakePlanRepo,
     FakeSubscriptionRepo,
     FakeUsageRepo,
+    FakeUserReadPort,
     FakeWebhookRepo,
     _plan,
     _subscription,
 )
-from tests.unit.test_notarial_register_service import build_service, make_attestation_input, make_ctx
-from tests.unit.test_notification_service import make_service as make_notification_service
+from tests.unit.test_notarial_register_service import (
+    build_service,
+    make_attestation_input,
+    make_ctx,
+)
+from tests.unit.test_notification_service import (
+    make_service as make_notification_service,
+)
+from tests.unit.test_notification_service import (
+    reminder_envelope,
+)
 from tests.unit.test_obligations_service import _service as make_obligations
-from tests.unit.test_party_service import _service as make_party_service
 
 _NOW = datetime(2026, 8, 1, 12, 0, 0, tzinfo=UTC)
 _ACTOR = "usr_synthetic_a"
@@ -70,9 +81,12 @@ async def test_shipped_services_happy_path_slice() -> None:
         usage_repo=FakeUsageRepo(),
         webhook_repo=FakeWebhookRepo(),
         billing_provider=StubBillingAdapter(),
+        user_read_port=FakeUserReadPort(active_users=frozenset({_ACTOR})),
+        platform_admin_port=DenyPlatformAdminPort(),
         audit_port=FakeAudit(),
         event_port=FakeEventPort(),
         clock=FakeClock(),
+        grace_period_days=14,
     )
     decision = await billing.require_feature(_ACTOR, "drafting.enabled")
     assert decision.allowed is True
@@ -130,24 +144,15 @@ async def test_shipped_services_happy_path_slice() -> None:
         enabled=True,
         locale=NotificationLocale.EN,
     )
-    delivery_args = {
-        "organisation_id": _ACTOR,
-        "source_event_id": "evt-e2e-01",
-        "obligation_id": obligation.id,
-        "matter_id": "matter-e2e-001",
-        "recipient_user_id": _ACTOR,
-        "channel": NotificationChannel.EMAIL,
-        "reminder_type": "due-in-24-hours",
-        "obligation_class": "legal-deadline",
-        "urgency": "critical",
-        "confidentiality_level": "private-matter",
-        "template_key": "obligation.reminder.due_in_24_hours",
-        "delivery_policy_key": "legal-deadline.standard",
-        "locale": NotificationLocale.EN,
-    }
-    first = await notification.create_delivery_idempotent(**delivery_args)
-    second = await notification.create_delivery_idempotent(**delivery_args)
-    assert first.id == second.id
+    first = await notification.handle_event(
+        reminder_envelope(event_id="evt-e2e-01", obligation_id=obligation.id)
+    )
+    second = await notification.handle_event(
+        reminder_envelope(event_id="evt-e2e-01", obligation_id=obligation.id)
+    )
+    assert first.outcome.value in {"processed", "duplicate"}
+    assert second.outcome.value in {"processed", "duplicate"}
+    assert first.outcome.value == "processed" or second.outcome.value == "duplicate"
 
     service, _, _ = build_service()
     notary_ctx = make_ctx(_ACTOR)

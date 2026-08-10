@@ -30,7 +30,8 @@ from src.modules.billing.domain.models import (
 )
 from src.modules.billing.domain.policies import can_transition, is_known_feature_key
 from src.modules.billing.infrastructure.stub_adapter import StubBillingAdapter
-from src.modules.billing.ports import AuditEventInput, RawWebhook
+from src.modules.billing.ports import AuditEventInput, BillingUser, RawWebhook
+from src.platform.messaging.outbox import InMemoryEventPort
 from src.platform.request_context import RequestContext
 
 _NOW = datetime(2026, 8, 1, 12, 0, 0, tzinfo=UTC)
@@ -53,12 +54,24 @@ class FakeAudit:
         self.events.append(event)
 
 
-class FakeEventPort:
-    def __init__(self) -> None:
-        self.events: list[tuple[str, dict]] = []
+class FakeEventPort(InMemoryEventPort):
+    """Test double wired through the platform in-memory outbox port."""
 
-    async def emit(self, event_name: str, payload: dict) -> None:
-        self.events.append((event_name, payload))
+
+class FakeUserReadPort:
+    def __init__(self, active_users: frozenset[str] | None = None) -> None:
+        self._active = active_users or frozenset({"usr_a", "usr_b"})
+
+    async def get_billing_user(self, user_id: str) -> BillingUser | None:
+        if user_id not in self._active:
+            return None
+        return BillingUser(user_id=user_id, is_active=True)
+
+
+class DenyPlatformAdminPort:
+    async def is_platform_admin(self, user_id: str) -> bool:
+        _ = user_id
+        return False
 
 
 class FakePlanRepo:
@@ -79,14 +92,49 @@ class FakePlanRepo:
     async def get_entitlements(self, plan_version_id: str) -> list[PlanEntitlement]:
         return list(self._entitlements.get(plan_version_id, []))
 
+    async def find_by_code(self, code: str) -> PlanVersion | None:
+        for plan in self._plans.values():
+            if plan.code == code:
+                return plan
+        return None
+
+    async def next_version_for_family(self, family: str) -> int:
+        versions = [p.version for p in self._plans.values() if p.family == family]
+        return max(versions, default=0) + 1
+
+    async def create_draft(
+        self, plan: PlanVersion, entitlements: list[PlanEntitlement]
+    ) -> PlanVersion:
+        self._plans[plan.id] = plan
+        self._entitlements[plan.id] = list(entitlements)
+        return plan
+
+    async def activate(self, plan_version_id: str) -> PlanVersion:
+        plan = self._plans[plan_version_id]
+        activated = PlanVersion(
+            id=plan.id,
+            code=plan.code,
+            family=plan.family,
+            name=plan.name,
+            version=plan.version,
+            billing_interval=plan.billing_interval,
+            currency=plan.currency,
+            price_minor_units=plan.price_minor_units,
+            state=PlanState.ACTIVE,
+            effective_from=plan.effective_from,
+            effective_to=plan.effective_to,
+            created_at=plan.created_at,
+            updated_at=plan.updated_at,
+        )
+        self._plans[plan_version_id] = activated
+        return activated
+
 
 class FakeSubscriptionRepo:
     def __init__(self, subs: dict[str, Subscription]) -> None:
         self._by_user: dict[str, Subscription] = dict(subs)
         self._by_provider: dict[str, Subscription] = {
-            s.provider_subscription_id: s
-            for s in subs.values()
-            if s.provider_subscription_id
+            s.provider_subscription_id: s for s in subs.values() if s.provider_subscription_id
         }
 
     async def get_by_user_id(self, user_id: str) -> Subscription | None:
@@ -152,8 +200,11 @@ class FakeUsageRepo:
     ) -> UsageLedgerEntry | None:
         return self._ledger_by_op.get((user_id, metric, operation_id))
 
-    async def get_ledger_entry(self, entry_id: str) -> UsageLedgerEntry | None:
-        return self._ledger.get(entry_id)
+    async def get_ledger_entry(self, entry_id: str, user_id: str) -> UsageLedgerEntry | None:
+        entry = self._ledger.get(entry_id)
+        if entry is None or entry.user_id != user_id:
+            return None
+        return entry
 
     async def reserve(
         self,
@@ -209,7 +260,44 @@ class FakeUsageRepo:
             operation_id=operation_id,
         )
 
-    async def consume(self, entry_id: str, actual_quantity: int) -> UsageLedgerEntry:
+    async def re_reserve(self, entry_id: str, user_id: str, quantity: int) -> Reservation:
+        entry = self._ledger[entry_id]
+        if entry.user_id != user_id:
+            raise KeyError(entry_id)
+        released = UsageLedgerEntry(
+            id=entry.id,
+            user_id=entry.user_id,
+            metric=entry.metric,
+            quantity=quantity,
+            period_start=entry.period_start,
+            period_end=entry.period_end,
+            operation_id=entry.operation_id,
+            state=UsageLedgerState.RESERVED,
+            created_at=entry.created_at,
+        )
+        self._ledger[entry_id] = released
+        self._ledger_by_op[(entry.user_id, entry.metric, entry.operation_id)] = released
+        key = (entry.user_id, entry.metric, entry.period_start, entry.period_end)
+        agg = self._aggregates[key]
+        delta = quantity
+        self._aggregates[key] = UsageAggregate(
+            user_id=agg.user_id,
+            metric=agg.metric,
+            quantity=agg.quantity + delta,
+            period_start=agg.period_start,
+            period_end=agg.period_end,
+            updated_at=_NOW,
+            version=agg.version + 1,
+        )
+        return Reservation(
+            id=entry_id,
+            user_id=entry.user_id,
+            metric=entry.metric,
+            quantity=quantity,
+            operation_id=entry.operation_id,
+        )
+
+    async def consume(self, entry_id: str, user_id: str, actual_quantity: int) -> UsageLedgerEntry:
         entry = self._ledger[entry_id]
         delta = actual_quantity - entry.quantity
         entry = UsageLedgerEntry(
@@ -237,7 +325,7 @@ class FakeUsageRepo:
         )
         return entry
 
-    async def release(self, entry_id: str) -> UsageLedgerEntry:
+    async def release(self, entry_id: str, user_id: str) -> UsageLedgerEntry:
         entry = self._ledger[entry_id]
         entry = UsageLedgerEntry(
             id=entry.id,
@@ -318,7 +406,9 @@ class FakeWebhookRepo:
                 return updated
         raise RuntimeError("event not found")
 
-    async def mark_ignored(self, event_id: str, failure_code: str | None = None) -> BillingWebhookEvent:
+    async def mark_ignored(
+        self, event_id: str, failure_code: str | None = None
+    ) -> BillingWebhookEvent:
         for key, ev in self._events.items():
             if ev.id == event_id:
                 updated = BillingWebhookEvent(
@@ -425,9 +515,12 @@ def make_service(
         usage_repo=usage or FakeUsageRepo(),
         webhook_repo=FakeWebhookRepo(),
         billing_provider=StubBillingAdapter(),
+        user_read_port=FakeUserReadPort(),
+        platform_admin_port=DenyPlatformAdminPort(),
         audit_port=FakeAudit(),
         event_port=FakeEventPort(),
         clock=clock or FakeClock(),
+        grace_period_days=14,
     )
 
 
@@ -473,16 +566,16 @@ class TestUsageIdempotency:
     async def test_consume_twice_is_stable(self):
         svc = make_service()
         res = await svc.reserve_usage("usr_a", "document_pages.monthly", 10, "op-2")
-        u1 = await svc.consume_usage(res.id, 8)
-        u2 = await svc.consume_usage(res.id, 8)
+        u1 = await svc.consume_usage("usr_a", res.id, 8)
+        u2 = await svc.consume_usage("usr_a", res.id, 8)
         assert u1.quantity == u2.quantity
 
     @pytest.mark.asyncio
     async def test_release_twice_is_stable(self):
         svc = make_service()
         res = await svc.reserve_usage("usr_a", "document_pages.monthly", 5, "op-3")
-        u1 = await svc.release_usage(res.id)
-        u2 = await svc.release_usage(res.id)
+        u1 = await svc.release_usage("usr_a", res.id)
+        u2 = await svc.release_usage("usr_a", res.id)
         assert u1.quantity == u2.quantity
 
 
@@ -514,13 +607,16 @@ class TestPlanCatalogue:
             usage_repo=FakeUsageRepo(),
             webhook_repo=FakeWebhookRepo(),
             billing_provider=StubBillingAdapter(),
+            user_read_port=FakeUserReadPort(),
+            platform_admin_port=DenyPlatformAdminPort(),
             audit_port=FakeAudit(),
             event_port=FakeEventPort(),
             clock=FakeClock(),
+            grace_period_days=14,
         )
         rows = await svc.list_plans(ctx())
         assert len(rows) == 1
-        assert rows[0]["plan"].id == "plan_solo_v1"
+        assert rows[0][0].id == "plan_solo_v1"
 
 
 class TestWebhookHandling:

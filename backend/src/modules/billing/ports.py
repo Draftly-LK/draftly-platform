@@ -1,10 +1,14 @@
-"""Billing module port definitions."""
+"""Billing module port definitions.
+
+Application services depend on these protocols only. Infrastructure implements
+them and wiring happens in bootstrap.py / api/deps.py.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol
+from typing import Protocol
 
 from src.modules.auth.ports import AuditEventInput, AuditPort
 from src.modules.billing.domain.models import (
@@ -17,6 +21,7 @@ from src.modules.billing.domain.models import (
     UsageLedgerEntry,
     WebhookProcessingState,
 )
+from src.platform.messaging.events import EventEnvelope
 
 
 @dataclass(frozen=True)
@@ -24,7 +29,9 @@ class CheckoutCommand:
     user_id: str
     plan_version_id: str
     return_path: str
-    customer_email: str | None = None
+    currency: str
+    price_minor_units: int
+    provider_customer_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -70,6 +77,14 @@ class WebhookReceipt:
     duplicate: bool = False
 
 
+@dataclass(frozen=True)
+class BillingUser:
+    """The minimum a billing command needs to know about an account."""
+
+    user_id: str
+    is_active: bool
+
+
 class BillingProviderPort(Protocol):
     async def create_checkout(self, command: CheckoutCommand) -> Checkout: ...
 
@@ -90,6 +105,16 @@ class PlanRepository(Protocol):
     async def get(self, plan_version_id: str) -> PlanVersion | None: ...
 
     async def get_entitlements(self, plan_version_id: str) -> list[PlanEntitlement]: ...
+
+    async def find_by_code(self, code: str) -> PlanVersion | None: ...
+
+    async def next_version_for_family(self, family: str) -> int: ...
+
+    async def create_draft(
+        self, plan: PlanVersion, entitlements: list[PlanEntitlement]
+    ) -> PlanVersion: ...
+
+    async def activate(self, plan_version_id: str) -> PlanVersion: ...
 
 
 class SubscriptionRepository(Protocol):
@@ -115,7 +140,7 @@ class UsageRepository(Protocol):
         self, user_id: str, metric: str, operation_id: str
     ) -> UsageLedgerEntry | None: ...
 
-    async def get_ledger_entry(self, entry_id: str) -> UsageLedgerEntry | None: ...
+    async def get_ledger_entry(self, entry_id: str, user_id: str) -> UsageLedgerEntry | None: ...
 
     async def reserve(
         self,
@@ -129,11 +154,13 @@ class UsageRepository(Protocol):
         entry_id: str,
     ) -> Reservation: ...
 
+    async def re_reserve(self, entry_id: str, user_id: str, quantity: int) -> Reservation: ...
+
     async def consume(
-        self, entry_id: str, actual_quantity: int
+        self, entry_id: str, user_id: str, actual_quantity: int
     ) -> UsageLedgerEntry: ...
 
-    async def release(self, entry_id: str) -> UsageLedgerEntry: ...
+    async def release(self, entry_id: str, user_id: str) -> UsageLedgerEntry: ...
 
 
 class BillingWebhookEventRepository(Protocol):
@@ -154,35 +181,57 @@ class BillingWebhookEventRepository(Protocol):
 
     async def mark_processed(self, event_id: str) -> BillingWebhookEvent: ...
 
-    async def mark_ignored(self, event_id: str, failure_code: str | None = None) -> BillingWebhookEvent: ...
+    async def mark_ignored(
+        self, event_id: str, failure_code: str | None = None
+    ) -> BillingWebhookEvent: ...
 
     async def mark_failed(self, event_id: str, failure_code: str) -> BillingWebhookEvent: ...
 
 
+class UserReadPort(Protocol):
+    """Confirms the account behind a billing command exists and is active."""
+
+    async def get_billing_user(self, user_id: str) -> BillingUser | None: ...
+
+
+class PlatformAdminPort(Protocol):
+    """Resolves the non-role-derived ``platform.administer`` grant.
+
+    security-model.md §3.4: this is Draftly staff, assigned by an audited
+    administrative action and re-read per request. No account role reaches it.
+    """
+
+    async def is_platform_admin(self, user_id: str) -> bool: ...
+
+
 class EventPort(Protocol):
-    async def emit(self, event_name: str, payload: dict[str, Any]) -> None: ...
+    """Publishes through the transactional outbox (events.md §3)."""
+
+    async def emit(self, event: EventEnvelope) -> None: ...
 
 
 class ClockPort(Protocol):
     def now(self) -> datetime: ...
 
 
-# Re-export audit types for application wiring convenience.
 __all__ = [
-    "AuditPort",
     "AuditEventInput",
+    "AuditPort",
     "BillingProviderPort",
-    "PlanRepository",
-    "SubscriptionRepository",
-    "UsageRepository",
+    "BillingUser",
     "BillingWebhookEventRepository",
-    "EventPort",
-    "ClockPort",
-    "CheckoutCommand",
     "Checkout",
+    "CheckoutCommand",
+    "ClockPort",
+    "EventPort",
+    "PlanRepository",
+    "PlatformAdminPort",
     "Portal",
-    "RawWebhook",
     "ProviderEvent",
     "ProviderSubscription",
+    "RawWebhook",
+    "SubscriptionRepository",
+    "UsageRepository",
+    "UserReadPort",
     "WebhookReceipt",
 ]

@@ -126,6 +126,32 @@ class BillingWebhookEvent:
 
 
 @dataclass(frozen=True)
+class EntitlementRequest:
+    """One entitlement line supplied when an operator drafts a plan version."""
+
+    feature_key: str
+    limit_value: int | None
+    enabled: bool
+
+
+@dataclass(frozen=True)
+class PlanVersionDraft:
+    """Operator input for a new plan version.
+
+    Prices, allowances, and intervals are product data carried here, never
+    hardcoded in an application service (billing-service.md §8).
+    """
+
+    code: str
+    family: str
+    name: str
+    billing_interval: BillingInterval
+    currency: str
+    price_minor_units: int
+    entitlements: list[EntitlementRequest]
+
+
+@dataclass(frozen=True)
 class EntitlementDecision:
     allowed: bool
     feature_key: str
@@ -149,4 +175,3 @@ class UsageRead:
     period_start: datetime
     period_end: datetime
     limit_value: int | None = None
-

@@ -47,7 +47,7 @@ OCR escalation ladder is large enough to need one.
 | Service | Owns | Plan phase | Status |
 | --- | --- | --- | --- |
 | [auth-service](auth-service.md) | Identity, roles, organisation and matter membership, capability checks | 2 | L0 |
-| [billing-service](billing-service.md) | Plans, subscriptions, entitlements, usage, PayHere webhooks | 2B | L3 |
+| [billing-service](billing-service.md) | Plans, subscriptions, entitlements, usage, PayHere webhooks | 2B | L0 |
 | [matter-service](matter-service.md) | Matter identity, classification, lifecycle, party references | 2 | L0 |
 | [party-service](party-service.md) | Party records, identity evidence, beneficial ownership, CDD, screening | 2 | L0 |
 | [document-service](document-service.md) | Immutable upload, versioning, processing state, viewer manifest | 3 | L0 |
@@ -66,7 +66,7 @@ OCR escalation ladder is large enough to need one.
 | [draft-service](draft-service.md) | Draft creation, versioning, restore, submit for review | 7 | L0 |
 | [approval-service](approval-service.md) | The approval gate, content-hash pinning, invalidation | 7 | L0 |
 | [export-service](export-service.md) | Rendering approved instruments and supporting documents, manifests | 7 | L0 |
-| [notification-service](notification-service.md) | Preferences, templates, delivery, retries, provider webhooks | 5 | L0 |
+| [notification-service](notification-service.md) | Preferences, templates, delivery, retries, provider webhooks | 5 | L3 |
 | [voice-service](voice-service.md) | Live transcription, candidate transcripts, review and confirmation | V0/V1 by schedule | L0 |
 | [retention-service](retention-service.md) | Retention policies, legal holds, disposition, tombstones | 8 | L0 |
 | [audit-service](audit-service.md) | The append-only, hash-chained event log and its read surface | all | L0 |

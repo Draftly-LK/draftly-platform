@@ -70,6 +70,9 @@ class IdentityEvidenceRow(Base):
     party_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("parties.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Denormalised tenant key: every party-owned row carries it so that every
+    # query can filter on user_id first (party-service.md §9).
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     evidence_kind: Mapped[str] = mapped_column(String(64), nullable=False)
     identifier_ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     identifier_blind_index: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -86,6 +89,10 @@ class IdentityEvidenceRow(Base):
     supersedes_evidence_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     version: Mapped[int] = mapped_column(nullable=False, default=1)
 
+    __table_args__ = (
+        Index("ix_identity_evidence_user_blind", "user_id", "identifier_blind_index"),
+    )
+
 
 class BeneficialOwnerRow(Base):
     __tablename__ = "beneficial_owners"
@@ -94,6 +101,9 @@ class BeneficialOwnerRow(Base):
     party_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("parties.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Denormalised tenant key: every party-owned row carries it so that every
+    # query can filter on user_id first (party-service.md §9).
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     owner_party_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     ownership_kind: Mapped[str] = mapped_column(String(32), nullable=False)
     percentage: Mapped[float | None] = mapped_column(nullable=True)
@@ -110,6 +120,9 @@ class CddAssessmentRow(Base):
     party_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("parties.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Denormalised tenant key: every party-owned row carries it so that every
+    # query can filter on user_id first (party-service.md §9).
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     matter_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     level: Mapped[str] = mapped_column(String(32), nullable=False)
     risk_factors: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
@@ -128,6 +141,9 @@ class ScreeningResultRow(Base):
     party_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("parties.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Denormalised tenant key: every party-owned row carries it so that every
+    # query can filter on user_id first (party-service.md §9).
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     list_version: Mapped[str] = mapped_column(String(64), nullable=False)
     provider_ref: Mapped[str] = mapped_column(String(128), nullable=False)
     outcome: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -149,6 +165,7 @@ class ScreeningMatchDetailRow(Base):
         ForeignKey("screening_results.id", ondelete="CASCADE"),
         primary_key=True,
     )
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     provider_payload: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default="{}"
     )

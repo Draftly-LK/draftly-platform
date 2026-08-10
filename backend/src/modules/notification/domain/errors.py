@@ -1,4 +1,4 @@
-"""Notification domain errors — mapped to HTTP via platform/errors or subclasses."""
+"""Notification errors — mapped to HTTP via platform/errors or subclasses."""
 
 from __future__ import annotations
 
@@ -37,3 +37,39 @@ class WebhookVerificationError(DomainRuleError):
     code = "webhook_verification_failed"
     http_status = 401
     message = "Provider webhook signature could not be verified."
+
+
+class EmailSendingDisabledError(DomainRuleError):
+    code = "email_sending_disabled"
+    message = "Outbound provider email is disabled in this environment."
+
+
+class DeliveryFailure(Exception):  # noqa: N818 — provider failure taxonomy, not HTTP errors
+    """Base for channel failures. Carries a code, never a provider body."""
+
+    def __init__(self, failure_code: str) -> None:
+        self.failure_code = failure_code
+        super().__init__(failure_code)
+
+
+class RetryableDeliveryFailure(DeliveryFailure):
+    """Timeout, rate limit, quota, or provider 5xx — back off and retry (§9)."""
+
+
+class PermanentDeliveryFailure(DeliveryFailure):
+    """Invalid or disabled address, or a rejected request — never retried (§9)."""
+
+
+__all__ = [
+    "DeliveryFailure",
+    "DeliveryNotFoundError",
+    "DuplicateDeliveryError",
+    "EmailSendingDisabledError",
+    "InvalidPreferencePatchError",
+    "NotificationNotFoundError",
+    "PermanentDeliveryFailure",
+    "PreferenceAccessDeniedError",
+    "PreferenceNotFoundError",
+    "RetryableDeliveryFailure",
+    "WebhookVerificationError",
+]

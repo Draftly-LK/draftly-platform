@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.notification.domain.models import (
@@ -12,10 +15,15 @@ from src.modules.notification.domain.models import (
     NotificationLocale,
     NotificationPreference,
     PaginatedDeliveries,
+    ProviderEvent,
+    TemplateDeployment,
 )
 from src.modules.notification.infrastructure.orm import (
+    NotificationConsumedEventRow,
     NotificationDeliveryRow,
     NotificationPreferenceRow,
+    NotificationProviderEventRow,
+    NotificationTemplateDeploymentRow,
 )
 
 
@@ -39,6 +47,7 @@ def _delivery_row_to_domain(row: NotificationDeliveryRow) -> NotificationDeliver
         id=row.id,
         organisation_id=row.organisation_id,
         source_event_id=row.source_event_id,
+        subject_ref=row.subject_ref,
         obligation_id=row.obligation_id,
         matter_id=row.matter_id,
         recipient_user_id=row.recipient_user_id,
@@ -53,12 +62,15 @@ def _delivery_row_to_domain(row: NotificationDeliveryRow) -> NotificationDeliver
         status=DeliveryStatus(row.status),
         attempt_count=row.attempt_count,
         created_at=row.created_at,
+        correlation_id=row.correlation_id,
         version=row.version,
         next_attempt_at=row.next_attempt_at,
         attempted_at=row.attempted_at,
         delivered_at=row.delivered_at,
         provider_message_id=row.provider_message_id,
+        provider_state=row.provider_state,
         failure_code=row.failure_code,
+        failure_class=row.failure_class,
         read_at=row.read_at,
         preview_title=row.preview_title,
         preview_body=row.preview_body,
@@ -134,14 +146,14 @@ class SqlDeliveryRepository:
         self,
         *,
         organisation_id: str,
-        obligation_id: str,
+        subject_ref: str,
         recipient_user_id: str,
         reminder_type: str,
         channel: NotificationChannel,
     ) -> NotificationDelivery | None:
         stmt = select(NotificationDeliveryRow).where(
             NotificationDeliveryRow.organisation_id == organisation_id,
-            NotificationDeliveryRow.obligation_id == obligation_id,
+            NotificationDeliveryRow.subject_ref == subject_ref,
             NotificationDeliveryRow.recipient_user_id == recipient_user_id,
             NotificationDeliveryRow.reminder_type == reminder_type,
             NotificationDeliveryRow.channel == channel.value,
@@ -155,6 +167,7 @@ class SqlDeliveryRepository:
             id=delivery.id,
             organisation_id=delivery.organisation_id,
             source_event_id=delivery.source_event_id,
+            subject_ref=delivery.subject_ref,
             obligation_id=delivery.obligation_id,
             matter_id=delivery.matter_id,
             recipient_user_id=delivery.recipient_user_id,
@@ -172,7 +185,10 @@ class SqlDeliveryRepository:
             attempted_at=delivery.attempted_at,
             delivered_at=delivery.delivered_at,
             provider_message_id=delivery.provider_message_id,
+            provider_state=delivery.provider_state,
             failure_code=delivery.failure_code,
+            failure_class=delivery.failure_class,
+            correlation_id=delivery.correlation_id,
             preview_title=delivery.preview_title,
             preview_body=delivery.preview_body,
             read_at=delivery.read_at,
@@ -193,7 +209,9 @@ class SqlDeliveryRepository:
         row.attempted_at = delivery.attempted_at
         row.delivered_at = delivery.delivered_at
         row.provider_message_id = delivery.provider_message_id
+        row.provider_state = delivery.provider_state
         row.failure_code = delivery.failure_code
+        row.failure_class = delivery.failure_class
         row.read_at = delivery.read_at
         row.version = delivery.version
         await self._session.flush()
@@ -232,6 +250,8 @@ class SqlDeliveryRepository:
         return PaginatedDeliveries(
             items=[_delivery_row_to_domain(r) for r in rows],
             next_cursor=next_cursor,
+            has_more=next_cursor is not None,
+            limit=limit,
         )
 
     async def find_by_provider_message_id(
@@ -243,3 +263,107 @@ class SqlDeliveryRepository:
         result = await self._session.execute(stmt)
         row = result.scalar_one_or_none()
         return _delivery_row_to_domain(row) if row else None
+
+
+class SqlConsumedEventRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def already_consumed(self, *, event_id: str) -> bool:
+        stmt = select(NotificationConsumedEventRow.id).where(
+            NotificationConsumedEventRow.event_id == event_id
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
+    async def record(
+        self,
+        *,
+        event_id: str,
+        event_name: str,
+        organisation_id: str,
+        outcome: str,
+        correlation_id: str,
+    ) -> bool:
+        row = NotificationConsumedEventRow(
+            id=f"nce_{uuid.uuid4().hex}",
+            event_id=event_id,
+            event_name=event_name,
+            organisation_id=organisation_id,
+            outcome=outcome,
+            correlation_id=correlation_id,
+        )
+        try:
+            async with self._session.begin_nested():
+                self._session.add(row)
+                await self._session.flush()
+        except IntegrityError:
+            return False
+        return True
+
+
+class SqlProviderEventRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def find(self, *, provider: str, provider_event_id: str) -> ProviderEvent | None:
+        stmt = select(NotificationProviderEventRow).where(
+            NotificationProviderEventRow.provider == provider,
+            NotificationProviderEventRow.provider_event_id == provider_event_id,
+        )
+        result = await self._session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row is None:
+            return None
+        return ProviderEvent(
+            id=row.id,
+            provider=row.provider,
+            provider_event_id=row.provider_event_id,
+            event_type=row.event_type,
+            provider_message_id=row.provider_message_id,
+            delivery_id=row.delivery_id,
+            received_at=row.received_at,
+        )
+
+    async def record(self, event: ProviderEvent) -> ProviderEvent:
+        row = NotificationProviderEventRow(
+            id=event.id,
+            provider=event.provider,
+            provider_event_id=event.provider_event_id,
+            event_type=event.event_type,
+            provider_message_id=event.provider_message_id,
+            delivery_id=event.delivery_id,
+            organisation_id=None,
+            received_at=event.received_at,
+        )
+        self._session.add(row)
+        await self._session.flush()
+        return event
+
+
+class SqlTemplateDeploymentRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def resolve(
+        self, *, environment: str, template_key: str, locale: NotificationLocale
+    ) -> TemplateDeployment | None:
+        stmt = select(NotificationTemplateDeploymentRow).where(
+            NotificationTemplateDeploymentRow.environment == environment,
+            NotificationTemplateDeploymentRow.template_key == template_key,
+            NotificationTemplateDeploymentRow.locale == locale.value,
+        )
+        result = await self._session.execute(stmt)
+        row = result.scalar_one_or_none()
+        if row is None:
+            return None
+        return TemplateDeployment(
+            id=row.id,
+            environment=row.environment,
+            template_key=row.template_key,
+            locale=NotificationLocale(row.locale),
+            source_version=row.source_version,
+            provider_template_id=row.provider_template_id,
+            published_by=row.published_by,
+            published_at=row.published_at,
+        )

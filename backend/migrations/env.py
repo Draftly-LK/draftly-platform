@@ -13,28 +13,42 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-# Ensure the src package is on the path so ORM models can be imported
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# Import ORM metadata so Alembic can autogenerate migrations
 from src.modules.audit.infrastructure.orm import Base as AuditBase  # noqa: E402
 from src.modules.auth.infrastructure.orm import Base as AuthBase  # noqa: E402
+from src.modules.billing.infrastructure.orm import Base as BillingBase  # noqa: E402
+from src.modules.notarial_register.infrastructure.orm import (  # noqa: E402
+    Base as NotarialBase,
+)
+from src.modules.notification.infrastructure.orm import Base as NotificationBase  # noqa: E402
+from src.modules.obligations.infrastructure.orm import Base as ObligationsBase  # noqa: E402
+from src.modules.party.infrastructure.orm import Base as PartyBase  # noqa: E402
 from src.platform.config import get_settings  # noqa: E402
+from src.platform.messaging.orm import OutboxRow  # noqa: E402, F401
+from src.platform.db.session import Base as PlatformBase  # noqa: E402
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Combine metadata from all registered modules
-target_metadata = [AuthBase.metadata, AuditBase.metadata]
+target_metadata = [
+    AuthBase.metadata,
+    AuditBase.metadata,
+    BillingBase.metadata,
+    PartyBase.metadata,
+    NotificationBase.metadata,
+    ObligationsBase.metadata,
+    NotarialBase.metadata,
+    PlatformBase.metadata,
+]
 
 
 def get_url() -> str:
     """Return the DIRECT (un-pooled) database URL for migrations."""
     settings = get_settings()
     url = settings.database_url_direct
-    # Alembic uses synchronous SQLAlchemy — strip the async driver if present
     return url.replace("postgresql+asyncpg://", "postgresql://").replace(
         "postgresql+psycopg://", "postgresql+psycopg2://"
     )

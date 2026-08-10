@@ -5,18 +5,23 @@ from __future__ import annotations
 from src.platform.errors import (
     ConflictError,
     DomainRuleError,
+    DraftlyError,
     NotFoundError,
     UnauthenticatedError,
 )
 
 __all__ = [
     "BillingNotFoundError",
+    "ConcurrencyError",
     "FeatureDeniedError",
-    "QuotaExceededError",
-    "PlanImmutableError",
+    "InvalidPlanInputError",
+    "InvalidReturnPathError",
     "InvalidTransitionError",
     "InvalidWebhookError",
-    "ConcurrencyError",
+    "PlanImmutableError",
+    "QuotaExceededError",
+    "UserAccountNotBillableError",
+    "WebhookPayloadTooLargeError",
 ]
 
 
@@ -32,9 +37,14 @@ class FeatureDeniedError(DomainRuleError):
 
 
 class QuotaExceededError(DomainRuleError):
-    code = "quota_exceeded"
-    http_status = 403
-    message = "Usage quota for this metric has been exceeded."
+    """429 with the metric named, so the frontend offers an upgrade, not a retry.
+
+    api-conventions.md §8.
+    """
+
+    code = "quota_exhausted"
+    http_status = 429
+    message = "The usage quota for this metric has been exhausted."
 
 
 class PlanImmutableError(DomainRuleError):
@@ -52,6 +62,30 @@ class InvalidTransitionError(DomainRuleError):
 class InvalidWebhookError(UnauthenticatedError):
     code = "invalid_webhook"
     message = "Webhook verification failed."
+
+
+class WebhookPayloadTooLargeError(DraftlyError):
+    code = "webhook_payload_too_large"
+    http_status = 413
+    message = "The webhook payload exceeds the accepted size."
+
+
+class InvalidReturnPathError(DomainRuleError):
+    code = "invalid_return_path"
+    http_status = 422
+    message = "The checkout return path must be a relative path inside the application."
+
+
+class InvalidPlanInputError(DomainRuleError):
+    code = "invalid_plan_input"
+    http_status = 422
+    message = "The plan version input is not valid."
+
+
+class UserAccountNotBillableError(DomainRuleError):
+    code = "user_account_not_billable"
+    http_status = 422
+    message = "This account cannot start a billing operation."
 
 
 class ConcurrencyError(ConflictError):

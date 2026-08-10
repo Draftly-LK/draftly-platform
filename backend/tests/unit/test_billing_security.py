@@ -13,12 +13,14 @@ from src.modules.billing.domain.models import SubscriptionStatus
 from src.modules.billing.infrastructure.stub_adapter import StubBillingAdapter
 from src.modules.billing.ports import RawWebhook
 from tests.unit.test_billing_service import (
+    DenyPlatformAdminPort,
     FakeAudit,
     FakeClock,
     FakeEventPort,
     FakePlanRepo,
     FakeSubscriptionRepo,
     FakeUsageRepo,
+    FakeUserReadPort,
     FakeWebhookRepo,
     _plan,
     _solo_entitlements,
@@ -72,9 +74,12 @@ class TestForgedUserIgnored:
             usage_repo=FakeUsageRepo(),
             webhook_repo=FakeWebhookRepo(),
             billing_provider=RecordingStub(),
+            user_read_port=FakeUserReadPort(),
+            platform_admin_port=DenyPlatformAdminPort(),
             audit_port=FakeAudit(),
             event_port=FakeEventPort(),
             clock=FakeClock(),
+            grace_period_days=14,
         )
         await svc.create_checkout(ctx(actor_id="usr_a"), "plan_solo_v1", "/billing")
         assert captured == ["usr_a"]

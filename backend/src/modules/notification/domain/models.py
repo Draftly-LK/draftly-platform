@@ -25,6 +25,29 @@ class DeliveryStatus(str, Enum):
     SUPPRESSED = "suppressed"
 
 
+class ProviderDeliveryState(str, Enum):
+    """Provider-reported states from Resend webhooks (notification-service.md §9.1)."""
+
+    SENT = "sent"
+    DELIVERED = "delivered"
+    DELAYED = "delivery_delayed"
+    FAILED = "failed"
+    BOUNCED = "bounced"
+    COMPLAINED = "complained"
+    SUPPRESSED = "suppressed"
+
+
+PROVIDER_EVENT_STATES: dict[str, ProviderDeliveryState] = {
+    "email.sent": ProviderDeliveryState.SENT,
+    "email.delivered": ProviderDeliveryState.DELIVERED,
+    "email.delivery_delayed": ProviderDeliveryState.DELAYED,
+    "email.failed": ProviderDeliveryState.FAILED,
+    "email.bounced": ProviderDeliveryState.BOUNCED,
+    "email.complained": ProviderDeliveryState.COMPLAINED,
+    "email.suppressed": ProviderDeliveryState.SUPPRESSED,
+}
+
+
 @dataclass
 class NotificationPreference:
     """Per-user channel preferences (notification-service.md §5.2)."""
@@ -48,7 +71,7 @@ class NotificationDelivery:
     id: str
     organisation_id: str
     source_event_id: str
-    obligation_id: str
+    subject_ref: str
     matter_id: str | None
     recipient_user_id: str
     channel: NotificationChannel
@@ -62,12 +85,16 @@ class NotificationDelivery:
     status: DeliveryStatus
     attempt_count: int
     created_at: datetime
+    obligation_id: str | None = None
+    correlation_id: str = ""
     version: int = 1
     next_attempt_at: datetime | None = None
     attempted_at: datetime | None = None
     delivered_at: datetime | None = None
     provider_message_id: str | None = None
     failure_code: str | None = None
+    failure_class: str | None = None
+    provider_state: str | None = None
     read_at: datetime | None = None
     preview_title: str = ""
     preview_body: str = ""
@@ -82,25 +109,47 @@ class DeliveryResult:
 class PaginatedDeliveries:
     items: list[NotificationDelivery]
     next_cursor: str | None = None
+    has_more: bool = False
+    limit: int = 50
 
 
-# Placeholder synthetic template catalogue (not legal copy).
-SYNTHETIC_TEMPLATE_PREVIEW: dict[str, tuple[str, str]] = {
-    "obligation.reminder.due_in_24_hours": (
-        "Draftly deadline reminder (synthetic)",
-        "A synthetic obligation is due soon. Log in to Draftly to review it.",
-    ),
-    "restricted.action_required": (
-        "Draftly action required (synthetic)",
-        "A restricted workflow needs your attention in Draftly.",
-    ),
-}
+@dataclass(frozen=True)
+class TemplateDeployment:
+    """A published template version for one environment (§3.2)."""
 
-DEFAULT_PREVIEW = (
-    "Draftly notification (synthetic)",
-    "You have a synthetic notification in Draftly.",
-)
+    id: str
+    environment: str
+    template_key: str
+    locale: NotificationLocale
+    source_version: str
+    provider_template_id: str
+    published_by: str
+    published_at: datetime
 
 
-def preview_for_template(template_key: str) -> tuple[str, str]:
-    return SYNTHETIC_TEMPLATE_PREVIEW.get(template_key, DEFAULT_PREVIEW)
+@dataclass(frozen=True)
+class ProviderEvent:
+    """One verified provider webhook event, stored idempotently (§9.1)."""
+
+    id: str
+    provider: str
+    provider_event_id: str
+    event_type: str
+    provider_message_id: str | None
+    delivery_id: str | None
+    received_at: datetime
+
+
+__all__ = [
+    "PROVIDER_EVENT_STATES",
+    "DeliveryResult",
+    "DeliveryStatus",
+    "NotificationChannel",
+    "NotificationDelivery",
+    "NotificationLocale",
+    "NotificationPreference",
+    "PaginatedDeliveries",
+    "ProviderDeliveryState",
+    "ProviderEvent",
+    "TemplateDeployment",
+]
