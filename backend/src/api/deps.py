@@ -21,6 +21,9 @@ from src.modules.auth.infrastructure.repository import (
     SqlUserIdentityRepository,
     SqlUserRepository,
 )
+from src.modules.notarial_register.application.notarial_register_service import (
+    NotarialRegisterService,
+)
 from src.platform.db.session import get_db
 from src.platform.errors import UnauthenticatedError
 from src.platform.observability.logging import bind_request_context
@@ -31,6 +34,7 @@ log = structlog.get_logger(__name__)
 _http_bearer = HTTPBearer(auto_error=False)
 
 _auth_service_instance: AuthService | None = None
+_notarial_register_service_instance: NotarialRegisterService | None = None
 
 
 def get_auth_service_instance() -> AuthService:
@@ -39,6 +43,16 @@ def get_auth_service_instance() -> AuthService:
     if _auth_service_instance is None:
         raise RuntimeError("AuthService not yet initialized. Call init_services() at startup.")
     return _auth_service_instance
+
+
+def get_notarial_register_service() -> NotarialRegisterService:
+    """Return the NotarialRegisterService wired for the current request session."""
+    global _notarial_register_service_instance
+    if _notarial_register_service_instance is None:
+        raise RuntimeError(
+            "NotarialRegisterService not yet initialized. Call init_services() at startup."
+        )
+    return _notarial_register_service_instance
 
 
 def init_services(session: AsyncSession) -> None:
@@ -58,6 +72,32 @@ def init_services(session: AsyncSession) -> None:
         user_identity_repo=user_identity_repo,
         user_repo=user_repo,
         audit_port=audit_service,
+    )
+
+    from src.modules.notarial_register.infrastructure.repository import (
+        SqlAttestationRepository,
+        SqlEventPort,
+        SqlMonthlyReturnRepository,
+        SqlProtocolRepository,
+        SqlRegisterRepository,
+        SqlRegistrationSubmissionRepository,
+        StubApprovedInstrumentAdapter,
+        StubMatterAccessAdapter,
+        SystemClock,
+    )
+
+    global _notarial_register_service_instance
+    _notarial_register_service_instance = NotarialRegisterService(
+        attestation_repo=SqlAttestationRepository(session),
+        register_repo=SqlRegisterRepository(session),
+        protocol_repo=SqlProtocolRepository(session),
+        registration_repo=SqlRegistrationSubmissionRepository(session),
+        monthly_return_repo=SqlMonthlyReturnRepository(session),
+        approved_instrument_port=StubApprovedInstrumentAdapter(),
+        matter_access=StubMatterAccessAdapter(),
+        audit_port=audit_service,
+        event_port=SqlEventPort(session),
+        clock=SystemClock(),
     )
 
 

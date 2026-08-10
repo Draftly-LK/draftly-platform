@@ -16,8 +16,10 @@ from src.platform.config import get_settings
 def register_routers(app: FastAPI) -> None:
     """Mount all module routers under /api/v1."""
     from src.modules.auth.api.router import router as auth_router
+    from src.modules.notarial_register.api.router import router as notarial_register_router
 
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(notarial_register_router, prefix="/api/v1")
 
 
 def build_identity_adapter() -> IdentityPort:
