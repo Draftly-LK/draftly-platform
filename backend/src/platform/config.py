@@ -54,6 +54,14 @@ class Settings(BaseSettings):
     gemini_classify_model: str = "gemini-3.1-flash-lite"
     gemini_extract_model: str = "gemini-2.5-flash"
 
+    # ── Protected identity tier (party_service) ─────────────────────────────
+    # Deliberately separate from the general database credentials: the key that
+    # protects `identifierValue` must not be the key that protects everything
+    # else. Production key management is an open decision — see
+    # docs/services/party-service.md §12 decision 7.
+    party_identifier_key: str = ""
+    party_blind_index_key: str = ""
+
     # ── App behaviour ───────────────────────────────────────────────────────
     environment: str = "local"
     # Seconds a Clerk session may be before step-up auth is required

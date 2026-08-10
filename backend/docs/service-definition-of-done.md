@@ -201,7 +201,7 @@ service.
 | `auth_service` | 2 | Reviewer cannot approve; non-member gets 404; expired practice certificate blocks the gated capabilities | L0 |
 | `billing_service` | 2B | Forged checkout return grants nothing; duplicate and out-of-order webhooks cannot duplicate or regress state; payment failure preserves records and exports | L0 |
 | `matter_service` | 2 | Client cannot write phase, progress, blocking, or readiness; reclassification appends and never overwrites | L0 |
-| `party_service` | 2 | Full identifier never returned without capability plus recorded purpose; no plaintext identifier in a table dump; no automatic identity merge | L0 |
+| `party_service` | 2 | Full identifier never returned without capability plus recorded purpose; no plaintext identifier in a table dump; no automatic identity merge | L1 |
 | `document_service` | 3 | Upload acknowledgement independent of OCR; provider failure preserves the original; 15-document matter reaches review or explicit failure within the V0 target | L0 |
 | `storage_service` | 3 | Every original is a conditional write pinned to an exact provider generation; cross-tenant grants fail; held records and unknown inventory are never deleted; Neon/GCS partial failures reconcile without data loss | L0 |
 | `document-processing` | 3 | Ladder routes correctly per confidence and box state; coordinates map exactly across DPI and rotation; no auto-accept; adapter refuses real data before the provider approval flag is set | L0 |
@@ -222,6 +222,16 @@ service.
 | `voice_service` | V0 or V1 by schedule | Provider transcript is always a candidate; no silent verification, wording change, approval, or downstream call; version history preserved; benchmark thresholds met before live use | L0 |
 | `retention_service` | 8 | Nothing destroyed automatically; a hold beats every policy at both approval and execution; tombstone precedes destruction; audit out of scope | L0 |
 | `audit_service` | all | Every mutating method across every service produces exactly one event; chain verification detects tampering; feed filtered by organisation, membership, and capability | L0 |
+
+`party_service` is at `L1`, not higher, and the reason is the ladder rather than
+the service: `L2` is the registry-parameterised conformance suite, and
+`tests/conformance/` is empty for every service. The three named acceptance
+gates above are all covered by passing party-local tests — a full identifier is
+returned only to a caller holding `party.read-identity` who supplies a purpose
+that is written to the audit event, a dump of all six party tables contains no
+plaintext identifier, and the duplicate probe surfaces candidates while merging
+is a separate administrator-only method. Its registry exemptions in
+`contracts/services.yaml` name what is still missing.
 
 ## 7. Release-blocking gates
 

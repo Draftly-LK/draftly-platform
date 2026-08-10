@@ -3,10 +3,36 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+# Every legally significant field is a closed enum on the wire, so an unknown
+# value is a 422 from the schema rather than a 500 from the domain constructor
+# (service-definition-of-done.md §3).
+PartyKindLiteral = Literal[
+    "natural-person", "company", "partnership", "trust", "statutory-body", "other"
+]
+ConfidentialityLiteral = Literal["standard", "private-matter", "restricted-compliance"]
+EvidenceKindLiteral = Literal[
+    "nic",
+    "passport",
+    "driving-licence",
+    "birth-certificate",
+    "company-registration",
+    "board-resolution",
+    "power-of-attorney",
+    "utility-bill",
+    "other",
+]
+EvidenceStateLiteral = Literal["recorded", "verified", "rejected", "expired", "superseded"]
+OwnershipKindLiteral = Literal["shareholding", "voting-rights", "control-other", "senior-managing"]
+CddLevelLiteral = Literal["standard", "simplified", "enhanced"]
+CddOutcomeLiteral = Literal["pending", "complete", "blocked"]
+ScreeningOutcomeLiteral = Literal["clear", "potential-match", "confirmed-match"]
+ScreeningStatusLiteral = Literal["not-run", "clear", "potential-match", "confirmed-match"]
+RiskRatingLiteral = Literal["unassessed", "low", "standard", "high"]
 
 
 class CamelModel(BaseModel):
@@ -16,8 +42,21 @@ class CamelModel(BaseModel):
     )
 
 
+class PageSchema(CamelModel):
+    next_cursor: str | None = None
+    has_more: bool = False
+    limit: int
+
+
+class PagedResponse[ItemT](CamelModel):
+    """The one list envelope (api-conventions.md §2) — no unbounded arrays."""
+
+    items: list[ItemT]
+    page: PageSchema
+
+
 class CreatePartyRequest(CamelModel):
-    party_kind: str
+    party_kind: PartyKindLiteral
     display_name: str
     name_parts: dict[str, Any] = Field(default_factory=dict)
     former_names: list[str] = Field(default_factory=list)
@@ -27,7 +66,7 @@ class CreatePartyRequest(CamelModel):
     residency_status: str | None = None
     addresses: list[dict[str, Any]] = Field(default_factory=list)
     contact_points: list[dict[str, Any]] = Field(default_factory=list)
-    confidentiality_level: str = "standard"
+    confidentiality_level: ConfidentialityLiteral = "standard"
 
 
 class PatchPartyRequest(CamelModel):
@@ -36,7 +75,7 @@ class PatchPartyRequest(CamelModel):
 
 class PartyReadSchema(CamelModel):
     id: str
-    party_kind: str
+    party_kind: PartyKindLiteral
     display_name: str
     name_parts: dict[str, Any]
     former_names: list[str]
@@ -46,10 +85,12 @@ class PartyReadSchema(CamelModel):
     residency_status: str | None
     addresses: list[dict[str, Any]]
     contact_points: list[dict[str, Any]]
-    risk_rating: str
-    screening_status: str
-    confidentiality_level: str
-    effective_confidentiality: str
+    risk_rating: RiskRatingLiteral
+    # Null when the caller may not know whether a screening record exists at all
+    # (party-service.md §3.5). Absence and denial are indistinguishable.
+    screening_status: ScreeningStatusLiteral | None
+    confidentiality_level: ConfidentialityLiteral
+    effective_confidentiality: ConfidentialityLiteral
     merged_into_party_id: str | None
     version: int
     created_at: datetime
@@ -67,13 +108,13 @@ class DuplicateCandidateSchema(CamelModel):
 class PartyListItemSchema(CamelModel):
     id: str
     display_name: str
-    party_kind: str
-    screening_status: str
+    party_kind: PartyKindLiteral
+    screening_status: ScreeningStatusLiteral | None
     version: int
 
 
 class RecordIdentityEvidenceRequest(CamelModel):
-    evidence_kind: str
+    evidence_kind: EvidenceKindLiteral
     identifier_value: str
     issued_on: date | None = None
     expires_on: date | None = None
@@ -87,7 +128,7 @@ class RecordIdentityEvidenceRequest(CamelModel):
 class IdentityEvidenceReadSchema(CamelModel):
     id: str
     party_id: str
-    evidence_kind: str
+    evidence_kind: EvidenceKindLiteral
     identifier_last4: str
     issued_on: date | None
     expires_on: date | None
@@ -95,7 +136,7 @@ class IdentityEvidenceReadSchema(CamelModel):
     document_id: str | None
     document_version_id: str | None
     evidence_span: dict[str, Any] | None
-    state: str
+    state: EvidenceStateLiteral
     supersedes_evidence_id: str | None
     version: int
 
@@ -107,7 +148,7 @@ class IdentityValueReadSchema(CamelModel):
 
 class RecordBeneficialOwnerRequest(CamelModel):
     owner_party_id: str
-    ownership_kind: str
+    ownership_kind: OwnershipKindLiteral
     percentage: float | None = None
     evidence_refs: list[str] = Field(default_factory=list)
 
@@ -116,7 +157,7 @@ class BeneficialOwnerReadSchema(CamelModel):
     id: str
     party_id: str
     owner_party_id: str
-    ownership_kind: str
+    ownership_kind: OwnershipKindLiteral
     percentage: float | None
     evidence_refs: list[str]
     state: str
@@ -124,9 +165,9 @@ class BeneficialOwnerReadSchema(CamelModel):
 
 class RecordCddRequest(CamelModel):
     matter_id: str | None = None
-    level: str
+    level: CddLevelLiteral
     risk_factors: list[str] = Field(default_factory=list)
-    outcome: str
+    outcome: CddOutcomeLiteral
     review_due_on: date | None = None
     policy_version: str
 
@@ -135,9 +176,9 @@ class CddAssessmentReadSchema(CamelModel):
     id: str
     party_id: str
     matter_id: str | None
-    level: str
+    level: CddLevelLiteral
     risk_factors: list[str]
-    outcome: str
+    outcome: CddOutcomeLiteral
     assessed_by: str
     assessed_at: datetime
     review_due_on: date | None
@@ -154,7 +195,7 @@ class ScreeningMatchDetailRequest(CamelModel):
 class RecordScreeningRequest(CamelModel):
     list_version: str
     provider_ref: str
-    outcome: str
+    outcome: ScreeningOutcomeLiteral
     match_count: int = 0
     match_detail: ScreeningMatchDetailRequest | None = None
 
@@ -164,7 +205,7 @@ class ScreeningResultReadSchema(CamelModel):
     party_id: str
     list_version: str
     provider_ref: str
-    outcome: str
+    outcome: ScreeningOutcomeLiteral
     match_count: int
     created_at: datetime
 
@@ -181,5 +222,22 @@ class DuplicateProbeResponse(CamelModel):
 class MatterPartyReadSchema(CamelModel):
     id: str
     display_name: str
-    party_kind: str
-    screening_status: str
+    party_kind: PartyKindLiteral
+
+
+class VerifyIdentityEvidenceRequest(CamelModel):
+    """No body fields: verification is a state transition, not new content."""
+
+
+class MergePartiesRequest(CamelModel):
+    source_party_id: str
+    target_party_id: str
+    reason: str = Field(min_length=1)
+
+
+class ScreeningResultListItemSchema(CamelModel):
+    id: str
+    outcome: ScreeningOutcomeLiteral
+    match_count: int
+    list_version: str
+    created_at: str

@@ -54,14 +54,20 @@ silent overwrite in either direction.
 ## 2. Where it sits
 
 ```text
-GET   /api/v1/parties                       (user-scoped search)
+GET   /api/v1/parties                       (user-scoped search, paginated)
 POST  /api/v1/parties
 GET   /api/v1/parties/{id}
-PATCH /api/v1/parties/{id}
+PATCH /api/v1/parties/{id}                  (If-Match)
+GET   /api/v1/parties/{id}/identity-evidence
 POST  /api/v1/parties/{id}/identity-evidence
+POST  /api/v1/parties/{id}/identity-evidence/{eid}/verification   (If-Match)
+GET   /api/v1/parties/{id}/identity-evidence/{eid}/identifier?purpose=
 POST  /api/v1/parties/{id}/beneficial-owners
 POST  /api/v1/parties/{id}/cdd
+GET   /api/v1/parties/{id}/screening        (compliance.view, else 404)
 POST  /api/v1/parties/{id}/screening
+POST  /api/v1/parties/duplicate-probe
+POST  /api/v1/parties/merges                (administrator, If-Match)
 GET   /api/v1/matters/{id}/parties
               |
               v
@@ -237,8 +243,26 @@ screening outcome attached to it.
   compliance officer records an externally run result; the domain contract is
   identical either way.
 - `DocumentReadPort` — resolve a `documentVersionId` to a readable, matter-scoped
-  version so evidence can be pinned. This service never signs URLs.
-- `EventPort`, `AuditPort` — as every service.
+  version so evidence can be pinned. This service never signs URLs. **Not yet
+  implemented**: `document_service` does not exist, so a supplied
+  `documentVersionId` is currently pinned as an opaque reference and is not
+  resolved. Verified evidence therefore proves that a version was named, not
+  yet that it exists.
+- `FieldEncryptionPort` — `encrypt`, `decrypt`, and `blind_index` for
+  `identifierValue`, keyed separately from ordinary matter data. The blind index
+  is an HMAC under a second key, so the duplicate probe can compare identifiers
+  for exact equality without decrypting any of them.
+- `MatterAccessPort` — matter membership for `list_matter_parties`. **Stub
+  only**: `matter_service` does not exist, so the adapter denies every matter it
+  has not been explicitly given and refuses to be wired outside local and test
+  environments. It is not a matter access-control implementation and must not
+  become one.
+- `PractisingNotaryPort` — the practising-status predicate required before
+  identity evidence may reach `verified` (`security-model.md` §3.3). The party
+  module does not import `auth_service`; the bridge is built in `bootstrap.py`.
+- `EventPort`, `AuditPort` — as every service. `EventPort` currently has a
+  logging adapter: no broker has been chosen, so events are recorded and
+  privacy-checked but not transported.
 
 ## 5. Methods
 
@@ -252,12 +276,22 @@ Requires `party.record-identity`. Organisation-scoped. Runs the duplicate probe
 
 Requires `party.record-identity`. Encrypts `identifierValue`, stores
 `identifierLast4`, pins `documentVersionId` and `evidenceSpan` where supplied,
-and sets `state = recorded`. Moving to `verified` additionally requires a
-practising notary (`security-model.md` §3.3) and a pinned document version —
-identity evidence cannot be verified against nothing.
+and sets `state = recorded`. Where `supersedesEvidenceId` is given, the
+predecessor moves to `superseded` in the same unit of work and an illegal
+predecessor state is refused.
+
+`identifierLast4` is empty when the identifier is four characters or shorter,
+because "the last four" of a four-character value is the whole value.
 
 Publishes `party.identity-evidence-recorded`, and
 `party.identity-document-expiry-recorded` when `expiresOn` is present.
+
+### verify_identity_evidence(ctx, party_id, evidence_id) -> IdentityEvidenceRead
+
+Requires `party.record-identity`, a practising notary (`security-model.md`
+§3.3), and both a pinned `documentVersionId` and an `evidenceSpan` on the
+evidence. Identity evidence cannot be verified against nothing. Conditional on
+`If-Match` against the evidence version.
 
 ### record_beneficial_owner(ctx, party_id, owner) -> BeneficialOwnerRead
 
@@ -287,13 +321,27 @@ purpose that is recorded in the access audit event (§8).
 ### list_matter_parties(ctx, matter_id) -> MatterPartyRead[]
 
 Joins `matter_service`'s `MatterPartyReference` to the party records the caller
-may see. A caller who is not a matter member gets 404.
+may see. A caller who is not a matter member gets 404. The response carries no
+`screeningStatus`: a matter roster is an ordinary read and compliance state is
+not.
+
+### list_screening_results(ctx, party_id) -> ScreeningResultRead[]
+
+Requires `compliance.view`. Every other caller gets 404 with the same body as a
+genuinely missing record, and the refusal returns before either repository is
+touched so the two paths cannot diverge in the work they do.
 
 ### merge_parties(ctx, source_id, target_id, reason) -> PartyRead
 
-Requires `administrator`. Sets `mergedIntoPartyId` on the source; never deletes.
-All evidence, ownership, assessments, and matter links repoint to the target,
-and the merge is reversible from the audit trail.
+Requires `administrator` and a non-empty `reason`, which is recorded on the
+audit event. Sets `mergedIntoPartyId` on the source; never deletes. Evidence,
+ownership, and assessments repoint to the target; screening results stay with
+the record that was actually screened. A merged party still reads, so the
+pointer is visible, but refuses every further write. Conditional on `If-Match`
+against the source version.
+
+Legal hold is **not** enforced: `retention_service` does not exist yet, so the
+refusal described in §10 is currently unimplemented.
 
 ## 6. Entitlement and metering
 
@@ -340,7 +388,9 @@ audited, and it is deliberate.
 | Merges preserve history | `mergedIntoPartyId` pointer, never a delete |
 | CDD pins its policy version | A later policy change cannot silently re-grade a completed assessment |
 | No automatic identity merge | Candidates are surfaced; a human with `administrator` decides |
-| Every mutation audited | `AuditPort.record` with `targetType: "party"`, no identifier values in the payload |
+| Every mutation audited | Exactly one `AuditPort.record` per mutating method, in the same unit of work, with `targetType: "party"` and no identifier values in the payload |
+| Every party-owned row carries the tenant key | `user_id` is a column on all six tables and every statement filters it first; it comes from `RequestContext.actorId` and is never read from a request body |
+| Lists are bounded | Cursor pagination with `limit` refused outside 1..100 |
 
 ## 10. Failure modes
 
@@ -380,6 +430,20 @@ audited, and it is deliberate.
 - **Privacy:** encryption at rest verified for `identifierValue`; a database
   dump of the party tables contains no plaintext identifier.
 
+### 11.1 Implementation status
+
+Implemented in `backend/tests/{unit,contract,security,privacy,integration}/`
+against `test_party_*.py`. All fixtures are synthetic and labelled as such in
+`tests/fixtures/party_synthetic.py`.
+
+Three rows of the list above are not fully satisfied, and none of them is faked:
+
+| Gap | Why | What exists instead |
+| --- | --- | --- |
+| Expiry produces an obligation | `obligations_service` does not exist | The `party.identity-document-expiry-recorded` payload is asserted against the registry |
+| Merge is blocked by a legal hold | `retention_service` does not exist | The test is present and skipped with that reason |
+| The dump test runs against Postgres | No database-backed test harness exists in this repository | The dump is taken from the rows the real SQL repositories persist, through a recording session, covering every column of all six tables |
+
 ## 12. Decisions to confirm before coding
 
 1. Party is user-scoped, not matter-scoped, so one person is one record
@@ -395,3 +459,25 @@ audited, and it is deliberate.
 7. Encryption key for `identifierValue` is separate from the general database
    key and is rotatable — confirm the key-management approach with
    `infrastructure.md` §7.
+
+### 12.1 Status of each decision
+
+Decisions 1 to 6 are implemented as written. Decision 7 is **still open** and is
+the blocking item before this service may hold real client data:
+
+- The key is separate by construction — `PARTY_IDENTIFIER_KEY` and
+  `PARTY_BLIND_INDEX_KEY` are read by nothing else in the codebase — but the
+  only adapter is a local Fernet one behind `FieldEncryptionPort`.
+- The local adapter falls back to a fixed development key **only** when the
+  environment is local, test, or CI and no key is configured. Anywhere else it
+  refuses to start rather than quietly serving requests under a key that is
+  committed to this repository.
+- Still to be settled with `infrastructure.md` §7 and a named owner: the KMS or
+  secret store, the rotation schedule, the re-encryption path for existing rows,
+  and whether the blind index survives a key rotation or is rebuilt.
+
+An additional open item, not in the original list: cursors are opaque
+base64 rather than signed, because no signing key is provisioned at the platform
+level yet. They encode only a timestamp and a public id, so a forged cursor can
+change the page a caller sees but cannot widen the `user_id` scope, which is
+applied independently.

@@ -22,7 +22,6 @@ from src.modules.auth.infrastructure.repository import (
     SqlUserRepository,
 )
 from src.modules.party.application.party_service import PartyService
-from src.modules.party.infrastructure.field_encryption import StubFieldEncryptionAdapter
 from src.modules.party.infrastructure.matter_access_stub import StubMatterAccessAdapter
 from src.modules.party.infrastructure.repository import (
     SqlIdentityEvidenceRepository,
@@ -72,7 +71,13 @@ def init_services(session: AsyncSession) -> None:
     audit_repo = SqlAuditRepository(session)
     audit_service = AuditService(repository=audit_repo)
 
-    from src.bootstrap import build_identity_adapter
+    from src.bootstrap import (
+        AuthPractisingNotaryAdapter,
+        build_identity_adapter,
+        build_party_event_adapter,
+        build_party_field_encryption,
+        build_party_matter_access,
+    )
 
     identity_adapter = build_identity_adapter()
 
@@ -84,8 +89,8 @@ def init_services(session: AsyncSession) -> None:
         audit_port=audit_service,
     )
 
-    encryption = StubFieldEncryptionAdapter()
-    _matter_access_stub = StubMatterAccessAdapter()
+    encryption = build_party_field_encryption()
+    _matter_access_stub = build_party_matter_access()
     _party_service_instance = PartyService(
         party_repo=SqlPartyRepository(session),
         identity_repo=SqlIdentityEvidenceRepository(session, encryption),
@@ -93,6 +98,8 @@ def init_services(session: AsyncSession) -> None:
         field_encryption=encryption,
         matter_access=_matter_access_stub,
         audit_port=audit_service,
+        event_port=build_party_event_adapter(),
+        notary_port=AuthPractisingNotaryAdapter(_auth_service_instance),
     )
 
 

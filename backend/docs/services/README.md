@@ -49,7 +49,7 @@ OCR escalation ladder is large enough to need one.
 | [auth-service](auth-service.md) | Identity, roles, organisation and matter membership, capability checks | 2 | L0 |
 | [billing-service](billing-service.md) | Plans, subscriptions, entitlements, usage, PayHere webhooks | 2B | L0 |
 | [matter-service](matter-service.md) | Matter identity, classification, lifecycle, party references | 2 | L0 |
-| [party-service](party-service.md) | Party records, identity evidence, beneficial ownership, CDD, screening | 2 | L0 |
+| [party-service](party-service.md) | Party records, identity evidence, beneficial ownership, CDD, screening | 2 | L1 |
 | [document-service](document-service.md) | Immutable upload, versioning, processing state, viewer manifest | 3 | L0 |
 | [storage-service](storage-service.md) | Provider-neutral blob metadata, immutable operations, signed grants, reconciliation | 3 | L0 |
 | [document-processing](document-processing.md) | Worker pipeline: rasterise, classify, OCR ladder, extract | 3 | L0 |

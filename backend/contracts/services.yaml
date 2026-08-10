@@ -73,7 +73,7 @@
 
 - name: party_service
   doc: docs/services/party-service.md
-  level: L0
+  level: L1
   phase: 3B
   matter_scoped: false
   routes_prefix: /api/v1/parties
@@ -87,7 +87,31 @@
   owns_tables: [parties, identity_evidence, beneficial_owners, cdd_assessments,
                 screening_results, screening_match_detail]
   jobs: []
-  exemptions: []
+  exemptions:
+    - gate: L2 conformance suite
+      reason: >-
+        tests/conformance/ is empty repository-wide; the registry-parameterised
+        suite does not exist yet. The equivalent checks are implemented as
+        party-local tests under tests/{security,privacy,contract}/.
+    - gate: L3 database-backed integration tests
+      reason: >-
+        No Postgres test harness exists in this repository. Integration tests
+        run against port doubles, and the encryption-at-rest dump test reads the
+        rows the real SQL repositories persist rather than a live pg_dump.
+    - gate: MatterAccessPort
+      reason: >-
+        matter_service does not exist. The adapter is a fail-closed stub that
+        denies every matter it has not been explicitly given and refuses to be
+        wired outside local and test environments.
+    - gate: DocumentReadPort
+      reason: >-
+        document_service does not exist. documentVersionId is pinned as an
+        opaque reference and is not resolved to a readable version.
+    - gate: Production key management for identifierValue
+      reason: >-
+        party-service.md §12 decision 7 is open. The only FieldEncryptionPort
+        adapter is local, and it refuses to start outside local, test, and CI
+        unless PARTY_IDENTIFIER_KEY and PARTY_BLIND_INDEX_KEY are configured.
 
 - name: document_service
   doc: docs/services/document-service.md

@@ -1,0 +1,2475 @@
+{
+  "components": {
+    "schemas": {
+      "AccountStatusRead": {
+        "description": "Returned for authenticated accounts.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "AccountStatusRead",
+        "type": "object"
+      },
+      "BeneficialOwnerReadSchema": {
+        "properties": {
+          "evidenceRefs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidencerefs",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ownerPartyId": {
+            "title": "Ownerpartyid",
+            "type": "string"
+          },
+          "ownershipKind": {
+            "enum": [
+              "shareholding",
+              "voting-rights",
+              "control-other",
+              "senior-managing"
+            ],
+            "title": "Ownershipkind",
+            "type": "string"
+          },
+          "partyId": {
+            "title": "Partyid",
+            "type": "string"
+          },
+          "percentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "partyId",
+          "ownerPartyId",
+          "ownershipKind",
+          "percentage",
+          "evidenceRefs",
+          "state"
+        ],
+        "title": "BeneficialOwnerReadSchema",
+        "type": "object"
+      },
+      "CddAssessmentReadSchema": {
+        "properties": {
+          "assessedAt": {
+            "format": "date-time",
+            "title": "Assessedat",
+            "type": "string"
+          },
+          "assessedBy": {
+            "title": "Assessedby",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "standard",
+              "simplified",
+              "enhanced"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "matterId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matterid"
+          },
+          "outcome": {
+            "enum": [
+              "pending",
+              "complete",
+              "blocked"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "partyId": {
+            "title": "Partyid",
+            "type": "string"
+          },
+          "policyVersion": {
+            "title": "Policyversion",
+            "type": "string"
+          },
+          "reviewDueOn": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewdueon"
+          },
+          "riskFactors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Riskfactors",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "partyId",
+          "matterId",
+          "level",
+          "riskFactors",
+          "outcome",
+          "assessedBy",
+          "assessedAt",
+          "reviewDueOn",
+          "policyVersion",
+          "version"
+        ],
+        "title": "CddAssessmentReadSchema",
+        "type": "object"
+      },
+      "CreatePartyRequest": {
+        "properties": {
+          "addresses": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Addresses",
+            "type": "array"
+          },
+          "confidentialityLevel": {
+            "default": "standard",
+            "enum": [
+              "standard",
+              "private-matter",
+              "restricted-compliance"
+            ],
+            "title": "Confidentialitylevel",
+            "type": "string"
+          },
+          "contactPoints": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Contactpoints",
+            "type": "array"
+          },
+          "dateOfBirth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dateofbirth"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "formerNames": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Formernames",
+            "type": "array"
+          },
+          "nameParts": {
+            "additionalProperties": true,
+            "title": "Nameparts",
+            "type": "object"
+          },
+          "nationality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nationality"
+          },
+          "partyKind": {
+            "enum": [
+              "natural-person",
+              "company",
+              "partnership",
+              "trust",
+              "statutory-body",
+              "other"
+            ],
+            "title": "Partykind",
+            "type": "string"
+          },
+          "registrationNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrationnumber"
+          },
+          "residencyStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Residencystatus"
+          }
+        },
+        "required": [
+          "partyKind",
+          "displayName"
+        ],
+        "title": "CreatePartyRequest",
+        "type": "object"
+      },
+      "DuplicateCandidateSchema": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "matchReason": {
+            "title": "Matchreason",
+            "type": "string"
+          },
+          "partyId": {
+            "title": "Partyid",
+            "type": "string"
+          },
+          "strength": {
+            "title": "Strength",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partyId",
+          "displayName",
+          "matchReason",
+          "strength"
+        ],
+        "title": "DuplicateCandidateSchema",
+        "type": "object"
+      },
+      "DuplicateProbeRequest": {
+        "properties": {
+          "identifierValue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifiervalue"
+          },
+          "partyId": {
+            "title": "Partyid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partyId"
+        ],
+        "title": "DuplicateProbeRequest",
+        "type": "object"
+      },
+      "DuplicateProbeResponse": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateCandidateSchema"
+            },
+            "title": "Candidates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "candidates"
+        ],
+        "title": "DuplicateProbeResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IdentityEvidenceReadSchema": {
+        "properties": {
+          "documentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentid"
+          },
+          "documentVersionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentversionid"
+          },
+          "evidenceKind": {
+            "enum": [
+              "nic",
+              "passport",
+              "driving-licence",
+              "birth-certificate",
+              "company-registration",
+              "board-resolution",
+              "power-of-attorney",
+              "utility-bill",
+              "other"
+            ],
+            "title": "Evidencekind",
+            "type": "string"
+          },
+          "evidenceSpan": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidencespan"
+          },
+          "expiresOn": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expireson"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "identifierLast4": {
+            "title": "Identifierlast4",
+            "type": "string"
+          },
+          "issuedOn": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuedon"
+          },
+          "issuingAuthority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuingauthority"
+          },
+          "partyId": {
+            "title": "Partyid",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "recorded",
+              "verified",
+              "rejected",
+              "expired",
+              "superseded"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "supersedesEvidenceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedesevidenceid"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "partyId",
+          "evidenceKind",
+          "identifierLast4",
+          "issuedOn",
+          "expiresOn",
+          "issuingAuthority",
+          "documentId",
+          "documentVersionId",
+          "evidenceSpan",
+          "state",
+          "supersedesEvidenceId",
+          "version"
+        ],
+        "title": "IdentityEvidenceReadSchema",
+        "type": "object"
+      },
+      "IdentityValueReadSchema": {
+        "properties": {
+          "evidenceId": {
+            "title": "Evidenceid",
+            "type": "string"
+          },
+          "identifierValue": {
+            "title": "Identifiervalue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidenceId",
+          "identifierValue"
+        ],
+        "title": "IdentityValueReadSchema",
+        "type": "object"
+      },
+      "MatterPartyReadSchema": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "partyKind": {
+            "enum": [
+              "natural-person",
+              "company",
+              "partnership",
+              "trust",
+              "statutory-body",
+              "other"
+            ],
+            "title": "Partykind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "partyKind"
+        ],
+        "title": "MatterPartyReadSchema",
+        "type": "object"
+      },
+      "MergePartiesRequest": {
+        "properties": {
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "sourcePartyId": {
+            "title": "Sourcepartyid",
+            "type": "string"
+          },
+          "targetPartyId": {
+            "title": "Targetpartyid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourcePartyId",
+          "targetPartyId",
+          "reason"
+        ],
+        "title": "MergePartiesRequest",
+        "type": "object"
+      },
+      "PageSchema": {
+        "properties": {
+          "hasMore": {
+            "default": false,
+            "title": "Hasmore",
+            "type": "boolean"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "limit"
+        ],
+        "title": "PageSchema",
+        "type": "object"
+      },
+      "PagedResponse_PartyListItemSchema_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PartyListItemSchema"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageSchema"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "PagedResponse[PartyListItemSchema]",
+        "type": "object"
+      },
+      "PartyListItemSchema": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "partyKind": {
+            "enum": [
+              "natural-person",
+              "company",
+              "partnership",
+              "trust",
+              "statutory-body",
+              "other"
+            ],
+            "title": "Partykind",
+            "type": "string"
+          },
+          "screeningStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not-run",
+                  "clear",
+                  "potential-match",
+                  "confirmed-match"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screeningstatus"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "partyKind",
+          "screeningStatus",
+          "version"
+        ],
+        "title": "PartyListItemSchema",
+        "type": "object"
+      },
+      "PartyReadSchema": {
+        "properties": {
+          "addresses": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Addresses",
+            "type": "array"
+          },
+          "confidentialityLevel": {
+            "enum": [
+              "standard",
+              "private-matter",
+              "restricted-compliance"
+            ],
+            "title": "Confidentialitylevel",
+            "type": "string"
+          },
+          "contactPoints": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Contactpoints",
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dateofbirth"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "duplicateCandidates": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateCandidateSchema"
+            },
+            "title": "Duplicatecandidates",
+            "type": "array"
+          },
+          "effectiveConfidentiality": {
+            "enum": [
+              "standard",
+              "private-matter",
+              "restricted-compliance"
+            ],
+            "title": "Effectiveconfidentiality",
+            "type": "string"
+          },
+          "formerNames": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Formernames",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mergedIntoPartyId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mergedintopartyid"
+          },
+          "nameParts": {
+            "additionalProperties": true,
+            "title": "Nameparts",
+            "type": "object"
+          },
+          "nationality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nationality"
+          },
+          "partyKind": {
+            "enum": [
+              "natural-person",
+              "company",
+              "partnership",
+              "trust",
+              "statutory-body",
+              "other"
+            ],
+            "title": "Partykind",
+            "type": "string"
+          },
+          "registrationNumber": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registrationnumber"
+          },
+          "residencyStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Residencystatus"
+          },
+          "riskRating": {
+            "enum": [
+              "unassessed",
+              "low",
+              "standard",
+              "high"
+            ],
+            "title": "Riskrating",
+            "type": "string"
+          },
+          "screeningStatus": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not-run",
+                  "clear",
+                  "potential-match",
+                  "confirmed-match"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screeningstatus"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "partyKind",
+          "displayName",
+          "nameParts",
+          "formerNames",
+          "dateOfBirth",
+          "registrationNumber",
+          "nationality",
+          "residencyStatus",
+          "addresses",
+          "contactPoints",
+          "riskRating",
+          "screeningStatus",
+          "confidentialityLevel",
+          "effectiveConfidentiality",
+          "mergedIntoPartyId",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "PartyReadSchema",
+        "type": "object"
+      },
+      "PatchPartyRequest": {
+        "properties": {
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          }
+        },
+        "title": "PatchPartyRequest",
+        "type": "object"
+      },
+      "RecordBeneficialOwnerRequest": {
+        "properties": {
+          "evidenceRefs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidencerefs",
+            "type": "array"
+          },
+          "ownerPartyId": {
+            "title": "Ownerpartyid",
+            "type": "string"
+          },
+          "ownershipKind": {
+            "enum": [
+              "shareholding",
+              "voting-rights",
+              "control-other",
+              "senior-managing"
+            ],
+            "title": "Ownershipkind",
+            "type": "string"
+          },
+          "percentage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentage"
+          }
+        },
+        "required": [
+          "ownerPartyId",
+          "ownershipKind"
+        ],
+        "title": "RecordBeneficialOwnerRequest",
+        "type": "object"
+      },
+      "RecordCddRequest": {
+        "properties": {
+          "level": {
+            "enum": [
+              "standard",
+              "simplified",
+              "enhanced"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "matterId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matterid"
+          },
+          "outcome": {
+            "enum": [
+              "pending",
+              "complete",
+              "blocked"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "policyVersion": {
+            "title": "Policyversion",
+            "type": "string"
+          },
+          "reviewDueOn": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewdueon"
+          },
+          "riskFactors": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Riskfactors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "level",
+          "outcome",
+          "policyVersion"
+        ],
+        "title": "RecordCddRequest",
+        "type": "object"
+      },
+      "RecordIdentityEvidenceRequest": {
+        "properties": {
+          "documentId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentid"
+          },
+          "documentVersionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentversionid"
+          },
+          "evidenceKind": {
+            "enum": [
+              "nic",
+              "passport",
+              "driving-licence",
+              "birth-certificate",
+              "company-registration",
+              "board-resolution",
+              "power-of-attorney",
+              "utility-bill",
+              "other"
+            ],
+            "title": "Evidencekind",
+            "type": "string"
+          },
+          "evidenceSpan": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidencespan"
+          },
+          "expiresOn": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expireson"
+          },
+          "identifierValue": {
+            "title": "Identifiervalue",
+            "type": "string"
+          },
+          "issuedOn": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuedon"
+          },
+          "issuingAuthority": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuingauthority"
+          },
+          "supersedesEvidenceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedesevidenceid"
+          }
+        },
+        "required": [
+          "evidenceKind",
+          "identifierValue"
+        ],
+        "title": "RecordIdentityEvidenceRequest",
+        "type": "object"
+      },
+      "RecordScreeningRequest": {
+        "properties": {
+          "listVersion": {
+            "title": "Listversion",
+            "type": "string"
+          },
+          "matchCount": {
+            "default": 0,
+            "title": "Matchcount",
+            "type": "integer"
+          },
+          "matchDetail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScreeningMatchDetailRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "clear",
+              "potential-match",
+              "confirmed-match"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "providerRef": {
+            "title": "Providerref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listVersion",
+          "providerRef",
+          "outcome"
+        ],
+        "title": "RecordScreeningRequest",
+        "type": "object"
+      },
+      "ScreeningMatchDetailRequest": {
+        "properties": {
+          "listEntryRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listentryref"
+          },
+          "matchNarrative": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchnarrative"
+          },
+          "providerPayload": {
+            "additionalProperties": true,
+            "title": "Providerpayload",
+            "type": "object"
+          }
+        },
+        "title": "ScreeningMatchDetailRequest",
+        "type": "object"
+      },
+      "ScreeningResultListItemSchema": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "listVersion": {
+            "title": "Listversion",
+            "type": "string"
+          },
+          "matchCount": {
+            "title": "Matchcount",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "clear",
+              "potential-match",
+              "confirmed-match"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "outcome",
+          "matchCount",
+          "listVersion",
+          "createdAt"
+        ],
+        "title": "ScreeningResultListItemSchema",
+        "type": "object"
+      },
+      "ScreeningResultReadSchema": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "listVersion": {
+            "title": "Listversion",
+            "type": "string"
+          },
+          "matchCount": {
+            "title": "Matchcount",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "clear",
+              "potential-match",
+              "confirmed-match"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "partyId": {
+            "title": "Partyid",
+            "type": "string"
+          },
+          "providerRef": {
+            "title": "Providerref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "partyId",
+          "listVersion",
+          "providerRef",
+          "outcome",
+          "matchCount",
+          "createdAt"
+        ],
+        "title": "ScreeningResultReadSchema",
+        "type": "object"
+      },
+      "SetRoleRequest": {
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "SetRoleRequest",
+        "type": "object"
+      },
+      "UserRead": {
+        "description": "Mirrors frontend/src/types/user.ts User interface.\n\nmodel_dump(by_alias=True) \u2192 camelCase keys matching the frontend type.",
+        "properties": {
+          "addressLine1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Addressline1"
+          },
+          "addressLine2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Addressline2"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "jurisdiction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jurisdiction"
+          },
+          "notaryRegistration": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notaryregistration"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "professionalTitles": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Professionaltitles"
+          },
+          "qualifications": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualifications"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "role"
+        ],
+        "title": "UserRead",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Draftly API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/account-status": {
+      "get": {
+        "description": "Return account activation status for the authenticated user.",
+        "operationId": "get_account_status_api_v1_account_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Account Status",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/parties": {
+      "get": {
+        "operationId": "list_matter_parties_api_v1_matters__matter_id__parties_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MatterPartyReadSchema"
+                  },
+                  "title": "Response List Matter Parties Api V1 Matters  Matter Id  Parties Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Matter Parties",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "description": "Return the authenticated user's profile (frontend User shape).",
+        "operationId": "get_current_user_api_v1_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Current User",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/parties": {
+      "get": {
+        "operationId": "list_parties_api_v1_parties_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponse_PartyListItemSchema_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Parties",
+        "tags": [
+          "parties"
+        ]
+      },
+      "post": {
+        "operationId": "create_party_api_v1_parties_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePartyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Party",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/duplicate-probe": {
+      "post": {
+        "description": "Surfaces candidates. Nothing here merges anything \u2014 see POST /parties/merges.",
+        "operationId": "duplicate_probe_api_v1_parties_duplicate_probe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateProbeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateProbeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Duplicate Probe",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/merges": {
+      "post": {
+        "description": "Administrator-only, pointer-based, never a delete (party-service.md \u00a75).",
+        "operationId": "merge_parties_api_v1_parties_merges_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergePartiesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Merge Parties",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/{party_id}": {
+      "get": {
+        "operationId": "get_party_api_v1_parties__party_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Party",
+        "tags": [
+          "parties"
+        ]
+      },
+      "patch": {
+        "operationId": "patch_party_api_v1_parties__party_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchPartyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Patch Party",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/{party_id}/beneficial-owners": {
+      "post": {
+        "operationId": "record_beneficial_owner_api_v1_parties__party_id__beneficial_owners_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordBeneficialOwnerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BeneficialOwnerReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Beneficial Owner",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/{party_id}/cdd": {
+      "post": {
+        "operationId": "record_cdd_api_v1_parties__party_id__cdd_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCddRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CddAssessmentReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Cdd",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/{party_id}/identity-evidence": {
+      "get": {
+        "operationId": "list_identity_evidence_api_v1_parties__party_id__identity_evidence_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/IdentityEvidenceReadSchema"
+                  },
+                  "title": "Response List Identity Evidence Api V1 Parties  Party Id  Identity Evidence Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Identity Evidence",
+        "tags": [
+          "parties"
+        ]
+      },
+      "post": {
+        "operationId": "record_identity_evidence_api_v1_parties__party_id__identity_evidence_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordIdentityEvidenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityEvidenceReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Identity Evidence",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/{party_id}/identity-evidence/{evidence_id}/identifier": {
+      "get": {
+        "operationId": "read_identity_value_api_v1_parties__party_id__identity_evidence__evidence_id__identifier_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "evidence_id",
+            "required": true,
+            "schema": {
+              "title": "Evidence Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "purpose",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Purpose",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityValueReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Identity Value",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/{party_id}/identity-evidence/{evidence_id}/verification": {
+      "post": {
+        "operationId": "verify_identity_evidence_api_v1_parties__party_id__identity_evidence__evidence_id__verification_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "evidence_id",
+            "required": true,
+            "schema": {
+              "title": "Evidence Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityEvidenceReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Verify Identity Evidence",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/parties/{party_id}/screening": {
+      "get": {
+        "description": "404 for anyone without `compliance.view` \u2014 restricted rows are invisible.",
+        "operationId": "list_screening_results_api_v1_parties__party_id__screening_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_detail",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Detail",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScreeningResultListItemSchema"
+                  },
+                  "title": "Response List Screening Results Api V1 Parties  Party Id  Screening Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Screening Results",
+        "tags": [
+          "parties"
+        ]
+      },
+      "post": {
+        "operationId": "record_screening_api_v1_parties__party_id__screening_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "party_id",
+            "required": true,
+            "schema": {
+              "title": "Party Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordScreeningRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScreeningResultReadSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Screening",
+        "tags": [
+          "parties"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/role": {
+      "patch": {
+        "description": "Update a user's account role. Audited.",
+        "operationId": "set_user_role_api_v1_users__user_id__role_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set User Role",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "description": "Liveness probe \u2014 always 200 if the process is up.",
+        "operationId": "health_live_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Live",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Readiness probe \u2014 checks DB reachability without leaking credentials.",
+        "operationId": "health_ready_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Ready",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  }
+}

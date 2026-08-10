@@ -1,4 +1,10 @@
-"""Party API router — thin layer over party_service."""
+"""Party API router — authenticates and parses only.
+
+No authorisation decision is made here and nothing in a request body is ever
+treated as identity: `user_id` comes from the `RequestContext` the auth
+dependency built, so a forged `userId`, `role`, or capability in a body is
+simply never read.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +21,9 @@ from src.modules.party.api.schemas import (
     IdentityEvidenceReadSchema,
     IdentityValueReadSchema,
     MatterPartyReadSchema,
+    MergePartiesRequest,
+    PagedResponse,
+    PageSchema,
     PartyListItemSchema,
     PartyReadSchema,
     PatchPartyRequest,
@@ -22,6 +31,7 @@ from src.modules.party.api.schemas import (
     RecordCddRequest,
     RecordIdentityEvidenceRequest,
     RecordScreeningRequest,
+    ScreeningResultListItemSchema,
     ScreeningResultReadSchema,
 )
 from src.modules.party.application.party_service import PartyRead
@@ -33,9 +43,22 @@ from src.modules.party.ports import (
     RecordIdentityEvidenceInput,
     RecordScreeningInput,
 )
+from src.platform.errors import PreconditionFailedError, PreconditionRequiredError
+from src.platform.pagination import decode_cursor
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["parties"])
+
+
+def _require_if_match(if_match: str | None) -> int:
+    """428 when absent, 412 when unparseable — never a 500 (api-conventions.md §3)."""
+    if if_match is None:
+        raise PreconditionRequiredError("If-Match header is required.")
+    candidate = if_match.strip().removeprefix("W/").strip('"')
+    try:
+        return int(candidate)
+    except ValueError as exc:
+        raise PreconditionFailedError("If-Match must be the integer resource version.") from exc
 
 
 def _party_to_read(read: PartyRead) -> PartyReadSchema:
@@ -53,7 +76,7 @@ def _party_to_read(read: PartyRead) -> PartyReadSchema:
         addresses=party.addresses,
         contact_points=party.contact_points,
         risk_rating=party.risk_rating.value,
-        screening_status=party.screening_status.value,
+        screening_status=read.screening_status.value if read.screening_status else None,
         confidentiality_level=party.confidentiality_level.value,
         effective_confidentiality=read.effective_confidentiality.value,
         merged_into_party_id=party.merged_into_party_id,
@@ -90,23 +113,37 @@ def _evidence_to_read(evidence: IdentityEvidence) -> IdentityEvidenceReadSchema:
     )
 
 
-@router.get("/parties", response_model=list[PartyListItemSchema])
+@router.get("/parties", response_model=PagedResponse[PartyListItemSchema])
 async def list_parties(
     q: str | None = Query(default=None),
+    limit: int = Query(default=50),
+    cursor: str | None = Query(default=None),
     ctx: RequestContext = Depends(get_request_context),
-) -> list[PartyListItemSchema]:
+) -> PagedResponse[PartyListItemSchema]:
     service = get_party_service_instance()
-    parties = await service.list_parties(ctx, PartyListFilter(query=q))
-    return [
-        PartyListItemSchema(
-            id=p.id,
-            display_name=p.display_name,
-            party_kind=p.party_kind.value,
-            screening_status=p.screening_status.value,
-            version=p.version,
-        )
-        for p in parties
-    ]
+    result = await service.list_parties(
+        ctx,
+        PartyListFilter(query=q, limit=limit, cursor=decode_cursor(cursor)),
+    )
+    return PagedResponse[PartyListItemSchema](
+        items=[
+            PartyListItemSchema(
+                id=p.id,
+                display_name=p.display_name,
+                party_kind=p.party_kind.value,
+                # A list never carries a compliance signal, and never a full
+                # identifier — only `identifierLast4` on the evidence endpoints.
+                screening_status=None,
+                version=p.version,
+            )
+            for p in result.items
+        ],
+        page=PageSchema(
+            next_cursor=result.page.next_cursor,
+            has_more=result.page.has_more,
+            limit=result.page.limit,
+        ),
+    )
 
 
 @router.post("/parties", response_model=PartyReadSchema)
@@ -151,16 +188,12 @@ async def patch_party(
     ctx: RequestContext = Depends(get_request_context),
     if_match: str | None = Header(default=None, alias="If-Match"),
 ) -> PartyReadSchema:
-    from src.platform.errors import PreconditionRequiredError
-
-    if if_match is None:
-        raise PreconditionRequiredError("If-Match header is required.")
     service = get_party_service_instance()
     read = await service.update_party(
         ctx,
         party_id,
         display_name=body.display_name,
-        expected_version=int(if_match),
+        expected_version=_require_if_match(if_match),
     )
     return _party_to_read(read)
 
@@ -186,6 +219,38 @@ async def record_identity_evidence(
             evidence_span=body.evidence_span,
             supersedes_evidence_id=body.supersedes_evidence_id,
         ),
+    )
+    return _evidence_to_read(result.evidence)
+
+
+@router.get(
+    "/parties/{party_id}/identity-evidence", response_model=list[IdentityEvidenceReadSchema]
+)
+async def list_identity_evidence(
+    party_id: str,
+    ctx: RequestContext = Depends(get_request_context),
+) -> list[IdentityEvidenceReadSchema]:
+    service = get_party_service_instance()
+    items = await service.list_identity_evidence(ctx, party_id)
+    return [_evidence_to_read(item) for item in items]
+
+
+@router.post(
+    "/parties/{party_id}/identity-evidence/{evidence_id}/verification",
+    response_model=IdentityEvidenceReadSchema,
+)
+async def verify_identity_evidence(
+    party_id: str,
+    evidence_id: str,
+    ctx: RequestContext = Depends(get_request_context),
+    if_match: str | None = Header(default=None, alias="If-Match"),
+) -> IdentityEvidenceReadSchema:
+    service = get_party_service_instance()
+    result = await service.verify_identity_evidence(
+        ctx,
+        party_id,
+        evidence_id,
+        expected_version=_require_if_match(if_match),
     )
     return _evidence_to_read(result.evidence)
 
@@ -305,11 +370,40 @@ async def record_screening(
     )
 
 
+@router.get(
+    "/parties/{party_id}/screening",
+    response_model=list[ScreeningResultListItemSchema],
+)
+async def list_screening_results(
+    party_id: str,
+    include_detail: bool = Query(default=False),
+    ctx: RequestContext = Depends(get_request_context),
+) -> list[ScreeningResultListItemSchema]:
+    """404 for anyone without `compliance.view` — restricted rows are invisible."""
+    service = get_party_service_instance()
+    results = await service.list_screening_results(
+        ctx,
+        party_id,
+        include_restricted_detail=include_detail,
+    )
+    return [
+        ScreeningResultListItemSchema(
+            id=item["id"],
+            outcome=item["outcome"],
+            match_count=item["match_count"],
+            list_version=item["list_version"],
+            created_at=item["created_at"],
+        )
+        for item in results
+    ]
+
+
 @router.post("/parties/duplicate-probe", response_model=DuplicateProbeResponse)
 async def duplicate_probe(
     body: DuplicateProbeRequest,
     ctx: RequestContext = Depends(get_request_context),
 ) -> DuplicateProbeResponse:
+    """Surfaces candidates. Nothing here merges anything — see POST /parties/merges."""
     service = get_party_service_instance()
     result = await service.detect_duplicates(
         ctx,
@@ -329,6 +423,24 @@ async def duplicate_probe(
     )
 
 
+@router.post("/parties/merges", response_model=PartyReadSchema)
+async def merge_parties(
+    body: MergePartiesRequest,
+    ctx: RequestContext = Depends(get_request_context),
+    if_match: str | None = Header(default=None, alias="If-Match"),
+) -> PartyReadSchema:
+    """Administrator-only, pointer-based, never a delete (party-service.md §5)."""
+    service = get_party_service_instance()
+    read = await service.merge_parties(
+        ctx,
+        body.source_party_id,
+        body.target_party_id,
+        body.reason,
+        expected_version=_require_if_match(if_match),
+    )
+    return _party_to_read(read)
+
+
 @router.get("/matters/{matter_id}/parties", response_model=list[MatterPartyReadSchema])
 async def list_matter_parties(
     matter_id: str,
@@ -341,7 +453,6 @@ async def list_matter_parties(
             id=p.id,
             display_name=p.display_name,
             party_kind=p.party_kind.value,
-            screening_status=p.screening_status.value,
         )
         for p in parties
     ]
