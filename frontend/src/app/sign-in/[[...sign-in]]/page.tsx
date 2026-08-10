@@ -19,11 +19,24 @@ export default async function SignInPage() {
         <p className="text-muted-ink mt-2 max-w-sm text-sm">{t("signInBody")}</p>
       </div>
       <SignIn
+        routing="hash"
         forceRedirectUrl="/"
         appearance={{
           elements: {
             rootBox: "mx-auto",
-            card: "shadow-none border border-border rounded-[8px]",
+            card: "shadow-none border border-border rounded-[8px] font-sans",
+            headerTitle: "font-heading text-ink font-semibold",
+            headerSubtitle: "text-muted-ink",
+            formButtonPrimary:
+              "bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] text-sm font-medium",
+            formFieldInput:
+              "border-border focus-visible:outline-ring rounded-[6px] bg-surface text-sm",
+            footerActionLink: "text-forest hover:text-forest/80",
+            socialButtonsBlockButton:
+              "border-border rounded-[6px] hover:bg-hover-bg text-sm font-medium",
+            identityPreviewText: "text-ink text-sm",
+            otpCodeFieldInput:
+              "border-border focus-visible:outline-ring rounded-[6px] text-center font-mono",
           },
         }}
       />
