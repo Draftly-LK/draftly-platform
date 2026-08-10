@@ -14,10 +14,12 @@
   "auth": {
     "signIn": "Sign in",
     "signInTitle": "Sign in to Draftly",
-    "signInBody": "Continue with Google or your email verification code.",
+    "signInBody": "Continue with Google or sign in with your email and password.",
     "signUpTitle": "Create your Draftly account",
-    "signUpBody": "Sign-up is invitation-only. Use the link from your administrator.",
-    "myProfile": "My profile"
+    "signUpBody": "Sign up with Google, or register with your email address and password.",
+    "myProfile": "My profile",
+    "profileEditComingSoon": "Profile editing is coming soon — your notarial details will be set here.",
+    "otpSentNotice": "A verification code has been sent to your email address."
   },
   "profile": {
     "title": "Profile",

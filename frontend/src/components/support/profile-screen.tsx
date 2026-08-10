@@ -157,6 +157,7 @@ function ProfileBody({
   uploading,
   photoError,
   showSignOut,
+  clerkEnabled,
 }: {
   /** From Clerk when signed in; empty shows "—" */
   authName: string;
@@ -167,6 +168,8 @@ function ProfileBody({
   uploading: boolean;
   photoError: string | null;
   showSignOut: boolean;
+  /** When true the edit button is disabled — profile persisted via API (coming soon). */
+  clerkEnabled: boolean;
 }) {
   const t = useTranslations("profile");
   const profile = useDemoStore((s) => s.profile);
@@ -231,8 +234,11 @@ function ProfileBody({
             {!editing ? (
               <button
                 type="button"
-                className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white"
-                onClick={startEdit}
+                className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={clerkEnabled}
+                title={clerkEnabled ? t("profileEditComingSoon") : undefined}
+                aria-disabled={clerkEnabled}
+                onClick={clerkEnabled ? undefined : startEdit}
               >
                 {t("edit")}
               </button>
@@ -391,6 +397,7 @@ function ClerkProfileBody() {
       uploading={uploading}
       photoError={photoError}
       showSignOut={Boolean(clerkUser)}
+      clerkEnabled={true}
     />
   );
 }
@@ -407,6 +414,7 @@ function DemoProfileBody() {
       uploading={false}
       photoError={null}
       showSignOut={false}
+      clerkEnabled={false}
     />
   );
 }

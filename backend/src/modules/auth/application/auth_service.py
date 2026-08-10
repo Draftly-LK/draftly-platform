@@ -99,7 +99,15 @@ class AuthService:
         token: str,
         correlation_id: str = "",
     ) -> User:
-        """Link Google identity to a user — auto-active APPROVER on first login."""
+        """Link a Clerk identity to a Draftly user — auto-active APPROVER on first login.
+
+        Provider-neutral: this method handles both Google OAuth and
+        email+password+OTP users transparently.  Clerk validates the
+        authentication method (Google, email+OTP) and issues a JWT with the
+        same verified (issuer, subject) key regardless of how the user signed
+        in.  The backend only sees a validated Clerk JWT with email_verified=True
+        and never handles passwords, OTP codes, or raw tokens directly.
+        """
         claims = await self._identity.validate_token(token)
 
         if not claims.verified_email:

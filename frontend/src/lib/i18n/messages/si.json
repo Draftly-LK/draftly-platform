@@ -14,10 +14,12 @@
   "auth": {
     "signIn": "පිවිසෙන්න",
     "signInTitle": "Draftly වෙත පිවිසෙන්න",
-    "signInBody": "Google හෝ ඔබගේ විද්‍යුත් තැපැල් සත්‍යාපන කේතයෙන් ඉදිරියට යන්න.",
+    "signInBody": "Google හෝ ඔබගේ විද්‍යුත් තැපෑල හා මුරපදය භාවිතා කර ඉදිරියට යන්න.",
     "signUpTitle": "ඔබගේ Draftly ගිණුම සාදන්න",
-    "signUpBody": "ලියාපදිංචිය ආරාධනා පමණි. ඔබගේ පරිපාලකගෙන් ලැබුණු සබැඳිය භාවිත කරන්න.",
-    "myProfile": "මගේ පැතිකඩ"
+    "signUpBody": "Google හරහා ලියාපදිංචි වන්න, නැතහොත් ඔබගේ විද්‍යුත් තැපෑල හා මුරපදය භාවිත කරන්න.",
+    "myProfile": "මගේ පැතිකඩ",
+    "profileEditComingSoon": "Profile editing is coming soon — your notarial details will be set here.",
+    "otpSentNotice": "ඔබගේ විද්‍යුත් තැපෑල ලිපිනයට සත්‍යාපන කේතයක් යවා ඇත."
   },
   "profile": {
     "title": "පැතිකඩ",
