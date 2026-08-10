@@ -21,6 +21,15 @@ from src.modules.auth.infrastructure.repository import (
     SqlUserIdentityRepository,
     SqlUserRepository,
 )
+from src.modules.notification.application.notification_service import NotificationService
+from src.modules.notification.infrastructure.clock import SystemClock
+from src.modules.notification.infrastructure.recipient_resolver import (
+    SqlRecipientEmailResolver,
+)
+from src.modules.notification.infrastructure.repository import (
+    SqlDeliveryRepository,
+    SqlPreferenceRepository,
+)
 from src.platform.db.session import get_db
 from src.platform.errors import UnauthenticatedError
 from src.platform.observability.logging import bind_request_context
@@ -31,6 +40,7 @@ log = structlog.get_logger(__name__)
 _http_bearer = HTTPBearer(auto_error=False)
 
 _auth_service_instance: AuthService | None = None
+_notification_service_instance: NotificationService | None = None
 
 
 def get_auth_service_instance() -> AuthService:
@@ -39,6 +49,15 @@ def get_auth_service_instance() -> AuthService:
     if _auth_service_instance is None:
         raise RuntimeError("AuthService not yet initialized. Call init_services() at startup.")
     return _auth_service_instance
+
+
+def get_notification_service_instance() -> NotificationService:
+    global _notification_service_instance
+    if _notification_service_instance is None:
+        raise RuntimeError(
+            "NotificationService not yet initialized. Call init_services() at startup."
+        )
+    return _notification_service_instance
 
 
 def init_services(session: AsyncSession) -> None:
@@ -58,6 +77,18 @@ def init_services(session: AsyncSession) -> None:
         user_identity_repo=user_identity_repo,
         user_repo=user_repo,
         audit_port=audit_service,
+    )
+
+    from src.bootstrap import build_email_adapter
+
+    global _notification_service_instance
+    _notification_service_instance = NotificationService(
+        preferences=SqlPreferenceRepository(session),
+        deliveries=SqlDeliveryRepository(session),
+        email_port=build_email_adapter(),
+        audit_port=audit_service,
+        clock=SystemClock(),
+        recipient_resolver=SqlRecipientEmailResolver(session),
     )
 
 

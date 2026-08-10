@@ -10,14 +10,17 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from src.modules.auth.ports import IdentityPort
+from src.modules.notification.ports import EmailPort
 from src.platform.config import get_settings
 
 
 def register_routers(app: FastAPI) -> None:
     """Mount all module routers under /api/v1."""
     from src.modules.auth.api.router import router as auth_router
+    from src.modules.notification.api.router import router as notification_router
 
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(notification_router, prefix="/api/v1")
 
 
 def build_identity_adapter() -> IdentityPort:
@@ -37,3 +40,22 @@ def build_identity_adapter() -> IdentityPort:
         audience=settings.clerk_audience or None,
         authorized_party=settings.clerk_authorized_party,
     )
+
+
+def build_email_adapter() -> EmailPort:
+    """Return console adapter by default; Resend when API key is configured."""
+    settings = get_settings()
+    if settings.resend_api_key:
+        from src.modules.notification.infrastructure.email.resend_adapter import (
+            ResendEmailAdapter,
+        )
+
+        return ResendEmailAdapter(
+            api_key=settings.resend_api_key,
+            from_email=settings.resend_from_email,
+        )
+    from src.modules.notification.infrastructure.email.console_adapter import (
+        ConsoleEmailAdapter,
+    )
+
+    return ConsoleEmailAdapter()

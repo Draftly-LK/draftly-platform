@@ -61,6 +61,11 @@ class Settings(BaseSettings):
     # When true, skip Clerk and use the deterministic stub identity (CI/local)
     use_stub_identity: bool = False
 
+    # ── Notification email (Resend) ─────────────────────────────────────────
+    resend_api_key: str = ""
+    resend_from_email: str = "Draftly <notifications@draftly.lk>"
+    resend_webhook_secret: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

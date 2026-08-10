@@ -380,7 +380,7 @@
 
 - name: notification_service
   doc: docs/services/notification-service.md
-  level: L0
+  level: L3
   phase: 5
   matter_scoped: false
   routes_prefix: /api/v1
