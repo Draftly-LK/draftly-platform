@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     payhere_checkout_base_url: str = "https://payhere.lk"
     billing_grace_period_days: int = 14
 
+    # ── Notification / Resend ───────────────────────────────────────────────
+    resend_api_key: str = ""
+    resend_from_email: str = "noreply@example.com"
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

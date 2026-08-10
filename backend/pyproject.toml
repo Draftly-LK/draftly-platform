@@ -58,6 +58,7 @@ exclude = ["migrations/", "src/modules/.*/tests/"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["src/modules", "tests"]
+pythonpath = ["."]
 
 [tool.uv]
 package = true
