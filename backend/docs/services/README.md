@@ -47,7 +47,7 @@ OCR escalation ladder is large enough to need one.
 | Service | Owns | Plan phase | Status |
 | --- | --- | --- | --- |
 | [auth-service](auth-service.md) | Identity, roles, organisation and matter membership, capability checks | 2 | L0 |
-| [billing-service](billing-service.md) | Plans, subscriptions, entitlements, usage, PayHere webhooks | 2B | L0 |
+| [billing-service](billing-service.md) | Plans, subscriptions, entitlements, usage, PayHere webhooks | 2B | L3 |
 | [matter-service](matter-service.md) | Matter identity, classification, lifecycle, party references | 2 | L0 |
 | [party-service](party-service.md) | Party records, identity evidence, beneficial ownership, CDD, screening | 2 | L0 |
 | [document-service](document-service.md) | Immutable upload, versioning, processing state, viewer manifest | 3 | L0 |

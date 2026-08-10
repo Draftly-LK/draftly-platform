@@ -30,7 +30,7 @@
 
 - name: billing_service
   doc: docs/services/billing-service.md
-  level: L0
+  level: L3
   phase: 2B
   matter_scoped: false
   routes_prefix: /api/v1/billing

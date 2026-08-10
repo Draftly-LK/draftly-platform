@@ -21,6 +21,15 @@ from src.modules.auth.infrastructure.repository import (
     SqlUserIdentityRepository,
     SqlUserRepository,
 )
+from src.modules.billing.application.billing_service import BillingService
+from src.modules.billing.infrastructure.clock import SystemClock
+from src.modules.billing.infrastructure.event_port import InMemoryEventPort
+from src.modules.billing.infrastructure.repository import (
+    SqlBillingWebhookEventRepository,
+    SqlPlanRepository,
+    SqlSubscriptionRepository,
+    SqlUsageRepository,
+)
 from src.platform.db.session import get_db
 from src.platform.errors import UnauthenticatedError
 from src.platform.observability.logging import bind_request_context
@@ -31,6 +40,8 @@ log = structlog.get_logger(__name__)
 _http_bearer = HTTPBearer(auto_error=False)
 
 _auth_service_instance: AuthService | None = None
+_billing_service_instance: BillingService | None = None
+_event_port_instance: InMemoryEventPort | None = None
 
 
 def get_auth_service_instance() -> AuthService:
@@ -41,6 +52,22 @@ def get_auth_service_instance() -> AuthService:
     return _auth_service_instance
 
 
+def get_billing_service_instance() -> BillingService:
+    global _billing_service_instance
+    if _billing_service_instance is None:
+        raise RuntimeError(
+            "BillingService not yet initialized. Call init_services() at startup."
+        )
+    return _billing_service_instance
+
+
+def get_event_port_instance() -> InMemoryEventPort:
+    global _event_port_instance
+    if _event_port_instance is None:
+        raise RuntimeError("EventPort not yet initialized. Call init_services() first.")
+    return _event_port_instance
+
+
 def init_services(session: AsyncSession) -> None:
     """Wire services for a request; called inside a session context."""
     user_identity_repo = SqlUserIdentityRepository(session)
@@ -48,17 +75,35 @@ def init_services(session: AsyncSession) -> None:
     audit_repo = SqlAuditRepository(session)
     audit_service = AuditService(repository=audit_repo)
 
-    from src.bootstrap import build_identity_adapter
+    from src.bootstrap import build_billing_adapter, build_identity_adapter
 
     identity_adapter = build_identity_adapter()
+    billing_adapter = build_billing_adapter()
 
-    global _auth_service_instance
+    global _auth_service_instance, _billing_service_instance, _event_port_instance
+    _event_port_instance = InMemoryEventPort()
     _auth_service_instance = AuthService(
         identity_port=identity_adapter,
         user_identity_repo=user_identity_repo,
         user_repo=user_repo,
         audit_port=audit_service,
     )
+    _billing_service_instance = BillingService(
+        plan_repo=SqlPlanRepository(session),
+        subscription_repo=SqlSubscriptionRepository(session),
+        usage_repo=SqlUsageRepository(session),
+        webhook_repo=SqlBillingWebhookEventRepository(session),
+        billing_provider=billing_adapter,
+        audit_port=audit_service,
+        event_port=_event_port_instance,
+        clock=SystemClock(),
+    )
+
+
+async def init_billing_service(session: AsyncSession) -> BillingService:
+    """Initialize services for unauthenticated billing routes (webhooks)."""
+    init_services(session)
+    return get_billing_service_instance()
 
 
 async def get_request_context(

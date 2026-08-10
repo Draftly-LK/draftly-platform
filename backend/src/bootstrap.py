@@ -10,14 +10,32 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from src.modules.auth.ports import IdentityPort
+from src.modules.billing.ports import BillingProviderPort
 from src.platform.config import get_settings
 
 
 def register_routers(app: FastAPI) -> None:
     """Mount all module routers under /api/v1."""
     from src.modules.auth.api.router import router as auth_router
+    from src.modules.billing.api.router import router as billing_router
 
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(billing_router, prefix="/api/v1")
+
+
+def build_billing_adapter() -> BillingProviderPort:
+    """Return the billing provider adapter for this environment."""
+    settings = get_settings()
+    if settings.use_stub_billing or not settings.payhere_configured:
+        from src.modules.billing.infrastructure.stub_adapter import StubBillingAdapter
+
+        return StubBillingAdapter()
+    from src.modules.billing.infrastructure.payhere_adapter import PayHereBillingAdapter
+
+    return PayHereBillingAdapter(
+        merchant_secret=settings.payhere_merchant_secret,
+        checkout_base_url=settings.payhere_checkout_base_url,
+    )
 
 
 def build_identity_adapter() -> IdentityPort:

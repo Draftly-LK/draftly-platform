@@ -61,9 +61,19 @@ class Settings(BaseSettings):
     # When true, skip Clerk and use the deterministic stub identity (CI/local)
     use_stub_identity: bool = False
 
+    # ── Billing / PayHere ───────────────────────────────────────────────────
+    use_stub_billing: bool = True
+    payhere_merchant_secret: str = ""
+    payhere_checkout_base_url: str = "https://payhere.lk"
+    billing_grace_period_days: int = 14
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def payhere_configured(self) -> bool:
+        return bool(self.payhere_merchant_secret)
 
     @property
     def clerk_configured(self) -> bool:
