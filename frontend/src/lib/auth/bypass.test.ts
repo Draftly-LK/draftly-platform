@@ -10,24 +10,27 @@ describe("auth bypass helpers", () => {
   });
 
   afterEach(() => {
+    // NODE_ENV is typed read-only, so it is set via stubEnv rather than by
+    // assignment; unstubbing restores it alongside the plain-env reset.
+    vi.unstubAllEnvs();
     process.env = originalEnv;
   });
 
   it("returns false in production even if AUTH_BYPASS=true", () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.AUTH_BYPASS = "true";
     expect(isAuthBypassEnabled()).toBe(false);
   });
 
   it("returns true in non-production when AUTH_BYPASS=true", () => {
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
     process.env.AUTH_BYPASS = "true";
     expect(isAuthBypassEnabled()).toBe(true);
   });
 
   it("logs an error if AUTH_BYPASS=true in production", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.AUTH_BYPASS = "true";
 
     warnIfBypassSetInProduction();
