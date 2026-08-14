@@ -7,30 +7,28 @@ Companion to `backend/backend-implementation-plan-v0.md`,
 
 ## 1. Decision
 
-Draftly subscriptions belong to an **organisation/workspace**, not directly
-to a `User` or `Matter`.
+Draftly subscriptions belong to the **User** (solo notary account), not to a
+separate organisation workspace and not directly to a `Matter`.
 
 ```text
-Organisation
-  +-- OrganisationMemberships
+User
   +-- Matters
   +-- Documents
   +-- Subscription
 ```
 
-An organisation may represent a solo notary, law firm, legal department, or
-demo organisation. A solo user receives a one-person organisation. A firm has
-one subscription and one or more seats.
+V0 is **solo only**: one verified Gmail account, one subscription, no seats
+and no multi-org billing. Firm or multi-seat plans remain product data for a
+later release; they do not imply an `Organisation` entity in auth.
 
 `billing_service` is a separate logical service inside the FastAPI backend:
 
 ```text
 auth_service
-  = who is the actor, which organisation are they acting in, and what may
-    they access?
+  = who is the actor, what role do they hold, and what may they do?
 
 billing_service
-  = which plan and payment state apply to that organisation, which product
+  = which plan and payment state apply to that user, which product
     capabilities are entitled, and which quotas remain?
 ```
 
@@ -42,7 +40,7 @@ role, and an authorised role never bypasses a plan or quota.
 The service owns:
 
 - immutable plan versions and their entitlements;
-- organisation subscriptions and normalized payment state;
+- user subscriptions and normalized payment state;
 - provider customer and subscription references;
 - usage ledgers and period aggregates;
 - checkout and customer-portal orchestration;
@@ -52,7 +50,7 @@ The service owns:
 
 It does not own:
 
-- login, identity sessions, account roles, or organisation membership;
+- login, identity sessions, or account roles;
 - matter membership or legal-workflow permission;
 - card numbers, bank credentials, or provider payment tokens;
 - ordinary application-email delivery;
@@ -62,45 +60,29 @@ It does not own:
 The payment provider hosts or tokenises payment credentials. Draftly stores
 only the references and state needed to reconcile billing.
 
-## 3. Organisation boundary
+## 3. User boundary
 
-`auth_service` owns the organisation and membership records used to establish
-the tenant boundary:
+`auth_service` establishes the actor through `RequestContext.actor_id`. Every
+customer row, including `Subscription` and usage ledgers, carries **`userId`**
+equal to that owning account.
 
-```text
-Organisation
-  id
-  name
-  type              # solo | firm | enterprise | demo
-  status            # active | suspended | closed
-  createdAt
+Every `Matter` carries `owner_user_id` (and the same `user_id` tenancy key on
+related rows). Every billing command scopes to `ctx.actor_id`; it never accepts
+a trusted `userId` from a request body or payment-success page.
 
-OrganisationMembership
-  organisationId
-  userId
-  role              # owner | admin | member
-  joinedAt
-```
-
-Every `Matter` carries `organisationId`. Every billing command takes the
-organisation from the server-built `RequestContext`; it never accepts a
-trusted organisation from a request body or payment-success page.
-
-A user may belong to more than one organisation. The requested organisation
-must be resolved against active `OrganisationMembership` data before the
-context is built. Subscription and usage state remain server-side and are not
-embedded in identity tokens because they can change while a session is active.
+Subscription and usage state remain server-side and are not embedded in
+identity tokens because they can change while a session is active.
 
 ## 4. Where it sits
 
 ```text
 authenticated product request
         |
-        +--> auth_service.authorize(role, organisation, matter)
+        +--> auth_service.authorize(ctx, capability, matter_id?)
         |
-        +--> billing_service.require_feature(organisation, feature)
+        +--> billing_service.require_feature(user_id, feature)
         |
-        +--> billing_service.reserve_or_consume(organisation, metric)
+        +--> billing_service.reserve_or_consume(user_id, metric)
         |
         v
    product service performs operation
@@ -175,7 +157,7 @@ Keys are a controlled catalogue. Unknown keys fail closed.
 ```text
 Subscription
   id
-  organisationId
+  userId
   planVersionId
   provider
   providerCustomerId
@@ -210,7 +192,7 @@ fast reads:
 ```text
 UsageLedgerEntry
   id
-  organisationId
+  userId
   metric
   quantity
   periodStart
@@ -220,7 +202,7 @@ UsageLedgerEntry
   createdAt
 
 UsageAggregate
-  organisationId
+  userId
   metric
   quantity
   periodStart
@@ -229,7 +211,7 @@ UsageAggregate
   version
 ```
 
-`operationId` is unique within an organisation and metric. Retrying the same
+`operationId` is unique within a user and metric. Retrying the same
 OCR, research, rendering, or notification job therefore cannot consume quota
 twice. Quota checks and reservations are atomic to prevent concurrent requests
 from overspending the same remaining allowance.
@@ -275,12 +257,12 @@ class BillingProviderPort(Protocol):
 Repository and integration ports:
 
 - `PlanRepository` loads immutable plan versions and entitlements.
-- `SubscriptionRepository` loads and updates organisation subscriptions with
-  optimistic concurrency.
+- `SubscriptionRepository` loads and updates user subscriptions with optimistic
+  concurrency.
 - `UsageRepository` reserves, consumes, releases, and aggregates usage
   atomically.
 - `BillingWebhookEventRepository` claims provider events idempotently.
-- `OrganisationReadPort` confirms the organisation and membership boundary.
+- `UserReadPort` confirms the user account exists and is active for billing.
 - `AuditPort` records plan, subscription, payment-state, and admin changes.
 - `EventPort` emits notification events through the transactional outbox.
 - `ClockPort` makes period and grace calculations deterministic in tests.
@@ -304,16 +286,15 @@ reactivate_subscription(ctx) -> SubscriptionRead
 ```
 
 Only active, publicly offered plan versions appear in `list_plans`. Checkout
-validates that the actor is an organisation owner or admin, creates or reuses
-the provider customer idempotently, and supplies only server-approved price
-and return data to the adapter. A return URL displays status but never changes
-the subscription.
+validates that the actor holds `billing.manage`, creates or reuses the provider
+customer idempotently, and supplies only server-approved price and return data
+to the adapter. A return URL displays status but never changes the subscription.
 
 ### 7.2 Entitlement and quota gates
 
 ```text
-require_feature(organisation_id, feature_key) -> EntitlementDecision
-reserve_usage(organisation_id, metric, quantity, operation_id) -> Reservation
+require_feature(user_id, feature_key) -> EntitlementDecision
+reserve_usage(user_id, metric, quantity, operation_id) -> Reservation
 consume_usage(reservation_id, actual_quantity) -> UsageRead
 release_usage(reservation_id) -> UsageRead
 ```
@@ -322,8 +303,8 @@ Product services call these gates server-side. Typical order:
 
 ```text
 auth_service.authorize(ctx, capability, matter_id)
-billing_service.require_feature(ctx.organisation_id, feature)
-billing_service.reserve_usage(ctx.organisation_id, metric, quantity, job_id)
+billing_service.require_feature(ctx.actor_id, feature)
+billing_service.reserve_usage(ctx.actor_id, metric, quantity, job_id)
 perform or enqueue operation
 consume actual usage, or release reservation on terminal failure
 ```
@@ -341,7 +322,7 @@ handle_webhook(provider, raw_request) -> WebhookReceipt
 2. Normalize the event and claim its provider event id.
 3. Return success without repeating work when the event was already processed.
 4. Resolve the subscription through trusted provider identifiers.
-5. Reject or ignore events that cannot map to one organisation safely.
+5. Reject or ignore events that cannot map to one user safely.
 6. Apply only valid state transitions with optimistic concurrency.
 7. Ignore stale out-of-order state, or reconcile from the provider when order
    is ambiguous.
@@ -358,12 +339,12 @@ Launch with three plan families only:
 
 | Plan | Intended boundary |
 | --- | --- |
-| Trial | One user, a small matter/page/research allowance, and a fixed trial period |
-| Solo | One or two seats, normal matter and processing allowances, drafting, export, and email reminders |
-| Firm | Multiple included seats, shared matters, larger allowances, assignments, custom templates, and administration tools |
+| Trial | Solo account, a small matter/page/research allowance, and a fixed trial period |
+| Solo | One notary account, normal matter and processing allowances, drafting, export, and email reminders |
+| Firm | Reserved plan family for a future multi-seat release; not an organisation entity in V0 auth |
 
 Use **base subscription + included usage + optional overage or add-ons**.
-Seat count alone does not represent OCR, LLM/research, object storage,
+V0 Solo has no seat metering. Usage metrics represent OCR, LLM/research, object storage,
 rendering, SMS, or WhatsApp costs. Exact prices, limits, trial duration, and
 overage policy are product decisions stored as plan data, not hardcoded in
 application services.
@@ -414,8 +395,8 @@ It may block new paid consumption:
 - creating new drafts or exports; and
 - sending paid SMS or WhatsApp notifications.
 
-Payment failure never immediately deletes or hides the organisation's legal
-records. Retention and eventual account closure follow the separately approved
+Payment failure never immediately deletes or hides the user's legal records.
+Retention and eventual account closure follow the separately approved
 legal-data policy.
 
 ## 11. API surface
@@ -437,11 +418,12 @@ POST /api/v1/admin/plans/{id}/activate
 POST /api/v1/admin/subscriptions/{id}/grant-trial
 ```
 
-Billing reads and customer commands require an authenticated organisation
-owner or admin. Provider webhook routes do not use user authentication; they
-require provider verification, strict body limits, rate limiting, and
-idempotency. Plan administration requires a Draftly platform-administrator
-capability, distinct from a firm administrator.
+Billing reads and customer commands require an authenticated actor with
+`billing.manage` (granted to `approver` and `administrator` in V0). Provider
+webhook routes do not use user authentication; they require provider
+verification, strict body limits, rate limiting, and idempotency. Plan
+administration requires `platform.administer`, distinct from account
+`administrator`.
 
 ## 12. Notifications and audit
 
@@ -464,8 +446,8 @@ card details or authentication material.
 
 | Invariant | Enforcement |
 | --- | --- |
-| Subscription belongs to organisation | `Subscription.organisationId` is required and unique for the current subscription boundary |
-| Tenant isolation precedes billing | Organisation comes from server-verified membership in `RequestContext` |
+| Subscription belongs to user | `Subscription.userId` is required and unique for the current subscription boundary |
+| Tenant isolation precedes billing | `user_id` comes from `RequestContext.actor_id` |
 | Payment does not grant permission | Auth role and matter checks run independently of entitlements |
 | Permission does not grant a paid feature | Product services enforce feature and quota server-side |
 | Browser redirects are untrusted | Only verified provider events update payment state |
@@ -482,7 +464,7 @@ card details or authentication material.
 - Out-of-order event: ignore stale state or reconcile from the provider API.
 - Provider timeout after checkout creation: retry with the same idempotency key.
 - Unknown provider subscription: quarantine the event for operator review; do
-  not create an organisation from webhook data.
+  not create a user from webhook data.
 - Concurrent quota requests: serialize or use an atomic conditional update.
 - Worker fails before consumption: release reservation only on terminal
   failure; retain it while a retry is possible.
@@ -502,7 +484,7 @@ card details or authentication material.
 - **Integration:** PayHere checkout and webhook fixtures; duplicate and
   out-of-order events; provider reconciliation; transactionally coupled
   subscription, webhook, audit, and outbox writes.
-- **Security:** cross-organisation billing access; forged organisation id;
+- **Security:** cross-user billing access; forged user id;
   forged success redirect; invalid webhook checksum; oversized payload; log and
   audit inspection for payment secrets.
 - **End-to-end:** trial provisioning, Solo purchase, renewal, failed payment,
@@ -513,7 +495,7 @@ card details or authentication material.
 
 Closed for V0:
 
-- subscription owner: **organisation/workspace**;
+- subscription owner: **user (solo account)**;
 - service boundary: **separate `billing_service`**;
 - initial provider adapter: **PayHere**;
 - plan families: **Trial, Solo, Firm**; and

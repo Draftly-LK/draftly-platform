@@ -1,0 +1,63 @@
+[project]
+name = "draftly-api"
+version = "0.1.0"
+description = "Draftly RTA workbench — FastAPI backend"
+authors = [
+    { name = "Lahiru Dilshan", email = "adlahiru65@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.18.5",
+    "cryptography>=50.0.0",
+    "fastapi[standard]>=0.141.1",
+    "httpx>=0.28.1",
+    "psycopg2-binary>=2.9.12",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.14.2",
+    "pyjwt>=2.13.0",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2.0.51",
+    "structlog>=26.1.0",
+    "uvicorn[standard]>=0.52.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.2,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.23",
+    "mypy>=2.3.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.1",
+    "types-pyyaml>=6.0.12.20260724",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "N"]
+# B008: FastAPI Depends() in function signature defaults is the intended pattern
+# UP042: StrEnum requires Python 3.11+; project targets 3.12 but keep existing (str, Enum)
+ignore = ["E501", "B008", "B904", "UP042"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+exclude = ["migrations/", "src/modules/.*/tests/"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["src/modules", "tests"]
+
+[tool.uv]
+package = true

@@ -36,7 +36,7 @@ every application service, every worker, every webhook handler
                               ports: AuditRepository (insert-only)
 
 GET /api/v1/matters/{id}/audit ──→ api/v1/audit.py ──→ paginated matter timeline
-GET /api/v1/history            ──→ (optional matterId) ──→ organisation feed
+GET /api/v1/history            ──→ (optional matterId) ──→ user-scoped feed
 ```
 
 Writers include `auth_service`, `billing_service`, `matter_service`,
@@ -60,7 +60,7 @@ In `domain/audit.py`:
 ```text
 AuditEvent
   id                 # server-assigned
-  organisationId     # REQUIRED
+  userId             # REQUIRED — owning notary account (tenancy key)
   matterId?          # nullable
   actor?             # null only for scheduler- and provider-originated events
   action             # closed enum, §3.2
@@ -100,15 +100,15 @@ AuditTargetType =
   matter | document | instrument | fact | check | workflow-step |
   answer | draft | approval | export | permission | party |
   obligation | notification | content-definition | legal-source |
-  subscription | transcript | organisation | retention
+  subscription | transcript | user | retention
 ```
 
 The history screen filters to the eight values it renders today and shows the
 rest under a generic row until the frontend type is widened
 (`frontend-contract-migration.md`).
 
-`matterId` is nullable. `organisationId` is not: every event belongs to exactly
-one tenant, including account, billing, and firm-scoped compliance events
+`matterId` is nullable. `userId` is not: every event belongs to exactly one
+user account, including account, billing, and compliance events
 (`security-model.md` §2).
 
 ### 3.2 Action is a closed enum, not a free string
@@ -128,10 +128,10 @@ and some events carry no audit row (a projection refresh).
 
 Append-only prevents ordinary edits; it does not prove the log was not altered
 out of band. Each event stores `prevHash` (the `hash` of the previous event in
-its organisation's chain) and `hash` over its own canonical serialisation plus
+its user's chain) and `hash` over its own canonical serialisation plus
 `prevHash`. Any retroactive change breaks the chain from that point, and a
-verification sweep detects it. Chains are per organisation so one tenant's
-volume does not serialise another's writes.
+verification sweep detects it. Chains are per `user_id` so one account's volume
+does not serialise another's writes.
 
 ## 4. Frontend contract and what changes
 
@@ -213,25 +213,27 @@ the mutation's transaction, drained by the audit consumer. The invariant
 
 ### get_matter_audit(ctx, matter_id, page) -> page[AuditEvent]
 
-Matter-scoped timeline (§7 `GET /matters/{id}/audit`). Organisation scope first,
-then membership; a non-member gets **404, not 403**. Paginated per
+Matter-scoped timeline (§7 `GET /matters/{id}/audit`). Filter by `user_id`
+first, then matter ownership when enforced; a non-owner gets **404, not 403**.
+Paginated per
 `api-conventions.md` §2 — cursor, `limit` capped at 100, newest first.
 Read-only.
 
 ### get_history(ctx, filters, page) -> page[AuditEvent]
 
 Backs `GET /api/v1/history`. With `matterId`, delegates to the matter timeline.
-Without, returns the feed for the actor's **current organisation**, limited to:
+Without, returns the feed for the actor's **user account** (`ctx.actorId`),
+limited to:
 
-- events on matters the actor is a member of;
-- their own account events;
-- organisation-wide events only where the actor holds the relevant capability
-  (billing events need `billing.manage`, content-governance events need
-  `content.author`, compliance events need `compliance.view`).
+- events on matters owned by that user (when matter ownership is enforced);
+- their own account and billing events where capability allows
+  (`billing.manage` for subscription events);
+- content-governance events only where the actor holds `content.author`;
+- compliance events only with `compliance.view`.
 
-Filtering is server-side by organisation, membership, and capability — never by
-the client. Restricted-compliance events are excluded unless the actor is on the
-compliance allowlist, and their absence is not signalled.
+Filtering is server-side by `user_id` and capability — never by the client.
+Restricted-compliance events are excluded unless the actor is on the compliance
+allowlist, and their absence is not signalled.
 
 The feed is **always paginated**; it previously returned an unbounded array,
 which on a real firm's history is both a performance and a disclosure problem.
@@ -250,16 +252,16 @@ access only; ordinary users cannot edit/delete").
 | --- | --- |
 | Every material mutation is recorded (inv. #8) | `AuditPort.record` in the same transaction as the mutation; no event = no commit |
 | Append-only | `AuditRepository` is insert-only; no update or delete path is exposed |
-| Tamper-evident | Per-organisation hash chain (`prevHash`/`hash`); a verification sweep detects any out-of-band change |
+| Tamper-evident | Per-user hash chain (`prevHash`/`hash`); a verification sweep detects any out-of-band change |
 | Read API is read-only | `GET` timeline and history only; ordinary users cannot edit or delete events |
 | Server-assigned id, timestamp, hash | `record` assigns all three; caller-supplied values are ignored |
 | Actor is authenticated identity | `actor` from `RequestContext`, never a request-body or hardcoded id; null only for scheduler and provider events |
-| Every event has an organisation | `organisationId` required; `matterId` nullable for account, billing, and firm-scoped events |
+| Every event has a user | `userId` required; `matterId` nullable for account and billing events |
 | Action and target are closed enums | An unknown `action` or `targetType` is rejected, not written |
 | Reason where required | Corrections, overrides, waivers, approvals, reopens, and destruction approvals reject a `record` without a reason |
 | Correlation id present | Every event carries the correlation id of its logical operation |
 | References, not copies | `before`/`after` are typed references plus a diff; no full document bodies or raw client values |
-| Organisation and matter isolation on read | Feed filtered by organisation, then membership, then capability; non-member gets 404 |
+| User and matter isolation on read | Feed filtered by `user_id`, then ownership/capability; non-owner gets 404 |
 | Retention is externally governed | Audit events are outside V0 destruction scope (`retention-service.md` §10) |
 
 A missing audit event and a cross-matter disclosure are both release-blockers
@@ -284,7 +286,7 @@ A missing audit event and a cross-matter disclosure are both release-blockers
 - **Unit:** `record` assigns id, timestamp, hash, and actor, and ignores
   caller-supplied values; unknown `action` or `targetType` rejected;
   reason-required actions reject without a reason; correlation id always
-  present; `organisationId` required and `matterId` optional; hash chain links
+  present; `userId` required and `matterId` optional; hash chain links
   correctly and a mutated row breaks verification.
 - **Contract:** `AuditEvent` read schema; the backend `AuditTargetType` is a
   superset of the frontend enum and the projection maps every extra value;
@@ -295,7 +297,7 @@ A missing audit event and a cross-matter disclosure are both release-blockers
   the conformance test in `service-definition-of-done.md` §4, parameterised over
   the service registry; append-only, no update or delete path succeeds; the
   chain-verification sweep passes on a clean log and fails on a tampered one.
-- **Security:** organisation filtering on the global feed; a matter non-member
+- **Security:** user filtering on the global feed; a matter non-owner
   sees nothing of that matter; capability filtering hides billing, content, and
   compliance events from actors without the capability; restricted-compliance
   events leave no existence signal; 404-not-403 on a foreign matter timeline; no
@@ -310,10 +312,10 @@ Recommended defaults in bold; confirm or override before coding.
    unknown action is rejected.
 2. **Structured before/after — closed.** Typed references plus a diff keyed to
    `targetType` (§3). Never full object copies, never raw client values.
-3. **Hash-chaining — closed.** `prevHash`/`hash` per organisation chain (§3.3),
+3. **Hash-chaining — closed.** `prevHash`/`hash` per user chain (§3.3),
    with a scheduled verification sweep.
-4. **Global feed scope — closed.** Organisation-scoped, then membership- and
-   capability-filtered, paginated, newest first (§6).
+4. **Global feed scope — closed.** User-scoped, capability-filtered, paginated,
+   newest first (§6).
 5. **Retention and legal hold — closed for V0.** Audit events are outside the
    destruction scope that `retention_service` may propose, and tombstones are
    themselves audit records. Ordinary users never delete, regardless.

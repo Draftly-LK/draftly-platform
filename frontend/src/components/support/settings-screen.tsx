@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
@@ -15,24 +16,13 @@ export function SettingsScreen() {
       <div className="mx-auto max-w-3xl p-6">
         <section className="border-border border-b py-5">
           <h2 className="text-2xl font-semibold">{t("profile")}</h2>
-          <dl className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div>
-              <dt className="text-muted-ink text-xs">{t("nameLabel")}</dt>
-              <dd>{t("name")}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-ink text-xs">
-                {t("registrationLabel")}
-              </dt>
-              <dd>{t("registration")}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-ink text-xs">
-                {t("jurisdictionLabel")}
-              </dt>
-              <dd>{t("jurisdiction")}</dd>
-            </div>
-          </dl>
+          <p className="text-muted-ink mt-2 text-sm">{t("profileHint")}</p>
+          <Link
+            href="/profile"
+            className="bg-forest hover:bg-forest/90 focus-visible:outline-ring mt-3 inline-flex rounded-[6px] px-3 py-2 text-sm text-white"
+          >
+            {t("openProfile")}
+          </Link>
         </section>
         <section className="border-border border-b py-5">
           <h2 className="text-2xl font-semibold">{t("notifications")}</h2>

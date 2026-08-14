@@ -28,7 +28,7 @@ It does **not** own:
 - documents, versions, derivatives, exports, voice captures, or corpus records;
 - the decision to retain or destroy a record;
 - legal holds, retention schedules, or tombstones;
-- organisation or matter authorization;
+- user or matter authorization;
 - database schemas belonging to another service;
 - a user's Google Cloud credentials; or
 - provider secrets in Neon.
@@ -58,7 +58,7 @@ document / export / voice / corpus application service
 ```
 
 There is no public storage API. A browser receives an upload or download grant
-only through the owning service after that service re-checks organisation,
+only through the owning service after that service re-checks `user_id`,
 matter, capability, and record access. Health endpoints may expose only
 `ready | degraded | unavailable`, never bucket names, object keys, account
 identifiers, signed URLs, credentials, or connection strings.
@@ -77,7 +77,7 @@ API -> owning application service -> ObjectStoragePort -> storage_service
 ```text
 StorageObject
   id
-  organisationId
+  userId
   matterId?             # required for matter evidence and matter exports
   ownerService
   ownerType
@@ -99,7 +99,7 @@ StorageObject
 ```
 
 `(provider, bucketRef, objectKey, providerGeneration)` is unique. All rows carry
-`organisationId`; matter-scoped rows also carry `matterId`. An object reference
+`userId`; matter-scoped rows also carry `matterId`. An object reference
 returned to another service uses the Draftly `StorageObject.id`, never a raw
 provider URL.
 
@@ -108,7 +108,7 @@ provider URL.
 ```text
 UploadReservation
   id
-  organisationId
+  userId
   matterId?
   ownerService
   ownerType
@@ -124,14 +124,14 @@ UploadReservation
 ```
 
 A reservation constrains one exact key, HTTP method, expiry, maximum size, and
-media type. It cannot be reused for another organisation, matter, or owner.
+media type. It cannot be reused for another user, matter, or owner.
 
 ### DeletionCommand and DeletionReceipt
 
 ```text
 DeletionCommand
   commandId
-  organisationId
+  userId
   recordScope
   storageObjectIds
   policyId
@@ -177,7 +177,7 @@ owner's check.
 ### Ports used by storage_service
 
 - `StorageObjectRepository` — storage objects and upload reservations in
-  PostgreSQL, always organisation-scoped.
+  PostgreSQL, always scoped by `user_id`.
 - `BlobStorePort` — conditional put, stat, stream, sign, list, and
   generation-matched delete.
 - `HoldStatusPort` — authoritative hold check for a record scope. Failure is
@@ -194,7 +194,7 @@ errors at this boundary.
 
 ### reserve_upload(ctx, scope, owner, constraints) -> UploadGrant
 
-1. Confirm the supplied scope belongs to `ctx.organisationId` and, when
+1. Confirm the supplied scope belongs to `ctx.actorId` and, when
    matter-scoped, `ctx.matterId`.
 2. Validate size and media-type constraints before contacting a provider.
 3. Build the key from trusted IDs; never accept a client-provided path.
@@ -260,7 +260,7 @@ The `storage.collect-orphans` job handles both halves of database/blob drift:
 - provider objects under a Draftly-managed prefix that have no storage row and
   are older than 24 hours.
 
-An orphan is deleted only when its trusted key can be mapped to an organisation
+An orphan is deleted only when its trusted key can be mapped to a user
 and record scope, the grace period has elapsed, and `HoldStatusPort` confirms no
 hold. Unknown or malformed keys are quarantined for an operator; they are never
 deleted automatically.
@@ -270,13 +270,13 @@ deleted automatically.
 The application constructs keys; callers cannot supply them.
 
 ```text
-{environment}/organisations/{organisation_id}/matters/{matter_id}/
+{environment}/users/{user_id}/matters/{matter_id}/
   docs/{doc_id}/v/{version_id}/original
   docs/{doc_id}/v/{version_id}/derivatives/{derivative_kind}/{artifact_id}
   exports/{export_id}/{artifact_id}
   voice/{capture_id}/{artifact_id}
 
-{environment}/organisations/{organisation_id}/corpus/
+{environment}/users/{user_id}/corpus/
   sources/{source_id}/v/{version_id}/{artifact_id}
 ```
 
@@ -417,7 +417,7 @@ jittered, and idempotent.
 | Provider-neutral application code | Only `BlobStorePort` adapters import provider SDKs |
 | Original bytes never overwritten | Trusted unique key plus conditional create; GCS `if_generation_match=0` |
 | Reads resolve the exact object | Draftly ID resolves to bucket, key, and pinned provider generation |
-| Every object is tenant-scoped | `organisationId` on every row and organisation prefix on every key |
+| Every object is tenant-scoped | `userId` on every row and user prefix on every key |
 | Matter evidence cannot cross matters | Scope check in owner and storage facade; non-member existence hidden |
 | Signed URLs are short-lived bearer credentials | Exact method/key/generation, capped TTL, never logged or stored |
 | Client metadata is untrusted | Server verifies checksum, size, media type, and provider metadata |
@@ -442,7 +442,7 @@ jittered, and idempotent.
   uniform access, least-privilege identity, signed upload/download expiry,
   checksum verification, and `if_generation_match=0` overwrite refusal. Use
   generated fixtures only.
-- **Security:** cross-organisation and cross-matter access returns 404; key
+- **Security:** cross-user and cross-matter access returns 404; key
   traversal rejected; forged/replayed reservation rejected; signed URL absent
   from logs/events; held object cannot be deleted; runtime cannot administer
   the bucket.

@@ -35,7 +35,7 @@ When it ships, it uses the **Gemini Live API with
 transcription is enabled with:
 
 ```python
-input_audio_transcription={}
+input_audio_transcription = {}
 ```
 
 The first and only V0 voice surface is the assistant composer microphone:

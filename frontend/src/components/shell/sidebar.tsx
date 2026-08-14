@@ -20,8 +20,10 @@ import { useState } from "react";
 import { useDemoStore } from "@/lib/store";
 import { IconButton } from "@/components/ui/icon-button";
 import { CommandPalette } from "./command-palette";
+import { UserButton } from "./user-button";
 
-export function Sidebar() {
+
+export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
   const t = useTranslations("shell");
   const app = useTranslations("app");
   const pathname = usePathname();
@@ -117,29 +119,35 @@ export function Sidebar() {
             </Link>
           ))}
         </div>
-        <div className="border-border mt-auto space-y-1 border-t pt-3">
-          <button
-            className="hover:bg-hover-bg flex min-h-10 w-full items-center gap-3 rounded px-3 text-left"
-            onClick={resetDemo}
-          >
-            <RotateCcw className="size-5" strokeWidth={1.5} />
-            {t("resetDemo")}
-          </button>
-          <Link
-            className="hover:bg-hover-bg flex min-h-10 items-center gap-3 rounded px-3"
-            href="/settings"
-          >
-            <Settings className="size-5" strokeWidth={1.5} />
-            {t("settings")}
-          </Link>
-          <Link
-            className="hover:bg-hover-bg flex min-h-10 items-center gap-3 rounded px-3"
-            href="/help"
-          >
-            <CircleHelp className="size-5" strokeWidth={1.5} />
-            {t("help")}
-          </Link>
+        <div className="border-border mt-auto border-t pt-3">
+          {/* ── Profile / user button ──────────────────────────── */}
+          <UserButton demoMode={demoMode} />
+          {/* ── Utility links ──────────────────────────────────── */}
+          <div className="border-border mt-2 space-y-1 border-t pt-2">
+            <button
+              className="hover:bg-hover-bg flex min-h-10 w-full items-center gap-3 rounded px-3 text-left"
+              onClick={resetDemo}
+            >
+              <RotateCcw className="size-5" strokeWidth={1.5} />
+              {t("resetDemo")}
+            </button>
+            <Link
+              className="hover:bg-hover-bg flex min-h-10 items-center gap-3 rounded px-3"
+              href="/settings"
+            >
+              <Settings className="size-5" strokeWidth={1.5} />
+              {t("settings")}
+            </Link>
+            <Link
+              className="hover:bg-hover-bg flex min-h-10 items-center gap-3 rounded px-3"
+              href="/help"
+            >
+              <CircleHelp className="size-5" strokeWidth={1.5} />
+              {t("help")}
+            </Link>
+          </div>
         </div>
+
       </aside>
     </>
   );

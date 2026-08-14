@@ -27,6 +27,11 @@ export const users: User[] = [
     role: "approver",
     notaryRegistration: "1/1/03/1985",
     jurisdiction: "Homagama judicial division, Colombo",
+    qualifications: "",
+    professionalTitles: "",
+    addressLine1: "",
+    addressLine2: "",
+    phone: "",
   },
 ];
 

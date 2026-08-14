@@ -69,7 +69,7 @@ POST /api/v1/register/periods/{id}/certify
 ```
 
 Register entries are **notary-scoped**, not matter-scoped: the serial sequence
-belongs to the notary, spans matters, and is organisation-bounded. Matter
+belongs to the notary, spans matters, and is bounded by `user_id`. Matter
 membership gates the attestation routes; the register routes are gated by
 `instrument.attest` plus ownership of that register.
 
@@ -80,7 +80,7 @@ membership gates the attestation routes; the register routes are gated by
 ```text
 Attestation
   id
-  organisationId
+  userId
   matterId
   instrumentKind                    # transfer | gift | lease | mortgage | poa | ...
   registrationRegime                # deed | rta | condominium | special-area
@@ -126,7 +126,7 @@ reason, not by rewriting the record.
 ```text
 RegisterEntry
   id
-  organisationId
+  userId
   notaryUserId
   registerYear
   serialNumber                      # sequential per (notary, registerYear)
@@ -174,7 +174,7 @@ preserve the protocol. `retentionClass` is set here and enforced by
 ```text
 MonthlyReturnPeriod
   id
-  organisationId
+  userId
   notaryUserId
   periodStart
   periodEnd
@@ -254,9 +254,9 @@ nil-return template.
 
 ### list_register_entries(ctx, filters) -> page[RegisterEntryRead]
 
-Notary-scoped and organisation-scoped, paginated (`api-conventions.md` §2).
-An administrator may read another notary's register within the same
-organisation; nobody may read across organisations.
+Notary-scoped and user-scoped, paginated (`api-conventions.md` §2).
+An administrator may read another notary's register only when product policy
+allows; nobody may read across users.
 
 ## 6. Entitlement and metering
 
@@ -329,7 +329,7 @@ metered as an ordinary `report.render`.
   30-day, deed 60-day, and RTA seven-working-day branches; month close produces
   exactly one period and is idempotent on replay; a nil month still produces a
   period and an obligation.
-- **Security:** cross-organisation register read denied; a non-notary cannot
+- **Security:** cross-user register read denied; a non-notary cannot
   attest; an expired certificate cannot attest; register rows contain no
   identity values; 404 for a non-member on the matter-scoped routes.
 

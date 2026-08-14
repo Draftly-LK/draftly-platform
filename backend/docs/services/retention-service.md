@@ -92,7 +92,7 @@ RecordClass =
 
 ```text
 RecordScope
-  organisationId
+  userId
   recordClass
   selector           # matterId | partyId | notaryUserId | exportId | ...
   selectorKind
@@ -135,7 +135,7 @@ Migration is an explicit, audited recalculation.
 ```text
 RetentionSchedule
   id
-  organisationId
+  userId
   recordScope
   policyId
   policyVersion
@@ -158,7 +158,7 @@ RetentionSchedule
 ```text
 LegalHold
   id
-  organisationId
+  userId
   recordScope
   reason
   sourceAuthority        # court order | regulator | investigation | internal
@@ -180,7 +180,7 @@ purge, or provider-side deletion may run.
 ```text
 Tombstone
   id
-  organisationId
+  userId
   recordScope
   recordCount
   policyId
@@ -284,8 +284,8 @@ deleted without the same four-condition gate in §2.
   reports partial failure.
 - Hold released after the retention date has passed — schedule becomes
   `matured`, not `destroyed`; the human review still happens.
-- A record scope spans two organisations — rejected at scope construction; a
-  scope is always organisation-bounded.
+- A record scope spans two users — rejected at scope construction; a
+  scope is always user-bounded.
 - Policy retired while schedules reference it — schedules keep the pinned
   version; new schedules use the successor.
 - Owning service reports more records destroyed than the tombstone counted —
@@ -310,7 +310,7 @@ deleted without the same four-condition gate in §2.
   destroys through the owning service and records the tombstone; partial failure
   does not mark `destroyed`; restore-then-reconcile detects reinstated records.
 - **Security:** only `retention.hold` / `retention.release` /
-  `retention.approve-destruction` holders can act; cross-organisation scopes
+  `retention.approve-destruction` holders can act; cross-user scopes
   rejected; tombstones contain no record content; a destroyed scope leaves no
   readable residue in derivatives, memory, or search indexes.
 

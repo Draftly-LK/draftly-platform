@@ -4,16 +4,16 @@ Companion to `backend/backend-implementation-plan-v0.md` §5.2 and Phase 2,
 `services/auth-service.md`, and every matter-scoped service.
 
 Three rules were previously restated — and drifted — in nine service docs:
-the organisation boundary, the role gate, and the 404-not-403 rule. They are
-defined here once. A service doc states *which capability* an operation needs
-and otherwise points here.
+the user boundary, the role gate, and the 404-not-403 rule. They are defined
+here once. A service doc states *which capability* an operation needs and
+otherwise points here.
 
 ## 1. The two independent gates
 
 ```text
 request
   ├─ auth_service.authorize(ctx, capability, matter_id?)   ← may they?
-  └─ billing_service.require_feature(org_id, feature_key)  ← is it paid for?
+  └─ billing_service.require_feature(user_id, feature_key)  ← is it paid for?
 ```
 
 Both must pass. A paid plan never grants a capability, and a capability never
@@ -21,45 +21,45 @@ bypasses a plan or quota (`billing-service.md` §1). A service that performs a
 metered operation calls both, in that order, and neither is optional because the
 button was hidden in the browser.
 
-## 2. Organisation is the outer boundary
+## 2. User is the outer boundary
 
-Every persisted row that belongs to a customer carries `organisation_id`. Not
-"most rows" — every one, including audit events, notification deliveries,
-research conversations, session-memory episodes, voice captures, obligations,
-and party records.
+Every persisted row that belongs to a customer carries `user_id` (the owning
+notary account). Not "most rows" — every one, including audit events,
+notification deliveries, research conversations, session-memory episodes, voice
+captures, obligations, and party records.
 
 ```text
-filter by ctx.organisationId      ← always, first
-  then filter by matter membership ← when the resource is matter-scoped
-    then check capability          ← when the operation mutates or is privileged
+filter by ctx.actorId (= user_id)   ← always, first
+  then check matter ownership       ← when matter_service enforces owner_user_id
+    then check capability           ← when the operation mutates or is privileged
 ```
 
-The organisation comes from the server-built `RequestContext`, which is derived
-from an active `OrganisationMembership` looked up against the verified identity
-subject. A client-supplied organisation id selects which membership to verify;
-it never establishes one.
+The actor id comes from the server-built `RequestContext`, derived from the
+verified identity subject and the persisted `User` record. A client-supplied
+user id never establishes tenancy.
 
 Consequences that the individual service docs previously missed:
 
 - **Non-matter-scoped reads still have a tenant boundary.** The audit global
-  feed, notification preferences, obligation lists at user or firm scope,
-  research conversations, session memory, and voice captures are all filtered by
-  organisation before anything else.
+  feed, notification preferences, obligation lists, research conversations,
+  session memory, and voice captures are all filtered by `user_id` before
+  anything else.
 - **The legal corpus is the one exception.** `library_service` and the corpus
   side of `research_service` read a published release that is not
-  organisation-scoped, because approved statutes are not customer data. Those
-  services must therefore never join to a matter-scoped table
-  (`library-service.md` §6).
-- **Cross-organisation access is a release blocker**, on the same footing as
+  user-scoped, because approved statutes are not customer data. Those services
+  must therefore never join to a matter-scoped table without also enforcing
+  `user_id` on the matter side (`library-service.md` §6).
+- **Cross-user access is a release blocker**, on the same footing as
   cross-matter disclosure (plan §9.2).
+
+There is no organisation workspace in V0 auth. Subscriptions attach to
+`user_id` (`billing-service.md`).
 
 ## 3. Capabilities, not role names in prose
 
-Service docs previously gated on "an authorised lawyer" and refused "a clerk".
-Neither is a role. `auth-service.md` defines exactly four roles, and its own
-capability map granted `reviewer` the power to verify facts, which contradicted
-`verification-service.md`. The fix is a capability catalogue: docs and code cite
-a capability key, and one table maps roles to keys.
+Service docs previously gated on "an authorised lawyer". Neither "lawyer" nor
+"clerk" is a role. `auth-service.md` defines exactly four roles, and
+authorization is expressed through capability keys.
 
 ### 3.1 Capability catalogue
 
@@ -68,7 +68,7 @@ a capability key, and one table maps roles to keys.
 | `matter.create` | Creating a matter | `matter_service` |
 | `matter.reclassify` | Appending a classification version | `matter_service` |
 | `matter.close`, `matter.reopen`, `matter.archive` | Lifecycle commands | `matter_service` |
-| `matter.membership.assign` | Adding or changing matter membership | `auth_service` |
+| `matter.membership.assign` | *(unused in V0 — no matter membership join in auth)* | — |
 | `document.upload`, `document.replace` | Evidence intake | `document_service` |
 | `requirement.review` | Accepting or rejecting evidence against a requirement | `task_service` |
 | `particular.verify`, `particular.correct`, `particular.add` | Verified-record decisions | `verification_service` |
@@ -87,11 +87,11 @@ a capability key, and one table maps roles to keys.
 | `corpus.review`, `corpus.approve`, `corpus.quarantine` | Corpus governance | `corpus_governance_service` |
 | `retention.hold`, `retention.release`, `retention.approve-destruction` | Retention and legal hold | `retention_service` |
 | `billing.manage` | Checkout, cancel, reactivate, portal | `billing_service` |
-| `platform.administer` | Plan administration across organisations | `billing_service` |
+| `platform.administer` | Plan administration (Draftly staff) | `billing_service` |
 | `user.role.set` | Changing another user's role | `auth_service` |
 
 A capability the map does not grant is denied. Capabilities are not additive by
-seniority: an organisation owner is not automatically a legal approver.
+seniority.
 
 ### 3.2 Role to capability map
 
@@ -99,8 +99,8 @@ Roles are the four in `frontend/src/types/user.ts`. No fifth role is invented.
 
 | Capability group | `reviewer` | `approver` | `maintainer` | `administrator` |
 | --- | --- | --- | --- | --- |
-| Matter lifecycle (`matter.*` except membership) | create only | yes | no | yes |
-| Membership and roles (`matter.membership.assign`, `user.role.set`) | no | no | no | yes |
+| Matter lifecycle (`matter.*` except unused membership) | create only | yes | no | yes |
+| Roles (`user.role.set`) | no | yes | no | yes |
 | Evidence (`document.*`, `requirement.review`) | yes | yes | no | no |
 | Verified record (`particular.*`) | yes | yes | no | no |
 | Findings (`finding.resolve`, `finding.waive`) | resolve only | yes | no | no |
@@ -114,12 +114,14 @@ Roles are the four in `frontend/src/types/user.ts`. No fifth role is invented.
 | Compliance (`compliance.*`) | no | no | no | no — see §3.4 |
 | Content governance (`content.*`) | no | no | yes | no |
 | Corpus governance (`corpus.*`) | no | no | yes | no |
-| Retention (`retention.*`) | no | no | no | yes |
-| Billing (`billing.manage`) | no | no | no | yes |
+| Retention (`retention.*`) | no | yes | no | yes |
+| Billing (`billing.manage`) | no | yes | no | yes |
 | Platform (`platform.administer`) | no | no | no | no — see §3.4 |
 
-`reviewer` cannot approve. That is the Phase 2 exit gate and the row is the
-implementation of it.
+`reviewer` cannot approve. That is the Phase 2 exit gate.
+
+Solo practitioners provisioned as `approver` receive billing, retention, and
+`user.role.set` without a separate organisation admin role.
 
 ### 3.3 "Lawyer" is a practising-status attribute, not a role
 
@@ -137,11 +139,7 @@ lawyer     = User.notaryRegistration is present
 `auth_service.authorize` checks the capability. The practising-status predicate
 is evaluated by `auth_service.require_practising_notary(ctx, matter_id?)` and is
 required by `instrument.attest`, `draft.approve`, `particular.verify`,
-`finding.waive`, `step.override`, and `deadline.confirm`. Certificate currency
-comes from the annual-certificate obligation
-(`obligations-service.md` §7.1); territory comes from `User.jurisdiction`
-(`auth-service.md` §7). An expired certificate blocks the capability rather than
-silently allowing it.
+`finding.waive`, `step.override`, and `deadline.confirm`.
 
 The word "clerk" is retired from all service docs. The refusal case is
 "an actor holding a capability the map does not grant".
@@ -151,44 +149,42 @@ The word "clerk" is retired from all service docs. The refusal case is
 Two capability groups are not reachable through the four roles:
 
 - `compliance.view` / `compliance.act` come from an explicit
-  **compliance allowlist** on the organisation, naming the compliance officer
-  and approved backups. Ordinary matter membership is never sufficient
-  (`obligations-service.md` §17).
-- `platform.administer` is a Draftly-staff capability on an internal
-  organisation. A firm `administrator` cannot reach it
-  (`billing-service.md` §11).
+  **compliance allowlist** on the user account (or future firm policy), naming
+  the compliance officer and approved backups. Ordinary matter access is never
+  sufficient (`obligations-service.md` §17).
+- `platform.administer` is a Draftly-staff capability. A firm
+  `administrator` cannot reach it (`billing-service.md` §11).
 
-Both are assigned by an audited administrative action, and both are excluded
-from `RequestContext` caching — they are re-read per request.
+Both are assigned by an audited administrative action, and both are re-read per
+request.
 
-## 4. Membership has one writer
+## 4. Matter ownership in V0 — no membership join
 
-`auth_service` owns the `MatterMembership` and `OrganisationMembership` tables
-and every write to them. `matter_service` previously also claimed membership
-ownership and created the creator membership inside `create_matter`.
+There is **no** `MatterMembership` table in auth for V0. Matter access is
+**user-owned**: when `matter_service` ships, each matter carries
+`owner_user_id` equal to the creating notary's `user_id`. Authorisation for
+matter mutations is **capability-only** through `auth_service.authorize` until
+ownership checks are wired in `matter_service`.
 
-The resolution:
+- `auth_service` does not expose `assign_membership` in the solo model.
+- `matter_service` creates matters scoped to `ctx.actorId` and sets
+  `owner_user_id` accordingly.
+- Cross-user matter reads return **404, not 403** once ownership is enforced
+  (`§5`).
 
-- `auth_service` exposes `assign_membership` and `remove_membership`, guarded by
-  `matter.membership.assign`, and publishes `matter.membership-changed`.
-- `matter_service` calls `MembershipCommandPort.grant_owner_membership(...)`
-  inside its creation transaction. It never writes the table directly and never
-  reads it except through `RequestContext`.
-- `Matter.ownerId` is a responsibility pointer for display and assignment. It is
-  **not** the authorisation policy. At migration, each `ownerId` produces one
-  explicit membership row, after which memberships are the only source of truth
-  (`auth-service.md` open decision 2).
+Historical docs that described `MembershipCommandPort` and dual writers are
+superseded for V0.
 
 ## 5. Existence hiding — 404, not 403
 
-For any **matter-scoped** resource, a caller who is not a member of that matter
-receives `404 Not Found`, byte-identical to the response for a matter that does
-not exist. A `403` would confirm the matter is real. The same applies across
-organisations: a resource in another organisation is a 404.
+For any **matter-scoped** resource, a caller who does not own the matter (or
+is not permitted by future sharing rules) receives `404 Not Found`, byte-
+identical to the response for a matter that does not exist. A `403` would
+confirm the matter is real. The same applies across users: a resource belonging
+to another `user_id` is a 404.
 
-Use `403` only when the caller **is** a member of the matter (so its existence is
-already known to them) and lacks the capability. That is a policy refusal and it
-names the missing capability:
+Use `403` only when the caller **already has legitimate visibility** of the
+matter and lacks the capability. That is a policy refusal:
 
 ```json
 {
@@ -206,17 +202,16 @@ Decision table:
 | --- | --- |
 | No valid token | 401 |
 | Valid identity, pending or suspended account | 403 on the account-status route only; every other route 404 |
-| Not a member of the organisation | 404 |
-| Member of the organisation, not a member of the matter | 404 |
-| Member of the matter, capability not granted | 403 with `capability_denied` |
-| Member of the matter, capability granted, domain rule refuses | 409 or 422 with a domain error code (`api-conventions.md` §5) |
+| Resource owned by another user | 404 |
+| Owner of the matter, capability not granted | 403 with `capability_denied` |
+| Owner, capability granted, domain rule refuses | 409 or 422 with a domain error code (`api-conventions.md` §5) |
 
-A denied attempt at a privileged action is audited
-(`auth-service.md` §8) even though the caller sees a 404.
+A denied attempt at a privileged action is audited even when the caller sees a
+404.
 
 ## 6. What must never be trusted from the client
 
-- role, capability, organisation membership, matter membership;
+- role, capability, or tenancy (`user_id`);
 - `actorId` on any write, including audit;
 - entitlement or quota state;
 - a content hash supplied for approval;
@@ -225,30 +220,31 @@ A denied attempt at a privileged action is audited
 - a delivery address for a notification;
 - a payment or subscription state derived from a checkout redirect.
 
-Each of these is re-derived server-side. The corresponding invariant row appears
-in the owning service's doc.
+Each of these is re-derived server-side.
 
 ## 7. Tests every service inherits
 
-These live in `tests/security/` and run against every matter-scoped service.
-They are parameterised over the service list in
-`services/README.md`, so a new service is covered the day it is registered.
+Auth capability checks currently live in `tests/unit/` (CI collects
+`tests/unit`, `tests/contract`, and `tests/conformance`). The shared
+cross-service security suite will land under `tests/security/` and run
+against every matter-scoped service, parameterised over the service list in
+`services/README.md`.
 
-1. Cross-organisation read and write are denied for every route.
+1. Cross-user read and write are denied for every route.
 2. Cross-matter read and write are denied for every matter-scoped route.
-3. A non-member receives a 404 whose body and timing are indistinguishable from
+3. A non-owner receives a 404 whose body and timing are indistinguishable from
    a genuinely missing resource.
-4. A member without the capability receives 403 `capability_denied`, and the
+4. An owner without the capability receives 403 `capability_denied`, and the
    attempt is audited.
-5. A forged role, capability, organisation id, or `actorId` in a request body is
+5. A forged role, capability, `user_id`, or `actorId` in a request body is
    ignored.
-6. A pending or suspended account, and a suspended or closed organisation,
-   cannot construct a privileged `RequestContext`.
+6. A pending or suspended account cannot construct a privileged
+   `RequestContext`.
 7. `reviewer` cannot approve a draft, create an export, attest an instrument, or
    confirm a hard deadline.
 8. A user without a current practice certificate cannot perform any capability
    listed in §3.3.
 9. Compliance-restricted records return no record and no existence signal to an
-   ordinary matter member.
+   ordinary matter owner.
 10. No secret, raw token, or private matter value appears in logs, error bodies,
     or audit payloads.

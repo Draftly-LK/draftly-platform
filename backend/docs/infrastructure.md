@@ -78,7 +78,7 @@ URLs. MinIO uses the S3 adapter; local development uses the filesystem adapter.
 Key layout, one bucket with separate prefixes and separate retention (plan §10):
 
 ```text
-{environment}/organisations/{organisation_id}/matters/{matter_id}/
+{environment}/users/{user_id}/matters/{matter_id}/
   docs/{doc_id}/v/{version_id}/original      # immutable, write-once, long retention
   docs/{doc_id}/v/{version_id}/derivatives/  # OCR text, layout, quality, preview — rebuildable
   exports/{export_id}/...                     # approved DOCX/PDF plus manifest
@@ -101,7 +101,7 @@ browser only through a short-lived signed URL, never a raw path.
   **object** does not. Expiring a URL is not destruction.
 - **Nothing under an active legal hold is collected, expired, or deleted**,
   including by the orphan-blob sweep (`jobs-and-workers.md` §7).
-- Every key is environment- and organisation-prefixed in every adapter so a
+- Every key is environment- and user-prefixed in every adapter so a
   tenant's data can be inventoried, exported, or isolated without a global scan.
 - A GCS lifecycle rule must not delete record-scoped objects independently of
   `retention_service`. Object versioning is recovery defence, not permission to
@@ -206,7 +206,7 @@ history.
 
 ## Observability
 
-- **Structured logs** with `correlationId`, `causationId`, `organisationId`, and
+- **Structured logs** with `correlationId`, `causationId`, `userId`, and
   job or request identifiers. Never payload bodies, transcript fragments,
   extracted values, identifiers, recipient addresses, or secrets
   (`service-definition-of-done.md` §4.7).
