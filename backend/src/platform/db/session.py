@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 
+from fastapi import Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -21,6 +22,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from src.platform.config import get_settings
+from src.platform.db.unit_of_work import UnitOfWork
 
 _engine: AsyncEngine | None = None
 _session_maker: async_sessionmaker[AsyncSession] | None = None
@@ -49,9 +51,27 @@ def get_session_maker() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency that yields a database session per request."""
+    """FastAPI dependency that yields a database session per request.
+
+    Read-only by contract: this dependency never commits. Any route that
+    mutates state must depend on ``get_uow`` instead, so the whole request
+    succeeds or rolls back as one transaction.
+    """
     async with get_session_maker()() as session:
         yield session
+
+
+async def get_uow(
+    session: AsyncSession = Depends(get_db),
+) -> AsyncGenerator[UnitOfWork, None]:
+    """FastAPI dependency that yields a UnitOfWork over the request session.
+
+    Mutating routes depend on this so provisioning, identity linking, role
+    changes, profile updates, and their audit events commit once on success
+    and roll back together on failure.
+    """
+    async with UnitOfWork(session) as uow:
+        yield uow
 
 
 async def check_db_ready() -> bool:

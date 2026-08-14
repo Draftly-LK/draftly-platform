@@ -20,13 +20,43 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix="/api/v1")
 
 
+"""Environments where the stub identity adapter may be selected at all.
+
+The stub accepts any bearer token as one fixed identity, so it is confined to
+developer machines and CI. Anywhere else, an incomplete Clerk configuration is
+a startup failure rather than an open door.
+"""
+STUB_IDENTITY_ENVIRONMENTS = frozenset({"local", "test", "ci"})
+
+
 def build_identity_adapter() -> IdentityPort:
     """Return the appropriate IdentityPort implementation for this environment."""
     settings = get_settings()
-    if settings.use_stub_identity or not settings.clerk_configured:
+    stub_allowed = settings.environment in STUB_IDENTITY_ENVIRONMENTS
+
+    if settings.use_stub_identity:
+        if not stub_allowed:
+            raise RuntimeError(
+                f"USE_STUB_IDENTITY is not permitted in environment "
+                f"'{settings.environment}'. The stub adapter accepts any bearer "
+                f"token as a fixed identity and is limited to "
+                f"{sorted(STUB_IDENTITY_ENVIRONMENTS)}."
+            )
         from src.modules.auth.infrastructure.stub_adapter import StubIdentityAdapter
 
         return StubIdentityAdapter()
+
+    if not settings.clerk_configured:
+        if not stub_allowed:
+            raise RuntimeError(
+                f"Clerk identity is not configured and environment "
+                f"'{settings.environment}' does not permit the stub adapter. "
+                f"Set CLERK_ISSUER, CLERK_SECRET_KEY and CLERK_AUTHORIZED_PARTY."
+            )
+        from src.modules.auth.infrastructure.stub_adapter import StubIdentityAdapter
+
+        return StubIdentityAdapter()
+
     from src.modules.auth.infrastructure.clerk_adapter import ClerkIdentityAdapter
 
     if not settings.clerk_authorized_party:

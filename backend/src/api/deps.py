@@ -30,53 +30,50 @@ log = structlog.get_logger(__name__)
 
 _http_bearer = HTTPBearer(auto_error=False)
 
-_auth_service_instance: AuthService | None = None
 
+def get_auth_service(session: AsyncSession = Depends(get_db)) -> AuthService:
+    """Build a request-scoped AuthService.
 
-def get_auth_service_instance() -> AuthService:
-    """Return the singleton AuthService wired at startup."""
-    global _auth_service_instance
-    if _auth_service_instance is None:
-        raise RuntimeError("AuthService not yet initialized. Call init_services() at startup.")
-    return _auth_service_instance
-
-
-def init_services(session: AsyncSession) -> None:
-    """Wire services for a request; called inside a session context."""
-    user_identity_repo = SqlUserIdentityRepository(session)
-    user_repo = SqlUserRepository(session)
-    audit_repo = SqlAuditRepository(session)
-    audit_service = AuditService(repository=audit_repo)
-
+    Deliberately not a module-level singleton: the repositories below are bound
+    to this request's AsyncSession, so a shared instance would let one request
+    execute against another request's session after that session had closed.
+    """
     from src.bootstrap import build_identity_adapter
 
-    identity_adapter = build_identity_adapter()
-
-    global _auth_service_instance
-    _auth_service_instance = AuthService(
-        identity_port=identity_adapter,
-        user_identity_repo=user_identity_repo,
-        user_repo=user_repo,
-        audit_port=audit_service,
+    return AuthService(
+        identity_port=build_identity_adapter(),
+        user_identity_repo=SqlUserIdentityRepository(session),
+        user_repo=SqlUserRepository(session),
+        audit_port=AuditService(repository=SqlAuditRepository(session)),
     )
 
 
-async def get_request_context(
-    request: Request,
+def get_bearer_token(
     credentials: HTTPAuthorizationCredentials | None = Depends(_http_bearer),
-    session: AsyncSession = Depends(get_db),
-) -> RequestContext:
-    """Core auth dependency — validates the Bearer token and builds RequestContext."""
+) -> str:
+    """Return the raw Bearer token, or reject the request."""
     if credentials is None:
         raise UnauthenticatedError("Authorization header with Bearer token is required.")
+    return credentials.credentials
 
-    init_services(session)
 
-    auth_service = get_auth_service_instance()
-    correlation_id = getattr(request.state, "correlation_id", None) or str(uuid.uuid4())
+def get_correlation_id(request: Request) -> str:
+    return getattr(request.state, "correlation_id", None) or str(uuid.uuid4())
 
+
+async def get_request_context(
+    token: str = Depends(get_bearer_token),
+    correlation_id: str = Depends(get_correlation_id),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> RequestContext:
+    """Core auth dependency — validates the Bearer token and builds RequestContext.
+
+    Requires an already-provisioned identity. First-time callers get
+    AccountPendingError and must complete provisioning via
+    ``POST /api/v1/me/provision`` before any other route will admit them.
+    """
     ctx = await auth_service.build_request_context(
-        token=credentials.credentials,
+        token=token,
         correlation_id=correlation_id,
     )
 

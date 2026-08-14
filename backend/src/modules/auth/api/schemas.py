@@ -41,3 +41,27 @@ class AccountStatusRead(BaseModel):
 
 class SetRoleRequest(BaseModel):
     role: str
+
+
+class UpdateProfileRequest(BaseModel):
+    """The only fields a user may edit about themselves.
+
+    ``extra="forbid"`` is the enforcement point: identity, role, account
+    status, verified email and certificate-approval state are absent here, so a
+    request carrying them is rejected with 422 before it reaches the service.
+    """
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        extra="forbid",
+    )
+
+    display_name: str | None = None
+    notary_registration: str | None = None
+    jurisdiction: str | None = None
+    qualifications: str | None = None
+    professional_titles: str | None = None
+    address_line1: str | None = None
+    address_line2: str | None = None
+    phone: str | None = None

@@ -11,6 +11,7 @@ from src.modules.auth.application.auth_service import AuthService
 from src.modules.auth.domain.errors import (
     AccountPendingError,
     CapabilityDeniedError,
+    DomainRuleError,
     EmailRequiredError,
     PracticeStatusError,
     RoleLockoutError,
@@ -252,40 +253,118 @@ class TestBuildRequestContext:
             await svc.build_request_context("unknown")
 
 
+def _step_up_service(actor: User, **kwargs: object) -> AuthService:
+    """Service whose step-up token validates and binds to ``actor``."""
+    claims = IdentityClaims(
+        issuer="stub",
+        subject="own-subject",
+        verified_email="owner@example.com",
+        auth_time=int(time.time()),
+    )
+    identity = UserIdentity(
+        user_id=actor.id,
+        provider="clerk",
+        issuer="stub",
+        subject="own-subject",
+        verified_email="owner@example.com",
+        linked_at=datetime.now(tz=UTC),
+    )
+    defaults: dict = {
+        "identity_port": FakeIdentityPort(claims),
+        "user_identity_repo": FakeUserIdentityRepo(by_subject=identity),
+        "user_repo": FakeUserRepo({actor.id: actor}),
+    }
+    defaults.update(kwargs)
+    return make_service(**defaults)
+
+
 class TestSetUserRole:
     @pytest.mark.asyncio
     async def test_role_change_is_audited_with_user_id(self):
         actor = _active_user("usr_actor", Role.APPROVER)
-        target = _active_user("usr_target", Role.REVIEWER)
         audit = FakeAuditPort()
-        svc = make_service(
-            user_repo=FakeUserRepo({actor.id: actor, target.id: target}),
-            audit_port=audit,
-        )
-        ctx = make_ctx(role=Role.APPROVER)
+        svc = _step_up_service(actor, audit_port=audit)
         ctx = RequestContext(
             actor_id=actor.id,
             account_role=Role.APPROVER,
             correlation_id="c1",
         )
-        await svc.set_user_role(ctx, target.id, Role.MAINTAINER)
+        # ADMINISTRATOR retains user.role.set, so this exercises the audit path
+        # rather than the self-lockout guard.
+        await svc.set_user_role(ctx, actor.id, Role.ADMINISTRATOR, step_up_token="fresh")
         assert audit.events[0].user_id == actor.id
         assert audit.events[0].action == "user.role.changed"
 
     @pytest.mark.asyncio
+    async def test_rejects_changing_another_users_role(self):
+        """Every solo user is an approver holding user.role.set, so the
+        capability check alone would expose other customers' accounts."""
+        actor = _active_user("usr_actor", Role.APPROVER)
+        target = _active_user("usr_victim", Role.REVIEWER)
+        svc = _step_up_service(actor, user_repo=FakeUserRepo({actor.id: actor, target.id: target}))
+        ctx = RequestContext(
+            actor_id=actor.id,
+            account_role=Role.APPROVER,
+            correlation_id="c1",
+        )
+        with pytest.raises(CapabilityDeniedError):
+            await svc.set_user_role(ctx, target.id, Role.REVIEWER, step_up_token="fresh")
+        assert target.role == Role.REVIEWER
+
+    @pytest.mark.asyncio
+    async def test_rejects_role_change_without_step_up(self):
+        actor = _active_user("usr_solo", Role.APPROVER)
+        svc = _step_up_service(actor)
+        ctx = RequestContext(
+            actor_id=actor.id,
+            account_role=Role.APPROVER,
+            correlation_id="c1",
+        )
+        with pytest.raises(StepUpRequiredError):
+            await svc.set_user_role(ctx, actor.id, Role.ADMINISTRATOR)
+
+    @pytest.mark.asyncio
     async def test_rejects_self_demotion_that_removes_role_set(self):
         actor = _active_user("usr_solo", Role.APPROVER)
-        svc = make_service(user_repo=FakeUserRepo({actor.id: actor}))
+        svc = _step_up_service(actor)
         ctx = RequestContext(
             actor_id=actor.id,
             account_role=Role.APPROVER,
             correlation_id="c1",
         )
         with pytest.raises(RoleLockoutError):
-            await svc.set_user_role(ctx, actor.id, Role.REVIEWER)
+            await svc.set_user_role(ctx, actor.id, Role.REVIEWER, step_up_token="fresh")
 
     @pytest.mark.asyncio
     async def test_allows_self_switch_between_privileged_roles(self):
+        actor = _active_user("usr_solo", Role.APPROVER)
+        svc = _step_up_service(actor)
+        ctx = RequestContext(
+            actor_id=actor.id,
+            account_role=Role.APPROVER,
+            correlation_id="c1",
+        )
+        updated = await svc.set_user_role(ctx, actor.id, Role.ADMINISTRATOR, step_up_token="fresh")
+        assert updated.role == Role.ADMINISTRATOR
+
+
+class TestUpdateOwnProfile:
+    @pytest.mark.asyncio
+    async def test_updates_editable_fields_and_audits(self):
+        actor = _active_user("usr_solo", Role.APPROVER)
+        audit = FakeAuditPort()
+        svc = make_service(user_repo=FakeUserRepo({actor.id: actor}), audit_port=audit)
+        ctx = RequestContext(
+            actor_id=actor.id,
+            account_role=Role.APPROVER,
+            correlation_id="c1",
+        )
+        updated = await svc.update_own_profile(ctx, {"phone": "+94 11 234 5678"})
+        assert updated.phone == "+94 11 234 5678"
+        assert audit.events[0].action == "user.profile.updated"
+
+    @pytest.mark.asyncio
+    async def test_rejects_server_owned_fields(self):
         actor = _active_user("usr_solo", Role.APPROVER)
         svc = make_service(user_repo=FakeUserRepo({actor.id: actor}))
         ctx = RequestContext(
@@ -293,8 +372,24 @@ class TestSetUserRole:
             account_role=Role.APPROVER,
             correlation_id="c1",
         )
-        updated = await svc.set_user_role(ctx, actor.id, Role.ADMINISTRATOR)
-        assert updated.role == Role.ADMINISTRATOR
+        for field in ("role", "account_status", "id", "certificate_valid_until"):
+            with pytest.raises(DomainRuleError):
+                await svc.update_own_profile(ctx, {field: "tampered"})
+        assert actor.role == Role.APPROVER
+        assert actor.account_status == AccountStatus.ACTIVE
+
+    @pytest.mark.asyncio
+    async def test_no_audit_event_when_nothing_changes(self):
+        actor = _active_user("usr_solo", Role.APPROVER)
+        audit = FakeAuditPort()
+        svc = make_service(user_repo=FakeUserRepo({actor.id: actor}), audit_port=audit)
+        ctx = RequestContext(
+            actor_id=actor.id,
+            account_role=Role.APPROVER,
+            correlation_id="c1",
+        )
+        await svc.update_own_profile(ctx, {"display_name": actor.display_name})
+        assert audit.events == []
 
 
 def _notary_user(

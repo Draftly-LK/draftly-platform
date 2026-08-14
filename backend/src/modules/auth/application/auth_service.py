@@ -16,6 +16,7 @@ from src.modules.auth.domain.errors import (
     AccountPendingError,
     AccountSuspendedError,
     CapabilityDeniedError,
+    DomainRuleError,
     EmailRequiredError,
     NotFoundError,
     PracticeStatusError,
@@ -91,6 +92,61 @@ class AuthService:
         if user is None:
             raise NotFoundError("User not found.")
         return user
+
+    # ── update_own_profile ───────────────────────────────────────────────────
+
+    #: The only fields a user may edit about themselves. Identity, role,
+    #: account status, verified email and certificate approval state are
+    #: server-owned and are never writable through the profile route.
+    EDITABLE_PROFILE_FIELDS = (
+        "display_name",
+        "notary_registration",
+        "jurisdiction",
+        "qualifications",
+        "professional_titles",
+        "address_line1",
+        "address_line2",
+        "phone",
+    )
+
+    async def update_own_profile(
+        self,
+        ctx: RequestContext,
+        changes: dict[str, str | None],
+    ) -> User:
+        """Update the actor's own professional and contact fields. Audited."""
+        rejected = sorted(set(changes) - set(self.EDITABLE_PROFILE_FIELDS))
+        if rejected:
+            raise DomainRuleError(f"Fields are not editable: {', '.join(rejected)}.")
+
+        user = await self._users.get(ctx.actor_id)
+        if user is None:
+            raise NotFoundError("User not found.")
+
+        applied: list[str] = []
+        for field, value in changes.items():
+            if getattr(user, field) != value:
+                setattr(user, field, value)
+                applied.append(field)
+
+        if not applied:
+            return user
+
+        updated_user = await self._users.update(user)
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                actor=ctx.actor_id,
+                action="user.profile.updated",
+                target_type="user",
+                target_id=ctx.actor_id,
+                before_ref=None,
+                after_ref=",".join(sorted(applied)),
+                reason="Profile updated by account owner",
+                correlation_id=ctx.correlation_id,
+            )
+        )
+        return updated_user
 
     # ── provision_identity ───────────────────────────────────────────────────
 
@@ -208,9 +264,25 @@ class AuthService:
         ctx: RequestContext,
         user_id: str,
         new_role: Role,
+        step_up_token: str | None = None,
     ) -> User:
-        """Change account role (capability-gated). Role changes are audited."""
+        """Change the actor's own account role. Step-up gated and audited.
+
+        Solo model: every new user is provisioned as an APPROVER, which holds
+        ``user.role.set``. A capability check alone would therefore let any
+        signed-in customer edit any other customer's role given their user id,
+        so the target is pinned to the actor and a recent re-authentication is
+        required before the mutation is allowed.
+        """
         await self.authorize(ctx, "user.role.set")
+
+        if user_id != ctx.actor_id:
+            raise CapabilityDeniedError(
+                "Role changes are limited to the authenticated user's own account.",
+                capability="user.role.set",
+            )
+
+        await self.require_step_up(ctx, "user.role.set", token=step_up_token)
 
         user = await self._users.get(user_id)
         if user is None:
