@@ -171,6 +171,56 @@ because the adapter makes the specific version a configuration value and a
 hardcoded version number goes stale. The `OcrPort` keeps both adapters wired so
 the choice can be made per document type on evidence, not up front.
 
+## 9B. Implementation status — v1 is Gemini-only, by decision
+
+Implemented in `src/modules/document/` (ports in `ports.py`, orchestration in
+`application/processing_service.py`, adapters in `infrastructure/`). The team
+decided v1 ships **without Document AI**: `ClassifierPort` and
+`OcrExtractorPort` are both served by `GeminiExtractionAdapter`, selected in
+`bootstrap.build_processing_service()` by `EXTRACTION_PROVIDER`. What that
+changes, and what it deliberately does not:
+
+- **The §5 ladder is collapsed for now.** Every page is effectively Level 2.
+  The ports and this document keep the ladder as the target shape; adding
+  `DocumentAiAdapter` later is an adapter file plus a settings value, with no
+  application-layer change. §7 reconciliation returns with the second engine.
+- **Provenance is page-level and never fabricated** (resolves §13 open
+  decision 3 for v1). Pages are rasterized individually and sent one at a
+  time, so every candidate carries a true 1-based page number — and no
+  bounding box. `region` is absent from the candidate shape rather than
+  faked; the earlier demo-fixture exercise showed fabricated boxes are worse
+  than none.
+- **Model-reported confidence never gates anything.** It is stored as
+  `model_reported_confidence` and routes low-confidence classification to
+  `manual_review`; deterministic per-field validators (NIC format, ISO date,
+  extent) provide the only trusted signal. This follows the project-wide
+  finding that self-reported model confidence is uninformative.
+- **Rasterization uses pypdfium2, not PyMuPDF.** §4 suggested PyMuPDF or
+  `pdftoppm`; PyMuPDF is AGPL-licensed, pypdfium2 is BSD/Apache and already
+  proven in the research pipeline. DPI is recorded per page (§6 still holds).
+- **The §10A gate is enforced in code.** `PROVIDER_DATA_APPROVAL=false`
+  routes any non-synthetic document to `manual_review` before rasterization;
+  the stub provider is refused outside local/test/ci; Gemini without an API
+  key fails startup. Metering is a structured log line
+  (`document.processing.metering`) until the billing module exists — the
+  interim meter, stated as such.
+- **Interim synchronous route.** `POST /api/v1/documents/process` runs the
+  pipeline inline because the outbox/worker runtime does not exist yet. The
+  worker's `document.process` job will call the same
+  `DocumentProcessingService`; the route then becomes upload-and-enqueue.
+  No events are emitted until the outbox lands.
+- **Field vocabulary = the form contract.** Template field keys in
+  `domain/registry.py` are the same keys as the frontend
+  `FormTemplate.fields[].factBinding`, so extraction, the drafting gate, and
+  rendering share one contract.
+
+Verification: unit + contract suites run in CI with the stub;
+`tests/e2e/test_gemini_live.py` is an env-gated live smoke that also
+validates the configured model ids; `scripts/eval_extraction.py` measures
+field accuracy against the expected-values file inside the gitignored real
+bundle. Accuracy numbers may be recorded in review docs; extracted values may
+not.
+
 ## 10. Confidence threshold
 
 The Level 0 to Level 1 threshold is tunable and must be measured, not guessed.
