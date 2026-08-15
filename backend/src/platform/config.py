@@ -52,7 +52,21 @@ class Settings(BaseSettings):
     docai_processor_id: str = ""
     gemini_api_key: str = ""
     gemini_classify_model: str = "gemini-3.1-flash-lite"
-    gemini_extract_model: str = "gemini-2.5-flash"
+    gemini_extract_model: str = "gemini-3.5-flash"
+
+    # ── Document processing (document-processing.md) ────────────────────────
+    # "gemini" | "stub". The stub is confined to local/test/ci at bootstrap.
+    extraction_provider: str = "stub"
+    # §10A data-protection gate: while false, the pipeline refuses documents
+    # not flagged synthetic and routes them to manual_review. Flip only after
+    # provider region/retention/training terms are recorded and approved.
+    provider_data_approval: bool = False
+    # Classification confidence below which extraction is skipped (manual
+    # review instead). Tunable per §10 — measured, not guessed.
+    confidence_threshold: float = 0.55
+    # Rasterization density; recorded with each page so coordinate mapping
+    # stays exact when a box-producing engine is added later (§4, §6).
+    raster_dpi: int = 200
 
     # ── App behaviour ───────────────────────────────────────────────────────
     environment: str = "local"
