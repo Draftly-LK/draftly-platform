@@ -7,26 +7,37 @@ specific adapters (infrastructure.md §Principle: provider-neutral behind ports)
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import FastAPI
 
 from src.modules.auth.ports import IdentityPort
 from src.platform.config import get_settings
 
+if TYPE_CHECKING:
+    from src.modules.document.application.processing_service import (
+        DocumentProcessingService,
+    )
+
 
 def register_routers(app: FastAPI) -> None:
     """Mount all module routers under /api/v1."""
     from src.modules.auth.api.router import router as auth_router
+    from src.modules.document.api.router import router as document_router
 
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(document_router, prefix="/api/v1")
 
 
-"""Environments where the stub identity adapter may be selected at all.
+"""Environments where stub adapters may be selected at all.
 
-The stub accepts any bearer token as one fixed identity, so it is confined to
-developer machines and CI. Anywhere else, an incomplete Clerk configuration is
-a startup failure rather than an open door.
+Stubs bypass real providers (any bearer token becomes a fixed identity; canned
+extraction results), so they are confined to developer machines and CI.
+Anywhere else, incomplete provider configuration is a startup failure rather
+than an open door.
 """
 STUB_IDENTITY_ENVIRONMENTS = frozenset({"local", "test", "ci"})
+STUB_EXTRACTION_ENVIRONMENTS = STUB_IDENTITY_ENVIRONMENTS
 
 
 def build_identity_adapter() -> IdentityPort:
@@ -66,4 +77,66 @@ def build_identity_adapter() -> IdentityPort:
         secret_key=settings.clerk_secret_key,
         audience=settings.clerk_audience or None,
         authorized_party=settings.clerk_authorized_party,
+    )
+
+
+def build_processing_service() -> DocumentProcessingService:
+    """Assemble the document-processing pipeline for this environment.
+
+    Same fail-closed posture as identity: the stub is confined to
+    local/test/ci, and selecting Gemini without an API key fails at once
+    rather than at the first document.
+    """
+    from src.modules.document.application.processing_service import (
+        DocumentProcessingService,
+    )
+    from src.modules.document.infrastructure.rasterizer_pypdfium import (
+        PypdfiumRasterizer,
+    )
+
+    settings = get_settings()
+    rasterizer = PypdfiumRasterizer(dpi=settings.raster_dpi)
+
+    if settings.extraction_provider == "stub":
+        if settings.environment not in STUB_EXTRACTION_ENVIRONMENTS:
+            raise RuntimeError(
+                f"EXTRACTION_PROVIDER=stub is not permitted in environment "
+                f"'{settings.environment}'. The stub returns canned candidate "
+                f"fields and is limited to {sorted(STUB_EXTRACTION_ENVIRONMENTS)}."
+            )
+        from src.modules.document.infrastructure.stub_adapter import (
+            StubExtractionAdapter,
+        )
+
+        stub = StubExtractionAdapter()
+        return DocumentProcessingService(
+            rasterizer=rasterizer,
+            classifier=stub,
+            extractor=stub,
+            provider_name="stub",
+        )
+
+    if settings.extraction_provider != "gemini":
+        raise RuntimeError(
+            f"Unknown EXTRACTION_PROVIDER '{settings.extraction_provider}'. Valid: gemini, stub."
+        )
+    if not settings.gemini_api_key:
+        raise RuntimeError("GEMINI_API_KEY is required when EXTRACTION_PROVIDER=gemini.")
+
+    from google import genai
+
+    from src.modules.document.infrastructure.gemini_adapter import (
+        GeminiExtractionAdapter,
+    )
+
+    adapter = GeminiExtractionAdapter(
+        client=genai.Client(api_key=settings.gemini_api_key),
+        classify_model=settings.gemini_classify_model,
+        extract_model=settings.gemini_extract_model,
+    )
+    return DocumentProcessingService(
+        rasterizer=rasterizer,
+        classifier=adapter,
+        extractor=adapter,
+        provider_name="gemini",
     )
