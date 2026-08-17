@@ -8,6 +8,7 @@ import {
 import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { ProvisionGate } from "@/components/auth/provision-gate";
 import { isClerkConfigured } from "@/lib/auth/clerk";
 import "@/styles/globals.css";
 
@@ -56,7 +57,12 @@ export default async function RootLayout({
     >
       <body>
         {isClerkConfigured() ? (
-          <ClerkProvider afterSignOutUrl="/sign-in">{body}</ClerkProvider>
+          <ClerkProvider afterSignOutUrl="/sign-in">
+            {/* Inside ClerkProvider: it reads the session to know when to run.
+                Wraps the tree so first-time users reach onboarding before any
+                workspace screen paints. */}
+            <ProvisionGate>{body}</ProvisionGate>
+          </ClerkProvider>
         ) : (
           body
         )}

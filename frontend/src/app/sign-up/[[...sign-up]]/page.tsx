@@ -11,7 +11,7 @@ export default async function SignUpPage() {
   const t = await getTranslations("auth");
 
   return (
-    <main className="bg-canvas flex min-h-screen flex-col items-center justify-center px-4 py-12">
+    <main className="bg-canvas flex min-h-screen flex-col items-center justify-center px-4 py-4">
       <div className="mb-8 text-center">
         <h1 className="font-heading text-ink text-3xl font-semibold tracking-tight">
           {t("signUpTitle")}
@@ -21,6 +21,9 @@ export default async function SignUpPage() {
       <SignUp
         routing="hash"
         forceRedirectUrl="/"
+        // Keeps the footer "Sign in" link inside the app rather than sending
+        // the user to Clerk's unstyled hosted Account Portal.
+        signInUrl="/sign-in"
         appearance={{
           elements: {
             rootBox: "mx-auto",
