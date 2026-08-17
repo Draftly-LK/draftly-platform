@@ -36,9 +36,9 @@ export function OverviewScreen({ matterId }: { matterId: string }) {
     {
       key: "documents",
       body: t("readyCount", {
-        ready: documents.filter(
-          (item) => item.processingState === "ready-for-review",
-        ).length,
+        // §10.2: only a completed server processing run counts as ready.
+        ready: documents.filter((item) => item.processingState === "PROCESSED")
+          .length,
         total: documents.length,
       }),
       href: `/matters/${matterId}/documents`,

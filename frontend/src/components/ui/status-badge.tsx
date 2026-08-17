@@ -2,30 +2,44 @@
 
 import {
   AlertCircle,
+  Archive,
   Check,
+  CircleCheck,
   CircleDashed,
   FileWarning,
+  Inbox,
   LoaderCircle,
+  Lock,
   Pencil,
+  ScanEye,
   ShieldAlert,
+  ShieldCheck,
   TriangleAlert,
+  Upload,
 } from "lucide-react";
 import { useLocale } from "next-intl";
 import {
   checkLabels,
-  processingLabels,
+  physicalOriginalLabels,
+  sourceFileStateLabels,
   stepLabels,
   verificationLabels,
 } from "@/lib/i18n/labels";
 import type {
   CheckStatus,
-  ProcessingState,
+  PhysicalOriginalStatus,
+  SourceFileState,
   StepState,
   VerificationState,
 } from "@/types";
 import { cn } from "@/lib/utils";
 
-type Status = VerificationState | ProcessingState | CheckStatus | StepState;
+type Status =
+  | VerificationState
+  | SourceFileState
+  | PhysicalOriginalStatus
+  | CheckStatus
+  | StepState;
 
 const styles: Record<Status, string> = {
   unreviewed: "border-border-strong bg-surface text-ink",
@@ -33,11 +47,20 @@ const styles: Record<Status, string> = {
   corrected: "border-teal bg-teal-bg text-teal",
   conflict: "border-amber bg-amber-bg text-amber-text",
   blocked: "border-red bg-red-bg text-red",
-  uploaded: "border-border-strong bg-surface text-ink",
-  extracting: "border-teal bg-teal-bg text-teal",
-  "ready-for-review": "border-forest bg-soft-green text-forest",
-  failed: "border-red bg-red-bg text-red",
-  replaced: "border-border-strong bg-disabled-bg text-ink",
+  UPLOAD_INITIATED: "border-border-strong bg-surface text-ink",
+  QUARANTINED: "border-amber bg-amber-bg text-amber-text",
+  VALIDATED: "border-border-strong bg-surface text-ink",
+  STORED: "border-border-strong bg-surface text-ink",
+  PROCESSING: "border-teal bg-teal-bg text-teal",
+  PROCESSED: "border-forest bg-soft-green text-forest",
+  PROCESSING_FAILED: "border-red bg-red-bg text-red",
+  REJECTED: "border-red bg-red-bg text-red",
+  SUPERSEDED: "border-border-strong bg-disabled-bg text-ink",
+  NOT_REQUIRED: "border-border-strong bg-surface text-muted-ink",
+  UNKNOWN: "border-border-strong bg-surface text-ink",
+  COPY_ONLY: "border-amber bg-amber-bg text-amber-text",
+  ORIGINAL_REPORTED: "border-teal bg-teal-bg text-teal",
+  ORIGINAL_INSPECTED: "border-forest bg-soft-green text-forest",
   pass: "border-forest bg-soft-green text-forest",
   warning: "border-amber bg-amber-bg text-amber-text",
   fail: "border-red bg-red-bg text-red",
@@ -45,6 +68,27 @@ const styles: Record<Status, string> = {
   "not-started": "border-border-strong bg-surface text-muted-ink",
   "in-progress": "border-teal bg-teal-bg text-teal",
   complete: "border-forest bg-soft-green text-forest",
+};
+
+/** Every badge is icon + text; colour alone never carries the status. */
+const sourceFileIcons: Record<SourceFileState, typeof Check> = {
+  UPLOAD_INITIATED: Upload,
+  QUARANTINED: Lock,
+  VALIDATED: ShieldCheck,
+  STORED: Inbox,
+  PROCESSING: LoaderCircle,
+  PROCESSED: Check,
+  PROCESSING_FAILED: FileWarning,
+  REJECTED: ShieldAlert,
+  SUPERSEDED: Archive,
+};
+
+const physicalOriginalIcons: Record<PhysicalOriginalStatus, typeof Check> = {
+  NOT_REQUIRED: CircleDashed,
+  UNKNOWN: AlertCircle,
+  COPY_ONLY: FileWarning,
+  ORIGINAL_REPORTED: ScanEye,
+  ORIGINAL_INSPECTED: CircleCheck,
 };
 
 function details(status: Status, locale: "en" | "si") {
@@ -62,17 +106,15 @@ function details(status: Status, locale: "en" | "si") {
                 ? ShieldAlert
                 : CircleDashed,
     };
-  if (status in processingLabels)
+  if (status in sourceFileStateLabels)
     return {
-      label: processingLabels[status as ProcessingState][locale],
-      icon:
-        status === "ready-for-review"
-          ? Check
-          : status === "extracting"
-            ? LoaderCircle
-            : status === "failed"
-              ? FileWarning
-              : CircleDashed,
+      label: sourceFileStateLabels[status as SourceFileState][locale],
+      icon: sourceFileIcons[status as SourceFileState],
+    };
+  if (status in physicalOriginalLabels)
+    return {
+      label: physicalOriginalLabels[status as PhysicalOriginalStatus][locale],
+      icon: physicalOriginalIcons[status as PhysicalOriginalStatus],
     };
   if (status in checkLabels)
     return {

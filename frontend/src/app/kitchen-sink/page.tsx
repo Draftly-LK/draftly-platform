@@ -26,11 +26,15 @@ export default async function KitchenSinkPage() {
         <StateSection title={t("processing")}>
           {(
             [
-              "uploaded",
-              "extracting",
-              "ready-for-review",
-              "failed",
-              "replaced",
+              "UPLOAD_INITIATED",
+              "QUARANTINED",
+              "VALIDATED",
+              "STORED",
+              "PROCESSING",
+              "PROCESSED",
+              "PROCESSING_FAILED",
+              "REJECTED",
+              "SUPERSEDED",
             ] as const
           ).map((status) => (
             <StatusBadge key={status} status={status} />
