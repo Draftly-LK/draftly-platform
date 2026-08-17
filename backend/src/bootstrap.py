@@ -15,18 +15,40 @@ from src.modules.auth.ports import IdentityPort
 from src.platform.config import get_settings
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from src.modules.approval.application.approval_service import ApprovalService
+    from src.modules.check.application.check_service import CheckService
+    from src.modules.document.application.ingestion_service import (
+        SourceFileIngestionService,
+    )
     from src.modules.document.application.processing_service import (
         DocumentProcessingService,
     )
+    from src.modules.draft.application.draft_service import DraftService
+    from src.modules.matter.application.matter_service import MatterService
+    from src.modules.task.application.checklist_service import ChecklistService
 
 
 def register_routers(app: FastAPI) -> None:
     """Mount all module routers under /api/v1."""
+    from src.modules.approval.api.router import router as approval_router
     from src.modules.auth.api.router import router as auth_router
+    from src.modules.check.api.router import router as check_router
+    from src.modules.content_governance.api.router import router as rule_pack_router
     from src.modules.document.api.router import router as document_router
+    from src.modules.draft.api.router import router as draft_router
+    from src.modules.matter.api.router import router as matter_router
+    from src.modules.task.api.router import router as checklist_router
 
     app.include_router(auth_router, prefix="/api/v1")
+    app.include_router(rule_pack_router, prefix="/api/v1")
+    app.include_router(matter_router, prefix="/api/v1")
+    app.include_router(checklist_router, prefix="/api/v1")
     app.include_router(document_router, prefix="/api/v1")
+    app.include_router(check_router, prefix="/api/v1")
+    app.include_router(draft_router, prefix="/api/v1")
+    app.include_router(approval_router, prefix="/api/v1")
 
 
 """Environments where stub adapters may be selected at all.
@@ -77,6 +99,179 @@ def build_identity_adapter() -> IdentityPort:
         secret_key=settings.clerk_secret_key,
         audience=settings.clerk_audience or None,
         authorized_party=settings.clerk_authorized_party,
+        leeway_seconds=settings.clerk_leeway_seconds,
+    )
+
+
+def build_checklist_service(session: AsyncSession) -> ChecklistService:
+    """Assemble the checklist service over one request's session."""
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.task.application.checklist_service import ChecklistService
+    from src.modules.task.infrastructure.repository import SqlChecklistRepository
+
+    return ChecklistService(
+        repository=SqlChecklistRepository(session),
+        audit=AuditService(repository=SqlAuditRepository(session)),
+    )
+
+
+def build_matter_service(session: AsyncSession) -> MatterService:
+    """Assemble the matter service, including the ports it reaches out through."""
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.matter.application.matter_service import MatterService
+    from src.modules.matter.infrastructure.fact_snapshot import SqlMatterFactAdapter
+    from src.modules.matter.infrastructure.repository import (
+        SqlIntakeAnswerRepository,
+        SqlMatterRepository,
+    )
+
+    return MatterService(
+        matters=SqlMatterRepository(session),
+        answers=SqlIntakeAnswerRepository(session),
+        facts=SqlMatterFactAdapter(session),
+        checklist=build_checklist_service(session),
+        audit=AuditService(repository=SqlAuditRepository(session)),
+    )
+
+
+def build_check_service(session: AsyncSession) -> CheckService:
+    """Assemble the check engine over one request's session.
+
+    The service is also its own `check.contracts.IssueGatePort`, which is how
+    drafting and approval read their gates without importing this module.
+    """
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.check.application.check_service import CheckService
+    from src.modules.check.infrastructure.repository import SqlCheckRepository
+    from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
+
+    return CheckService(
+        repository=SqlCheckRepository(session),
+        facts=SqlConfirmedFactReader(session),
+        audit=AuditService(repository=SqlAuditRepository(session)),
+    )
+
+
+def build_draft_service(session: AsyncSession) -> DraftService:
+    """Assemble form generation and preflight.
+
+    ``candidates`` is left unwired: no module owns a candidate-fact reader yet,
+    and without one every non-critical field simply stays unresolved. That is
+    the honest degradation — the alternative would be prefilling a value nobody
+    extracted (§9.3).
+    """
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.draft.application.draft_service import DraftService
+    from src.modules.draft.infrastructure.repository import SqlGeneratedFormRepository
+    from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
+
+    return DraftService(
+        repository=SqlGeneratedFormRepository(session),
+        facts=SqlConfirmedFactReader(session),
+        issues=build_check_service(session),
+        checklist=build_checklist_service(session),
+        audit=AuditService(repository=SqlAuditRepository(session)),
+    )
+
+
+def build_approval_service(session: AsyncSession) -> ApprovalService:
+    """Assemble approval, export, and registration-event recording.
+
+    ``form_commands`` and ``matter_commands`` are the two writes this module
+    makes into aggregates it does not own. Both are wired here because the
+    composition root is the only place permitted to see both sides.
+    """
+    from src.modules.approval.application.approval_service import ApprovalService
+    from src.modules.approval.infrastructure.repository import (
+        SqlApprovalRepository,
+        SqlFormExportRepository,
+        SqlRegistrationEventRepository,
+    )
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.draft.infrastructure.form_commands import (
+        SqlGeneratedFormCommandAdapter,
+    )
+    from src.modules.matter.infrastructure.workflow_commands import (
+        SqlMatterWorkflowCommandAdapter,
+    )
+    from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
+
+    return ApprovalService(
+        approvals=SqlApprovalRepository(session),
+        exports=SqlFormExportRepository(session),
+        events=SqlRegistrationEventRepository(session),
+        forms=build_draft_service(session),
+        facts=SqlConfirmedFactReader(session),
+        issues=build_check_service(session),
+        checklist=build_checklist_service(session),
+        audit=AuditService(repository=SqlAuditRepository(session)),
+        form_commands=SqlGeneratedFormCommandAdapter(session),
+        matter_commands=SqlMatterWorkflowCommandAdapter(session),
+    )
+
+
+def build_ingestion_service(session: AsyncSession) -> SourceFileIngestionService:
+    """Assemble source-file ingestion and the document inbox.
+
+    Storage follows the same fail-closed posture as identity and extraction: the
+    local filesystem adapter is confined to local/test/ci, because it is not a
+    durable or access-controlled store for client evidence.
+
+    When no extraction provider is configured, or the data-protection gate is
+    closed, ``pipeline`` stays ``None`` and every run finishes as
+    PROCESSING_FAILED / NOT_CONFIGURED. Nothing reports a document as processed
+    that nothing processed (§6.1).
+    """
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.document.application.ingestion_service import (
+        SourceFileIngestionService,
+    )
+    from src.modules.document.application.processing_job import SynchronousProcessingJob
+    from src.modules.document.infrastructure.repository import (
+        SqlDocumentIngestionRepository,
+    )
+    from src.modules.document.infrastructure.storage_filesystem import (
+        FilesystemSourceFileStorage,
+    )
+
+    settings = get_settings()
+
+    if settings.source_file_storage != "filesystem":
+        raise RuntimeError(
+            f"Unknown SOURCE_FILE_STORAGE '{settings.source_file_storage}'. Valid: filesystem."
+        )
+    if settings.environment not in STUB_EXTRACTION_ENVIRONMENTS:
+        raise RuntimeError(
+            f"SOURCE_FILE_STORAGE=filesystem is not permitted in environment "
+            f"'{settings.environment}'. Local-disk storage of client evidence is "
+            f"limited to {sorted(STUB_EXTRACTION_ENVIRONMENTS)}."
+        )
+    storage = FilesystemSourceFileStorage(settings.source_file_storage_dir)
+
+    provider_configured = settings.extraction_provider == "stub" or (
+        settings.extraction_provider == "gemini" and bool(settings.gemini_api_key)
+    )
+    pipeline = build_processing_service() if provider_configured else None
+
+    return SourceFileIngestionService(
+        repository=SqlDocumentIngestionRepository(session),
+        storage=storage,
+        jobs=SynchronousProcessingJob(
+            storage=storage,
+            pipeline=pipeline,
+            provider_name=settings.extraction_provider,
+            data_protection_approved=settings.provider_data_approval,
+        ),
+        audit=AuditService(repository=SqlAuditRepository(session)),
+        max_upload_bytes=settings.max_source_file_bytes,
+        max_page_count=settings.max_source_file_pages,
+        checklist_links=build_checklist_service(session),
     )
 
 

@@ -6,6 +6,8 @@ echoed by health routes.
 
 from __future__ import annotations
 
+import asyncio
+import sys
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -14,6 +16,24 @@ import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+# Windows dev only. psycopg's async mode refuses to run on ProactorEventLoop,
+# which is the Windows default, so anything that reaches Postgres through
+# `asyncio.run()` — scripts, one-off checks — needs the selector loop.
+#
+# This does NOT cover uvicorn. Since 0.52 uvicorn builds its loop from a
+# factory rather than the policy set here, and on Windows it picks
+# ProactorEventLoop unless it is running a subprocess:
+#
+#     if sys.platform == "win32" and not use_subprocess:
+#         return asyncio.ProactorEventLoop
+#
+# `--reload` (and `--workers`) sets use_subprocess, which is why the documented
+# dev command works and a bare `uvicorn src.main:app` returns
+# "db": "unreachable" from /health/ready. `--loop asyncio` does not help.
+# Deployed Linux hosts are unaffected: the win32 branch never runs there.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from src.platform.config import get_settings
 from src.platform.errors import DraftlyError, draftly_exception_handler, unhandled_exception_handler
@@ -97,3 +117,9 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=True)
