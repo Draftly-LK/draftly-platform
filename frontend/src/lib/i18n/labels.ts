@@ -1,4 +1,4 @@
-import type { AuthorityType, AuthorityWeight, CheckStatus, CourtLevel, ProcessingState, StepState, VerificationState } from "@/types";
+import type { AuthorityType, AuthorityWeight, CheckStatus, CourtLevel, PhysicalOriginalStatus, SourceFileState, StepState, VerificationState } from "@/types";
 
 type LocaleLabels<T extends string> = Record<T, { en: string; si: string }>;
 
@@ -6,8 +6,13 @@ type LocaleLabels<T extends string> = Record<T, { en: string; si: string }>;
 export const verificationLabels: LocaleLabels<VerificationState> = {
   unreviewed: { en: "Unreviewed", si: "Unreviewed" }, verified: { en: "Verified", si: "Verified" }, corrected: { en: "Corrected", si: "Corrected" }, conflict: { en: "Conflict", si: "Conflict" }, blocked: { en: "Blocked", si: "Blocked" }
 };
-export const processingLabels: LocaleLabels<ProcessingState> = {
-  uploaded: { en: "Uploaded", si: "Uploaded" }, extracting: { en: "Extracting", si: "Extracting" }, "ready-for-review": { en: "Ready for review", si: "Ready for review" }, failed: { en: "Failed", si: "Failed" }, replaced: { en: "Replaced", si: "Replaced" }
+/** §10.2 source-file states. Wording states what the server did, not a guess. */
+export const sourceFileStateLabels: LocaleLabels<SourceFileState> = {
+  UPLOAD_INITIATED: { en: "Upload started", si: "Upload started" }, QUARANTINED: { en: "In quarantine", si: "In quarantine" }, VALIDATED: { en: "Validated", si: "Validated" }, STORED: { en: "Stored", si: "Stored" }, PROCESSING: { en: "Processing", si: "Processing" }, PROCESSED: { en: "Processed", si: "Processed" }, PROCESSING_FAILED: { en: "Processing failed", si: "Processing failed" }, REJECTED: { en: "Rejected", si: "Rejected" }, SUPERSEDED: { en: "Superseded", si: "Superseded" }
+};
+/** §5.4 physical-original dimension. `ORIGINAL_INSPECTED` is human-only. */
+export const physicalOriginalLabels: LocaleLabels<PhysicalOriginalStatus> = {
+  NOT_REQUIRED: { en: "Original not required", si: "Original not required" }, UNKNOWN: { en: "Original status unknown", si: "Original status unknown" }, COPY_ONLY: { en: "Copy only", si: "Copy only" }, ORIGINAL_REPORTED: { en: "Original reported", si: "Original reported" }, ORIGINAL_INSPECTED: { en: "Original inspected", si: "Original inspected" }
 };
 export const checkLabels: LocaleLabels<CheckStatus> = {
   pass: { en: "Pass", si: "Pass" }, warning: { en: "Warning", si: "Warning" }, fail: { en: "Fail", si: "Fail" }, "needs-review": { en: "Needs review", si: "Needs review" }

@@ -14,9 +14,9 @@
   "auth": {
     "signIn": "Sign in",
     "signInTitle": "Sign in to Draftly",
-    "signInBody": "Continue with Google or sign in with your email and password.",
+    "signInBody": "Continue with a connected account, or sign in with your email and password.",
     "signUpTitle": "Create your Draftly account",
-    "signUpBody": "Sign up with Google, or register with your email address and password.",
+    "signUpBody": "Continue with a connected account, or register with your email address and password.",
     "myProfile": "My profile",
     "profileEditComingSoon": "Profile editing is coming soon — your notarial details will be set here.",
     "otpSentNotice": "A verification code has been sent to your email address."
@@ -47,6 +47,18 @@
     "signOut": "Sign out",
     "saved": "Profile saved locally",
     "openSettings": "Workspace settings"
+  },
+  "onboarding": {
+    "title": "Complete your profile",
+    "description": "Draftly puts these details on the forms it prepares, so they need to be right before you start a matter.",
+    "requiredNote": "Your notary's code and jurisdiction are required. Everything else can be added later.",
+    "requiredMark": "Required",
+    "optionalMark": "Optional",
+    "submit": "Continue to Draftly",
+    "submitting": "Saving…",
+    "saveFailed": "Your details could not be saved. Try again.",
+    "missingRequired": "Enter your notary's code and jurisdiction to continue.",
+    "signOut": "Sign out"
   },
   "shell": {
     "workspace": "Notarial workspace",
