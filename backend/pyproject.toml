@@ -11,6 +11,7 @@ dependencies = [
     "cryptography>=50.0.0",
     "fastapi[standard]>=0.141.1",
     "google-genai>=2.16.0",
+    "greenlet>=3.0",
     "httpx>=0.28.1",
     "pillow>=11",
     "psycopg2-binary>=2.9.12",
@@ -27,6 +28,11 @@ dependencies = [
 [build-system]
 requires = ["uv_build>=0.11.2,<0.12.0"]
 build-backend = "uv_build"
+
+# Project name is draftly-api; the importable package is `src` (from src.main, etc.).
+[tool.uv.build-backend]
+module-name = "src"
+module-root = ""
 
 [dependency-groups]
 dev = [

@@ -18,8 +18,8 @@ export default function ClerkNotConfiguredPage() {
         justifyContent: "center",
         padding: "2rem",
         fontFamily: "var(--font-plex, system-ui, sans-serif)",
-        backgroundColor: "var(--color-canvas, #fafafa)",
-        color: "var(--color-ink, #1a1a1a)",
+        backgroundColor: "var(--canvas, #f4f3ef)",
+        color: "var(--ink, #1b211d)",
         textAlign: "center",
       }}
     >
@@ -37,7 +37,7 @@ export default function ClerkNotConfiguredPage() {
         <p
           style={{
             fontSize: "0.875rem",
-            color: "var(--color-muted-ink, #6b7280)",
+            color: "var(--muted-ink, #667068)",
             lineHeight: 1.6,
           }}
         >
@@ -50,7 +50,7 @@ export default function ClerkNotConfiguredPage() {
           style={{
             marginTop: "1rem",
             fontSize: "0.75rem",
-            color: "var(--color-muted-ink, #6b7280)",
+            color: "var(--muted-ink, #667068)",
           }}
         >
           If you are developing locally, set{" "}

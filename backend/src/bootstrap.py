@@ -92,13 +92,13 @@ def build_identity_adapter() -> IdentityPort:
 
     from src.modules.auth.infrastructure.clerk_adapter import ClerkIdentityAdapter
 
-    if not settings.clerk_authorized_party:
+    if not settings.clerk_authorized_parties:
         raise RuntimeError("CLERK_AUTHORIZED_PARTY is required when Clerk identity is enabled.")
     return ClerkIdentityAdapter(
         issuer=settings.clerk_issuer,
         secret_key=settings.clerk_secret_key,
         audience=settings.clerk_audience or None,
-        authorized_party=settings.clerk_authorized_party,
+        authorized_parties=settings.clerk_authorized_parties,
         leeway_seconds=settings.clerk_leeway_seconds,
     )
 

@@ -47,10 +47,10 @@ def _email_from_payload(payload: dict[str, Any]) -> str | None:
     return None
 
 
-def _assert_authorized_party(payload: dict[str, Any], expected: str) -> None:
-    """Reject tokens whose azp is missing or does not match this Clerk app."""
+def _assert_authorized_party(payload: dict[str, Any], expected: frozenset[str]) -> None:
+    """Reject tokens whose azp is missing or not in the trusted set."""
     azp = payload.get("azp")
-    if not isinstance(azp, str) or not azp or azp != expected:
+    if not isinstance(azp, str) or not azp or azp not in expected:
         raise IdentityValidationError("Token authorised party (azp) is missing or not trusted.")
 
 
@@ -62,17 +62,17 @@ class ClerkIdentityAdapter:
         *,
         issuer: str,
         secret_key: str,
-        authorized_party: str,
+        authorized_parties: frozenset[str],
         audience: str | None = None,
         leeway_seconds: int = 30,
     ) -> None:
-        if not authorized_party:
-            raise ValueError("authorized_party is required for ClerkIdentityAdapter.")
+        if not authorized_parties:
+            raise ValueError("authorized_parties is required for ClerkIdentityAdapter.")
         if leeway_seconds < 0:
             raise ValueError("leeway_seconds cannot be negative.")
         self._issuer = issuer.rstrip("/")
         self._secret_key = secret_key
-        self._authorized_party = authorized_party
+        self._authorized_parties = authorized_parties
         self._audience = audience
         self._leeway = timedelta(seconds=leeway_seconds)
         # Clerk JWKS endpoint
@@ -133,7 +133,7 @@ class ClerkIdentityAdapter:
         if not subject:
             raise IdentityValidationError("Token is missing the 'sub' claim.")
 
-        _assert_authorized_party(payload, self._authorized_party)
+        _assert_authorized_party(payload, self._authorized_parties)
 
         verified_email = _email_from_payload(payload)
         auth_time: int | None = payload.get("auth_time")

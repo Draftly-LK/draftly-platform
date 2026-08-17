@@ -10,6 +10,7 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any
 
+import structlog
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -125,6 +126,14 @@ async def draftly_exception_handler(
     exc: DraftlyError,
 ) -> JSONResponse:
     correlation_id = getattr(request.state, "correlation_id", "")
+    structlog.get_logger().warning(
+        "draftly_error",
+        path=request.url.path,
+        code=exc.code,
+        message=exc.message,
+        details=exc.details,
+        correlation_id=correlation_id,
+    )
     return make_error_response(exc, correlation_id=correlation_id)
 
 
@@ -132,8 +141,6 @@ async def unhandled_exception_handler(
     request: Request,
     exc: Exception,
 ) -> JSONResponse:
-    import structlog
-
     log = structlog.get_logger()
     log.error("unhandled_exception", exc_type=type(exc).__name__, exc=str(exc))
     correlation_id = getattr(request.state, "correlation_id", "")

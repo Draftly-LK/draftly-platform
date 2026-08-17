@@ -1,13 +1,22 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { SignOutButton, useUser } from "@clerk/nextjs";
 import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
+import { getMe, updateMe } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
+import { useTokenProvider } from "@/lib/api/use-token-provider";
+import {
+  diffProfile,
+  pickEditableProfile,
+  toEditableProfile,
+  type EditableProfile,
+  type ProfileFieldPatch,
+} from "@/lib/profile/profile-fields";
 import { useDemoStore } from "@/lib/store";
-import type { User } from "@/types";
 
 function getInitials(name: string): string {
   return name
@@ -18,21 +27,76 @@ function getInitials(name: string): string {
     .join("");
 }
 
-/** Fields Draftly owns — not available from Clerk/email auth. */
-type EditableProfile = Pick<
-  User,
-  | "qualifications"
-  | "professionalTitles"
-  | "notaryRegistration"
-  | "jurisdiction"
-  | "addressLine1"
-  | "addressLine2"
-  | "phone"
->;
-
 function displayOrDash(value: string): string {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : "—";
+}
+
+/** Clerk's account-holder display name, independent of Draftly's own `displayName`. */
+function clerkDisplayName(user: {
+  fullName: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+}): string {
+  const full = user.fullName?.trim();
+  if (full) return full;
+  const parts = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  if (parts) return parts;
+  return user.username?.trim() ?? "";
+}
+
+/** Everything about the signed-in identity: who they are, and photo upload. */
+interface IdentityProps {
+  /** Clerk's account name — read-only, shown only when `showSignOut` is true. */
+  signInName: string;
+  email: string;
+  imageUrl: string | null;
+  canUpload: boolean;
+  onUpload?: (file: File) => void;
+  uploading: boolean;
+  photoError: string | null;
+  photoSuccess: boolean;
+  showSignOut: boolean;
+}
+
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // Clerk's profile-image upload limit
+
+/** Clerk profile-photo upload, with client-side validation and result feedback. */
+function usePhotoUpload(clerkUser: ReturnType<typeof useUser>["user"]) {
+  const t = useTranslations("profile");
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoSuccess, setPhotoSuccess] = useState(false);
+
+  const handlePhotoUpload = useCallback(
+    async (file: File) => {
+      if (!clerkUser) return;
+      setPhotoSuccess(false);
+      if (!file.type.startsWith("image/")) {
+        setPhotoError(t("photoInvalidType"));
+        return;
+      }
+      if (file.size > MAX_PHOTO_BYTES) {
+        setPhotoError(t("photoTooLarge"));
+        return;
+      }
+      setUploading(true);
+      setPhotoError(null);
+      try {
+        await clerkUser.setProfileImage({ file });
+        setPhotoSuccess(true);
+      } catch (error: unknown) {
+        console.error("Draftly profile photo upload failed:", error);
+        setPhotoError(t("photoError"));
+      } finally {
+        setUploading(false);
+      }
+    },
+    [clerkUser, t],
+  );
+
+  return { uploading, photoError, photoSuccess, handlePhotoUpload };
 }
 
 function ProfilePhoto({
@@ -44,7 +108,7 @@ function ProfilePhoto({
 }: {
   name: string;
   imageUrl: string | null;
-  onUpload: (file: File) => void;
+  onUpload?: (file: File) => void;
   uploading: boolean;
   canUpload: boolean;
 }) {
@@ -54,25 +118,23 @@ function ProfilePhoto({
 
   return (
     <div className="flex flex-col items-center gap-3 sm:items-start">
-      <div className="relative">
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Clerk CDN URLs
-          <img
-            src={imageUrl}
-            alt={t("photoAlt", { name: labelName })}
-            width={96}
-            height={96}
-            className="border-border size-24 rounded-full border object-cover"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="bg-forest grid size-24 place-items-center rounded-full text-2xl font-semibold text-white"
-          >
-            {name.trim() ? getInitials(name) : "—"}
-          </div>
-        )}
-      </div>
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- Clerk CDN URLs
+        <img
+          src={imageUrl}
+          alt={t("photoAlt", { name: labelName })}
+          width={96}
+          height={96}
+          className="border-border size-24 rounded-full border object-cover"
+        />
+      ) : (
+        <div
+          aria-hidden="true"
+          className="bg-forest grid size-24 place-items-center rounded-full text-2xl font-semibold text-white"
+        >
+          {name.trim() ? getInitials(name) : "—"}
+        </div>
+      )}
       {canUpload && (
         <>
           <input
@@ -82,7 +144,7 @@ function ProfilePhoto({
             className="sr-only"
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               const file = e.target.files?.[0];
-              if (file) onUpload(file);
+              if (file) onUpload?.(file);
               e.target.value = "";
             }}
           />
@@ -105,17 +167,16 @@ function Field({
   value,
   editing,
   onChange,
-  readOnly,
   multiline,
 }: {
   label: string;
   value: string;
+  /** Read-only fields simply never pass `editing={true}`. */
   editing: boolean;
   onChange?: (value: string) => void;
-  readOnly?: boolean;
   multiline?: boolean;
 }) {
-  if (!editing || readOnly) {
+  if (!editing) {
     return (
       <div>
         <dt className="text-muted-ink text-xs">{label}</dt>
@@ -149,77 +210,82 @@ function Field({
 }
 
 function ProfileBody({
-  authName,
-  email,
-  imageUrl,
-  canUpload,
-  onUpload,
-  uploading,
-  photoError,
-  showSignOut,
-  clerkEnabled,
+  identity,
+  profile,
+  onSave,
+  savedMessage,
 }: {
-  /** From Clerk when signed in; empty shows "—" */
-  authName: string;
-  email: string;
-  imageUrl: string | null;
-  canUpload: boolean;
-  onUpload: (file: File) => void;
-  uploading: boolean;
-  photoError: string | null;
-  showSignOut: boolean;
-  /** When true the edit button is disabled — profile persisted via API (coming soon). */
-  clerkEnabled: boolean;
+  identity: IdentityProps;
+  /** Current saved values — the source of truth outside edit mode. */
+  profile: EditableProfile;
+  /** Persists a changed-fields diff. Demo path resolves immediately; the
+   * API-backed path awaits `PATCH /me` and may reject. */
+  onSave: (changes: ProfileFieldPatch) => Promise<void>;
+  savedMessage: string;
 }) {
   const t = useTranslations("profile");
-  const profile = useDemoStore((s) => s.profile);
-  const updateProfile = useDemoStore((s) => s.updateProfile);
 
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [draft, setDraft] = useState<EditableProfile>({
-    qualifications: profile.qualifications,
-    professionalTitles: profile.professionalTitles,
-    notaryRegistration: profile.notaryRegistration,
-    jurisdiction: profile.jurisdiction,
-    addressLine1: profile.addressLine1,
-    addressLine2: profile.addressLine2,
-    phone: profile.phone,
-  });
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<EditableProfile>(profile);
 
   const editable = editing ? draft : profile;
-  const headingName = displayOrDash(authName);
+  const headingName = displayOrDash(editable.displayName);
 
   function startEdit() {
-    setDraft({
-      qualifications: profile.qualifications,
-      professionalTitles: profile.professionalTitles,
-      notaryRegistration: profile.notaryRegistration,
-      jurisdiction: profile.jurisdiction,
-      addressLine1: profile.addressLine1,
-      addressLine2: profile.addressLine2,
-      phone: profile.phone,
-    });
+    setDraft(profile);
     setEditing(true);
     setSaved(false);
+    setSaveError(null);
   }
 
-  function save() {
-    // TODO(api): PATCH /api/v1/me
-    updateProfile(draft);
+  function cancelEdit() {
+    setDraft(profile);
     setEditing(false);
-    setSaved(true);
+    setSaveError(null);
+  }
+
+  async function save() {
+    const changes = diffProfile(profile, draft);
+    // Nothing actually changed — exit edit mode without a request or a
+    // (misleading) "saved" confirmation.
+    if (Object.keys(changes).length === 0) {
+      setEditing(false);
+      setSaveError(null);
+      return;
+    }
+    setSaving(true);
+    setSaved(false);
+    setSaveError(null);
+    try {
+      await onSave(changes);
+      setEditing(false);
+      setSaved(true);
+    } catch (error: unknown) {
+      if (error instanceof ApiError) {
+        console.error(
+          `Draftly profile save failed (${error.code}, correlation ${error.correlationId}): ${error.message}`,
+        );
+      } else {
+        console.error("Draftly profile save failed:", error);
+      }
+      setSaveError(t("saveFailed"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <>
       <div className="border-border flex flex-col gap-8 border-b py-5 sm:flex-row sm:items-start">
         <ProfilePhoto
-          name={authName}
-          imageUrl={imageUrl}
-          onUpload={onUpload}
-          uploading={uploading}
-          canUpload={canUpload}
+          name={editable.displayName}
+          imageUrl={identity.imageUrl}
+          onUpload={identity.onUpload}
+          uploading={identity.uploading}
+          canUpload={identity.canUpload}
         />
         <div className="min-w-0 flex-1 space-y-4">
           <div>
@@ -234,11 +300,8 @@ function ProfileBody({
             {!editing ? (
               <button
                 type="button"
-                className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={clerkEnabled}
-                title={clerkEnabled ? t("profileEditComingSoon") : undefined}
-                aria-disabled={clerkEnabled}
-                onClick={clerkEnabled ? undefined : startEdit}
+                className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white"
+                onClick={startEdit}
               >
                 {t("edit")}
               </button>
@@ -246,21 +309,23 @@ function ProfileBody({
               <>
                 <button
                   type="button"
-                  className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white"
-                  onClick={save}
+                  className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={saving}
+                  onClick={() => void save()}
                 >
-                  {t("save")}
+                  {saving ? t("saving") : t("save")}
                 </button>
                 <button
                   type="button"
-                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-[6px] border px-3 py-2 text-sm"
-                  onClick={() => setEditing(false)}
+                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-[6px] border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={saving}
+                  onClick={cancelEdit}
                 >
                   {t("cancel")}
                 </button>
               </>
             )}
-            {showSignOut && (
+            {identity.showSignOut && (
               <SignOutButton redirectUrl="/sign-in">
                 <button
                   type="button"
@@ -273,12 +338,22 @@ function ProfileBody({
           </div>
           {saved && (
             <p aria-live="polite" className="text-forest text-sm">
-              {t("saved")}
+              {savedMessage}
             </p>
           )}
-          {photoError && (
+          {saveError && (
             <p role="alert" className="text-red text-sm">
-              {photoError}
+              {saveError}
+            </p>
+          )}
+          {identity.photoError && (
+            <p role="alert" className="text-red text-sm">
+              {identity.photoError}
+            </p>
+          )}
+          {identity.photoSuccess && !identity.photoError && (
+            <p aria-live="polite" className="text-forest text-sm">
+              {t("photoUploaded")}
             </p>
           )}
         </div>
@@ -287,8 +362,16 @@ function ProfileBody({
       <section className="border-border border-b py-5">
         <h3 className="text-lg font-semibold">{t("identity")}</h3>
         <dl className="mt-3 grid gap-4 sm:grid-cols-2">
-          <Field label={t("nameLabel")} value={authName} editing={false} readOnly />
-          <Field label={t("emailLabel")} value={email} editing={false} readOnly />
+          <Field
+            label={t("nameLabel")}
+            value={editable.displayName}
+            editing={editing}
+            onChange={(v) => setDraft((d) => ({ ...d, displayName: v }))}
+          />
+          {identity.showSignOut && (
+            <Field label={t("signInAccountLabel")} value={identity.signInName} editing={false} />
+          )}
+          <Field label={t("emailLabel")} value={identity.email} editing={false} />
         </dl>
       </section>
 
@@ -350,83 +433,173 @@ function ProfileBody({
   );
 }
 
-function clerkDisplayName(user: {
-  fullName: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  username: string | null;
-}): string {
-  const full = user.fullName?.trim();
-  if (full) return full;
-  const parts = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-  if (parts) return parts;
-  return user.username?.trim() ?? "";
-}
+type LoadStatus = "loading" | "ready" | "error";
 
-function ClerkProfileBody() {
+/** Persistence via `GET/PATCH /me`. Requires a Clerk-issued token, so this is
+ * only mounted when Clerk is configured. */
+function ApiPersistedProfile({
+  identity,
+  getToken,
+}: {
+  identity: IdentityProps;
+  getToken: ReturnType<typeof useTokenProvider>;
+}) {
   const t = useTranslations("profile");
-  const { user: clerkUser, isLoaded } = useUser();
-  const [uploading, setUploading] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
+  const tApp = useTranslations("app");
+  const [status, setStatus] = useState<LoadStatus>("loading");
+  const [profile, setProfile] = useState<EditableProfile | null>(null);
+  // Tracks the in-flight request so a rapid Retry (or unmount) aborts the
+  // superseded one instead of racing it — last response in wins, and no
+  // setState fires after unmount.
+  const controllerRef = useRef<AbortController | null>(null);
 
-  const authName = clerkUser ? clerkDisplayName(clerkUser) : "";
-  const email =
-    clerkUser?.primaryEmailAddress?.emailAddress ??
-    (isLoaded ? t("emailUnavailable") : "…");
+  const loadProfile = useCallback(() => {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setStatus("loading");
+    getMe(getToken, controller.signal)
+      .then((user) => {
+        if (controller.signal.aborted) return;
+        setProfile(toEditableProfile(user));
+        setStatus("ready");
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        if (error instanceof ApiError) {
+          console.error(
+            `Draftly profile load failed (${error.code}, correlation ${error.correlationId}): ${error.message}`,
+          );
+        } else {
+          console.error("Draftly profile load failed:", error);
+        }
+        setStatus("error");
+      });
+  }, [getToken]);
 
-  async function handlePhotoUpload(file: File) {
-    if (!clerkUser) return;
-    setUploading(true);
-    setPhotoError(null);
-    try {
-      await clerkUser.setProfileImage({ file });
-    } catch {
-      setPhotoError(t("photoError"));
-    } finally {
-      setUploading(false);
-    }
+  useEffect(() => {
+    loadProfile();
+    return () => controllerRef.current?.abort();
+  }, [loadProfile]);
+
+  async function handleSave(changes: ProfileFieldPatch) {
+    const updated = await updateMe(getToken, changes);
+    setProfile(toEditableProfile(updated));
+  }
+
+  if (status === "loading") {
+    return <p className="text-muted-ink py-8 text-sm">{tApp("loading")}</p>;
+  }
+
+  if (status === "error" || !profile) {
+    return (
+      <div className="py-8">
+        <p role="alert" className="text-red text-sm">
+          {t("loadFailed")}
+        </p>
+        <button
+          type="button"
+          className="border-border hover:bg-hover-bg focus-visible:outline-ring mt-3 rounded-[6px] border px-3 py-2 text-sm"
+          onClick={loadProfile}
+        >
+          {tApp("retry")}
+        </button>
+      </div>
+    );
   }
 
   return (
     <ProfileBody
-      authName={authName}
-      email={email}
-      imageUrl={clerkUser?.imageUrl ?? null}
-      canUpload={Boolean(clerkUser)}
-      onUpload={handlePhotoUpload}
-      uploading={uploading}
-      photoError={photoError}
-      showSignOut={Boolean(clerkUser)}
-      clerkEnabled={true}
+      identity={identity}
+      profile={profile}
+      onSave={handleSave}
+      savedMessage={t("savedRemote")}
     />
+  );
+}
+
+/** Persistence via the local demo store — used both when the backend isn't
+ * configured (`DemoProfileBody`) and when Clerk is on but the API isn't
+ * (identity still works; profile fields fall back to local storage). */
+function LocalPersistedProfile({ identity }: { identity: IdentityProps }) {
+  const t = useTranslations("profile");
+  const storeProfile = useDemoStore((s) => s.profile);
+  const updateProfile = useDemoStore((s) => s.updateProfile);
+
+  return (
+    <ProfileBody
+      identity={identity}
+      profile={pickEditableProfile(storeProfile)}
+      onSave={(changes) => {
+        updateProfile(changes);
+        return Promise.resolve();
+      }}
+      savedMessage={t("saved")}
+    />
+  );
+}
+
+function ClerkProfileBody({ apiEnabled }: { apiEnabled: boolean }) {
+  const t = useTranslations("profile");
+  const { user: clerkUser, isLoaded } = useUser();
+  const getToken = useTokenProvider();
+  const photo = usePhotoUpload(clerkUser);
+
+  const email =
+    clerkUser?.primaryEmailAddress?.emailAddress ??
+    (isLoaded ? t("emailUnavailable") : "…");
+
+  const identity: IdentityProps = {
+    signInName: clerkUser ? clerkDisplayName(clerkUser) : "",
+    email,
+    imageUrl: clerkUser?.imageUrl ?? null,
+    canUpload: Boolean(clerkUser),
+    onUpload: photo.handlePhotoUpload,
+    uploading: photo.uploading,
+    photoError: photo.photoError,
+    photoSuccess: photo.photoSuccess,
+    showSignOut: Boolean(clerkUser),
+  };
+
+  // `apiEnabled` is an inlined build-time boolean (see `isApiEnabled()`), so
+  // it never flips between renders and this branch doesn't shuffle hook
+  // order — same pattern as `ProvisionGate`.
+  return apiEnabled ? (
+    <ApiPersistedProfile identity={identity} getToken={getToken} />
+  ) : (
+    <LocalPersistedProfile identity={identity} />
   );
 }
 
 function DemoProfileBody() {
   const t = useTranslations("profile");
-  return (
-    <ProfileBody
-      authName=""
-      email={t("emailUnavailable")}
-      imageUrl={null}
-      canUpload={false}
-      onUpload={() => undefined}
-      uploading={false}
-      photoError={null}
-      showSignOut={false}
-      clerkEnabled={false}
-    />
-  );
+  const identity: IdentityProps = {
+    signInName: "",
+    email: t("emailUnavailable"),
+    imageUrl: null,
+    canUpload: false,
+    uploading: false,
+    photoError: null,
+    photoSuccess: false,
+    showSignOut: false,
+  };
+  return <LocalPersistedProfile identity={identity} />;
 }
 
-export function ProfileScreen({ clerkEnabled = false }: { clerkEnabled?: boolean }) {
+export function ProfileScreen({
+  clerkEnabled = false,
+  apiEnabled = false,
+}: {
+  clerkEnabled?: boolean;
+  apiEnabled?: boolean;
+}) {
   const t = useTranslations("profile");
 
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="mx-auto max-w-3xl p-6">
-        {clerkEnabled ? <ClerkProfileBody /> : <DemoProfileBody />}
+        {clerkEnabled ? <ClerkProfileBody apiEnabled={apiEnabled} /> : <DemoProfileBody />}
         <p className="text-muted-ink border-border border-t pt-4 text-xs">
           <Link href="/settings" className="text-forest underline">
             {t("openSettings")}

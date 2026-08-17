@@ -17,9 +17,7 @@
     "signInBody": "Continue with a connected account, or sign in with your email and password.",
     "signUpTitle": "Create your Draftly account",
     "signUpBody": "Continue with a connected account, or register with your email address and password.",
-    "myProfile": "My profile",
-    "profileEditComingSoon": "Profile editing is coming soon — your notarial details will be set here.",
-    "otpSentNotice": "A verification code has been sent to your email address."
+    "myProfile": "My profile"
   },
   "profile": {
     "title": "Profile",
@@ -28,6 +26,7 @@
     "practice": "Practice",
     "contact": "Contact",
     "nameLabel": "Full name",
+    "signInAccountLabel": "Sign-in account",
     "emailLabel": "Email",
     "emailUnavailable": "Sign in to show your email",
     "titlesLabel": "Professional titles",
@@ -40,12 +39,19 @@
     "photoAlt": "Profile photo for {name}",
     "changePhoto": "Change photo",
     "photoUploading": "Uploading…",
+    "photoUploaded": "Photo updated",
     "photoError": "The photo could not be updated. Try again.",
+    "photoInvalidType": "Choose an image file.",
+    "photoTooLarge": "That photo is too large. Choose one under 10 MB.",
     "edit": "Edit profile",
     "save": "Save",
+    "saving": "Saving…",
     "cancel": "Cancel",
     "signOut": "Sign out",
     "saved": "Profile saved locally",
+    "savedRemote": "Profile saved",
+    "saveFailed": "Your changes could not be saved. Try again.",
+    "loadFailed": "Your profile could not be loaded. Try again.",
     "openSettings": "Workspace settings"
   },
   "onboarding": {

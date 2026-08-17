@@ -14,6 +14,7 @@ import {
   templates,
   workflows,
 } from "@/lib/mocks";
+import { EDITABLE_PROFILE_FIELDS, type ProfileFieldPatch } from "@/lib/profile/profile-fields";
 import { migrateLegacyMatterType } from "@/lib/rta/taxonomy";
 import { buildTemplateDocument } from "@/lib/templates/build-document";
 import { deriveTemplateReadiness } from "@/lib/templates/readiness";
@@ -85,19 +86,12 @@ type CreateMatterInput = {
   type: MatterType;
 };
 
-/** Profile fields editable on the profile screen (not Clerk-owned identity). */
-export type EditableProfilePatch = Partial<
-  Pick<
-    User,
-    | "notaryRegistration"
-    | "jurisdiction"
-    | "qualifications"
-    | "professionalTitles"
-    | "addressLine1"
-    | "addressLine2"
-    | "phone"
-  >
->;
+/**
+ * Profile fields editable on the profile screen (not Clerk-owned identity).
+ * Derived from `EDITABLE_PROFILE_FIELDS` — a single source of truth shared
+ * with the wire contract, rather than a third hand-maintained field list.
+ */
+export type EditableProfilePatch = ProfileFieldPatch;
 
 interface DemoState {
   matters: Matter[];
@@ -168,7 +162,8 @@ interface DemoState {
     action: string,
     matterId?: string,
   ) => void;
-  /** TODO(api): PATCH /api/v1/me */
+  /** Local-only: the profile screen never sends this patch to the backend
+   * on the demo path (there is no backend to send it to). */
   updateProfile: (patch: EditableProfilePatch) => void;
   resetDemo: () => void;
 }
@@ -768,11 +763,18 @@ export const useDemoStore = create<DemoState>()(
             targetId: answerId,
           }),
         })),
-      // TODO(api): PATCH /api/v1/me
       updateProfile: (patch) => {
-        set((state) => ({
-          profile: { ...state.profile, ...patch },
-        }));
+        set((state) => {
+          const profile = { ...state.profile };
+          // `null` clears a field back to "" (this store's empty-string
+          // representation of "unset"); `undefined` (an omitted key) leaves
+          // the field untouched, mirroring the backend's `exclude_unset`.
+          for (const key of EDITABLE_PROFILE_FIELDS) {
+            const value = patch[key];
+            if (value !== undefined) profile[key] = value ?? "";
+          }
+          return { profile };
+        });
       },
       // TODO(api): POST /api/demo/reset
       resetDemo: () => {
