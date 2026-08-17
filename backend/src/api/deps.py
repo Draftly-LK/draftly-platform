@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 
 import structlog
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +22,7 @@ from src.modules.auth.infrastructure.repository import (
     SqlUserRepository,
 )
 from src.platform.db.session import get_db
-from src.platform.errors import UnauthenticatedError
+from src.platform.errors import PreconditionRequiredError, UnauthenticatedError
 from src.platform.observability.logging import bind_request_context
 from src.platform.request_context import RequestContext
 
@@ -59,6 +59,23 @@ def get_bearer_token(
 
 def get_correlation_id(request: Request) -> str:
     return getattr(request.state, "correlation_id", None) or str(uuid.uuid4())
+
+
+def require_if_match(if_match: str | None = Header(default=None, alias="If-Match")) -> int:
+    """Parse the ``If-Match`` header into the expected aggregate version.
+
+    Optimistic concurrency travels as a conditional request, not a body field
+    (api-conventions §3): a missing header is 428, a malformed one is 428 as
+    well, and a stale value becomes 412 when the repository rejects the write.
+    """
+    if if_match is None:
+        raise PreconditionRequiredError()
+    try:
+        return int(if_match.strip().strip('"').removeprefix("W/").strip('"'))
+    except ValueError:
+        raise PreconditionRequiredError(
+            "If-Match must be the quoted integer version returned in ETag."
+        )
 
 
 async def get_request_context(

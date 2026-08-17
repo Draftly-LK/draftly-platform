@@ -34,10 +34,18 @@ def test_explicit_stub_is_refused_when_deployed(
 def test_missing_clerk_config_fails_startup_when_deployed(
     monkeypatch: pytest.MonkeyPatch, environment: str
 ) -> None:
-    _configure(monkeypatch, ENVIRONMENT=environment, USE_STUB_IDENTITY="false")
-    monkeypatch.delenv("CLERK_ISSUER", raising=False)
-    monkeypatch.delenv("CLERK_SECRET_KEY", raising=False)
-    config._settings = None
+    # Blanked rather than deleted. Settings reads backend/.env directly, so an
+    # *unset* variable still falls through to whatever real Clerk credentials a
+    # developer has in that file and the test passes vacuously on CI while
+    # failing on their machine. An explicit empty value overrides the file and
+    # is falsy, which is exactly what `clerk_configured` checks.
+    _configure(
+        monkeypatch,
+        ENVIRONMENT=environment,
+        USE_STUB_IDENTITY="false",
+        CLERK_ISSUER="",
+        CLERK_SECRET_KEY="",
+    )
     with pytest.raises(RuntimeError, match="Clerk identity is not configured"):
         build_identity_adapter()
 

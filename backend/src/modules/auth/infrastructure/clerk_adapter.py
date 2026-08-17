@@ -10,6 +10,7 @@ Falls back gracefully when CLERK_SECRET_KEY is absent — see stub_adapter.py.
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 from typing import Any, cast
 
 import jwt
@@ -19,9 +20,26 @@ from src.modules.auth.domain.errors import IdentityValidationError
 from src.modules.auth.ports import IdentityClaims
 
 
+def _is_affirmatively_verified(claim: object) -> bool:
+    """Whether Clerk asserted this email is verified.
+
+    Accepts the boolean and the string form. Clerk's session-token editor
+    interpolates shortcodes into a JSON template, so a claim written as
+    ``"email_verified": "{{user.email_verified}}"`` arrives as the *string*
+    ``"true"`` rather than a boolean.
+
+    Deliberately narrow: only an explicit affirmative counts. A missing claim,
+    ``null``, ``"false"``, or the mere presence of an email address does not —
+    an unverified address is exactly the case this gate exists to reject.
+    """
+    if claim is True:
+        return True
+    return isinstance(claim, str) and claim.strip().lower() == "true"
+
+
 def _email_from_payload(payload: dict[str, Any]) -> str | None:
     """Return email only when Clerk marks it verified."""
-    if payload.get("email_verified") is not True:
+    if not _is_affirmatively_verified(payload.get("email_verified")):
         return None
     email = payload.get("email")
     if isinstance(email, str) and email:
@@ -46,13 +64,17 @@ class ClerkIdentityAdapter:
         secret_key: str,
         authorized_party: str,
         audience: str | None = None,
+        leeway_seconds: int = 30,
     ) -> None:
         if not authorized_party:
             raise ValueError("authorized_party is required for ClerkIdentityAdapter.")
+        if leeway_seconds < 0:
+            raise ValueError("leeway_seconds cannot be negative.")
         self._issuer = issuer.rstrip("/")
         self._secret_key = secret_key
         self._authorized_party = authorized_party
         self._audience = audience
+        self._leeway = timedelta(seconds=leeway_seconds)
         # Clerk JWKS endpoint
         self._jwks_url = f"{self._issuer}/.well-known/jwks.json"
         self._jwks_client = PyJWKClient(self._jwks_url, cache_keys=True)
@@ -93,6 +115,10 @@ class ClerkIdentityAdapter:
                 issuer=self._issuer,
                 audience=self._audience,
                 options=decode_options,
+                # Absorbs clock drift between this host and Clerk. Without it a
+                # host a couple of seconds slow rejects every freshly issued
+                # token as "not yet valid (iat)".
+                leeway=self._leeway,
             )
         except jwt.ExpiredSignatureError as exc:
             raise IdentityValidationError("Token has expired.") from exc
