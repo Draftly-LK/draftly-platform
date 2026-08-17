@@ -1,11 +1,18 @@
 "use client";
 
-import { FileImage, History, RefreshCw, Replace, Upload } from "lucide-react";
+import {
+  FileImage,
+  FileWarning,
+  History,
+  RefreshCw,
+  Replace,
+  Upload,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { factLabelKey } from "@/lib/i18n/fact-label-keys";
-import { simulateDocumentProcessing, useDemoStore } from "@/lib/store";
-import type { DocumentKind } from "@/types";
+import { useDemoStore } from "@/lib/store";
+import type { DocumentKind, ProcessingFailureReason } from "@/types";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
@@ -30,13 +37,39 @@ const kindKeys: Record<
   other: "kindOther",
 };
 
+/**
+ * §6.2 requires every failure to carry a recoverable reason the lawyer can act
+ * on. Mapping the reason to a fixed key keeps the explanation typed rather than
+ * interpolating a key from stored data.
+ */
+const failureKeys: Record<
+  ProcessingFailureReason,
+  | "failureNotConfigured"
+  | "failureProviderError"
+  | "failureUnsupportedMedia"
+  | "failurePasswordProtected"
+  | "failurePageLimit"
+  | "failureDataProtection"
+  | "failureTimeout"
+> = {
+  NOT_CONFIGURED: "failureNotConfigured",
+  PROVIDER_ERROR: "failureProviderError",
+  UNSUPPORTED_MEDIA: "failureUnsupportedMedia",
+  PASSWORD_PROTECTED: "failurePasswordProtected",
+  PAGE_LIMIT_EXCEEDED: "failurePageLimit",
+  DATA_PROTECTION_GATE: "failureDataProtection",
+  TIMEOUT: "failureTimeout",
+};
+
 export function DocumentsScreen({ matterId }: { matterId: string }) {
   const t = useTranslations("documents");
   const tf = useTranslations("facts");
   const allDocuments = useDemoStore((state) => state.documents);
   const allFacts = useDemoStore((state) => state.facts);
   const addDocument = useDemoStore((state) => state.addDocument);
-  const retryDocument = useDemoStore((state) => state.retryDocument);
+  const markProcessingNotConfigured = useDemoStore(
+    (state) => state.markProcessingNotConfigured,
+  );
   const replaceDocument = useDemoStore((state) => state.replaceDocument);
   const resolveCheck = useDemoStore((state) => state.resolveCheck);
   // Resolved from the store so the action still targets the right check on a
@@ -56,20 +89,23 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
   const [announcement, setAnnouncement] = useState("");
   const selected =
     documents.find((document) => document.id === selectedId) ?? documents[0];
+  // The server owns processing. The client stores the file and then records
+  // the only outcome it can honestly produce in this build: no extraction
+  // provider is configured, so the run never happened.
   const upload = (file: File | undefined) => {
     if (!file) return;
     const id = addDocument(file.name, "other", matterId);
     setSelectedId(id);
-    setAnnouncement(t("uploadReady", { name: file.name }));
-    simulateDocumentProcessing(id);
+    markProcessingNotConfigured(id);
+    setAnnouncement(t("uploadStored", { name: file.name }));
   };
-  const retry = (id: string) => {
-    retryDocument(id);
-    simulateDocumentProcessing(id);
+  const requestProcessing = (id: string) => {
+    markProcessingNotConfigured(id);
+    setAnnouncement(t("processingNotConfigured"));
   };
   const replace = (id: string) => {
     replaceDocument(id, t("replacementFileName"), t("replacementReason"));
-    simulateDocumentProcessing(id);
+    setAnnouncement(t("replacementStored"));
   };
   return (
     <AppShell matterId={matterId}>
@@ -128,7 +164,21 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
                       )}
                     </td>
                     <td className="px-3 text-sm">
-                      {t(kindKeys[document.kind])}
+                      {document.classStatus === "UNIDENTIFIED"
+                        ? t("unidentified")
+                        : t(kindKeys[document.kind])}
+                      {document.versionRelationship === "EXACT_DUPLICATE" && (
+                        <span className="border-border-strong text-muted-ink ml-2 rounded-full border px-2 py-0.5 text-xs">
+                          {t("exactDuplicate")}
+                        </span>
+                      )}
+                      {(document.fragments?.length ?? 0) > 1 && (
+                        <span className="border-border-strong text-muted-ink ml-2 rounded-full border px-2 py-0.5 text-xs">
+                          {t("spansFiles", {
+                            count: document.fragments?.length ?? 0,
+                          })}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 uppercase">{document.language}</td>
                     <td className="px-3 tabular-nums">{document.pageCount}</td>
@@ -153,12 +203,12 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
                     </td>
                     <td className="px-3">
                       <div className="flex items-center gap-1">
-                        {document.processingState === "failed" && (
+                        {document.processingState === "PROCESSING_FAILED" && (
                           <button
-                            aria-label={t("retry")}
-                            title={t("retry")}
+                            aria-label={t("requestProcessing")}
+                            title={t("requestProcessing")}
                             className="hover:bg-active-bg grid size-8 place-items-center rounded"
-                            onClick={() => retry(document.id)}
+                            onClick={() => requestProcessing(document.id)}
                           >
                             <RefreshCw className="size-4" strokeWidth={1.5} />
                           </button>
@@ -254,11 +304,25 @@ export function DocumentsScreen({ matterId }: { matterId: string }) {
                   ))}
                 </div>
               </details>
-              {selected.processingState === "failed" && (
-                <div className="mt-4 grid gap-2">
-                  <Button onClick={() => retry(selected.id)}>
+              {selected.processingState === "PROCESSING_FAILED" && (
+                <div className="border-amber bg-amber-bg text-amber-text mt-4 rounded border p-3">
+                  <div className="flex items-center gap-2 font-semibold">
+                    <FileWarning className="size-4" strokeWidth={1.5} />
+                    {t("failureTitle")}
+                  </div>
+                  <p className="mt-1 text-sm">
+                    {t(
+                      failureKeys[selected.failureReason ?? "PROVIDER_ERROR"],
+                    )}
+                  </p>
+                  <p className="mt-2 text-sm">{t("failureNextSteps")}</p>
+                </div>
+              )}
+              {selected.processingState === "PROCESSING_FAILED" && (
+                <div className="mt-3 grid gap-2">
+                  <Button onClick={() => requestProcessing(selected.id)}>
                     <RefreshCw className="size-4" strokeWidth={1.5} />
-                    {t("retry")}
+                    {t("requestProcessing")}
                   </Button>
                   <Button onClick={() => replace(selected.id)}>
                     <Replace className="size-4" strokeWidth={1.5} />
