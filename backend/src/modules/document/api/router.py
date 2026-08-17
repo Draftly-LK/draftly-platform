@@ -3,6 +3,10 @@
 Routes:
   POST /api/v1/documents/process → run the extraction pipeline on one upload
 
+Persisted ingestion (source files, the document inbox, boundary and
+classification decisions) lives in ``api/ingestion_router.py`` and is included
+below, so the module still mounts exactly one router.
+
 INTERIM SYNCHRONOUS ROUTE. document-processing.md §1 places this pipeline in
 the ``document_jobs`` worker behind the outbox (jobs-and-workers.md §5,
 ``document.process``). Neither the outbox nor the worker runtime exists yet,
@@ -21,6 +25,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 
 from src.api.deps import get_correlation_id, get_request_context
+from src.modules.document.api.ingestion_router import router as ingestion_router
 from src.modules.document.api.schemas import CandidateFieldRead, ProcessingReportRead
 from src.modules.document.application.processing_service import (
     DocumentProcessingService,
@@ -30,6 +35,7 @@ from src.modules.document.domain.models import ProcessingReport
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["documents"])
+router.include_router(ingestion_router)
 
 _ALLOWED_MIME = {
     "application/pdf",

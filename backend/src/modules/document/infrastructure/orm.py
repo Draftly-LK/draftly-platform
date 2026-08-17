@@ -1,0 +1,215 @@
+"""ORM models for immutable source files and what was detected inside them.
+
+``source_files`` has no unique constraint on the hash. A second upload of the
+same bytes is a *detectable* event, not a rejected one (§6.3): the lawyer is
+shown the pair and decides. The composite index is what makes that detection a
+lookup instead of a scan.
+
+The check constraints mirror `domain/ingestion_policies` so the two cannot
+drift: a rejected source always says why, a file that never reached storage can
+never be marked processed, and a fragment can never claim page 0.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    func,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from src.platform.db.session import Base
+
+#: States that can only be reached after bytes were written to object storage.
+#: Kept as a SQL literal list so the constraint text is identical in the ORM and
+#: in the migration.
+_STORED_STATES = "'STORED', 'PROCESSING', 'PROCESSED', 'PROCESSING_FAILED', 'SUPERSEDED'"
+
+
+class SourceFileRow(Base):
+    __tablename__ = "source_files"
+    __table_args__ = (
+        Index("ix_source_files_user_matter", "user_id", "matter_id"),
+        # Duplicate detection (§6.3), deliberately NOT unique.
+        Index("ix_source_files_user_matter_sha256", "user_id", "matter_id", "sha256"),
+        CheckConstraint("byte_length >= 0", name="ck_source_file_byte_length_nonnegative"),
+        CheckConstraint(
+            "page_count IS NULL OR page_count >= 1", name="ck_source_file_page_count_positive"
+        ),
+        # §6.2 stage 1: a rejection the lawyer cannot act on is a dead end.
+        CheckConstraint(
+            "(state <> 'REJECTED') OR "
+            "(failure_reason IS NOT NULL AND failure_explanation_key IS NOT NULL)",
+            name="ck_source_file_rejection_states_reason",
+        ),
+        # §10.2: PROCESSED is reachable only through storage. Without this a
+        # direct SQL write could claim a processed file that holds no bytes.
+        CheckConstraint(
+            f"(state NOT IN ({_STORED_STATES})) OR storage_object_key <> ''",
+            name="ck_source_file_stored_states_have_object",
+        ),
+        CheckConstraint(
+            "(state <> 'SUPERSEDED') OR superseded_by_source_file_id IS NOT NULL",
+            name="ck_source_file_superseded_names_successor",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    media_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    byte_length: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    #: Empty exactly when the bytes were refused in quarantine and never stored.
+    storage_object_key: Mapped[str] = mapped_column(String(512), nullable=False, default="")
+    storage_object_version: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    upload_actor_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    detected_languages: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    retention_class: Mapped[str] = mapped_column(String(64), nullable=False)
+    failure_reason: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    failure_explanation_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    superseded_by_source_file_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    #: A cleaned or rotated copy is a new row pointing back here; the source
+    #: bytes themselves are never rewritten (§10.2).
+    derived_from_source_file_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+class DetectedDocumentRow(Base):
+    """One logical document. Its pages live in ``document_fragments``.
+
+    There is no ``source_file_id`` here on purpose: a document is a set of
+    fragments, which is what lets one document span two files (§6.3).
+    """
+
+    __tablename__ = "detected_documents"
+    __table_args__ = (
+        Index("ix_detected_documents_user_matter", "user_id", "matter_id"),
+        Index("ix_detected_documents_class", "user_id", "matter_id", "class_status"),
+        CheckConstraint(
+            "class_confidence IS NULL OR (class_confidence >= 0 AND class_confidence <= 1)",
+            name="ck_detected_document_class_confidence_range",
+        ),
+        # §6.3: UNIDENTIFIED and REJECTED are the only classless states. A filed
+        # document always names the controlled class it was filed under.
+        CheckConstraint(
+            "(class_status NOT IN ('AI_ORGANIZED', 'REVIEW_REQUIRED', 'LAWYER_CONFIRMED')) OR "
+            "class_id IS NOT NULL",
+            name="ck_detected_document_filed_has_class",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    class_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    class_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    class_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    language_codes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    issuer: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    #: Points at the confirmed fact rather than storing a date: the issue date
+    #: is verified once, in verification, and read from there (§12.2).
+    issue_or_execution_date_fact_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    version_relationship: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    duplicate_of_detected_document_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    boundary_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+
+class DocumentFragmentRow(Base):
+    """One page range of one source file in its position within a document."""
+
+    __tablename__ = "document_fragments"
+    __table_args__ = (
+        Index("ix_document_fragments_user_matter", "user_id", "matter_id"),
+        Index("ix_document_fragments_document", "detected_document_id"),
+        Index("ix_document_fragments_source", "source_file_id"),
+        # Pages are 1-based throughout the pipeline and a range never runs
+        # backwards; either would point the page viewer at nothing.
+        CheckConstraint(
+            "page_start >= 1 AND page_end >= page_start", name="ck_document_fragment_page_range"
+        ),
+        CheckConstraint(
+            "boundary_confidence IS NULL OR "
+            "(boundary_confidence >= 0 AND boundary_confidence <= 1)",
+            name="ck_document_fragment_confidence_range",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    detected_document_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("detected_documents.id", ondelete="CASCADE"), nullable=False
+    )
+    source_file_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("source_files.id"), nullable=False
+    )
+    page_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    page_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    order_in_document: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    #: NULL for a range a human drew — a lawyer's decision is not a model score.
+    boundary_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    boundary_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class SourceFileProcessingRunRow(Base):
+    """One attempt to process one source file — including the ones that did nothing.
+
+    A run that failed because no provider is configured is recorded exactly like
+    one that succeeded. That row is the evidence that the document is genuinely
+    unprocessed rather than quietly forgotten (§6.2 stage 10).
+    """
+
+    __tablename__ = "source_file_processing_runs"
+    __table_args__ = (
+        Index("ix_processing_runs_user_matter", "user_id", "matter_id"),
+        Index("ix_processing_runs_source", "source_file_id"),
+        CheckConstraint(
+            "pages_processed >= 0 AND ai_extraction_calls >= 0",
+            name="ck_processing_run_meters_nonnegative",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_file_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("source_files.id"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    reasons: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    pages_processed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    ai_extraction_calls: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")

@@ -11,7 +11,10 @@ a new adapter and a settings value, not an application change.
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from src.modules.document.domain.ingestion import ProcessingRun, SourceFile
 
 
 class PageRaster:
@@ -122,3 +125,35 @@ class OcrExtractorPort(Protocol):
     """
 
     async def extract(self, page: PageRaster, kind: str) -> ExtractionResult: ...
+
+
+class SourceFileStoragePort(Protocol):
+    """Immutable object storage for uploaded bytes (§6.2 stage 2).
+
+    ``put`` returns the storage object *version* rather than a boolean: the
+    version is recorded on the SourceFile so a later read can prove it fetched
+    the same bytes that were hashed. There is deliberately no ``delete`` and no
+    ``overwrite`` — original evidence is immutable, and a cleaned copy is a new
+    object under a new key.
+    """
+
+    async def put(self, key: str, data: bytes) -> str: ...
+
+    async def get(self, key: str) -> bytes: ...
+
+    async def exists(self, key: str) -> bool: ...
+
+
+class ProcessingJobPort(Protocol):
+    """Run the pipeline over one stored source file.
+
+    Synchronous today (the outbox and worker runtime do not exist yet), so the
+    returned run is already terminal. The signature is the one a queued
+    implementation will keep: the caller hands over the SourceFile it already
+    loaded under the tenant filter, so no implementation needs to re-read a row
+    without a ``user_id`` predicate.
+    """
+
+    async def enqueue(
+        self, *, source_file: SourceFile, correlation_id: str = ""
+    ) -> ProcessingRun: ...
