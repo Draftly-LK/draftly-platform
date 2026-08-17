@@ -14,6 +14,7 @@ import {
   templates,
   workflows,
 } from "@/lib/mocks";
+import { migrateLegacyMatterType } from "@/lib/rta/taxonomy";
 import { buildTemplateDocument } from "@/lib/templates/build-document";
 import { deriveTemplateReadiness } from "@/lib/templates/readiness";
 import type {
@@ -21,11 +22,12 @@ import type {
   Check,
   Draft,
   EditorDocument,
+  LegacyProcessingState,
   Matter,
   MatterDocument,
   MatterType,
-  ProcessingState,
   RegistrationRegime,
+  SourceFileState,
   User,
   VerifiedFact,
   Workflow,
@@ -55,6 +57,21 @@ const seed = () => ({
   auditEvents: structuredClone(auditEvents),
   profile: seedProfile(),
 });
+
+/**
+ * Deterministic stand-in for a real content digest. It is NOT a SHA-256 of the
+ * bytes — the browser never sees the server's stored object. The server
+ * computes the real digest at quarantine (§6.2); this only keeps the demo
+ * fixture-stable and is labelled synthetic wherever it is shown.
+ */
+const syntheticDigest = (seedText: string): string => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < seedText.length; index += 1) {
+    hash ^= seedText.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `syn-sha256-${hash.toString(16).padStart(8, "0")}`;
+};
 
 const deterministicTimestamp = (eventCount: number) =>
   new Date(Date.UTC(2026, 6, 22, 10, eventCount, 0)).toISOString();
@@ -97,12 +114,17 @@ interface DemoState {
     kind?: MatterDocument["kind"],
     matterId?: string,
   ) => string;
-  setDocumentProcessingState: (
-    documentId: string,
-    processingState: ProcessingState,
-    confidence?: number,
-  ) => void;
-  retryDocument: (documentId: string) => void;
+  /**
+   * Record that a processing run could not be performed because no extraction
+   * provider is configured in this build (§10.2 `PROCESSING_FAILED` with a
+   * recoverable reason, §6.2).
+   *
+   * This is the only processing outcome the client may write. Nothing in the
+   * frontend may move a source file to `PROCESSED`: only a server-side
+   * processing run produces derivatives, and there is deliberately no
+   * client-side path to that state.
+   */
+  markProcessingNotConfigured: (sourceFileId: string) => void;
   replaceDocument: (
     documentId: string,
     fileName: string,
@@ -167,6 +189,93 @@ function appendEvent(
   ];
 }
 
+/** Retired M2 processing vocabulary mapped onto §10.2 source-file states. */
+const LEGACY_SOURCE_FILE_STATE: Record<LegacyProcessingState, SourceFileState> = {
+  uploaded: "STORED",
+  extracting: "PROCESSING",
+  "ready-for-review": "PROCESSED",
+  failed: "PROCESSING_FAILED",
+  replaced: "SUPERSEDED",
+};
+
+const SOURCE_FILE_STATES: readonly SourceFileState[] = [
+  "UPLOAD_INITIATED",
+  "QUARANTINED",
+  "VALIDATED",
+  "STORED",
+  "PROCESSING",
+  "PROCESSED",
+  "PROCESSING_FAILED",
+  "REJECTED",
+  "SUPERSEDED",
+];
+
+const isSourceFileState = (value: string): value is SourceFileState =>
+  (SOURCE_FILE_STATES as readonly string[]).includes(value);
+
+type SeededState = ReturnType<typeof seed>;
+type PersistedMatter = Omit<Matter, "type"> & { type?: MatterType };
+type PersistedDocument = Omit<MatterDocument, "processingState"> & {
+  processingState?: string;
+};
+type PersistedState = Omit<Partial<SeededState>, "matters" | "documents"> & {
+  matters?: PersistedMatter[];
+  documents?: PersistedDocument[];
+};
+
+/**
+ * Carry a persisted matter onto the RTA taxonomy (§3.6). The legacy value is
+ * preserved, the derived subtype is always PROVISIONAL, and an unmapped legacy
+ * value keeps the record with `subtypeId` left undefined rather than guessing.
+ */
+function migratePersistedMatter(matter: PersistedMatter): Matter {
+  const legacyMatterType = matter.legacyMatterType ?? matter.type;
+  const migrated =
+    legacyMatterType === undefined ? null : migrateLegacyMatterType(legacyMatterType);
+  return {
+    ...matter,
+    type: matter.type ?? "other",
+    legacyMatterType,
+    subtypeId: matter.subtypeId ?? migrated?.subtypeId,
+    familyId: matter.familyId ?? migrated?.familyId,
+    subtypeDecisionStatus: matter.subtypeDecisionStatus ?? "PROVISIONAL",
+  };
+}
+
+function migratePersistedDocument(document: PersistedDocument): MatterDocument {
+  const legacy = document.processingState;
+  const processingState: SourceFileState =
+    legacy !== undefined && legacy in LEGACY_SOURCE_FILE_STATE
+      ? LEGACY_SOURCE_FILE_STATE[legacy as LegacyProcessingState]
+      : legacy !== undefined && isSourceFileState(legacy)
+        ? legacy
+        : // Unrecognised legacy value: keep the record and assert the least we
+          // can still defend — bytes were received, nothing more.
+          "UPLOAD_INITIATED";
+  return { ...document, processingState };
+}
+
+/**
+ * Persist migration v3 → v4. Legacy records stay readable; nothing is dropped
+ * and no state is invented. Only fields the new vocabulary needs are added.
+ */
+function migrateDemoState(persisted: unknown, version: number): DemoState {
+  const base = seed();
+  // zustand shallow-merges this over the live store, so returning the data
+  // slice (without the action closures) is the intended shape. The cast is the
+  // narrowest way to say that to TypeScript.
+  const asState = (value: SeededState): DemoState => value as unknown as DemoState;
+  if (typeof persisted !== "object" || persisted === null) return asState(base);
+  const state = persisted as PersistedState;
+  const carried: SeededState = { ...base, ...(state as Partial<SeededState>) };
+  if (version >= 4) return asState(carried);
+  return asState({
+    ...carried,
+    matters: (state.matters ?? base.matters).map(migratePersistedMatter),
+    documents: (state.documents ?? base.documents).map(migratePersistedDocument),
+  });
+}
+
 export const useDemoStore = create<DemoState>()(
   persist(
     (set, get) => ({
@@ -228,7 +337,7 @@ export const useDemoStore = create<DemoState>()(
         });
         return id;
       },
-      // TODO(api): POST /api/matters/{matterId}/documents
+      // TODO(api): POST /api/v1/matters/{matterId}/source-files
       addDocument: (fileName, kind = "other", matterId = DEMO_MATTER_ID) => {
         const id = `doc-upload-${String(get().documents.length + 1).padStart(3, "0")}`;
         set((state) => {
@@ -239,10 +348,21 @@ export const useDemoStore = create<DemoState>()(
             kind,
             language: "en",
             pageCount: 1,
-            processingState: "uploaded",
+            // The bytes are held locally only; the demo build has no storage
+            // service, so the row stops at STORED and never claims more.
+            processingState: "STORED",
             qualityProblems: [],
             versions: [],
             uploadedAt: deterministicTimestamp(state.auditEvents.length),
+            mediaType: "application/pdf",
+            byteLength: 0,
+            sha256: syntheticDigest(`${matterId}:${id}:${fileName}`),
+            storageObjectVersion: "synthetic-v1",
+            uploadActorId: DEMO_USER_ID,
+            retentionClass: "MATTER_EVIDENCE",
+            classStatus: "UNIDENTIFIED",
+            versionRelationship: "CURRENT",
+            physicalOriginal: "UNKNOWN",
           };
           return {
             documents: [...state.documents, document],
@@ -257,19 +377,19 @@ export const useDemoStore = create<DemoState>()(
         });
         return id;
       },
-      // TODO(api): PATCH /api/matters/{matterId}/documents/{documentId}/processing
-      setDocumentProcessingState: (documentId, processingState, confidence) =>
+      // TODO(api): POST /api/v1/source-files/{id}/process
+      markProcessingNotConfigured: (sourceFileId) =>
         set((state) => {
           const before = state.documents.find(
-            (document) => document.id === documentId,
+            (document) => document.id === sourceFileId,
           );
           const updated = state.documents.map((document) =>
-            document.id === documentId
+            document.id === sourceFileId
               ? {
                   ...document,
-                  processingState,
-                  extractionConfidence:
-                    confidence ?? document.extractionConfidence,
+                  processingState: "PROCESSING_FAILED" as const,
+                  failureReason: "NOT_CONFIGURED" as const,
+                  failureExplanationKey: "documents.failure.notConfigured",
                 }
               : document,
           );
@@ -277,35 +397,15 @@ export const useDemoStore = create<DemoState>()(
             documents: updated,
             auditEvents: appendEvent(state, {
               matterId: before?.matterId ?? DEMO_MATTER_ID,
-              action: `document.${processingState}`,
+              action: "source-file.processing-not-configured",
               targetType: "document",
-              targetId: documentId,
+              targetId: sourceFileId,
               before,
-              after: updated.find((document) => document.id === documentId),
+              after: updated.find((document) => document.id === sourceFileId),
             }),
           };
         }),
-      // TODO(api): POST /api/matters/{matterId}/documents/{documentId}/retry
-      retryDocument: (documentId) =>
-        set((state) => {
-          const document = state.documents.find(
-            (item) => item.id === documentId,
-          );
-          return {
-            documents: state.documents.map((document) =>
-              document.id === documentId
-                ? { ...document, processingState: "uploaded" }
-                : document,
-            ),
-            auditEvents: appendEvent(state, {
-              matterId: document?.matterId ?? DEMO_MATTER_ID,
-              action: "document.retry-requested",
-              targetType: "document",
-              targetId: documentId,
-            }),
-          };
-        }),
-      // TODO(api): POST /api/matters/{matterId}/documents/{documentId}/versions
+      // TODO(api): POST /api/v1/matters/{matterId}/source-files
       replaceDocument: (documentId, fileName, reason) =>
         set((state) => {
           const document = state.documents.find(
@@ -326,7 +426,12 @@ export const useDemoStore = create<DemoState>()(
                 ? {
                     ...item,
                     fileName,
-                    processingState: "uploaded",
+                    // Replacement bytes are a new source: stored, unprocessed,
+                    // and carrying none of the previous run's failure state.
+                    processingState: "STORED" as const,
+                    sha256: syntheticDigest(`${item.id}:${fileName}:${version.id}`),
+                    failureReason: undefined,
+                    failureExplanationKey: undefined,
                     versions: [...item.versions, version],
                   }
                 : item,
@@ -692,10 +797,8 @@ export const useDemoStore = create<DemoState>()(
     {
       name: "draftly-m2-demo",
       storage: createJSONStorage(() => localStorage),
-      version: 3,
-      migrate: () => ({
-        ...seed(),
-      }),
+      version: 4,
+      migrate: migrateDemoState,
     },
   ),
 );
