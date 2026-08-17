@@ -620,7 +620,7 @@
     "future": "Future release",
     "continue": "Continue with RTA",
     "signIn": "Continue to workspace",
-    "step": "Step {current} of 4",
+    "stepOf": "Step {current} of {total}",
     "back": "Back",
     "typeTitle": "Select transaction type",
     "typeBody": "Choose the notarial transaction that scopes this matter.",
@@ -641,7 +641,164 @@
     "selectedFiles": "{count, plural, =0 {No documents selected} one {# document selected} other {# documents selected}}",
     "create": "Create matter",
     "creating": "Creating matter",
-    "privacy": "Synthetic demonstration only"
+    "privacy": "Synthetic demonstration only",
+    "metadataTitle": "Matter details",
+    "metadataBody": "Add the reference details and instrument language for this matter before routing begins.",
+    "instrumentLanguage": "Instrument language",
+    "instrumentLanguageHint": "The language the notarial instrument will be drafted in.",
+    "titleSystemTitle": "Title registration system",
+    "q01Prompt": "Is the land already registered under the Registration of Title Act (RTA)?",
+    "unknownIsAcceptable": "Unknown is an acceptable answer if this has not been checked yet.",
+    "q01Why": "This determines whether the matter proceeds under RTA rules or needs an initial compilation first.",
+    "initialCompilationTitle": "Initial compilation may be required",
+    "initialCompilationBody": "If the land has not yet been brought onto the RTA register, an initial compilation process runs before the usual checklist applies.",
+    "initialCompilationContinue": "You can continue the intake now; this will be confirmed once routing runs.",
+    "familyTitle": "Transaction family",
+    "q02Prompt": "What kind of transaction or matter is this?",
+    "familyTransactionsHeading": "Transactions",
+    "familyStatutoryHeading": "Statutory processes",
+    "familyStatutoryBody": "These are RTA processes rather than transactions between parties.",
+    "familyOtherHeading": "Other",
+    "familyOtherNote": "Choose this only when no other family applies; the responsible lawyer will confirm the exact instrument.",
+    "subtypeTitle": "Instrument subtype",
+    "subtypeBody": "Choose the exact instrument. The responsible lawyer confirms this before the matter proceeds.",
+    "noGazetteForm": "No gazette form",
+    "gazetteForm": "Gazette Form {number}",
+    "legalBasisLabel": "Declared legal basis",
+    "legalBasisHint": "Describe the legal basis for this instrument in your own words.",
+    "legalBasisConfirm": "I confirm this declared legal basis is accurate.",
+    "routingTitle": "Routing details",
+    "routingBody": "Answer these questions so the matter can be routed and the checklist compiled.",
+    "q03Prompt": "What is the scope of the disposition?",
+    "q04Prompt": "What kind of parcel is this?",
+    "q05Prompt": "Who are the parties to this matter?",
+    "q05Hint": "Select every party context that applies.",
+    "q06Prompt": "Is there an active dispute or notice affecting this land?",
+    "q06Hint": "Include caveats, litigation, or other notices you are aware of.",
+    "checklistTitle": "Checklist",
+    "checklistBody": "The checklist below is compiled by the server from your answers.",
+    "compilerUnavailableTitle": "Checklist compiler unavailable",
+    "compilerUnavailableBody": "The backend is not configured in this environment, so the checklist cannot be compiled. Continue to create the matter; the checklist will be available once the backend is connected.",
+    "compiling": "Compiling checklist...",
+    "compileFailedTitle": "Checklist compilation failed",
+    "compileFailedBody": "Something went wrong while compiling the checklist. Try again.",
+    "retry": "Retry",
+    "scopeAutomatedTitle": "Automated scope",
+    "scopeAutomatedBody": "This matter is within the automated scope for this release.",
+    "scopeManualTitle": "Manual scope",
+    "scopeManualBody": "This matter requires manual handling by the responsible lawyer.",
+    "unmetGatesHeading": "Unmet gates",
+    "uploadTitle": "Upload evidence",
+    "uploadBody": "Add supporting documents now, or continue and add them later.",
+    "uploadRecommended": "PDF or image files are recommended.",
+    "uploadLimits": "Up to 20 files, 25 MB each.",
+    "uploadConfidentiality": "Synthetic demonstration only",
+    "uploadPendingIngestion": "Files will be attached once the matter is created.",
+    "next": "Next",
+    "saving": "Saving...",
+    "genericError": "Something went wrong. Try again.",
+    "language": {
+      "en": "English",
+      "si": "Sinhala",
+      "ta": "Tamil"
+    },
+    "answer": {
+      "YES": "Yes",
+      "NO": "No",
+      "UNKNOWN": "Unknown",
+      "NOT_APPLICABLE": "Not applicable"
+    },
+    "scope": {
+      "WHOLE_REGISTERED_PARCEL": "Whole registered parcel",
+      "PART_OF_PARCEL": "Part of the parcel",
+      "UNDIVIDED_INTEREST": "Undivided interest",
+      "UNKNOWN": "Unknown"
+    },
+    "parcelKind": {
+      "ORDINARY": "Ordinary parcel",
+      "CONDOMINIUM_UNIT": "Condominium unit",
+      "CONVERSION_TO_CONDOMINIUM": "Conversion to condominium",
+      "UNKNOWN": "Unknown"
+    },
+    "partyContext": {
+      "NATURAL_PERSONS_ONLY": "Natural persons only",
+      "COMPANY": "Company",
+      "ESTATE_OR_DECEASED": "Estate or deceased owner",
+      "ATTORNEY_POWER_OF_ATTORNEY": "Attorney under power of attorney",
+      "PUBLIC_BODY": "Public body",
+      "OTHER_NON_INDIVIDUAL": "Other non-individual",
+      "UNKNOWN": "Unknown"
+    },
+    "fileState": {
+      "selected": "Selected",
+      "attached": "Attached",
+      "pendingUpload": "Pending upload"
+    }
+  },
+  "rta": {
+    "family": {
+      "ownership_change": {
+        "label": "Ownership change",
+        "purpose": "Transfers ownership of the land from one party to another."
+      },
+      "agreement_security": {
+        "label": "Agreement & security",
+        "purpose": "Creates or discharges an agreement, mortgage, or other security interest over the land."
+      },
+      "use_interest": {
+        "label": "Use & interest",
+        "purpose": "Grants or cancels a right to use the land, such as a lease or life interest."
+      },
+      "cancel_release": {
+        "label": "Cancellation & release",
+        "purpose": "Cancels or releases an existing instrument, interest, or notice."
+      },
+      "notice_admin": {
+        "label": "Notice & administration",
+        "purpose": "Registers a notice, caveat, or administrative record against the land."
+      },
+      "parcel_structure": {
+        "label": "Parcel structure",
+        "purpose": "Changes the structure of the parcel, such as subdivision or condominium registration."
+      },
+      "title_settlement": {
+        "label": "Title settlement",
+        "purpose": "Settles title through an initial compilation or transmission process."
+      },
+      "dispute_rectification": {
+        "label": "Dispute & rectification",
+        "purpose": "Resolves a title dispute or rectifies the register."
+      },
+      "controlled_other": {
+        "label": "Other",
+        "purpose": "An instrument that does not fit the other families; the responsible lawyer confirms the exact type."
+      }
+    },
+    "subtype": {
+      "transfer_sale": "Transfer by sale",
+      "gift": "Gift",
+      "gift_cancel": "Cancellation of gift",
+      "sale_agreement": "Agreement to sell",
+      "sale_agreement_cancel": "Cancellation of agreement to sell",
+      "land_exchange": "Exchange of land",
+      "security_bond_transfer": "Transfer of security bond",
+      "mortgage": "Mortgage",
+      "mortgage_cancel": "Discharge of mortgage",
+      "lease": "Lease",
+      "lease_cancel": "Cancellation of lease",
+      "life_interest_holder_lease": "Lease by life interest holder",
+      "life_interest_cancel": "Cancellation of life interest",
+      "life_interest_cancel_death": "Cancellation of life interest on death",
+      "servitude_access_transfer": "Transfer of servitude / access right",
+      "caveat": "Caveat",
+      "caveat_cancel": "Cancellation of caveat",
+      "certificate_sale_register": "Registration of certificate of sale",
+      "certificate_sale_cancel": "Cancellation of certificate of sale",
+      "condominium_register": "Condominium registration",
+      "subdivision_amalgamation": "Subdivision or amalgamation",
+      "address_register": "Registration of address",
+      "other_declared_instrument": "Other declared instrument"
+    }
   },
   "library": {
     "title": "Legal sources",

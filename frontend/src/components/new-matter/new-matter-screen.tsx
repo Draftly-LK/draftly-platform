@@ -216,7 +216,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
   const [reference, setReference] = useState("");
   const [clientReference, setClientReference] = useState("");
   const [instrumentLanguage, setInstrumentLanguage] = useState<InstrumentLanguage>("en");
-  const [lawyerNote, setLawyerNote] = useState("");
 
   // Steps 2–5 — routing answers.
   const [q01Regime, setQ01Regime] = useState<TriState | null>(null);
@@ -327,7 +326,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
         await saveIntakeAnswer(getToken, matterId, "Q01_REGIME", {
           value: q01Regime,
           lawyerConfirmed: true,
-          ...(lawyerNote.trim() ? { reason: lawyerNote.trim() } : {}),
         });
       } else if (step === 3 && matterId !== null && familyId !== null) {
         await saveIntakeAnswer(getToken, matterId, "Q02_INTENT", {
@@ -535,17 +533,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                 ))}
               </div>
             </fieldset>
-            <label className="mt-6 block font-medium">
-              {t("responsibleLawyerNote")}
-              <span className="text-muted-ink block text-sm font-normal">
-                {t("responsibleLawyerNoteHint")}
-              </span>
-              <textarea
-                className="border-border-strong bg-surface mt-1 min-h-24 w-full rounded border p-3"
-                value={lawyerNote}
-                onChange={(event) => setLawyerNote(event.target.value)}
-              />
-            </label>
           </section>
         )}
 
