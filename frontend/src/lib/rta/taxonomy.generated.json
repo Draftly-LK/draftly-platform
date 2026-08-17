@@ -1,0 +1,1254 @@
+{
+  "conditionalModules": [
+    {
+      "checklistModuleIds": [
+        "C10_COMPANY_AUTHORITY"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.company_party",
+      "labelKey": "rta.module.company_party"
+    },
+    {
+      "checklistModuleIds": [
+        "C09_PROBATE_TRANSMISSION"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.estate_or_deceased_owner",
+      "labelKey": "rta.module.estate_or_deceased_owner"
+    },
+    {
+      "checklistModuleIds": [
+        "C21_POWER_OF_ATTORNEY"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.power_of_attorney",
+      "labelKey": "rta.module.power_of_attorney"
+    },
+    {
+      "checklistModuleIds": [
+        "C22_COOWNERS"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.coowners",
+      "labelKey": "rta.module.coowners"
+    },
+    {
+      "checklistModuleIds": [
+        "C07_MORTGAGE_RELEASE"
+      ],
+      "excludesV0": false,
+      "id": "lk.rta.module.mortgage_present",
+      "labelKey": "rta.module.mortgage_present"
+    },
+    {
+      "checklistModuleIds": [
+        "C08_LEASE_OCCUPATION"
+      ],
+      "excludesV0": false,
+      "id": "lk.rta.module.lease_or_occupation",
+      "labelKey": "rta.module.lease_or_occupation"
+    },
+    {
+      "checklistModuleIds": [
+        "C15_LIFE_INTEREST"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.life_interest",
+      "labelKey": "rta.module.life_interest"
+    },
+    {
+      "checklistModuleIds": [
+        "C16_SERVITUDE_ACCESS"
+      ],
+      "excludesV0": false,
+      "id": "lk.rta.module.servitude",
+      "labelKey": "rta.module.servitude"
+    },
+    {
+      "checklistModuleIds": [
+        "C12_BUILDING_COMPLIANCE"
+      ],
+      "excludesV0": false,
+      "id": "lk.rta.module.building_present",
+      "labelKey": "rta.module.building_present"
+    },
+    {
+      "checklistModuleIds": [
+        "C11_LOCAL_AUTHORITY"
+      ],
+      "excludesV0": false,
+      "id": "lk.rta.module.local_authority_clearance",
+      "labelKey": "rta.module.local_authority_clearance"
+    },
+    {
+      "checklistModuleIds": [],
+      "excludesV0": false,
+      "id": "lk.rta.module.missing_original",
+      "labelKey": "rta.module.missing_original"
+    },
+    {
+      "checklistModuleIds": [
+        "C17_CAVEAT_LITIGATION"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.active_notice_or_litigation",
+      "labelKey": "rta.module.active_notice_or_litigation"
+    },
+    {
+      "checklistModuleIds": [
+        "C19_COURT_STATUTORY_SALE"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.court_or_statutory_sale",
+      "labelKey": "rta.module.court_or_statutory_sale"
+    },
+    {
+      "checklistModuleIds": [],
+      "excludesV0": true,
+      "id": "lk.rta.module.state_land",
+      "labelKey": "rta.module.state_land"
+    },
+    {
+      "checklistModuleIds": [],
+      "excludesV0": true,
+      "id": "lk.rta.module.special_personal_law",
+      "labelKey": "rta.module.special_personal_law"
+    },
+    {
+      "checklistModuleIds": [
+        "C13_SUBDIVISION_AMALGAMATION"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.subdivision_amalgamation",
+      "labelKey": "rta.module.subdivision_amalgamation"
+    },
+    {
+      "checklistModuleIds": [
+        "C14_CONDOMINIUM_STRATA"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.condominium_strata",
+      "labelKey": "rta.module.condominium_strata"
+    },
+    {
+      "checklistModuleIds": [
+        "C17_CAVEAT_LITIGATION"
+      ],
+      "excludesV0": true,
+      "id": "lk.rta.module.initial_compilation_triage",
+      "labelKey": "rta.module.initial_compilation_triage"
+    }
+  ],
+  "families": [
+    {
+      "id": "ownership_change",
+      "isTransactionFamily": true,
+      "labelKey": "rta.family.ownership_change.label",
+      "order": 1,
+      "purposeKey": "rta.family.ownership_change.purpose"
+    },
+    {
+      "id": "agreement_security",
+      "isTransactionFamily": true,
+      "labelKey": "rta.family.agreement_security.label",
+      "order": 2,
+      "purposeKey": "rta.family.agreement_security.purpose"
+    },
+    {
+      "id": "use_interest",
+      "isTransactionFamily": true,
+      "labelKey": "rta.family.use_interest.label",
+      "order": 3,
+      "purposeKey": "rta.family.use_interest.purpose"
+    },
+    {
+      "id": "cancel_release",
+      "isTransactionFamily": true,
+      "labelKey": "rta.family.cancel_release.label",
+      "order": 4,
+      "purposeKey": "rta.family.cancel_release.purpose"
+    },
+    {
+      "id": "notice_admin",
+      "isTransactionFamily": true,
+      "labelKey": "rta.family.notice_admin.label",
+      "order": 5,
+      "purposeKey": "rta.family.notice_admin.purpose"
+    },
+    {
+      "id": "parcel_structure",
+      "isTransactionFamily": true,
+      "labelKey": "rta.family.parcel_structure.label",
+      "order": 6,
+      "purposeKey": "rta.family.parcel_structure.purpose"
+    },
+    {
+      "id": "title_settlement",
+      "isTransactionFamily": false,
+      "labelKey": "rta.family.title_settlement.label",
+      "order": 7,
+      "purposeKey": "rta.family.title_settlement.purpose"
+    },
+    {
+      "id": "dispute_rectification",
+      "isTransactionFamily": false,
+      "labelKey": "rta.family.dispute_rectification.label",
+      "order": 8,
+      "purposeKey": "rta.family.dispute_rectification.purpose"
+    },
+    {
+      "id": "controlled_other",
+      "isTransactionFamily": false,
+      "labelKey": "rta.family.controlled_other.label",
+      "order": 9,
+      "purposeKey": "rta.family.controlled_other.purpose"
+    }
+  ],
+  "legacyMatterTypeMap": {
+    "gift": "lk.rta.instrument.gift",
+    "lease": "lk.rta.instrument.lease",
+    "mortgage": "lk.rta.instrument.mortgage",
+    "other": "lk.rta.instrument.other_declared_instrument",
+    "transfer": "lk.rta.instrument.transfer_sale"
+  },
+  "regimeId": "lk.rta",
+  "subtypes": [
+    {
+      "companionTemplateIds": [
+        "rta.ops.tire.31"
+      ],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FULL",
+      "familyId": "ownership_change",
+      "formTemplateId": "rta.reg.2022.form.08",
+      "gazetteFormNumber": "8",
+      "id": "lk.rta.instrument.transfer_sale",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.transfer_sale",
+      "order": 1,
+      "outOfV0ReasonKey": null,
+      "releaseTier": "V0",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (i); Form 8",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "s. 43",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        },
+        {
+          "locator": "",
+          "note": "",
+          "sourceRecordId": "src.lk.rgd.ops.transactions"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FOCUSED",
+      "familyId": "agreement_security",
+      "formTemplateId": "rta.reg.2022.form.23",
+      "gazetteFormNumber": "23",
+      "id": "lk.rta.instrument.sale_agreement",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.sale_agreement",
+      "order": 2,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (ii); Form 23",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C07_MORTGAGE_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "agreement_security",
+      "formTemplateId": "rta.reg.2022.form.24",
+      "gazetteFormNumber": "24",
+      "id": "lk.rta.instrument.security_bond_transfer",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.security_bond_transfer",
+      "order": 3,
+      "outOfV0ReasonKey": "rta.v0_exclusion.specialist_validation_required",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (iii); Form 24",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C19_COURT_STATUTORY_SALE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FULL",
+      "familyId": "ownership_change",
+      "formTemplateId": "rta.reg.2022.form.25",
+      "gazetteFormNumber": "25",
+      "id": "lk.rta.instrument.certificate_sale_register",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.certificate_sale_register",
+      "order": 4,
+      "outOfV0ReasonKey": "rta.v0_exclusion.court_or_statutory_sale",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (iv); Form 25",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "s. 56",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C06_ENCUMBRANCES",
+        "C18_CANCELLATION_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FOCUSED",
+      "familyId": "cancel_release",
+      "formTemplateId": "rta.reg.2022.form.26",
+      "gazetteFormNumber": "26",
+      "id": "lk.rta.instrument.sale_agreement_cancel",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.sale_agreement_cancel",
+      "order": 5,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (v); Form 26",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C15_LIFE_INTEREST",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FULL",
+      "familyId": "ownership_change",
+      "formTemplateId": "rta.reg.2022.form.09",
+      "gazetteFormNumber": "9",
+      "id": "lk.rta.instrument.gift",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.gift",
+      "order": 6,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (vi); Form 9",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "s. 46",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C15_LIFE_INTEREST",
+        "C18_CANCELLATION_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FULL",
+      "familyId": "cancel_release",
+      "formTemplateId": "rta.reg.2022.form.27",
+      "gazetteFormNumber": "27",
+      "id": "lk.rta.instrument.gift_cancel",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.gift_cancel",
+      "order": 7,
+      "outOfV0ReasonKey": "rta.v0_exclusion.specialist_validation_required",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (vii); Form 27",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C15_LIFE_INTEREST",
+        "C18_CANCELLATION_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FOCUSED",
+      "familyId": "cancel_release",
+      "formTemplateId": "rta.reg.2022.form.28",
+      "gazetteFormNumber": "28",
+      "id": "lk.rta.instrument.life_interest_cancel",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.life_interest_cancel",
+      "order": 8,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (viii); Form 28",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "s. 46",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C08_LEASE_OCCUPATION",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FOCUSED",
+      "familyId": "use_interest",
+      "formTemplateId": "rta.reg.2022.form.10",
+      "gazetteFormNumber": "10",
+      "id": "lk.rta.instrument.lease",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.lease",
+      "order": 9,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (ix); Form 10",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C08_LEASE_OCCUPATION",
+        "C18_CANCELLATION_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FOCUSED",
+      "familyId": "cancel_release",
+      "formTemplateId": "rta.reg.2022.form.29",
+      "gazetteFormNumber": "29",
+      "id": "lk.rta.instrument.lease_cancel",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.lease_cancel",
+      "order": 10,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (x); Form 29",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C07_MORTGAGE_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FOCUSED",
+      "familyId": "agreement_security",
+      "formTemplateId": "rta.reg.2022.form.11",
+      "gazetteFormNumber": "11",
+      "id": "lk.rta.instrument.mortgage",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.mortgage",
+      "order": 11,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xi); Form 11",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C07_MORTGAGE_RELEASE",
+        "C18_CANCELLATION_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FOCUSED",
+      "familyId": "cancel_release",
+      "formTemplateId": "rta.reg.2022.form.12",
+      "gazetteFormNumber": "12",
+      "id": "lk.rta.instrument.mortgage_cancel",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.mortgage_cancel",
+      "order": 12,
+      "outOfV0ReasonKey": null,
+      "releaseTier": "V0",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xii); Form 12",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "",
+          "note": "",
+          "sourceRecordId": "src.lk.rgd.ops.transactions"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C17_CAVEAT_LITIGATION",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "notice_admin",
+      "formTemplateId": "rta.reg.2022.form.13",
+      "gazetteFormNumber": "13",
+      "id": "lk.rta.instrument.caveat",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.caveat",
+      "order": 13,
+      "outOfV0ReasonKey": "rta.v0_exclusion.grounds_need_lawyer_analysis",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xiii); Form 13",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C17_CAVEAT_LITIGATION",
+        "C18_CANCELLATION_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "cancel_release",
+      "formTemplateId": "rta.reg.2022.form.30",
+      "gazetteFormNumber": "30",
+      "id": "lk.rta.instrument.caveat_cancel",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.caveat_cancel",
+      "order": 14,
+      "outOfV0ReasonKey": "rta.v0_exclusion.grounds_need_lawyer_analysis",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xiv); Form 30",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "MINIMAL",
+      "familyId": "notice_admin",
+      "formTemplateId": "rta.reg.2022.form.31",
+      "gazetteFormNumber": "31",
+      "id": "lk.rta.instrument.address_register",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.address_register",
+      "order": 15,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xv); Form 31",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C13_SUBDIVISION_AMALGAMATION",
+        "C17_CAVEAT_LITIGATION",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "parcel_structure",
+      "formTemplateId": "rta.reg.2022.form.07",
+      "gazetteFormNumber": "7",
+      "id": "lk.rta.instrument.subdivision_amalgamation",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.subdivision_amalgamation",
+      "order": 16,
+      "outOfV0ReasonKey": "rta.v0_exclusion.parcel_restructure",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xvi); Form 7",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "s. 36",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C14_CONDOMINIUM_STRATA",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "parcel_structure",
+      "formTemplateId": "rta.reg.2022.form.21",
+      "gazetteFormNumber": "21",
+      "id": "lk.rta.instrument.condominium_register",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.condominium_register",
+      "order": 17,
+      "outOfV0ReasonKey": "rta.v0_exclusion.condominium",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xvii); Form 21",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "s. 50-52",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FULL",
+      "familyId": "ownership_change",
+      "formTemplateId": "rta.reg.2022.form.32",
+      "gazetteFormNumber": "32",
+      "id": "lk.rta.instrument.land_exchange",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.land_exchange",
+      "order": 18,
+      "outOfV0ReasonKey": "rta.v0_exclusion.two_parcel_examination",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xviii); Form 32",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C09_PROBATE_TRANSMISSION",
+        "C15_LIFE_INTEREST",
+        "C18_CANCELLATION_RELEASE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FOCUSED",
+      "familyId": "cancel_release",
+      "formTemplateId": "rta.reg.2022.form.33",
+      "gazetteFormNumber": "33",
+      "id": "lk.rta.instrument.life_interest_cancel_death",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.life_interest_cancel_death",
+      "order": 19,
+      "outOfV0ReasonKey": "rta.v0_exclusion.subtype_not_piloted",
+      "releaseTier": "V1",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xix); Form 33",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C18_CANCELLATION_RELEASE",
+        "C19_COURT_STATUTORY_SALE",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "FULL",
+      "familyId": "cancel_release",
+      "formTemplateId": "rta.reg.2022.form.34",
+      "gazetteFormNumber": "34",
+      "id": "lk.rta.instrument.certificate_sale_cancel",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.certificate_sale_cancel",
+      "order": 20,
+      "outOfV0ReasonKey": "rta.v0_exclusion.court_or_statutory_sale",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xx); Form 34",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C16_SERVITUDE_ACCESS",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "use_interest",
+      "formTemplateId": "rta.reg.2022.form.35",
+      "gazetteFormNumber": "35",
+      "id": "lk.rta.instrument.servitude_access_transfer",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.servitude_access_transfer",
+      "order": 21,
+      "outOfV0ReasonKey": "rta.v0_exclusion.servitude_analysis",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xxi); Form 35",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "s. 75",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C08_LEASE_OCCUPATION",
+        "C15_LIFE_INTEREST",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "use_interest",
+      "formTemplateId": "rta.reg.2022.form.36",
+      "gazetteFormNumber": "36",
+      "id": "lk.rta.instrument.life_interest_holder_lease",
+      "kind": "PRESCRIBED_INSTRUMENT",
+      "labelKey": "rta.subtype.life_interest_holder_lease",
+      "order": 22,
+      "outOfV0ReasonKey": "rta.v0_exclusion.life_interest",
+      "releaseTier": "DEFERRED",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, item (xxii); Form 36",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C17_CAVEAT_LITIGATION"
+      ],
+      "examinationLevel": "TRACKING",
+      "familyId": "title_settlement",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.process.initial_compilation",
+      "kind": "STATUTORY_PROCESS",
+      "labelKey": "rta.process.initial_compilation",
+      "order": 101,
+      "outOfV0ReasonKey": "rta.v0_exclusion.initial_compilation",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 10-27",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C09_PROBATE_TRANSMISSION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "title_settlement",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.process.transmission_testate",
+      "kind": "STATUTORY_PROCESS",
+      "labelKey": "rta.process.transmission_testate",
+      "order": 102,
+      "outOfV0ReasonKey": "rta.v0_exclusion.transmission",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 54",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C09_PROBATE_TRANSMISSION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "title_settlement",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.process.transmission_intestate",
+      "kind": "STATUTORY_PROCESS",
+      "labelKey": "rta.process.transmission_intestate",
+      "order": 103,
+      "outOfV0ReasonKey": "rta.v0_exclusion.transmission",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 55",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE",
+        "C19_COURT_STATUTORY_SALE"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "title_settlement",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.process.court_order_owner_register",
+      "kind": "STATUTORY_PROCESS",
+      "labelKey": "rta.process.court_order_owner_register",
+      "order": 104,
+      "outOfV0ReasonKey": "rta.v0_exclusion.court_or_statutory_sale",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 56",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C17_CAVEAT_LITIGATION"
+      ],
+      "examinationLevel": "TRACKING",
+      "familyId": "dispute_rectification",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.process.second_class_challenge",
+      "kind": "STATUTORY_PROCESS",
+      "labelKey": "rta.process.second_class_challenge",
+      "order": 105,
+      "outOfV0ReasonKey": "rta.v0_exclusion.litigation_hold",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 29-30",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C17_CAVEAT_LITIGATION"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "dispute_rectification",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.process.rectification_indemnity",
+      "kind": "STATUTORY_PROCESS",
+      "labelKey": "rta.process.rectification_indemnity",
+      "order": 106,
+      "outOfV0ReasonKey": "rta.v0_exclusion.rectification",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 58-62",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C17_CAVEAT_LITIGATION"
+      ],
+      "examinationLevel": "TRACKING",
+      "familyId": "dispute_rectification",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.process.title_settlement_dispute",
+      "kind": "STATUTORY_PROCESS",
+      "labelKey": "rta.process.title_settlement_dispute",
+      "order": 107,
+      "outOfV0ReasonKey": "rta.v0_exclusion.litigation_hold",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 7-9",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        },
+        {
+          "locator": "s. 21-25",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C03_REGISTRY_SEARCH"
+      ],
+      "examinationLevel": "MINIMAL",
+      "familyId": "notice_admin",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.service.inspect_title_register",
+      "kind": "REGISTRY_SERVICE",
+      "labelKey": "rta.service.inspect_title_register",
+      "order": 201,
+      "outOfV0ReasonKey": "rta.v0_exclusion.administrative_service",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 34",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        },
+        {
+          "locator": "",
+          "note": "",
+          "sourceRecordId": "src.lk.rgd.ops.transactions"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C03_REGISTRY_SEARCH"
+      ],
+      "examinationLevel": "MINIMAL",
+      "familyId": "notice_admin",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.service.certified_extract",
+      "kind": "REGISTRY_SERVICE",
+      "labelKey": "rta.service.certified_extract",
+      "order": 202,
+      "outOfV0ReasonKey": "rta.v0_exclusion.administrative_service",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "s. 35",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.act.1998"
+        },
+        {
+          "locator": "",
+          "note": "",
+          "sourceRecordId": "src.lk.rgd.ops.transactions"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C02_RTA_TITLE"
+      ],
+      "examinationLevel": "MINIMAL",
+      "familyId": "notice_admin",
+      "formTemplateId": "rta.ops.tire.31",
+      "gazetteFormNumber": null,
+      "id": "lk.rta.service.new_title_certificate_application",
+      "kind": "REGISTRY_SERVICE",
+      "labelKey": "rta.service.new_title_certificate_application",
+      "order": 203,
+      "outOfV0ReasonKey": null,
+      "releaseTier": "V0",
+      "requiresDeclaredLegalBasis": false,
+      "sources": [
+        {
+          "locator": "new Title Certificate",
+          "note": "",
+          "sourceRecordId": "src.lk.rgd.ops.transactions"
+        },
+        {
+          "locator": "",
+          "note": "",
+          "sourceRecordId": "src.lk.rgd.ops.tire31"
+        }
+      ]
+    },
+    {
+      "companionTemplateIds": [],
+      "defaultModuleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C01_IDENTITY_CAPACITY",
+        "C02_RTA_TITLE"
+      ],
+      "examinationLevel": "SPECIAL",
+      "familyId": "controlled_other",
+      "formTemplateId": null,
+      "gazetteFormNumber": null,
+      "id": "lk.rta.instrument.other_declared_instrument",
+      "kind": "CONTROLLED_OTHER",
+      "labelKey": "rta.subtype.other_declared_instrument",
+      "order": 999,
+      "outOfV0ReasonKey": "rta.v0_exclusion.other_declared_instrument",
+      "releaseTier": "MANUAL_ONLY",
+      "requiresDeclaredLegalBasis": true,
+      "sources": [
+        {
+          "locator": "regulation 15(1) amendment, items (i)-(xxii)",
+          "note": "",
+          "sourceRecordId": "src.lk.rta.gazette.2308_27.2022"
+        },
+        {
+          "locator": "controlled fallback",
+          "note": "Never a default classification. Requires the lawyer to supply a legal basis and confirm the exact instrument.",
+          "sourceRecordId": "src.product.draftly_safety"
+        }
+      ]
+    }
+  ],
+  "versions": {
+    "checklist": "1.0.0",
+    "checks": "1.0.0",
+    "compiler": "1.0.0",
+    "documentClasses": "1.0.0",
+    "eligibility": "1.0.0",
+    "forms": "1.0.0",
+    "questions": "1.0.0",
+    "rulePack": "1.0.0",
+    "taxonomy": "1.0.0"
+  }
+}
