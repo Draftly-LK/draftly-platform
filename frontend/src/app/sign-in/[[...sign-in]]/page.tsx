@@ -21,6 +21,9 @@ export default async function SignInPage() {
       <SignIn
         routing="hash"
         forceRedirectUrl="/"
+        // Without this, the footer "Sign up" link falls back to Clerk's hosted
+        // Account Portal, which cannot see the appearance overrides below.
+        signUpUrl="/sign-up"
         appearance={{
           elements: {
             rootBox: "mx-auto",
