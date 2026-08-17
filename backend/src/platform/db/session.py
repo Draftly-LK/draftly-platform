@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 
+import structlog
 from fastapi import Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -23,6 +24,8 @@ from sqlalchemy.orm import DeclarativeBase
 
 from src.platform.config import get_settings
 from src.platform.db.unit_of_work import UnitOfWork
+
+log = structlog.get_logger(__name__)
 
 _engine: AsyncEngine | None = None
 _session_maker: async_sessionmaker[AsyncSession] | None = None
@@ -75,12 +78,18 @@ async def get_uow(
 
 
 async def check_db_ready() -> bool:
-    """Probe the DB for the /health/ready route — leaks no credentials."""
+    """Probe the DB for the /health/ready route — leaks no credentials.
+
+    The failure is logged with its exception type and message so an operator can
+    tell a driver misconfiguration from a network outage. Neither carries the
+    connection string, so no credential reaches the log.
+    """
     try:
         async with get_session_maker()() as session:
             await session.execute(text("SELECT 1"))
         return True
-    except Exception:
+    except Exception as exc:
+        log.warning("db_ready_check_failed", error_type=type(exc).__name__, error=str(exc))
         return False
 
 

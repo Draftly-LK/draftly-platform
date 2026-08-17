@@ -38,6 +38,18 @@ class Settings(BaseSettings):
     clerk_audience: str = ""
     # Required when using the real Clerk adapter — must match JWT `azp`
     clerk_authorized_party: str = ""
+    # Tolerance for clock drift between this host and Clerk, in seconds.
+    #
+    # With no leeway a host running even two seconds slow rejects every token
+    # as "not yet valid (iat)", which presents as a total login outage rather
+    # than as a clock problem. RFC 7519 §4.1.4 allows a small leeway for
+    # exactly this.
+    #
+    # PyJWT applies leeway to `exp` as well as `iat`/`nbf`, so this also
+    # extends how long an expired token stays acceptable. Clerk session tokens
+    # are short-lived and refreshed automatically, so keep this well under
+    # their lifetime — raise it only if a host genuinely cannot keep time.
+    clerk_leeway_seconds: int = 30
 
     # ── Object storage ──────────────────────────────────────────────────────
     object_storage_bucket: str = ""
@@ -67,6 +79,17 @@ class Settings(BaseSettings):
     # Rasterization density; recorded with each page so coordinate mapping
     # stays exact when a box-producing engine is added later (§4, §6).
     raster_dpi: int = 200
+
+    # ── Source-file ingestion (RTA workflow §6.2) ───────────────────────────
+    # "filesystem" | "object_storage". The filesystem adapter is confined to
+    # local/test/ci at bootstrap, like the stub identity and extraction
+    # adapters: it has no encryption-at-rest or object versioning guarantee.
+    source_file_storage: str = "filesystem"
+    source_file_storage_dir: str = ".data/source-files"
+    # §6.2 stage 1 limits. Enforced server-side; the client's progress bar is
+    # not authoritative.
+    max_source_file_bytes: int = 52_428_800  # 50 MiB
+    max_source_file_pages: int = 300
 
     # ── App behaviour ───────────────────────────────────────────────────────
     environment: str = "local"

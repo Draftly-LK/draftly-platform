@@ -7,3 +7,7 @@ __pycache__/
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Local source-file storage (SOURCE_FILE_STORAGE_DIR). Holds uploaded
+# evidence bytes on a developer machine and must never be committed.
+.data/

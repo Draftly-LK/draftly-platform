@@ -38,6 +38,15 @@ class AuditTargetType(str, enum.Enum):
     TRANSCRIPT = "transcript"
     USER = "user"
     RETENTION = "retention"
+    # RTA matter workflow (draftly-rta-matter-workflow-v1 §12.2)
+    INTAKE_ANSWER = "intake-answer"
+    CHECKLIST_SNAPSHOT = "checklist-snapshot"
+    CHECKLIST_ITEM = "checklist-item"
+    SOURCE_FILE = "source-file"
+    DETECTED_DOCUMENT = "detected-document"
+    ISSUE = "issue"
+    GENERATED_FORM = "generated-form"
+    REGISTRATION_EVENT = "registration-event"
 
 
 class AuditAction(str, enum.Enum):
@@ -78,6 +87,39 @@ class AuditAction(str, enum.Enum):
     # Compliance / retention
     RETENTION_HOLD_PLACED = "retention.hold.placed"
     RETENTION_DESTRUCTION_APPROVED = "retention.destruction.approved"
+    # ── RTA matter workflow ──────────────────────────────────────────────
+    # Every material transition in draftly-rta-matter-workflow-v1 §17 has an
+    # action here, because "audit history identifies actor, role, event,
+    # before/after version/hash, request, and time" is an acceptance criterion,
+    # not a nice-to-have.
+    RTA_MATTER_ROUTED = "rta.matter.routed"
+    RTA_MATTER_SUBTYPE_CONFIRMED = "rta.matter.subtype-confirmed"
+    RTA_MATTER_STATE_CHANGED = "rta.matter.state-changed"
+    RTA_MATTER_AUTOMATION_SCOPE_CHANGED = "rta.matter.automation-scope-changed"
+    RTA_MATTER_LEGACY_MIGRATED = "rta.matter.legacy-migrated"
+    RTA_INTAKE_ANSWER_RECORDED = "rta.intake.answer-recorded"
+    RTA_INTAKE_ANSWER_SUPERSEDED = "rta.intake.answer-superseded"
+    RTA_CHECKLIST_COMPILED = "rta.checklist.compiled"
+    RTA_CHECKLIST_ITEM_DECIDED = "rta.checklist.item-decided"
+    RTA_CHECKLIST_ITEM_WAIVED = "rta.checklist.item-waived"
+    RTA_ORIGINAL_INSPECTION_RECORDED = "rta.checklist.original-inspection-recorded"
+    RTA_SOURCE_FILE_UPLOADED = "rta.source-file.uploaded"
+    RTA_SOURCE_FILE_STATE_CHANGED = "rta.source-file.state-changed"
+    RTA_SOURCE_FILE_REJECTED = "rta.source-file.rejected"
+    RTA_DOCUMENT_BOUNDARY_DECIDED = "rta.document.boundary-decided"
+    RTA_DOCUMENT_CLASSIFIED = "rta.document.classified"
+    RTA_FACT_CONFIRMED = "rta.fact.confirmed"
+    RTA_FACT_CORRECTED = "rta.fact.corrected"
+    RTA_CHECK_RUN = "rta.check.run"
+    RTA_ISSUE_CREATED = "rta.issue.created"
+    RTA_ISSUE_DECIDED = "rta.issue.decided"
+    RTA_FORM_GENERATED = "rta.form.generated"
+    RTA_FORM_FIELD_DECIDED = "rta.form.field-decided"
+    RTA_FORM_PREFLIGHT_RUN = "rta.form.preflight-run"
+    RTA_FORM_APPROVED = "rta.form.approved"
+    RTA_FORM_EXPORTED = "rta.form.exported"
+    RTA_FORM_MARKED_STALE = "rta.form.marked-stale"
+    RTA_REGISTRATION_EVENT_RECORDED = "rta.registration.event-recorded"
 
 
 @dataclass
