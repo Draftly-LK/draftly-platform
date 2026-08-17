@@ -1,0 +1,12 @@
+- Choose good Theme and all
+- Add a background image for the sign in and sign up page
+- supporting both sinhala and english language
+- https://www.rgd.gov.lk/web/index.php/en/services/document-land-registration/title/charges?utm_source=chatgpt.com  (This has the charges for the land registration)
+- read code
+- email service
+- Logo
+- Amendments
+- memory
+- librechat
+- workflows
+-
