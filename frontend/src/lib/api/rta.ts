@@ -56,3 +56,36 @@ export function getRtaTaxonomy(getToken: TokenProvider): Promise<RtaTaxonomyCont
 export function getRtaQuestions(getToken: TokenProvider): Promise<ApiRtaQuestionsContract> {
   return apiFetch<ApiRtaQuestionsContract>("/api/v1/rta/questions", { getToken });
 }
+
+/** One controlled document class a detected document may be classified as. */
+export interface ApiRtaDocumentClass {
+  id: string;
+  labelKey: string;
+  descriptionKey: string;
+  tags: string[];
+  /** True when one uploaded document commonly satisfies several checklist items. */
+  maySatisfyMultipleRequirements: boolean;
+  /** True when this class itself is a dispute/litigation indicator (§8). */
+  redFlag: boolean;
+  /** True when this class signals a V0-exclusion condition (company, POA, ...). */
+  exclusionIndicator: boolean;
+  extractionTemplateKind: string;
+  order: number;
+}
+
+/** Mirrors `document_classes_contract()`. */
+export interface ApiRtaDocumentClassesContract {
+  version: string;
+  classes: ApiRtaDocumentClass[];
+}
+
+/**
+ * The controlled document-class catalogue (§6.2 stage 7). A classification
+ * decision must name one of these ids — never free text — so this is what a
+ * classification-review screen offers instead of a text field.
+ */
+export function getRtaDocumentClasses(
+  getToken: TokenProvider,
+): Promise<ApiRtaDocumentClassesContract> {
+  return apiFetch<ApiRtaDocumentClassesContract>("/api/v1/rta/document-classes", { getToken });
+}
