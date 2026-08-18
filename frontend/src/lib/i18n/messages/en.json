@@ -992,7 +992,17 @@
     "expandGroup": "Show",
     "collapseGroup": "Hide",
     "blockingOnly": "Blocking items only",
-    "groupEmptyFiltered": "No blocking item in this group."
+    "groupEmptyFiltered": "No blocking item in this group.",
+    "preparedTitle": "Draftly prepares this instrument",
+    "preparedBody": "{form} is the prescribed form for this action. Once the evidence is in and you have confirmed the particulars, Draftly can prepare it for your approval.",
+    "manualTitle": "Drafting stays with you",
+    "manualBodyForm": "{form} is the prescribed form for this action, and the matter is set up for it. Draftly does not prepare this instrument itself: {reason}",
+    "manualBodyNoForm": "This action has no prescribed form, so Draftly does not prepare an instrument for it: {reason}",
+    "manualStillWorks": "Everything else runs as normal — the matter tracks facts, evidence, the checklist, and the audit trail.",
+    "stopConditions": "Stop conditions found",
+    "pendingConditions": "{count, plural, =0 {No other conditions outstanding} one {# other condition is checked as the evidence arrives} other {# other conditions are checked as the evidence arrives}}",
+    "viewAllRequirements": "View all {count} requirements",
+    "requirementsHint": "You do not need to work through these now. They are tracked on the matter, and the next step lists the documents that satisfy them."
   },
   "library": {
     "title": "Legal sources",
@@ -1835,21 +1845,21 @@
       "transfer_sale": "Transfer by sale"
     },
     "v0_exclusion": {
-      "administrative_service": "An administrative registry service rather than an instrument this release prepares.",
-      "condominium": "Condominium and conversion matters follow the ss. 50–52 path, which is not piloted.",
-      "court_or_statutory_sale": "A court or statutory sale; the authority for the sale needs lawyer analysis.",
-      "grounds_need_lawyer_analysis": "The grounds have to be settled by the lawyer before any instrument is prepared.",
-      "initial_compilation": "Initial compilation of title, which is outside the piloted transaction set.",
-      "life_interest": "Life interests need interest-specific drafting that is not piloted.",
-      "litigation_hold": "Held while litigation or a dispute is live.",
-      "other_declared_instrument": "An instrument with no prescribed form; the legal basis has to be declared.",
-      "parcel_restructure": "Restructuring the parcel changes the cadastral record and is not piloted.",
-      "rectification": "Rectification of the register needs lawyer analysis of the error and its effect.",
-      "servitude_analysis": "Servitudes need analysis of the right and the affected parcels.",
-      "specialist_validation_required": "Needs specialist validation before it can be prepared here.",
-      "subtype_not_piloted": "Not part of the piloted set in this release.",
-      "transmission": "Transmission on death follows the estate path, which is not piloted.",
-      "two_parcel_examination": "Two parcels must be examined together; this release examines one."
+      "administrative_service": "this is a registry service rather than an instrument Draftly prepares.",
+      "condominium": "condominium matters follow the ss. 50–52 path, which Draftly does not prepare.",
+      "court_or_statutory_sale": "the authority for a court or statutory sale has to be analysed by you.",
+      "grounds_need_lawyer_analysis": "the grounds have to be settled by you first.",
+      "initial_compilation": "first registration of title is outside what Draftly prepares.",
+      "life_interest": "life interests need interest-specific drafting.",
+      "litigation_hold": "the matter is held while litigation or a dispute is live.",
+      "other_declared_instrument": "the instrument has no prescribed form and its legal basis has to be declared.",
+      "parcel_restructure": "restructuring the parcel changes the cadastral record.",
+      "rectification": "rectifying the register needs your analysis of the error and its effect.",
+      "servitude_analysis": "servitudes need analysis of the right and the affected parcels.",
+      "specialist_validation_required": "it needs specialist validation first.",
+      "subtype_not_piloted": "Draftly does not prepare this instrument yet.",
+      "transmission": "transmission on death is handled through the estate path.",
+      "two_parcel_examination": "two parcels have to be examined together, and Draftly examines one."
     }
   },
   "approval": {

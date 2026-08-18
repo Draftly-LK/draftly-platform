@@ -179,7 +179,12 @@ const TIER_BADGES = {
 
 const TOTAL_STEPS = 7;
 
-type FileState = "selected" | "attached" | "pendingUpload" | "uploading" | "failed";
+type FileState =
+  | "selected"
+  | "attached"
+  | "pendingUpload"
+  | "uploading"
+  | "failed";
 interface SelectedFile {
   file: File;
   state: FileState;
@@ -193,7 +198,11 @@ interface SelectedFile {
  * hook order stays stable.
  */
 export function NewMatterScreen() {
-  return isApiEnabled() ? <ApiBoundNewMatterScreen /> : <NewMatterFlow getToken={null} />;
+  return isApiEnabled() ? (
+    <ApiBoundNewMatterScreen />
+  ) : (
+    <NewMatterFlow getToken={null} />
+  );
 }
 
 function ApiBoundNewMatterScreen() {
@@ -210,7 +219,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
   const reduceMotion = useReducedMotion();
   const createDemoMatter = useDemoStore((state) => state.createMatter);
   const addDocument = useDemoStore((state) => state.addDocument);
-  const markProcessingNotConfigured = useDemoStore((state) => state.markProcessingNotConfigured);
+  const markProcessingNotConfigured = useDemoStore(
+    (state) => state.markProcessingNotConfigured,
+  );
 
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -219,7 +230,8 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
   // Step 1 — metadata.
   const [reference, setReference] = useState("");
   const [clientReference, setClientReference] = useState("");
-  const [instrumentLanguage, setInstrumentLanguage] = useState<InstrumentLanguage>("en");
+  const [instrumentLanguage, setInstrumentLanguage] =
+    useState<InstrumentLanguage>("en");
 
   // Steps 2–5 — routing answers.
   const [q01Regime, setQ01Regime] = useState<TriState | null>(null);
@@ -237,7 +249,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
   const [matterVersion, setMatterVersion] = useState<number | null>(null);
   const [routing, setRouting] = useState<ApiRouting | null>(null);
   const [snapshot, setSnapshot] = useState<ApiChecklistSnapshot | null>(null);
-  const [compileState, setCompileState] = useState<"idle" | "loading" | "done" | "failed">("idle");
+  const [compileState, setCompileState] = useState<
+    "idle" | "loading" | "done" | "failed"
+  >("idle");
 
   // Step 7 — evidence.
   const [files, setFiles] = useState<SelectedFile[]>([]);
@@ -250,23 +264,30 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
     () => subtypes.find((candidate) => candidate.id === subtypeId) ?? null,
     [subtypes, subtypeId],
   );
-  const needsDeclaredBasis = selectedSubtype?.requiresDeclaredLegalBasis === true;
+  const needsDeclaredBasis =
+    selectedSubtype?.requiresDeclaredLegalBasis === true;
 
   const describeError = useCallback(
-    (cause: unknown) => (cause instanceof ApiError ? cause.message : t("genericError")),
+    (cause: unknown) =>
+      cause instanceof ApiError ? cause.message : t("genericError"),
     [t],
   );
 
   /** Compile is the one place the flow depends on the server. */
   const runRoutingAndCompile = useCallback(async () => {
-    if (getToken === null || matterId === null || matterVersion === null) return;
+    if (getToken === null || matterId === null || matterVersion === null)
+      return;
     setCompileState("loading");
     setError(null);
     try {
       const routed = await routeMatter(getToken, matterId, matterVersion);
       setRouting(routed);
       setMatterVersion(routed.matter.version);
-      const compiled = await compileChecklist(getToken, matterId, routed.matter.version);
+      const compiled = await compileChecklist(
+        getToken,
+        matterId,
+        routed.matter.version,
+      );
       setSnapshot(compiled);
       setCompileState("done");
     } catch (cause) {
@@ -291,7 +312,10 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
         return familyId !== null;
       case 4:
         if (subtypeId === null) return false;
-        return !needsDeclaredBasis || (declaredLegalBasis.trim().length > 0 && legalBasisConfirmed);
+        return (
+          !needsDeclaredBasis ||
+          (declaredLegalBasis.trim().length > 0 && legalBasisConfirmed)
+        );
       case 5:
         return (
           q03Scope !== null &&
@@ -321,7 +345,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
       if (step === 1) {
         const created = await createMatterRequest(getToken, {
           reference: reference.trim(),
-          ...(clientReference.trim() ? { clientReference: clientReference.trim() } : {}),
+          ...(clientReference.trim()
+            ? { clientReference: clientReference.trim() }
+            : {}),
           instrumentLanguage,
         });
         setMatterId(created.id);
@@ -336,7 +362,12 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
           value: familyId,
           lawyerConfirmed: true,
         });
-      } else if (step === 4 && matterId !== null && subtypeId !== null && matterVersion !== null) {
+      } else if (
+        step === 4 &&
+        matterId !== null &&
+        subtypeId !== null &&
+        matterVersion !== null
+      ) {
         const updated = await confirmSubtype(
           getToken,
           matterId,
@@ -394,7 +425,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
     if (matterId !== null && getToken !== null) {
       setBusy(true);
       setError(null);
-      setFiles((current) => current.map((entry) => ({ ...entry, state: "uploading" })));
+      setFiles((current) =>
+        current.map((entry) => ({ ...entry, state: "uploading" })),
+      );
       let failureCount = 0;
       for (const entry of files) {
         try {
@@ -407,7 +440,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
         } catch {
           failureCount += 1;
           setFiles((current) =>
-            current.map((item) => (item.file === entry.file ? { ...item, state: "failed" } : item)),
+            current.map((item) =>
+              item.file === entry.file ? { ...item, state: "failed" } : item,
+            ),
           );
         }
       }
@@ -422,13 +457,17 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
     if (matterId !== null) {
       // No token available (offline/unauthenticated): hold the files rather
       // than report them uploaded.
-      setFiles((current) => current.map((entry) => ({ ...entry, state: "pendingUpload" })));
+      setFiles((current) =>
+        current.map((entry) => ({ ...entry, state: "pendingUpload" })),
+      );
       router.push(`/matters/${matterId}`);
       return;
     }
     const demoId = createDemoMatter({
       reference: reference.trim() || t("matterPlaceholder"),
-      ...(clientReference.trim() ? { clientReference: clientReference.trim() } : {}),
+      ...(clientReference.trim()
+        ? { clientReference: clientReference.trim() }
+        : {}),
       regime: "rta",
       type: legacyTypeForSubtype(subtypeId),
     });
@@ -438,7 +477,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
       // recorded as awaiting processing. Nothing here may claim "processed".
       markProcessingNotConfigured(documentId);
     });
-    setFiles((current) => current.map((entry) => ({ ...entry, state: "attached" })));
+    setFiles((current) =>
+      current.map((entry) => ({ ...entry, state: "attached" })),
+    );
     router.push(`/matters/${demoId}`);
   }
 
@@ -446,20 +487,23 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
     return (
       <main className="bg-canvas min-h-screen">
         <header className="absolute inset-x-0 top-0 z-10 flex h-16 items-center px-6">
-          <div className="font-heading text-ink text-3xl font-semibold">{t("entryTitle")}</div>
+          <div className="font-heading text-on-dark text-3xl font-semibold">
+            {t("entryTitle")}
+          </div>
           <div className="ml-auto">
             <LocaleToggle />
           </div>
         </header>
         <section className="relative min-h-screen overflow-hidden pt-16">
           <Image
-            src="/images/synthetic-notarial-worktable.png"
+            src="/images/background-image.jpg"
             alt={t("imageAlt")}
             fill
             priority
             sizes="100vw"
             className="object-cover object-center"
           />
+          <div aria-hidden="true" className="bg-scrim absolute inset-0" />
           <div className="relative z-[1] flex min-h-[calc(100vh-64px)] flex-col">
             <div className="flex flex-1 items-center px-6 py-10 sm:px-12 lg:px-20">
               <motion.div
@@ -468,17 +512,23 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                 transition={{ duration: 0.25 }}
                 className="max-w-xl"
               >
-                <div className="text-forest text-sm font-semibold uppercase">
+                <div className="text-soft-green text-sm font-semibold uppercase">
                   {t("entryEyebrow")}
                 </div>
-                <h1 className="mt-2 text-6xl font-semibold sm:text-7xl">{t("entryTitle")}</h1>
-                <p className="text-ink mt-4 max-w-lg text-lg leading-8">{t("entryBody")}</p>
+                <h1 className="text-on-dark mt-2 text-6xl font-semibold sm:text-7xl">
+                  {t("entryTitle")}
+                </h1>
+                <p className="text-on-dark-muted mt-4 max-w-lg text-lg leading-8">
+                  {t("entryBody")}
+                </p>
               </motion.div>
             </div>
-            <div className="border-border-strong bg-surface/95 border-t px-6 py-5 sm:px-12 lg:px-20">
+            <div className="border-border-on-dark bg-panel-dark border-t px-6 py-5 backdrop-blur-sm sm:px-12 lg:px-20">
               <div className="flex flex-wrap items-end gap-4">
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-2xl font-semibold">{t("chooseRegime")}</h2>
+                  <h2 className="text-on-dark text-2xl font-semibold">
+                    {t("chooseRegime")}
+                  </h2>
                   <div className="mt-3 grid gap-2 sm:grid-cols-4">
                     <RegimeChoice
                       active
@@ -518,7 +568,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
   return (
     <main className="bg-canvas min-h-screen">
       <header className="border-border bg-surface flex h-16 items-center border-b px-6">
-        <div className="font-heading text-2xl font-semibold">{t("entryTitle")}</div>
+        <div className="font-heading text-2xl font-semibold">
+          {t("entryTitle")}
+        </div>
         <div className="ml-auto">
           <LocaleToggle />
         </div>
@@ -555,7 +607,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             </label>
             <fieldset className="mt-6">
               <legend className="font-medium">{t("instrumentLanguage")}</legend>
-              <p className="text-muted-ink text-sm">{t("instrumentLanguageHint")}</p>
+              <p className="text-muted-ink text-sm">
+                {t("instrumentLanguageHint")}
+              </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {INSTRUMENT_LANGUAGES.map((language) => (
                   <ChoiceButton
@@ -585,18 +639,28 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               ))}
             </div>
             <p className="text-muted-ink mt-3 flex items-start gap-2 text-sm">
-              <CircleHelp className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              <CircleHelp
+                className="mt-0.5 size-4 shrink-0"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
               {t("unknownIsAcceptable")}
             </p>
             <p className="text-muted-ink mt-4 text-sm">{t("q01Why")}</p>
             {(q01Regime === "NO" || q01Regime === "UNKNOWN") && (
               <div className="border-border-strong bg-selected-bg mt-6 rounded border p-4">
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <ScrollText className="size-5" strokeWidth={1.5} aria-hidden="true" />
+                  <ScrollText
+                    className="size-5"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  />
                   {t("initialCompilationTitle")}
                 </h2>
                 <p className="mt-2 text-sm">{t("initialCompilationBody")}</p>
-                <p className="text-muted-ink mt-2 text-sm">{t("initialCompilationContinue")}</p>
+                <p className="text-muted-ink mt-2 text-sm">
+                  {t("initialCompilationContinue")}
+                </p>
               </div>
             )}
           </section>
@@ -626,7 +690,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <h2 className="text-muted-ink border-border mt-8 border-t pt-6 text-xs font-semibold uppercase">
               {t("familyStatutoryHeading")}
             </h2>
-            <p className="text-muted-ink mt-1 text-sm">{t("familyStatutoryBody")}</p>
+            <p className="text-muted-ink mt-1 text-sm">
+              {t("familyStatutoryBody")}
+            </p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {statutoryFamilies()
                 .filter((family) => family.id !== "controlled_other")
@@ -681,7 +747,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                     formLabel={
                       subtype.gazetteFormNumber === null
                         ? t("noGazetteForm")
-                        : t("gazetteForm", { number: subtype.gazetteFormNumber })
+                        : t("gazetteForm", {
+                            number: subtype.gazetteFormNumber,
+                          })
                     }
                     tierLabel={t(TIER_BADGES[subtype.releaseTier].messageKey)}
                     TierIcon={TIER_BADGES[subtype.releaseTier].icon}
@@ -700,7 +768,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                     required
                     className="border-border-strong bg-surface mt-2 min-h-28 w-full rounded border p-3"
                     value={declaredLegalBasis}
-                    onChange={(event) => setDeclaredLegalBasis(event.target.value)}
+                    onChange={(event) =>
+                      setDeclaredLegalBasis(event.target.value)
+                    }
                   />
                 </label>
                 <label className="mt-3 flex items-start gap-2 text-sm font-medium">
@@ -708,7 +778,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                     type="checkbox"
                     className="mt-0.5 size-4"
                     checked={legalBasisConfirmed}
-                    onChange={(event) => setLegalBasisConfirmed(event.target.checked)}
+                    onChange={(event) =>
+                      setLegalBasisConfirmed(event.target.checked)
+                    }
                   />
                   {t("legalBasisConfirm")}
                 </label>
@@ -750,7 +822,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                   key={answer}
                   multi
                   selected={q05PartyContexts.includes(answer)}
-                  onSelect={() => setQ05PartyContexts(togglePartyContext(q05PartyContexts, answer))}
+                  onSelect={() =>
+                    setQ05PartyContexts(
+                      togglePartyContext(q05PartyContexts, answer),
+                    )
+                  }
                   label={t(`partyContext.${answer}`)}
                 />
               ))}
@@ -777,7 +853,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             {getToken === null && (
               <div className="border-border-strong bg-surface mt-6 rounded border p-4">
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <AlertCircle className="size-5" strokeWidth={1.5} aria-hidden="true" />
+                  <AlertCircle
+                    className="size-5"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  />
                   {t("compilerUnavailableTitle")}
                 </h2>
                 <p className="mt-2 text-sm">{t("compilerUnavailableBody")}</p>
@@ -786,7 +866,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
             {getToken !== null && compileState === "loading" && (
               <p className="text-muted-ink mt-6 flex items-center gap-2">
-                <LoaderCircle className="size-5 animate-spin" strokeWidth={1.5} aria-hidden="true" />
+                <LoaderCircle
+                  className="size-5 animate-spin"
+                  strokeWidth={1.5}
+                  aria-hidden="true"
+                />
                 {t("compiling")}
               </p>
             )}
@@ -794,7 +878,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             {getToken !== null && compileState === "failed" && (
               <div className="border-amber bg-amber-bg text-amber-text mt-6 rounded border p-4">
                 <h2 className="flex items-center gap-2 font-semibold">
-                  <AlertCircle className="size-5" strokeWidth={1.5} aria-hidden="true" />
+                  <AlertCircle
+                    className="size-5"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  />
                   {t("compileFailedTitle")}
                 </h2>
                 <p className="mt-2 text-sm">{t("compileFailedBody")}</p>
@@ -810,44 +898,12 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             )}
 
             {routing !== null && (
-              <div
-                className={cn(
-                  "mt-6 rounded border p-4",
-                  routing.automationScope === "V0_AUTOMATED"
-                    ? "border-forest bg-soft-green"
-                    : "border-border-strong bg-selected-bg",
-                )}
-              >
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  {routing.automationScope === "V0_AUTOMATED" ? (
-                    <Check className="size-5" strokeWidth={1.5} aria-hidden="true" />
-                  ) : (
-                    <UserCog className="size-5" strokeWidth={1.5} aria-hidden="true" />
-                  )}
-                  {routing.automationScope === "V0_AUTOMATED"
-                    ? t("scopeAutomatedTitle")
-                    : t("scopeManualTitle")}
-                </h2>
-                <p className="mt-2 text-sm">
-                  {routing.automationScope === "V0_AUTOMATED"
-                    ? t("scopeAutomatedBody")
-                    : t("scopeManualBody")}
-                </p>
-                {routing.automationScope !== "V0_AUTOMATED" && (
-                  <>
-                    <h3 className="mt-3 text-xs font-semibold uppercase">
-                      {t("unmetGatesHeading")}
-                    </h3>
-                    <ul className="mt-1 list-disc pl-5 text-sm">
-                      {routing.gates
-                        .filter((gate) => !gate.satisfied)
-                        .map((gate) => (
-                          <li key={gate.id}>{tRoot(gate.reasonKey)}</li>
-                        ))}
-                    </ul>
-                  </>
-                )}
-              </div>
+              <ScopePanel
+                routing={routing}
+                subtype={selectedSubtype}
+                t={t}
+                tRoot={tRoot}
+              />
             )}
 
             {snapshot !== null && (
@@ -866,7 +922,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {GROUP_ORDER.map((group) => {
-                      const count = snapshot.items.filter((item) => item.group === group).length;
+                      const count = snapshot.items.filter(
+                        (item) => item.group === group,
+                      ).length;
                       if (count === 0) return null;
                       return (
                         <span
@@ -874,49 +932,73 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                           className="border-border-strong text-muted-ink inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium"
                         >
                           {t(GROUP_MESSAGE_KEYS[group])}
-                          <span className="text-ink font-semibold tabular-nums">{count}</span>
+                          <span className="text-ink font-semibold tabular-nums">
+                            {count}
+                          </span>
                         </span>
                       );
                     })}
                   </div>
                 </div>
 
-                {GROUP_ORDER.map((group) => {
-                  const items = snapshot.items.filter((item) => item.group === group);
-                  if (items.length === 0) return null;
-                  return (
-                    <details
-                      key={group}
-                      // Closed by default. The counts above already say what is
-                      // in the checklist; opening all four at once is ~150 rows
-                      // and buries the shape of the matter.
-                      className="border-border mt-4 border-b"
-                    >
-                      <summary className="hover:bg-hover-bg flex min-h-11 cursor-pointer items-center gap-3 py-2">
-                        <ChevronRight
-                          className="size-4 shrink-0 transition-transform [details[open]_&]:rotate-90"
-                          strokeWidth={1.5}
-                          aria-hidden="true"
-                        />
-                        <span className="font-heading flex-1 text-lg font-semibold">
-                          {t(GROUP_MESSAGE_KEYS[group])}
-                        </span>
-                        <span className="text-muted-ink text-sm tabular-nums">{items.length}</span>
-                      </summary>
-                      <ul className="divide-border border-border mb-3 divide-y border-t">
-                        {items.map((item) => (
-                          <ChecklistRow
-                            key={item.requirementDefinitionId}
-                            item={item}
-                            label={tRoot(item.labelKey)}
-                            reason={inclusionText(item, t)}
-                            basisLabel={t(BASIS_MESSAGE_KEYS[item.mandatoryBasis])}
+                {/* Behind one control, not four. At intake the counts above are
+                    the useful part; the rows themselves are work for the matter,
+                    not reading for the wizard. */}
+                <details className="mt-4">
+                  <summary className="hover:bg-hover-bg text-teal flex min-h-11 cursor-pointer items-center gap-2 font-medium">
+                    <ChevronRight
+                      className="size-4 shrink-0 transition-transform [details[open]_&]:rotate-90"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
+                    {t("viewAllRequirements", { count: snapshot.items.length })}
+                  </summary>
+                  <p className="text-muted-ink mt-1 max-w-3xl text-sm">
+                    {t("requirementsHint")}
+                  </p>
+                  {GROUP_ORDER.map((group) => {
+                    const items = snapshot.items.filter(
+                      (item) => item.group === group,
+                    );
+                    if (items.length === 0) return null;
+                    return (
+                      <details
+                        key={group}
+                        // Closed by default. The counts above already say what is
+                        // in the checklist; opening all four at once is ~150 rows
+                        // and buries the shape of the matter.
+                        className="border-border mt-4 border-b"
+                      >
+                        <summary className="hover:bg-hover-bg flex min-h-11 cursor-pointer items-center gap-3 py-2">
+                          <ChevronRight
+                            className="size-4 shrink-0 transition-transform [details[open]_&]:rotate-90"
+                            strokeWidth={1.5}
+                            aria-hidden="true"
                           />
-                        ))}
-                      </ul>
-                    </details>
-                  );
-                })}
+                          <span className="font-heading flex-1 text-lg font-semibold">
+                            {t(GROUP_MESSAGE_KEYS[group])}
+                          </span>
+                          <span className="text-muted-ink text-sm tabular-nums">
+                            {items.length}
+                          </span>
+                        </summary>
+                        <ul className="divide-border border-border mb-3 divide-y border-t">
+                          {items.map((item) => (
+                            <ChecklistRow
+                              key={item.requirementDefinitionId}
+                              item={item}
+                              label={tRoot(item.labelKey)}
+                              reason={inclusionText(item, t)}
+                              basisLabel={t(
+                                BASIS_MESSAGE_KEYS[item.mandatoryBasis],
+                              )}
+                            />
+                          ))}
+                        </ul>
+                      </details>
+                    );
+                  })}
+                </details>
               </>
             )}
           </section>
@@ -927,9 +1009,15 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <h1 className="text-4xl font-semibold">{t("uploadTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("uploadBody")}</p>
             <label className="border-border-strong bg-surface hover:bg-hover-bg mt-6 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded border border-dashed p-6 text-center">
-              <Upload className="text-forest size-6" strokeWidth={1.5} aria-hidden="true" />
+              <Upload
+                className="text-forest size-6"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
               <span className="mt-2 font-medium">{t("chooseDocuments")}</span>
-              <span className="mt-1 text-sm font-medium">{t("uploadRecommended")}</span>
+              <span className="mt-1 text-sm font-medium">
+                {t("uploadRecommended")}
+              </span>
               <span className="text-muted-ink mt-1 text-sm">
                 {t("selectedFiles", { count: files.length })}
               </span>
@@ -960,9 +1048,15 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                     key={`${entry.file.name}-${index}`}
                     className="flex min-h-11 items-center gap-3 py-2 text-sm"
                   >
-                    <span className="min-w-0 flex-1 truncate">{entry.file.name}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {entry.file.name}
+                    </span>
                     <span className="border-border-strong text-muted-ink inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
-                      <CircleDashed className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                      <CircleDashed
+                        className="size-4"
+                        strokeWidth={1.5}
+                        aria-hidden="true"
+                      />
                       {t(`fileState.${entry.state}`)}
                     </span>
                   </li>
@@ -970,20 +1064,32 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               </ul>
             )}
             {getToken !== null && files.length > 0 && (
-              <p className="text-muted-ink mt-3 text-sm">{t("uploadOnFinishHint")}</p>
+              <p className="text-muted-ink mt-3 text-sm">
+                {t("uploadOnFinishHint")}
+              </p>
             )}
           </section>
         )}
 
         {error !== null && (
-          <p role="alert" className="border-red bg-red-bg text-red mt-6 rounded border p-3 text-sm">
+          <p
+            role="alert"
+            className="border-red bg-red-bg text-red mt-6 rounded border p-3 text-sm"
+          >
             {error}
           </p>
         )}
 
         <footer className="border-border mt-8 flex gap-2 border-t pt-4">
-          <Button onClick={() => setStep((value) => Math.max(0, value - 1))} disabled={busy}>
-            <ArrowLeft className="size-4" strokeWidth={1.5} aria-hidden="true" />
+          <Button
+            onClick={() => setStep((value) => Math.max(0, value - 1))}
+            disabled={busy}
+          >
+            <ArrowLeft
+              className="size-4"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
             {t("back")}
           </Button>
           {step < TOTAL_STEPS ? (
@@ -994,12 +1100,25 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               onClick={() => void goNext()}
             >
               {busy ? t("saving") : t("next")}
-              <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
+              <ArrowRight
+                className="size-4"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
             </Button>
           ) : (
-            <Button className="ml-auto" variant="primary" disabled={busy} onClick={() => void finish()}>
+            <Button
+              className="ml-auto"
+              variant="primary"
+              disabled={busy}
+              onClick={() => void finish()}
+            >
               {busy ? t("saving") : t("create")}
-              <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
+              <ArrowRight
+                className="size-4"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
             </Button>
           )}
         </footer>
@@ -1015,16 +1134,26 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
  * cannot coexist with an asserted party context, and asserting one clears it.
  * Nothing here maps `UNKNOWN` onto `NATURAL_PERSONS_ONLY`.
  */
-function togglePartyContext(current: PartyAnswer[], answer: PartyAnswer): PartyAnswer[] {
-  if (current.includes(answer)) return current.filter((value) => value !== answer);
+function togglePartyContext(
+  current: PartyAnswer[],
+  answer: PartyAnswer,
+): PartyAnswer[] {
+  if (current.includes(answer))
+    return current.filter((value) => value !== answer);
   if (answer === PARTY_UNKNOWN) return [PARTY_UNKNOWN];
   return [...current.filter((value) => value !== PARTY_UNKNOWN), answer];
 }
 
-function inclusionText(item: ApiChecklistItem, t: (key: string) => string): string {
+function inclusionText(
+  item: ApiChecklistItem,
+  t: (key: string) => string,
+): string {
   const messageKey = INCLUSION_REASON_KEYS[item.inclusionReason];
-  const reason = messageKey === undefined ? item.inclusionReason : t(messageKey);
-  return item.inclusionTriggerId === null ? reason : `${reason} · ${item.inclusionTriggerId}`;
+  const reason =
+    messageKey === undefined ? item.inclusionReason : t(messageKey);
+  return item.inclusionTriggerId === null
+    ? reason
+    : `${reason} · ${item.inclusionTriggerId}`;
 }
 
 /**
@@ -1039,7 +1168,10 @@ function legacyTypeForSubtype(subtypeId: string | null): MatterType {
     ([, mapped]) => mapped === subtypeId,
   );
   const legacy = match?.[0];
-  return legacy === "transfer" || legacy === "gift" || legacy === "lease" || legacy === "mortgage"
+  return legacy === "transfer" ||
+    legacy === "gift" ||
+    legacy === "lease" ||
+    legacy === "mortgage"
     ? legacy
     : "other";
 }
@@ -1059,7 +1191,9 @@ function QuestionBlock({
     <fieldset className="border-border mt-6 border-t pt-4">
       <legend className="sr-only">{prompt}</legend>
       <p className="font-medium">{prompt}</p>
-      {hint !== undefined && <p className="text-muted-ink mt-1 text-sm">{hint}</p>}
+      {hint !== undefined && (
+        <p className="text-muted-ink mt-1 text-sm">{hint}</p>
+      )}
       <div className="mt-2 flex flex-wrap gap-2">{children}</div>
     </fieldset>
   );
@@ -1090,7 +1224,9 @@ function ChoiceButton({
           : "border-border-strong bg-surface hover:bg-hover-bg",
       )}
     >
-      {selected && <Check className="size-4" strokeWidth={1.5} aria-hidden="true" />}
+      {selected && (
+        <Check className="size-4" strokeWidth={1.5} aria-hidden="true" />
+      )}
       {label}
     </button>
   );
@@ -1124,7 +1260,13 @@ function FamilyCard({
     >
       <span className="flex w-full items-center gap-2 font-semibold">
         {title}
-        {selected && <Check className="ml-auto size-4" strokeWidth={1.5} aria-hidden="true" />}
+        {selected && (
+          <Check
+            className="ml-auto size-4"
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
+        )}
       </span>
       <span className="text-muted-ink text-sm">{purpose}</span>
     </button>
@@ -1162,7 +1304,9 @@ function SubtypeRow({
     >
       <span className="min-w-0 flex-1">
         <span className="block font-medium">{label}</span>
-        <span className="text-muted-ink block text-sm tabular-nums">{formLabel}</span>
+        <span className="text-muted-ink block text-sm tabular-nums">
+          {formLabel}
+        </span>
       </span>
       <span
         data-release-tier={subtype.releaseTier}
@@ -1171,7 +1315,13 @@ function SubtypeRow({
         <TierIcon className="size-4" strokeWidth={1.5} aria-hidden="true" />
         {tierLabel}
       </span>
-      {selected && <Check className="size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />}
+      {selected && (
+        <Check
+          className="size-4 shrink-0"
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+      )}
     </button>
   );
 }
@@ -1196,7 +1346,99 @@ function demandsOriginal(policy: PhysicalOriginalStatus): boolean {
  * requirements it can satisfy and the two facts that change what the lawyer
  * must physically produce.
  */
-function RequiredDocuments({ snapshot }: { snapshot: ApiChecklistSnapshot | null }) {
+/**
+ * What Draftly will and will not do with this matter, said once.
+ *
+ * The gate list is deliberately not printed in full here. At intake nothing has
+ * been collected yet, so every evidence gate is unmet by definition — showing
+ * eight "not yet established" lines at the moment of creation reads as failure
+ * when it only means "not started". Two things do belong on this screen:
+ * whether Draftly prepares this instrument at all (a property of the subtype,
+ * which no amount of evidence changes), and any STATUTORY blocker, which is a
+ * real legal stop condition and cannot be overridden inside Draftly.
+ *
+ * The rest are counted, not listed, and tracked on the matter dashboard.
+ */
+function ScopePanel({
+  routing,
+  subtype,
+  t,
+  tRoot,
+}: {
+  routing: ApiRouting;
+  subtype: RtaSubtypeDefinition | null;
+  t: ReturnType<typeof useTranslations>;
+  tRoot: ReturnType<typeof useTranslations>;
+}) {
+  const prepared = routing.automationScope === "V0_AUTOMATED";
+  const unmet = routing.gates.filter((gate) => !gate.satisfied);
+  const statutory = unmet.filter((gate) => gate.blockerKind === "STATUTORY");
+  const pending = unmet.length - statutory.length;
+  const form =
+    subtype?.gazetteFormNumber == null
+      ? null
+      : t("gazetteForm", { number: subtype.gazetteFormNumber });
+  const reasonKey = subtype?.outOfV0ReasonKey ?? null;
+
+  return (
+    <div
+      className={cn(
+        "mt-6 rounded border p-4",
+        prepared
+          ? "border-forest bg-soft-green"
+          : "border-border-strong bg-selected-bg",
+      )}
+    >
+      <h2 className="flex items-center gap-2 text-lg font-semibold">
+        {prepared ? (
+          <Check className="size-5" strokeWidth={1.5} aria-hidden="true" />
+        ) : (
+          <UserCog className="size-5" strokeWidth={1.5} aria-hidden="true" />
+        )}
+        {prepared ? t("preparedTitle") : t("manualTitle")}
+      </h2>
+      <p className="mt-2 text-sm">
+        {prepared
+          ? t("preparedBody", { form: form ?? t("noGazetteForm") })
+          : form === null
+            ? t("manualBodyNoForm", {
+                reason: reasonKey === null ? "" : tRoot(reasonKey),
+              })
+            : t("manualBodyForm", {
+                form,
+                reason: reasonKey === null ? "" : tRoot(reasonKey),
+              })}
+      </p>
+      {!prepared && (
+        <p className="text-muted-ink mt-2 text-sm">{t("manualStillWorks")}</p>
+      )}
+
+      {statutory.length > 0 && (
+        <>
+          <h3 className="text-red mt-3 text-xs font-semibold uppercase">
+            {t("stopConditions")}
+          </h3>
+          <ul className="mt-1 list-disc pl-5 text-sm">
+            {statutory.map((gate) => (
+              <li key={gate.id}>{tRoot(gate.reasonKey)}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {pending > 0 && (
+        <p className="text-muted-ink mt-3 text-sm">
+          {t("pendingConditions", { count: pending })}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function RequiredDocuments({
+  snapshot,
+}: {
+  snapshot: ApiChecklistSnapshot | null;
+}) {
   const t = useTranslations("newMatter");
   const tRoot = useTranslations();
 
@@ -1204,7 +1446,12 @@ function RequiredDocuments({ snapshot }: { snapshot: ApiChecklistSnapshot | null
     if (snapshot === null) return [];
     const byId = new Map<
       string,
-      { id: string; requirementCount: number; original: boolean; combined: boolean }
+      {
+        id: string;
+        requirementCount: number;
+        original: boolean;
+        combined: boolean;
+      }
     >();
     for (const item of snapshot.items) {
       for (const classId of item.acceptedDocumentClassIds) {
@@ -1226,7 +1473,8 @@ function RequiredDocuments({ snapshot }: { snapshot: ApiChecklistSnapshot | null
     // Most-demanded first: the documents that unblock the most requirements are
     // the ones worth chasing first.
     return [...byId.values()].sort(
-      (a, b) => b.requirementCount - a.requirementCount || a.id.localeCompare(b.id),
+      (a, b) =>
+        b.requirementCount - a.requirementCount || a.id.localeCompare(b.id),
     );
   }, [snapshot]);
 
@@ -1234,7 +1482,9 @@ function RequiredDocuments({ snapshot }: { snapshot: ApiChecklistSnapshot | null
 
   return (
     <section className="mt-6">
-      <h2 className="font-heading text-xl font-semibold">{t("requiredDocsTitle")}</h2>
+      <h2 className="font-heading text-xl font-semibold">
+        {t("requiredDocsTitle")}
+      </h2>
       {classes.length === 0 ? (
         <p className="text-muted-ink mt-1 text-sm">{t("requiredDocsNone")}</p>
       ) : (
@@ -1249,20 +1499,30 @@ function RequiredDocuments({ snapshot }: { snapshot: ApiChecklistSnapshot | null
                 className="flex min-h-11 flex-wrap items-start gap-x-3 gap-y-1 py-2.5"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium">{tRoot(`${entry.id}.label`)}</span>
+                  <span className="block font-medium">
+                    {tRoot(`${entry.id}.label`)}
+                  </span>
                   <span className="text-muted-ink block text-sm">
                     {t("satisfiesCount", { count: entry.requirementCount })}
                   </span>
                 </span>
                 {entry.original && (
                   <span className="border-amber text-amber-text inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
-                    <ScrollText className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                    <ScrollText
+                      className="size-4"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
                     {t("originalRequired")}
                   </span>
                 )}
                 {entry.combined && (
                   <span className="border-border-strong text-muted-ink inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
-                    <Layers className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                    <Layers
+                      className="size-4"
+                      strokeWidth={1.5}
+                      aria-hidden="true"
+                    />
                     {t("combinedAccepted")}
                   </span>
                 )}
@@ -1320,7 +1580,7 @@ function RegimeChoice({
       type="button"
       disabled={!active}
       aria-pressed={active}
-      className={`flex min-h-20 items-center gap-3 rounded border p-3 text-left ${active ? "border-forest bg-soft-green" : "border-border bg-disabled-bg text-disabled-fg"}`}
+      className={`flex min-h-20 items-center gap-3 rounded border p-3 text-left ${active ? "border-soft-green bg-soft-green text-ink" : "border-border-on-dark text-on-dark-muted bg-transparent"}`}
     >
       <span className="[&_svg]:size-5 [&_svg]:stroke-[1.5]">{icon}</span>
       <span>

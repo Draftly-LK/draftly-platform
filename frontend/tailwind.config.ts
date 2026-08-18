@@ -24,7 +24,12 @@ export default {
         "disabled-bg": "var(--disabled-bg)",
         "amber-bg": "var(--amber-bg)",
         "teal-bg": "var(--teal-bg)",
-        "red-bg": "var(--red-bg)"
+        "red-bg": "var(--red-bg)",
+        "on-dark": "var(--on-dark)",
+        "on-dark-muted": "var(--on-dark-muted)",
+        "panel-dark": "var(--panel-dark)",
+        "border-on-dark": "var(--border-on-dark)",
+        scrim: "var(--scrim)"
       },
       fontFamily: {
         ui: ["var(--font-plex)", "var(--font-noto-sans-si)", "sans-serif"],
