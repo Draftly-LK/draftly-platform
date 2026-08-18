@@ -7,6 +7,7 @@ import pytest
 from src.modules.document.application.processing_service import (
     REASON_DATA_APPROVAL,
     REASON_LOW_CONFIDENCE,
+    REASON_SEND_ALL_OVERRIDE,
     REASON_UNREGISTERED_KIND,
     DocumentProcessingService,
 )
@@ -172,3 +173,57 @@ def _fresh_settings(monkeypatch):
     config._settings = None
     yield
     config._settings = None
+
+
+class TestSendAllOverride:
+    """EXTRACTION_SEND_ALL reads pages the default pipeline would refuse.
+
+    It relaxes exactly two gates — low classification confidence and an
+    unregistered kind — and nothing else. The §10A data-protection gate and the
+    "never invent a particular" rule are unaffected.
+    """
+
+    async def test_below_threshold_is_extracted_and_still_says_why(self, monkeypatch):
+        monkeypatch.setenv("CONFIDENCE_THRESHOLD", "0.55")
+        monkeypatch.setenv("EXTRACTION_SEND_ALL", "true")
+        service, _, extractor = make_service(
+            classifier=FakeClassifier(kind="form8-instrument", confidence=0.2)
+        )
+        report = await service.process(b"pdf", "application/pdf", synthetic=True)
+        assert report.outcome == ProcessingOutcome.EXTRACTED
+        assert extractor.calls == [1, 2]
+        assert REASON_LOW_CONFIDENCE in report.reasons
+        assert REASON_SEND_ALL_OVERRIDE in report.reasons
+
+    async def test_unregistered_kind_yields_transcript_but_no_fields(self, monkeypatch):
+        """The fallback template declares no fields, so nothing can be invented."""
+        monkeypatch.setenv("EXTRACTION_SEND_ALL", "true")
+        service, _, extractor = make_service(
+            classifier=FakeClassifier(kind="other", confidence=0.95)
+        )
+        report = await service.process(b"pdf", "application/pdf", synthetic=True)
+        assert report.outcome == ProcessingOutcome.EXTRACTED
+        assert extractor.calls == [1, 2]
+        assert report.fields == []
+        assert report.transcripts == {1: "page 1 text", 2: "page 2 text"}
+        assert REASON_UNREGISTERED_KIND in report.reasons
+        assert REASON_SEND_ALL_OVERRIDE in report.reasons
+
+    async def test_does_not_bypass_the_data_approval_gate(self, monkeypatch):
+        """Sending everything to the provider is a separate decision from
+        being allowed to send real client documents at all."""
+        monkeypatch.setenv("EXTRACTION_SEND_ALL", "true")
+        monkeypatch.setenv("PROVIDER_DATA_APPROVAL", "false")
+        service, classifier, extractor = make_service()
+        report = await service.process(b"pdf", "application/pdf", synthetic=False)
+        assert report.outcome == ProcessingOutcome.MANUAL_REVIEW
+        assert report.reasons == [REASON_DATA_APPROVAL]
+        assert classifier.calls == 0
+        assert extractor.calls == []
+
+    async def test_clean_classification_reports_no_reasons(self, monkeypatch):
+        monkeypatch.setenv("EXTRACTION_SEND_ALL", "true")
+        service, _, _ = make_service()
+        report = await service.process(b"pdf", "application/pdf", synthetic=True)
+        assert report.outcome == ProcessingOutcome.EXTRACTED
+        assert report.reasons == []

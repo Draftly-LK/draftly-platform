@@ -17,7 +17,7 @@ from __future__ import annotations
 import structlog
 
 from src.modules.document.domain.models import ProcessingOutcome, ProcessingReport
-from src.modules.document.domain.registry import get_template
+from src.modules.document.domain.registry import generic_template, get_template
 from src.modules.document.ports import (
     CandidateField,
     ClassifierPort,
@@ -33,6 +33,10 @@ log = structlog.get_logger(__name__)
 REASON_DATA_APPROVAL = "provider-data-approval-missing"
 REASON_LOW_CONFIDENCE = "classification-below-threshold"
 REASON_UNREGISTERED_KIND = "no-template-for-kind"
+#: Reported when EXTRACTION_SEND_ALL carried a page past a gate that would
+#: otherwise have stopped it, so a report that says "extracted" still says why
+#: it nearly did not.
+REASON_SEND_ALL_OVERRIDE = "send-all-override"
 
 
 class DocumentProcessingService:
@@ -87,25 +91,42 @@ class DocumentProcessingService:
 
         template = get_template(classification.kind)
         below_threshold = classification.model_reported_confidence < settings.confidence_threshold
-        if template is None or below_threshold:
-            # Never guess (§5 Level 3): an unknown or uncertain kind goes to a
-            # human with the page shown, not to an extractor.
-            reasons = []
-            if below_threshold:
-                reasons.append(REASON_LOW_CONFIDENCE)
-            if template is None:
-                reasons.append(REASON_UNREGISTERED_KIND)
-            self._log_meters(ai_calls, len(pages), correlation_id)
-            return ProcessingReport(
-                outcome=ProcessingOutcome.MANUAL_REVIEW,
+        reasons: list[str] = []
+        if below_threshold:
+            reasons.append(REASON_LOW_CONFIDENCE)
+        if template is None:
+            reasons.append(REASON_UNREGISTERED_KIND)
+
+        if reasons:
+            if not settings.extraction_send_all:
+                # Never guess (§5 Level 3): an unknown or uncertain kind goes to
+                # a human with the page shown, not to an extractor.
+                self._log_meters(ai_calls, len(pages), correlation_id)
+                return ProcessingReport(
+                    outcome=ProcessingOutcome.MANUAL_REVIEW,
+                    kind=classification.kind,
+                    kind_model_confidence=classification.model_reported_confidence,
+                    page_count=len(pages),
+                    provider=self._provider_name,
+                    reasons=reasons,
+                    ai_extraction_calls=ai_calls,
+                    pages_processed=len(pages),
+                )
+            # EXTRACTION_SEND_ALL: read the page anyway, and say so.
+            reasons.append(REASON_SEND_ALL_OVERRIDE)
+            log.info(
+                "document.processing.send_all_override",
                 kind=classification.kind,
-                kind_model_confidence=classification.model_reported_confidence,
-                page_count=len(pages),
-                provider=self._provider_name,
                 reasons=reasons,
-                ai_extraction_calls=ai_calls,
-                pages_processed=len(pages),
+                correlation_id=correlation_id,
             )
+
+        if template is None:
+            # Only reachable under the override above: the kind is unregistered
+            # and we are reading it anyway. The fallback declares no fields, so
+            # the page yields readable text and never a candidate particular the
+            # registry cannot vouch for.
+            template = generic_template()
 
         # Extract page by page so every candidate carries a true page number —
         # the only provenance a boxless engine can honestly claim.
@@ -138,6 +159,9 @@ class DocumentProcessingService:
             provider=self._provider_name,
             fields=list(merged.values()),
             transcripts=transcripts,
+            # Empty on the normal path; on the send-all path this is why the
+            # document would otherwise have gone to review.
+            reasons=reasons,
             ai_extraction_calls=ai_calls,
             pages_processed=len(pages),
         )

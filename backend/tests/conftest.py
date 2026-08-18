@@ -26,6 +26,21 @@ _TEST_ENV = {
 for _key, _value in _TEST_ENV.items():
     os.environ.setdefault(_key, _value)
 
+#: Provider gates, pinned to their declared defaults.
+#:
+#: Assigned rather than defaulted: these come from ``backend/.env`` when a
+#: developer has opened them locally (a demo that sends real documents to the
+#: provider, for example), and Settings reads that file. Without pinning, the
+#: tests that assert the closed-gate behaviour pass or fail depending on whose
+#: machine they run on. A test that wants an override sets it with monkeypatch.
+_PINNED_ENV = {
+    "PROVIDER_DATA_APPROVAL": "false",
+    "EXTRACTION_SEND_ALL": "false",
+}
+
+for _key, _value in _PINNED_ENV.items():
+    os.environ[_key] = _value
+
 
 @pytest.fixture(autouse=True)
 def _reset_settings_cache():

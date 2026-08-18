@@ -229,12 +229,47 @@ _TEMPLATES: dict[str, DocumentTemplate] = {
 #: Classification result for anything the registry does not know.
 OTHER_KIND = "other"
 
+#: Transcription-only template for the EXTRACTION_SEND_ALL override.
+#:
+#: Deliberately NOT in ``_TEMPLATES``: it must not appear in the classifier's
+#: allowed kinds, and ``get_template`` must keep returning None for an
+#: unregistered kind so the default pipeline still routes to manual_review.
+#: It declares no fields, so the extractor transcribes the page and there is
+#: no field vocabulary for the model to fill in — an unknown document can
+#: yield readable text but never a candidate particular.
+_GENERIC_DOCUMENT = DocumentTemplate(
+    kind=OTHER_KIND,
+    label="Document of a kind this release does not model",
+    classification_hint="not used — this template is never offered to the classifier",
+    fields=(),
+)
+
 
 def registered_kinds() -> list[str]:
     return sorted(_TEMPLATES)
 
 
 def get_template(kind: str) -> DocumentTemplate | None:
+    return _TEMPLATES.get(kind)
+
+
+def generic_template() -> DocumentTemplate:
+    """The transcription-only template used by the send-all override."""
+    return _GENERIC_DOCUMENT
+
+
+def resolve_extraction_template(kind: str) -> DocumentTemplate | None:
+    """The template an extractor should read a page with.
+
+    Separate from ``get_template``, which answers the policy question "does
+    this release model this kind?" and must keep returning None for
+    ``OTHER_KIND``. This answers the narrower question an adapter asks once the
+    service has already decided to read the page, so ``OTHER_KIND`` resolves to
+    the transcription-only fallback. Any other unrecognised kind is still None,
+    and the adapter refuses it.
+    """
+    if kind == OTHER_KIND:
+        return _GENERIC_DOCUMENT
     return _TEMPLATES.get(kind)
 
 

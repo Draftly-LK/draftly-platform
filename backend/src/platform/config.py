@@ -73,6 +73,13 @@ class Settings(BaseSettings):
     # Classification confidence below which extraction is skipped (manual
     # review instead). Tunable per §10 — measured, not guessed.
     confidence_threshold: float = 0.55
+    # Demo override: send every page to the extractor even when the kind is
+    # uncertain or has no template, instead of stopping at manual_review. The
+    # honesty rules still hold — an unregistered kind yields a transcript and
+    # NO candidate fields, and the reason codes that would have routed the
+    # document to review are still reported. Does not bypass the §10A gate
+    # above; that remains a separate decision.
+    extraction_send_all: bool = False
     # Rasterization density; recorded with each page so coordinate mapping
     # stays exact when a box-producing engine is added later (§4, §6).
     raster_dpi: int = 200

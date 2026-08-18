@@ -24,8 +24,8 @@ from src.modules.document.domain.errors import ExtractionProviderError
 from src.modules.document.domain.registry import (
     OTHER_KIND,
     classification_prompt,
-    get_template,
     registered_kinds,
+    resolve_extraction_template,
 )
 from src.modules.document.ports import (
     ClassificationResult,
@@ -92,7 +92,7 @@ class GeminiExtractionAdapter:
     # ── OcrExtractorPort ─────────────────────────────────────────────────────
 
     async def extract(self, page: PageRaster, kind: str) -> ExtractionResult:
-        template = get_template(kind)
+        template = resolve_extraction_template(kind)
         if template is None:
             raise ExtractionProviderError(f"No template registered for kind '{kind}'.")
         response = await self._generate(
