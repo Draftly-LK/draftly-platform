@@ -47,10 +47,17 @@ export default async function RootLayout({
   const locale = await getLocale();
   const messages = await getMessages();
   const multilingual = isMultilingualEnabled();
-  const body = (
-    <NextIntlClientProvider locale={locale} messages={messages} timeZone="Asia/Colombo">
-      <MultilingualProvider enabled={multilingual}>{children}</MultilingualProvider>
-    </NextIntlClientProvider>
+  // ProvisionGate renders translated copy on its blocking-error state, so it
+  // has to sit inside NextIntlClientProvider — not the other way around.
+  const body = isClerkConfigured() ? (
+    <ClerkProvider afterSignOutUrl="/sign-in">
+      {/* Inside ClerkProvider: it reads the session to know when to run.
+          Wraps the tree so first-time users reach onboarding before any
+          workspace screen paints. */}
+      <ProvisionGate>{children}</ProvisionGate>
+    </ClerkProvider>
+  ) : (
+    children
   );
 
   return (
@@ -59,16 +66,9 @@ export default async function RootLayout({
       className={`${plex.variable} ${newsreader.variable} ${notoSansSi.variable} ${notoSerifSi.variable}`}
     >
       <body>
-        {isClerkConfigured() ? (
-          <ClerkProvider afterSignOutUrl="/sign-in">
-            {/* Inside ClerkProvider: it reads the session to know when to run.
-                Wraps the tree so first-time users reach onboarding before any
-                workspace screen paints. */}
-            <ProvisionGate>{body}</ProvisionGate>
-          </ClerkProvider>
-        ) : (
-          body
-        )}
+        <NextIntlClientProvider locale={locale} messages={messages} timeZone="Asia/Colombo">
+          <MultilingualProvider enabled={multilingual}>{body}</MultilingualProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

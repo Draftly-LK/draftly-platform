@@ -1,362 +1,313 @@
 "use client";
 
-import {
-  FileImage,
-  FileWarning,
-  History,
-  RefreshCw,
-  Replace,
-  Upload,
-} from "lucide-react";
+import { AlertCircle, ChevronRight, File, FileWarning, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import { factLabelKey } from "@/lib/i18n/fact-label-keys";
-import { useDemoStore } from "@/lib/store";
-import type { DocumentKind, ProcessingFailureReason } from "@/types";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/ui/status-badge";
-
-const kindKeys: Record<
-  DocumentKind,
-  | "kindDeed"
-  | "kindPlan"
-  | "kindIdentity"
-  | "kindAssessment"
-  | "kindRegistry"
-  | "kindAt"
-  | "kindOther"
-> = {
-  deed: "kindDeed",
-  "survey-plan": "kindPlan",
-  identity: "kindIdentity",
-  assessment: "kindAssessment",
-  "registry-extract": "kindRegistry",
-  "at-form": "kindAt",
-  other: "kindOther",
-};
+import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { getDocumentInbox } from "@/lib/api/documents";
+import { useTokenProvider } from "@/lib/api/use-token-provider";
+import type { ApiDocumentInbox } from "@/types/rta";
 
 /**
- * §6.2 requires every failure to carry a recoverable reason the lawyer can act
- * on. Mapping the reason to a fixed key keeps the explanation typed rather than
- * interpolating a key from stored data.
+ * Screen 6: Document Inbox — REBUILD
+ *
+ * Fetch and display the document inbox: source files, detected documents,
+ * and which ones need review (classification/boundary).
  */
-const failureKeys: Record<
-  ProcessingFailureReason,
-  | "failureNotConfigured"
-  | "failureProviderError"
-  | "failureUnsupportedMedia"
-  | "failurePasswordProtected"
-  | "failurePageLimit"
-  | "failureDataProtection"
-  | "failureTimeout"
-> = {
-  NOT_CONFIGURED: "failureNotConfigured",
-  PROVIDER_ERROR: "failureProviderError",
-  UNSUPPORTED_MEDIA: "failureUnsupportedMedia",
-  PASSWORD_PROTECTED: "failurePasswordProtected",
-  PAGE_LIMIT_EXCEEDED: "failurePageLimit",
-  DATA_PROTECTION_GATE: "failureDataProtection",
-  TIMEOUT: "failureTimeout",
-};
-
 export function DocumentsScreen({ matterId }: { matterId: string }) {
+  return isApiEnabled() ? (
+    <ApiBoundDocumentsScreen matterId={matterId} />
+  ) : (
+    <DocumentsUnavailable matterId={matterId} />
+  );
+}
+
+function ApiBoundDocumentsScreen({ matterId }: { matterId: string }) {
+  const getToken = useTokenProvider();
+  return <DocumentsFlow getToken={getToken} matterId={matterId} />;
+}
+
+function DocumentsFlow({
+  getToken,
+  matterId,
+}: {
+  getToken: TokenProvider;
+  matterId: string;
+}) {
   const t = useTranslations("documents");
-  const tf = useTranslations("facts");
-  const allDocuments = useDemoStore((state) => state.documents);
-  const allFacts = useDemoStore((state) => state.facts);
-  const addDocument = useDemoStore((state) => state.addDocument);
-  const markProcessingNotConfigured = useDemoStore(
-    (state) => state.markProcessingNotConfigured,
-  );
-  const replaceDocument = useDemoStore((state) => state.replaceDocument);
-  const resolveCheck = useDemoStore((state) => state.resolveCheck);
-  // Resolved from the store so the action still targets the right check on a
-  // matter created by cloning, where check ids carry a matter prefix.
-  const missingDocumentCheckId = useDemoStore(
-    (state) =>
-      state.checks.find(
-        (check) =>
-          check.matterId === matterId && check.category === "missing-document",
-      )?.id,
-  );
-  const documents = allDocuments.filter(
-    (document) => document.matterId === matterId,
-  );
-  const facts = allFacts.filter((fact) => fact.matterId === matterId);
-  const [selectedId, setSelectedId] = useState(documents[0]?.id);
-  const [announcement, setAnnouncement] = useState("");
-  const selected =
-    documents.find((document) => document.id === selectedId) ?? documents[0];
-  // The server owns processing. The client stores the file and then records
-  // the only outcome it can honestly produce in this build: no extraction
-  // provider is configured, so the run never happened.
-  const upload = (file: File | undefined) => {
-    if (!file) return;
-    const id = addDocument(file.name, "other", matterId);
-    setSelectedId(id);
-    markProcessingNotConfigured(id);
-    setAnnouncement(t("uploadStored", { name: file.name }));
-  };
-  const requestProcessing = (id: string) => {
-    markProcessingNotConfigured(id);
-    setAnnouncement(t("processingNotConfigured"));
-  };
-  const replace = (id: string) => {
-    replaceDocument(id, t("replacementFileName"), t("replacementReason"));
-    setAnnouncement(t("replacementStored"));
-  };
+  const tProcessing = useTranslations("processing");
+  const [inbox, setInbox] = useState<ApiDocumentInbox | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    getDocumentInbox(getToken, matterId)
+      .then((result) => {
+        if (!cancelled) setInbox(result);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setError(cause instanceof ApiError ? cause.message : "Failed to load documents");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getToken, matterId]);
+
+  if (loading) {
+    return (
+      <AppShell matterId={matterId}>
+        <PageHeader title={t("title")} description={t("description")} />
+        <div className="flex items-center justify-center py-12">
+          <LoaderCircle className="size-6 animate-spin" strokeWidth={1.5} />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell matterId={matterId}>
+        <PageHeader title={t("title")} description={t("description")} />
+        <div className="p-6">
+          <div className="border-red bg-red-bg text-red rounded border p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
+              <p className="text-sm">{error}</p>
+            </div>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!inbox) return null;
+
   return (
     <AppShell matterId={matterId}>
-      <PageHeader
-        title={t("title")}
-        description={t("description")}
-        action={
-          <label className="border-forest bg-forest inline-flex min-h-10 cursor-pointer items-center gap-2 rounded border px-3 py-2 font-medium text-white">
-            <Upload className="size-4" strokeWidth={1.5} />
-            {t("upload")}
-            <input
-              className="sr-only"
-              type="file"
-              accept="application/pdf,image/*"
-              onChange={(event) => upload(event.target.files?.[0])}
-            />
-          </label>
-        }
-      />
-      <div aria-live="polite" className="sr-only">
-        {announcement}
-      </div>
+      <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <section className="border-border-strong bg-surface overflow-hidden rounded border">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1200px] border-collapse whitespace-nowrap text-left">
-              <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
-                <tr className="border-border h-10 border-b">
-                  <th className="px-3">{t("file")}</th>
-                  <th className="px-3">{t("type")}</th>
-                  <th className="px-3">{t("language")}</th>
-                  <th className="px-3">{t("pages")}</th>
-                  <th className="px-3">{t("confidence")}</th>
-                  <th className="px-3">{t("quality")}</th>
-                  <th className="px-3">{t("state")}</th>
-                  <th className="px-3">{t("actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((document) => (
-                  <tr
-                    key={document.id}
-                    className={`border-border h-11 border-b last:border-b-0 ${selected?.id === document.id ? "border-l-forest bg-selected-bg border-l-2" : "hover:bg-hover-bg"}`}
-                  >
-                    <td className="max-w-60 truncate px-3 font-medium">
-                      <button
-                        className="hover:text-teal text-left"
-                        onClick={() => setSelectedId(document.id)}
-                      >
-                        {document.fileName}
-                      </button>
-                      {document.kind === "at-form" && (
-                        <span className="border-border-strong text-muted-ink ml-2 rounded-full border px-2 py-0.5 text-xs">
-                          {t("unsupported")}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 text-sm">
-                      {document.classStatus === "UNIDENTIFIED"
-                        ? t("unidentified")
-                        : t(kindKeys[document.kind])}
-                      {document.versionRelationship === "EXACT_DUPLICATE" && (
-                        <span className="border-border-strong text-muted-ink ml-2 rounded-full border px-2 py-0.5 text-xs">
-                          {t("exactDuplicate")}
-                        </span>
-                      )}
-                      {(document.fragments?.length ?? 0) > 1 && (
-                        <span className="border-border-strong text-muted-ink ml-2 rounded-full border px-2 py-0.5 text-xs">
-                          {t("spansFiles", {
-                            count: document.fragments?.length ?? 0,
-                          })}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 uppercase">{document.language}</td>
-                    <td className="px-3 tabular-nums">{document.pageCount}</td>
-                    <td className="px-3 tabular-nums">
-                      {document.extractionConfidence === undefined
-                        ? "—"
-                        : `${Math.round(document.extractionConfidence * 100)}%`}
-                    </td>
-                    <td className="px-3 text-sm">
-                      {document.qualityProblems.length ? (
-                        <span className="text-amber-text">
-                          {t("qualityIssue", {
-                            count: document.qualityProblems.length,
-                          })}
-                        </span>
-                      ) : (
-                        <span className="text-muted-ink">{t("noIssues")}</span>
-                      )}
-                    </td>
-                    <td className="px-3">
-                      <StatusBadge status={document.processingState} />
-                    </td>
-                    <td className="px-3">
-                      <div className="flex items-center gap-1">
-                        {document.processingState === "PROCESSING_FAILED" && (
-                          <button
-                            aria-label={t("requestProcessing")}
-                            title={t("requestProcessing")}
-                            className="hover:bg-active-bg grid size-8 place-items-center rounded"
-                            onClick={() => requestProcessing(document.id)}
-                          >
-                            <RefreshCw className="size-4" strokeWidth={1.5} />
-                          </button>
-                        )}
-                        <button
-                          aria-label={t("replace")}
-                          title={t("replace")}
-                          className="hover:bg-active-bg grid size-8 place-items-center rounded"
-                          onClick={() => replace(document.id)}
-                        >
-                          <Replace className="size-4" strokeWidth={1.5} />
-                        </button>
-                        <button
-                          className="border-border-strong hover:bg-hover-bg min-h-8 rounded border px-2 text-xs"
-                          onClick={() => setSelectedId(document.id)}
-                        >
-                          {t("open")}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {/* Summary bar */}
+        <div className="border-border-strong bg-surface mb-6 flex flex-wrap gap-4 rounded border p-4">
+          <div>
+            <p className="text-muted-ink text-xs font-semibold uppercase">
+              {t("totalDocuments")}
+            </p>
+            <p className="text-2xl font-semibold">{inbox.documents.length}</p>
           </div>
-        </section>
-        {selected && (
-          <section
-            aria-label={t("review", { name: selected.fileName })}
-            className="border-border-strong bg-surface mt-6 grid overflow-hidden rounded border xl:grid-cols-[180px_minmax(320px,1fr)_340px]"
-          >
-            <aside className="border-border border-b p-3 xl:border-b-0 xl:border-r">
-              <h2 className="text-sm font-semibold">{t("pageThumbs")}</h2>
-              <div className="mt-3 flex gap-2 overflow-x-auto xl:block xl:space-y-2">
-                {Array.from({ length: selected.pageCount }, (_, index) => (
-                  <button
-                    key={index}
-                    className="border-border-strong bg-canvas hover:border-forest grid aspect-[3/4] w-20 shrink-0 place-items-center rounded border text-xs xl:w-full"
-                    aria-label={t("page", { page: index + 1 })}
-                  >
-                    <FileImage className="size-5" strokeWidth={1.5} />
-                    {t("page", { page: index + 1 })}
-                  </button>
-                ))}
+          <div>
+            <p className="text-muted-ink text-xs font-semibold uppercase">
+              {t("boundaryReview")}
+            </p>
+            <p className="text-2xl font-semibold">
+              {inbox.boundaryReviewDocumentIds.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-ink text-xs font-semibold uppercase">
+              {t("classificationReview")}
+            </p>
+            <p className="text-2xl font-semibold">
+              {inbox.classificationReviewDocumentIds.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-ink text-xs font-semibold uppercase">
+              {t("unidentified")}
+            </p>
+            <p className="text-2xl font-semibold">
+              {inbox.unidentifiedDocumentIds.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-ink text-xs font-semibold uppercase">
+              {t("unprocessed")}
+            </p>
+            <p className="text-2xl font-semibold">
+              {inbox.unprocessedSourceFileIds.length}
+            </p>
+          </div>
+        </div>
+
+        {/* Unprocessed files prompt */}
+        {inbox.unprocessedSourceFileIds.length > 0 && (
+          <div className="border-border-strong bg-selected-bg mb-6 rounded border p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium">
+                  {inbox.unprocessedSourceFileIds.length} files waiting to be processed
+                </p>
+                <p className="text-muted-ink text-sm">
+                  Run the extraction pipeline before classifying documents.
+                </p>
               </div>
-            </aside>
-            <div className="border-border bg-canvas min-h-[360px] border-b p-6 xl:border-b-0 xl:border-r">
-              <div className="border-border-strong bg-surface mx-auto flex min-h-[320px] max-w-lg flex-col border p-8">
-                <div className="font-heading text-2xl font-semibold">
-                  {t("evidence")}
-                </div>
-                <p className="text-muted-ink mt-3">{t("evidenceBody")}</p>
-                <div className="border-teal bg-teal-bg mt-8 border-l-2 p-3 text-sm">
-                  {facts.find(
-                    (fact) => fact.evidence?.documentId === selected.id,
-                  )?.evidence?.snippet ?? t("evidenceBody")}
-                </div>
+              <Link href={`/matters/${matterId}/processing`}>
+                <Button variant="primary">
+                  {tProcessing("readyToProcess")}
+                  <ChevronRight className="size-4" strokeWidth={1.5} />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Detected documents table */}
+        {inbox.documents.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-muted-ink mb-3 text-xs font-semibold uppercase">
+              {t("documentTable")}
+            </h2>
+            <div className="border-border-strong bg-surface overflow-hidden rounded border">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[800px] border-collapse text-left">
+                  <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
+                    <tr className="border-border h-10 border-b">
+                      <th className="px-3">{t("documentId")}</th>
+                      <th className="px-3">{t("classification")}</th>
+                      <th className="px-3">{t("boundary")}</th>
+                      <th className="px-3">{t("pages")}</th>
+                      <th className="px-3">{t("multipleSource")}</th>
+                      <th className="px-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inbox.documents.map((doc) => {
+                      const needsClassification =
+                        inbox.classificationReviewDocumentIds.includes(doc.id);
+                      const needsBoundary = inbox.boundaryReviewDocumentIds.includes(
+                        doc.id
+                      );
+                      const needsReview = needsClassification || needsBoundary;
+
+                      return (
+                        <tr
+                          key={doc.id}
+                          className={`border-border h-11 border-b last:border-b-0 ${needsReview ? "hover:bg-hover-bg" : ""}`}
+                        >
+                          <td className="px-3">
+                            <span className="flex items-center gap-2">
+                              <File className="size-4 shrink-0" strokeWidth={1.5} />
+                              <span className="text-sm">{doc.id.slice(0, 8)}</span>
+                            </span>
+                          </td>
+                          <td className="px-3">
+                            <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
+                              {doc.classId
+                                ? doc.classId.split(".").pop() || doc.classId
+                                : "Unidentified"}
+                            </span>
+                          </td>
+                          <td className="px-3">
+                            <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
+                              {doc.boundaryStatus}
+                            </span>
+                          </td>
+                          <td className="px-3 text-sm">
+                            {doc.fragments.length}
+                          </td>
+                          <td className="px-3 text-sm">
+                            {doc.spansMultipleSources ? "Yes" : "No"}
+                          </td>
+                          <td className="px-3">
+                            {needsReview ? (
+                              <Link
+                                href={`/matters/${matterId}/documents/${doc.id}/review`}
+                              >
+                                <Button>
+                                  Review
+                                  <ChevronRight className="size-4" strokeWidth={1.5} />
+                                </Button>
+                              </Link>
+                            ) : (
+                              <span className="text-muted-ink text-sm">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-            <aside className="p-4">
-              <h2 className="text-xl font-semibold">{t("extracted")}</h2>
-              <div className="divide-border border-border mt-3 divide-y border-y">
-                {facts
-                  .filter((fact) => fact.evidence?.documentId === selected.id)
-                  .map((fact) => (
-                    <div key={fact.id} className="py-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">
-                          {tf(factLabelKey(fact.labelKey))}
-                        </span>
-                        <StatusBadge status={fact.verificationState} />
-                      </div>
-                      <div className="mt-1 text-sm">
-                        {String(fact.value ?? "—")}
-                      </div>
-                      <div className="text-teal mt-1 text-xs">
-                        {t("source", { page: fact.evidence?.page ?? 1 })}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-              <details className="border-border-strong mt-4 rounded border p-3">
-                <summary className="flex cursor-pointer items-center gap-2 font-medium">
-                  <History className="size-4" strokeWidth={1.5} />
-                  {t("versionHistory")}
-                </summary>
-                <div className="text-muted-ink mt-2 space-y-2 text-sm">
-                  {selected.versions.map((version) => (
-                    <div key={version.id}>
-                      {version.fileName} ·{" "}
-                      {version.reason || t("initialVersion")}
-                    </div>
-                  ))}
-                </div>
-              </details>
-              {selected.processingState === "PROCESSING_FAILED" && (
-                <div className="border-amber bg-amber-bg text-amber-text mt-4 rounded border p-3">
-                  <div className="flex items-center gap-2 font-semibold">
-                    <FileWarning className="size-4" strokeWidth={1.5} />
-                    {t("failureTitle")}
-                  </div>
-                  <p className="mt-1 text-sm">
-                    {t(
-                      failureKeys[selected.failureReason ?? "PROVIDER_ERROR"],
-                    )}
-                  </p>
-                  <p className="mt-2 text-sm">{t("failureNextSteps")}</p>
-                </div>
-              )}
-              {selected.processingState === "PROCESSING_FAILED" && (
-                <div className="mt-3 grid gap-2">
-                  <Button onClick={() => requestProcessing(selected.id)}>
-                    <RefreshCw className="size-4" strokeWidth={1.5} />
-                    {t("requestProcessing")}
-                  </Button>
-                  <Button onClick={() => replace(selected.id)}>
-                    <Replace className="size-4" strokeWidth={1.5} />
-                    {t("replace")}
-                  </Button>
-                  <Button onClick={() => setAnnouncement(t("manualReady"))}>
-                    {t("manual")}
-                  </Button>
-                </div>
-              )}
-            </aside>
           </section>
         )}
-        <section className="border-border bg-surface mt-6 border-y px-4 py-5">
-          <h2 className="text-xl font-semibold">
-            {t("missingRecommendations")}
-          </h2>
-          <p className="text-muted-ink mt-1">{t("missingBody")}</p>
-          <Button
-            className="mt-3"
-            onClick={() => {
-              if (missingDocumentCheckId) {
-                resolveCheck(
-                  missingDocumentCheckId,
-                  "document-requested",
-                  t("requestReady"),
-                );
-              }
-              setAnnouncement(t("requestReady"));
-            }}
-          >
-            {t("requestDocument")}
-          </Button>
-        </section>
+
+        {/* Source files section */}
+        {inbox.sourceFiles.length > 0 && (
+          <section>
+            <h2 className="text-muted-ink mb-3 text-xs font-semibold uppercase">
+              {t("sourceFilesSection")}
+            </h2>
+            <div className="border-border-strong bg-surface overflow-hidden rounded border">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px] border-collapse text-left text-sm">
+                  <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
+                    <tr className="border-border h-10 border-b">
+                      <th className="px-3">{t("sourceFileName")}</th>
+                      <th className="px-3">{t("sourceFileState")}</th>
+                      <th className="px-3">{t("pages")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inbox.sourceFiles.map((file) => (
+                      <tr
+                        key={file.id}
+                        className="border-border h-11 border-b last:border-b-0"
+                      >
+                        <td className="px-3">
+                          <span className="flex items-center gap-2">
+                            {file.state === "PROCESSING_FAILED" ? (
+                              <FileWarning className="size-4 shrink-0" strokeWidth={1.5} />
+                            ) : (
+                              <File className="size-4 shrink-0" strokeWidth={1.5} />
+                            )}
+                            <span>{file.originalFilename}</span>
+                          </span>
+                        </td>
+                        <td className="px-3">
+                          <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
+                            {file.state}
+                          </span>
+                        </td>
+                        <td className="px-3">
+                          {file.pageCount || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+function DocumentsUnavailable({ matterId }: { matterId: string }) {
+  const t = useTranslations("documents");
+  return (
+    <AppShell matterId={matterId}>
+      <PageHeader title={t("title")} description={t("description")} />
+      <div className="p-6">
+        <div className="border-border-strong bg-surface rounded border p-6">
+          <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
+          <p className="mt-2 text-sm">Backend not configured.</p>
+        </div>
       </div>
     </AppShell>
   );

@@ -27,11 +27,11 @@ export default async function SignUpPage() {
         appearance={{
           elements: {
             rootBox: "mx-auto",
-            card: "shadow-none border border-border rounded-[8px] font-sans",
+            card: "shadow-none border border-border rounded-[8px] font-ui",
             headerTitle: "font-heading text-ink font-semibold",
             headerSubtitle: "text-muted-ink",
             formButtonPrimary:
-              "bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] text-sm font-medium",
+              "bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] text-sm font-medium text-white",
             formFieldInput:
               "border-border focus-visible:outline-ring rounded-[6px] bg-surface text-sm",
             footerActionLink: "text-forest hover:text-forest/80",
@@ -39,7 +39,7 @@ export default async function SignUpPage() {
               "border-border rounded-[6px] hover:bg-hover-bg text-sm font-medium",
             identityPreviewText: "text-ink text-sm",
             otpCodeFieldInput:
-              "border-border focus-visible:outline-ring rounded-[6px] text-center font-mono",
+              "border-border focus-visible:outline-ring rounded-[6px] text-center font-ui tabular-nums",
           },
         }}
       />

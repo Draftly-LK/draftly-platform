@@ -29,7 +29,7 @@ def _adapter(private_key: Any, *, leeway_seconds: int) -> ClerkIdentityAdapter:
     adapter = ClerkIdentityAdapter(
         issuer=ISSUER,
         secret_key="sk_test_notused",
-        authorized_party=AZP,
+        authorized_parties=frozenset({AZP}),
         leeway_seconds=leeway_seconds,
     )
     # The JWKS fetch is network I/O and is not what these tests are about.
@@ -39,14 +39,14 @@ def _adapter(private_key: Any, *, leeway_seconds: int) -> ClerkIdentityAdapter:
     return adapter
 
 
-def _token(private_key: Any, *, issued_offset: timedelta) -> str:
+def _token(private_key: Any, *, issued_offset: timedelta, azp: str = AZP) -> str:
     """A well-formed Clerk-shaped token whose `iat` is deliberately skewed."""
     issued_at = datetime.now(tz=UTC) + issued_offset
     return jwt.encode(
         {
             "iss": ISSUER,
             "sub": "user_synthetic_001",
-            "azp": AZP,
+            "azp": azp,
             "email": "solo@example.com",
             "email_verified": True,
             "iat": issued_at,
@@ -95,7 +95,7 @@ class TestClockSkewLeeway:
             ClerkIdentityAdapter(
                 issuer=ISSUER,
                 secret_key="sk_test_notused",
-                authorized_party=AZP,
+                authorized_parties=frozenset({AZP}),
                 leeway_seconds=-1,
             )
 
@@ -138,17 +138,49 @@ class TestEmailFromPayload:
 
 
 class TestAssertAuthorizedParty:
+    _LOCAL = frozenset({"http://localhost:3000", "http://localhost:4310"})
+
     def test_accepts_matching_azp(self):
-        _assert_authorized_party({"azp": "http://localhost:4310"}, "http://localhost:4310")
+        _assert_authorized_party({"azp": "http://localhost:4310"}, frozenset({AZP}))
+
+    def test_accepts_either_local_origin_on_the_allowlist(self):
+        _assert_authorized_party({"azp": "http://localhost:3000"}, self._LOCAL)
+        _assert_authorized_party({"azp": "http://localhost:4310"}, self._LOCAL)
 
     def test_rejects_missing_azp(self):
         with pytest.raises(IdentityValidationError):
-            _assert_authorized_party({"sub": "user_1"}, "http://localhost:4310")
+            _assert_authorized_party({"sub": "user_1"}, frozenset({AZP}))
 
     def test_rejects_empty_azp(self):
         with pytest.raises(IdentityValidationError):
-            _assert_authorized_party({"azp": ""}, "http://localhost:4310")
+            _assert_authorized_party({"azp": ""}, frozenset({AZP}))
 
     def test_rejects_mismatched_azp(self):
         with pytest.raises(IdentityValidationError):
-            _assert_authorized_party({"azp": "https://other-app.example"}, "http://localhost:4310")
+            _assert_authorized_party({"azp": "https://other-app.example"}, self._LOCAL)
+
+    def test_empty_allowlist_is_refused_at_construction(self):
+        with pytest.raises(ValueError):
+            ClerkIdentityAdapter(
+                issuer=ISSUER,
+                secret_key="sk_test_notused",
+                authorized_parties=frozenset(),
+            )
+
+    async def test_validate_token_accepts_the_other_local_origin(self, rsa_key: Any) -> None:
+        adapter = ClerkIdentityAdapter(
+            issuer=ISSUER,
+            secret_key="sk_test_notused",
+            authorized_parties=self._LOCAL,
+            leeway_seconds=30,
+        )
+        adapter._jwks_client.get_signing_key_from_jwt = (  # type: ignore[method-assign]
+            lambda _token: _StaticSigningKey(rsa_key.public_key())
+        )
+        token = _token(
+            rsa_key,
+            issued_offset=timedelta(seconds=0),
+            azp="http://localhost:3000",
+        )
+        claims = await adapter.validate_token(token)
+        assert claims.subject == "user_synthetic_001"

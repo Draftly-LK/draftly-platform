@@ -8,7 +8,7 @@
   },
   "scripts": {
     "check:markdown": "markdownlint-cli2",
-    "check": "pnpm --dir frontend typecheck && pnpm --dir frontend lint && pnpm --dir frontend build && pnpm check:markdown"
+    "check": "pnpm --dir frontend typecheck && pnpm --dir frontend lint && pnpm --dir frontend test && pnpm --dir frontend build && pnpm check:markdown"
   },
   "devDependencies": {
     "markdownlint-cli2": "0.18.1",

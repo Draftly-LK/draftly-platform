@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { updateMe, type ProfileUpdate } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
+import { useProvisionGate } from "@/components/auth/provision-gate";
 
 /**
  * First-run capture of the professional details Draftly prints on forms.
@@ -99,6 +100,7 @@ export function OnboardingScreen() {
   const tProfile = useTranslations("profile");
   const router = useRouter();
   const getToken = useTokenProvider();
+  const { refreshProvisioning } = useProvisionGate();
 
   const [draft, setDraft] = useState<OnboardingDraft>(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -125,6 +127,10 @@ export function OnboardingScreen() {
     setError(null);
     try {
       await updateMe(getToken, toProfileUpdate(draft));
+      // Clears the gate's cached "needs onboarding" outcome so it re-fetches
+      // instead of reading the stale value and bouncing this user straight
+      // back here once `/` renders.
+      refreshProvisioning();
       // `replace`, not `push`: onboarding is complete, so Back must not return
       // to a form the gate would immediately redirect away from again.
       router.replace("/");

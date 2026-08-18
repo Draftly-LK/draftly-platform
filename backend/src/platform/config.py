@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     clerk_issuer: str = ""
     clerk_secret_key: str = ""
     clerk_audience: str = ""
+    # Required when using the real Clerk adapter — comma-separated JWT `azp`
+    # origins (fail closed). Local work uses both :3000 and :4310.
     clerk_authorized_party: str = ""
     # Tolerance for clock drift between this host and Clerk, in seconds.
     #
@@ -154,6 +156,13 @@ class Settings(BaseSettings):
     @property
     def clerk_configured(self) -> bool:
         return bool(self.clerk_issuer and self.clerk_secret_key)
+
+    @property
+    def clerk_authorized_parties(self) -> frozenset[str]:
+        """Trusted JWT `azp` origins, parsed from `CLERK_AUTHORIZED_PARTY`."""
+        return frozenset(
+            party.strip() for party in self.clerk_authorized_party.split(",") if party.strip()
+        )
 
 
 _settings: Settings | None = None

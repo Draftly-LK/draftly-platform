@@ -15,7 +15,7 @@
  *   a missing header is 428 and a stale one is 412 (api-conventions §3).
  */
 
-import { apiFetch, type TokenProvider } from "@/lib/api/client";
+import { apiFetch, ifMatch, type TokenProvider } from "@/lib/api/client";
 import type {
   ApiChecklistSnapshot,
   ApiIntakeAnswer,
@@ -58,10 +58,6 @@ export interface ConfirmSubtypeBody {
 export interface ListMattersParams {
   limit?: number;
   cursor?: string;
-}
-
-function ifMatch(version: number): Record<string, string> {
-  return { "If-Match": `"${version}"` };
 }
 
 /** Create an intake draft. The exact instrument is chosen later, by a lawyer. */

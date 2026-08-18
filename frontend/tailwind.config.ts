@@ -30,6 +30,9 @@ export default {
         ui: ["var(--font-plex)", "var(--font-noto-sans-si)", "sans-serif"],
         heading: ["var(--font-newsreader)", "var(--font-noto-serif-si)", "serif"]
       },
+      outlineColor: {
+        ring: "var(--ring)"
+      },
       borderRadius: { DEFAULT: "6px", dialog: "8px" },
       boxShadow: {
         popover: "var(--shadow-popover)",

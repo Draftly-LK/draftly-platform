@@ -546,3 +546,464 @@ export interface ApiChecklistSnapshot {
   items: ApiChecklistItem[];
   delta: ApiChecklistDelta | null;
 }
+
+/* ── Document ingestion API wire types ──────────────────────────────────── */
+/* Mirrors backend/src/modules/document/api/schemas.py. */
+
+/** Mirrors `SourceFileRead`. `storageObjectKey` is never exposed. */
+export interface ApiSourceFile {
+  id: string;
+  matterId: string;
+  originalFilename: string;
+  mediaType: string;
+  byteLength: number;
+  sha256: string;
+  storageObjectVersion: string;
+  uploadActorId: string;
+  state: SourceFileState;
+  pageCount: number | null;
+  detectedLanguages: string[];
+  retentionClass: string;
+  failureReason: ProcessingFailureReason | null;
+  failureExplanationKey: string | null;
+  supersededBySourceFileId: string | null;
+  derivedFromSourceFileId: string | null;
+  duplicateOfSourceFileId: string | null;
+  versionRelationship: string | null;
+  detectedDocumentIds: string[];
+  containsMultipleDocuments: boolean;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+/** Mirrors `SourceFileListRead`. */
+export interface ApiSourceFileList {
+  items: ApiSourceFile[];
+  page: ApiPageInfo;
+}
+
+/** Mirrors `DocumentFragmentRead`. */
+export interface ApiDocumentFragment {
+  id: string;
+  sourceFileId: string;
+  pageStart: number;
+  pageEnd: number;
+  orderInDocument: number;
+  /** Null when a human drew the range — a decision is not a model score. */
+  boundaryConfidence: number | null;
+  boundaryStatus: BoundaryStatus;
+}
+
+/** Mirrors `DetectedDocumentRead`. */
+export interface ApiDetectedDocument {
+  id: string;
+  matterId: string;
+  classId: string | null;
+  classConfidence: number | null;
+  classStatus: DocumentClassStatus;
+  boundaryStatus: BoundaryStatus;
+  languageCodes: string[];
+  issuer: string | null;
+  issueOrExecutionDateFactId: string | null;
+  versionRelationship: string | null;
+  duplicateOfDetectedDocumentId: string | null;
+  fragments: ApiDocumentFragment[];
+  sourceFileIds: string[];
+  spansMultipleSources: boolean;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+/** Mirrors `DocumentInboxRead`. */
+export interface ApiDocumentInbox {
+  matterId: string;
+  sourceFiles: ApiSourceFile[];
+  documents: ApiDetectedDocument[];
+  boundaryReviewDocumentIds: string[];
+  classificationReviewDocumentIds: string[];
+  unidentifiedDocumentIds: string[];
+  /** Stored, processing, or failed — never quietly counted as done. */
+  unprocessedSourceFileIds: string[];
+  page: ApiPageInfo;
+}
+
+/** Mirrors `PageCandidateRead`. Nothing here is verified. */
+export interface ApiPageCandidate {
+  key: string;
+  value: string | null;
+  pageNo: number;
+  sourceFileId: string;
+  detectedDocumentId: string | null;
+  provider: string;
+  modelReportedConfidence: number;
+  formatValid: boolean | null;
+}
+
+/** Mirrors `ProcessingRunRead`. `state` is already terminal on return. */
+export interface ApiProcessingRun {
+  jobId: string;
+  state: "succeeded" | "failed";
+  pollAfterMs: number | null;
+  sourceFileId: string;
+  provider: string;
+  outcome: string;
+  reasons: string[];
+  failureReason: ProcessingFailureReason | null;
+  failureExplanationKey: string | null;
+  pagesProcessed: number;
+  aiExtractionCalls: number;
+  startedAt: string;
+  finishedAt: string | null;
+  correlationId: string;
+  sourceFile: ApiSourceFile;
+  detectedDocuments: ApiDetectedDocument[];
+  candidateFields: ApiPageCandidate[];
+  candidatesWithheld: boolean;
+}
+
+/* ── Check and legal-issue API wire types ───────────────────────────────── */
+/* Mirrors backend/src/modules/check/api/schemas.py. */
+
+/** Mirrors `FactVersionPinRead`. */
+export interface ApiFactVersionPin {
+  factId: string;
+  version: number;
+}
+
+/** Mirrors `CheckResultRead`. */
+export interface ApiCheckResult {
+  id: string;
+  checkDefinitionId: string;
+  checkDefinitionVersion: string;
+  runId: string;
+  outcome: CheckOutcome;
+  defaultSeverity: IssueSeverity;
+  explanationKey: string;
+  safetyRuleKey: string | null;
+  labelKey: string | null;
+  comparisonKey: string | null;
+  sourceRecordIds: string[];
+  failureBlockerKind: BlockerKind | null;
+  inputFactVersions: ApiFactVersionPin[];
+  evidenceReferenceIds: string[];
+  requiresHumanConclusion: boolean;
+  /** True when the conclusion rests on a rule this repository cannot verify. */
+  provisional: boolean;
+  createdAt: string;
+}
+
+/** Mirrors `LegalIssueRead`. */
+export interface ApiLegalIssue {
+  id: string;
+  matterId: string;
+  checkId: string | null;
+  issueTypeId: string;
+  severity: IssueSeverity;
+  blockerKind: BlockerKind;
+  state: IssueState;
+  summaryKey: string;
+  sourceRecordIds: string[];
+  evidenceReferenceIds: string[];
+  assignedTo: string | null;
+  resolutionDecisionId: string | null;
+  resolutionReason: string | null;
+  /** The dispositions this issue's blocker kind can legitimately reach. */
+  permittedStates: IssueState[];
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+/** Mirrors `IssueGatesRead`. */
+export interface ApiIssueGates {
+  blocksDraftGeneration: boolean;
+  blocksApproval: boolean;
+  blocksRegistrationReadyExport: boolean;
+  openStatutoryBlockerIds: string[];
+  openBlockingIssueIds: string[];
+}
+
+/** Mirrors `CheckRunRead`. */
+export interface ApiCheckRun {
+  runId: string;
+  results: ApiCheckResult[];
+  raisedIssues: ApiLegalIssue[];
+  gates: ApiIssueGates;
+}
+
+/** Mirrors `CheckResultListRead`. */
+export interface ApiCheckResultList {
+  items: ApiCheckResult[];
+  page: ApiPageInfo;
+}
+
+/** Mirrors `LegalIssueListRead`. Gates are computed over every issue, not the page. */
+export interface ApiLegalIssueList {
+  items: ApiLegalIssue[];
+  page: ApiPageInfo;
+  gates: ApiIssueGates;
+}
+
+/* ── Drafting API wire types ─────────────────────────────────────────────── */
+/* Mirrors backend/src/modules/draft/api/schemas.py. */
+
+/** Mirrors `FactCandidateRead`. */
+export interface ApiFactCandidate {
+  factId: string;
+  factTypeId: string;
+  value: unknown;
+  version: number;
+  status: FactStatus;
+  evidenceReferenceIds: string[];
+  modelReportedConfidence: number | null;
+}
+
+/** Why a field renders its unresolved token instead of a value (§9.4). */
+export type UnresolvedReason =
+  | "MISSING_FACT"
+  | "FACT_UNCONFIRMED"
+  | "FACT_CONFLICTED"
+  | "CRITICAL_FACT_UNCONFIRMED";
+
+/** Mirrors `FormFieldRead`. */
+export interface ApiFormField {
+  id: string;
+  fieldId: string;
+  labelKey: string;
+  sectionKey: string;
+  order: number;
+  critical: boolean;
+  required: boolean;
+  /** The value, or the §9.4 `[[UNRESOLVED: <field_id>]]` token. Never `""`. */
+  displayValue: string;
+  renderedValue: string | null;
+  unresolvedReason: string | null;
+  factId: string | null;
+  factVersion: number | null;
+  evidenceReferenceIds: string[];
+  transformationId: string | null;
+  allowedTransformationIds: string[];
+  validationRuleIds: string[];
+  lawyerAuthoredAllowed: boolean;
+  humanConfirmationRequired: boolean;
+  aiSuggested: boolean;
+  awaitingConfirmation: boolean;
+  reviewDecisionId: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  conflictingCandidates: ApiFactCandidate[];
+}
+
+/** Mirrors `PreflightItemRead`. */
+export interface ApiPreflightItem {
+  code: string;
+  subjectId: string | null;
+  explanationKey: string;
+  gate: string;
+  blocking: boolean;
+}
+
+/** Mirrors `PreflightRead`. `registrationReady` is false for every template today (§9.5). */
+export interface ApiPreflight {
+  formId: string;
+  templateId: string;
+  templateVersion: string;
+  rulePackVersion: string;
+  blocking: ApiPreflightItem[];
+  warnings: ApiPreflightItem[];
+  reviewReady: boolean;
+  approvalReady: boolean;
+  registrationReady: boolean;
+  templateRegistrationReadyCapable: boolean;
+  watermarkKey: string | null;
+  evaluatedAt: string;
+}
+
+/** Mirrors `GeneratedFormRead`. */
+export interface ApiGeneratedForm {
+  id: string;
+  matterId: string;
+  templateId: string;
+  templateVersion: string;
+  titleKey: string;
+  formNumber: string;
+  namespace: TemplateNamespace;
+  formVersion: number;
+  state: GeneratedFormState;
+  subtypeId: string;
+  rulePackVersion: string;
+  draftArtifactHash: string | null;
+  approvedArtifactHash: string | null;
+  approvalId: string | null;
+  staleReason: string | null;
+  /** §9.5 — the recorded defects of the source text travel with the draft. */
+  knownSourceDefectKeys: string[];
+  fields: ApiFormField[];
+  preflight: ApiPreflight;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+/** Mirrors `GeneratedFormSummaryRead`. */
+export interface ApiGeneratedFormSummary {
+  id: string;
+  matterId: string;
+  templateId: string;
+  templateVersion: string;
+  formVersion: number;
+  state: GeneratedFormState;
+  subtypeId: string;
+  rulePackVersion: string;
+  draftArtifactHash: string | null;
+  approvedArtifactHash: string | null;
+  approvalId: string | null;
+  staleReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+/** Mirrors `GeneratedFormListRead`. */
+export interface ApiGeneratedFormList {
+  items: ApiGeneratedFormSummary[];
+  page: ApiPageInfo;
+}
+
+/* ── Approval, export, and registration API wire types ──────────────────── */
+/* Mirrors backend/src/modules/approval/api/schemas.py. No route in this module
+   takes If-Match: an approval, an export, and a registration event are all
+   immutable records with no version to condition on (§9.6). */
+
+/** Mirrors `ApprovalGateItemRead`. */
+export interface ApiApprovalGateItem {
+  id: string;
+  code: string;
+  subjectId: string | null;
+  explanationKey: string;
+  blocking: boolean;
+}
+
+/** Mirrors `ApprovalGateRead`. */
+export interface ApiApprovalGate {
+  formId: string;
+  templateId: string;
+  templateVersion: string;
+  rulePackVersion: string;
+  blocking: ApiApprovalGateItem[];
+  warnings: ApiApprovalGateItem[];
+  approvalReady: boolean;
+  registrationReady: boolean;
+  templateRegistrationReadyCapable: boolean;
+}
+
+/** Mirrors `ApprovalRead`. One immutable §9.6 signed application event. */
+export interface ApiApproval {
+  id: string;
+  matterId: string;
+  targetType: string;
+  targetId: string;
+  targetVersion: string;
+  approverId: string;
+  approverWorkflowRole: string;
+  declarationVersion: string;
+  declarationTextHash: string;
+  snapshotHash: string;
+  confirmedFactHash: string;
+  warningDispositionIds: string[];
+  templateId: string;
+  templateVersion: string;
+  rulePackVersion: string;
+  revokedByApprovalId: string | null;
+  createdAt: string;
+}
+
+/** Mirrors `ApprovalCreatedRead`. */
+export interface ApiApprovalCreated {
+  approval: ApiApproval;
+  gate: ApiApprovalGate;
+}
+
+/** Mirrors `ApprovalListRead`. */
+export interface ApiApprovalList {
+  items: ApiApproval[];
+  page: ApiPageInfo;
+  gate: ApiApprovalGate;
+  currentApprovalId: string | null;
+}
+
+/** What this module can actually produce. Each member names a record, not a document. */
+export type ExportFormat = "WORKING_DRAFT_MANIFEST" | "APPROVED_MANIFEST" | "EVIDENCE_SCHEDULE";
+
+/** Mirrors `FormExportRead`. `registrationReady` is false in every case (§9.5). */
+export interface ApiFormExport {
+  id: string;
+  matterId: string;
+  generatedFormId: string;
+  approvalId: string | null;
+  artifactKind: ExportFormat;
+  artifactHash: string;
+  artifactKey: string;
+  watermarked: boolean;
+  watermarkKey: string | null;
+  registrationReady: boolean;
+  registrationReadyBlockedBy: string[];
+  manifest: Record<string, unknown>;
+  createdBy: string;
+  createdAt: string;
+}
+
+/** Mirrors `FormExportListRead`. */
+export interface ApiFormExportList {
+  items: ApiFormExport[];
+  page: ApiPageInfo;
+}
+
+/** Attestation, presentation, or a registry result — three separate events (§9.6). */
+export type RegistrationEventType =
+  | "ATTESTED"
+  | "PRESENTED"
+  | "DAY_BOOK_ENTERED"
+  | "REGISTERED"
+  | "REFUSED";
+
+/** Mirrors `RegistrationEventRead`. */
+export interface ApiRegistrationEvent {
+  id: string;
+  matterId: string;
+  generatedFormId: string | null;
+  eventType: RegistrationEventType;
+  eventDate: string;
+  evidenceReferenceIds: string[];
+  dayBookReference: string | null;
+  registryOffice: string | null;
+  resultNote: string | null;
+  recordedBy: string;
+  createdAt: string;
+}
+
+/** Mirrors `PresentationDeadlineRead`. The s. 45(1) seven-working-day clock. */
+export interface ApiPresentationDeadline {
+  attestedOn: string;
+  dueOn: string;
+  workingDays: number;
+  basisKey: string;
+  /** True while the public-holiday calendar behind this date is unverified (§16.4). */
+  provisional: boolean;
+  unverifiedReasonKey: string | null;
+}
+
+/** Mirrors `RegistrationEventCreatedRead`. */
+export interface ApiRegistrationEventCreated {
+  event: ApiRegistrationEvent;
+  impliedMatterState: RtaMatterState | null;
+  deadline: ApiPresentationDeadline | null;
+}
+
+/** Mirrors `RegistrationEventListRead`. */
+export interface ApiRegistrationEventList {
+  items: ApiRegistrationEvent[];
+  page: ApiPageInfo;
+}

@@ -33,16 +33,21 @@ export interface ApiAccountStatus {
  * The exact set of fields `PATCH /me` accepts. `UpdateProfileRequest` sets
  * `extra="forbid"`, so anything outside this shape is rejected with 422
  * before it reaches the service.
+ *
+ * Every field is `string | null`, mirroring the backend's `str | None`:
+ * a field **omitted** from the object is left untouched (`exclude_unset=True`
+ * on the backend), an explicit `null` **clears** the column, and a string is
+ * stored verbatim (including `""`).
  */
 export type ProfileUpdate = Partial<{
-  displayName: string;
-  notaryRegistration: string;
-  jurisdiction: string;
-  qualifications: string;
-  professionalTitles: string;
-  addressLine1: string;
-  addressLine2: string;
-  phone: string;
+  displayName: string | null;
+  notaryRegistration: string | null;
+  jurisdiction: string | null;
+  qualifications: string | null;
+  professionalTitles: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  phone: string | null;
 }>;
 
 /**
@@ -57,8 +62,8 @@ export function provisionMe(getToken: TokenProvider): Promise<ApiUser> {
   return apiFetch<ApiUser>("/api/v1/me/provision", { method: "POST", getToken });
 }
 
-export function getMe(getToken: TokenProvider): Promise<ApiUser> {
-  return apiFetch<ApiUser>("/api/v1/me", { getToken });
+export function getMe(getToken: TokenProvider, signal?: AbortSignal): Promise<ApiUser> {
+  return apiFetch<ApiUser>("/api/v1/me", { getToken, signal });
 }
 
 export function getAccountStatus(getToken: TokenProvider): Promise<ApiAccountStatus> {
