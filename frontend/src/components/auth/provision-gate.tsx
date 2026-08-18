@@ -49,6 +49,8 @@ function ApiBoundProvisionGate({ children }: { children: React.ReactNode }) {
   // this only avoids the pointless second request React's StrictMode would
   // otherwise fire in development.
   const attempted = useRef(false);
+  // Where the gate sent the user, so it knows when that navigation has landed.
+  const redirectTarget = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -67,9 +69,11 @@ function ApiBoundProvisionGate({ children }: { children: React.ReactNode }) {
     void provisionMe(getToken)
       .then((user) => {
         if (needsOnboarding(user) && pathname !== "/onboarding") {
+          redirectTarget.current = "/onboarding";
           router.replace("/onboarding");
           // Deliberately not marking ready: the redirect is in flight, and
           // revealing the workspace first is the flash this gate prevents.
+          // The effect below reopens the gate once it lands.
           return;
         }
         setStatus("ready");
@@ -89,6 +93,18 @@ function ApiBoundProvisionGate({ children }: { children: React.ReactNode }) {
         setStatus("ready");
       });
   }, [isLoaded, isSignedIn, getToken, router, pathname]);
+
+  // Reopen the gate once the redirect has landed. `router.replace` is a
+  // client-side navigation, so this component stays mounted and the effect
+  // above returns early on its `attempted` guard — without this, the gate would
+  // hold the bare placeholder over /onboarding forever and the destination
+  // would render as a blank page.
+  useEffect(() => {
+    if (redirectTarget.current !== null && pathname === redirectTarget.current) {
+      redirectTarget.current = null;
+      setStatus("ready");
+    }
+  }, [pathname]);
 
   if (status === "ready") return children;
 

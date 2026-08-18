@@ -167,7 +167,10 @@
     "verifiedCount": "{count} lawyer-reviewed facts",
     "draftCount": "{count} draft awaiting review",
     "activityBody": "Latest action: corrected transferor name",
-    "view": "View {section}"
+    "view": "View {section}",
+    "notLoadedTitle": "This matter is not in the workspace dataset",
+    "notLoadedBody": "It was created on the server, but the workspace views in this build read the local demonstration dataset. Open a demonstration matter to walk through documents, facts, checks, and drafts.",
+    "notLoadedAction": "Go to matters"
   },
   "documents": {
     "title": "Documents",

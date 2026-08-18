@@ -25,7 +25,10 @@ export function OverviewScreen({ matterId }: { matterId: string }) {
   const facts = allFacts.filter((item) => item.matterId === matterId);
   const checks = allChecks.filter((item) => item.matterId === matterId);
   const drafts = allDrafts.filter((item) => item.matterId === matterId);
-  if (!matter) return null;
+  // The workspace views still read the demo dataset, so a matter created
+  // against the live API has no local record. Rendering nothing made that look
+  // like a broken page; say what happened instead.
+  if (!matter) return <MatterNotInWorkspace matterId={matterId} />;
   const progress = [
     { key: "examination", value: matter.progress.examination },
     { key: "drafting", value: matter.progress.drafting },
@@ -151,6 +154,36 @@ export function OverviewScreen({ matterId }: { matterId: string }) {
               </h2>
               <p className="text-muted-ink text-sm">{t("activityBody")}</p>
             </div>
+            <ArrowRight className="size-4" strokeWidth={1.5} />
+          </Link>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+/**
+ * Shown when the id in the URL is not in the demo dataset.
+ *
+ * Reachable today by creating a matter while `NEXT_PUBLIC_API_BASE_URL` is set:
+ * intake persists that matter server-side, but the workspace views below it are
+ * still mock-backed (M3 / E8.9 wires them to the API). Naming the situation is
+ * more useful than a blank canvas or a 404 for a matter that does exist.
+ */
+function MatterNotInWorkspace({ matterId }: { matterId: string }) {
+  const t = useTranslations("overview");
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-2xl p-6">
+        <div className="border-border-strong bg-surface rounded border p-6">
+          <h1 className="text-2xl font-semibold">{t("notLoadedTitle")}</h1>
+          <p className="text-muted-ink mt-2">{t("notLoadedBody")}</p>
+          <p className="text-muted-ink mt-4 font-mono text-xs">{matterId}</p>
+          <Link
+            href="/matters"
+            className="text-teal mt-4 inline-flex items-center gap-2 font-medium hover:underline"
+          >
+            {t("notLoadedAction")}
             <ArrowRight className="size-4" strokeWidth={1.5} />
           </Link>
         </div>
