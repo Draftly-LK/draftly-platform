@@ -17,6 +17,7 @@
 
 import { apiFetch, ifMatch, type TokenProvider } from "@/lib/api/client";
 import type {
+  ApiChecklist,
   ApiChecklistSnapshot,
   ApiIntakeAnswer,
   ApiRouting,
@@ -146,4 +147,17 @@ export function compileChecklist(
     `/api/v1/matters/${encodeURIComponent(matterId)}/checklist/compile`,
     { method: "POST", headers: ifMatch(version), getToken },
   );
+}
+
+/**
+ * The active checklist with live per-requirement state.
+ *
+ * Distinct from `compileChecklist`, which recompiles and returns a snapshot:
+ * this reads what the matter currently stands at, including the derived
+ * lifecycle each requirement is in and which ones block progress.
+ */
+export function getChecklist(getToken: TokenProvider, matterId: string): Promise<ApiChecklist> {
+  return apiFetch<ApiChecklist>(`/api/v1/matters/${encodeURIComponent(matterId)}/checklist`, {
+    getToken,
+  });
 }

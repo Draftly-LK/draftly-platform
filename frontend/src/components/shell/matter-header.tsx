@@ -137,6 +137,10 @@ function MatterHeaderShell({
   updatedAt?: string;
 }) {
   const t = useTranslations("matterNav");
+  /** `subtitleKey` is a rule-pack key (`rta.subtype.*`, `rta.family.*`), which
+   *  lives at the message root — resolving it through the namespaced `t` above
+   *  asked for `matterNav.rta.subtype.…` and rendered the raw key. */
+  const tRoot = useTranslations();
   const pathname = usePathname();
 
   return (
@@ -147,7 +151,7 @@ function MatterHeaderShell({
             <span className="border-border-strong rounded-full border px-2 py-1">
               {t("regime")}
             </span>
-            <span>{data.subtitleKey ? t(data.subtitleKey) : data.subtitleFallback}</span>
+            <span>{data.subtitleKey ? tRoot(data.subtitleKey) : data.subtitleFallback}</span>
             {data.state && (
               <>
                 <span>·</span>

@@ -9,10 +9,26 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { MatterDashboard } from "@/components/matter/matter-dashboard";
+import { isApiEnabled } from "@/lib/api/client";
 import { useDemoStore } from "@/lib/store";
 import { AppShell } from "@/components/shell/app-shell";
 
+/**
+ * The matter dashboard.
+ *
+ * With the backend configured this reads the live matter; the demo dataset
+ * implementation below it is what the offline demo still runs on.
+ */
 export function OverviewScreen({ matterId }: { matterId: string }) {
+  return isApiEnabled() ? (
+    <MatterDashboard matterId={matterId} />
+  ) : (
+    <DemoOverviewScreen matterId={matterId} />
+  );
+}
+
+function DemoOverviewScreen({ matterId }: { matterId: string }) {
   const t = useTranslations("overview");
   const matter = useDemoStore((state) =>
     state.matters.find((item) => item.id === matterId),
@@ -165,10 +181,8 @@ export function OverviewScreen({ matterId }: { matterId: string }) {
 /**
  * Shown when the id in the URL is not in the demo dataset.
  *
- * Reachable today by creating a matter while `NEXT_PUBLIC_API_BASE_URL` is set:
- * intake persists that matter server-side, but the workspace views below it are
- * still mock-backed (M3 / E8.9 wires them to the API). Naming the situation is
- * more useful than a blank canvas or a 404 for a matter that does exist.
+ * Only reachable on the offline demo path now: with the backend configured the
+ * screen above reads the real matter instead.
  */
 function MatterNotInWorkspace({ matterId }: { matterId: string }) {
   const t = useTranslations("overview");

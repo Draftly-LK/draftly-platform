@@ -528,6 +528,57 @@ export interface ApiChecklistItem {
   localAuthorityId: string | null;
 }
 
+/**
+ * Mirrors `ChecklistItemRead` — the *live* checklist item, as opposed to
+ * `ApiChecklistItem`, which is the compiled snapshot the intake shows.
+ *
+ * Carries the seven orthogonal statuses of §5.4 plus the two derived fields
+ * (§10.4). `lifecycle` and `computedResolution` are computed for display and
+ * are never stored as truth, so nothing may write them back.
+ */
+export interface ApiChecklistItemState {
+  id: string;
+  requirementDefinitionId: string;
+  moduleDefinitionId: string;
+  inclusionReason: string;
+  inclusionTriggerId: string | null;
+  labelKey: string;
+  explanationKey: string;
+  mandatoryBasis: MandatoryBasis;
+  group: RequirementGroup;
+  sourceRecordIds: string[];
+  acceptedDocumentClassIds: string[];
+  mayBeSatisfiedByCombinedDocument: boolean;
+  physicalOriginalPolicy: PhysicalOriginalStatus;
+  waivable: boolean;
+  localAuthorityId: string | null;
+  applicability: ApplicabilityStatus;
+  collection: CollectionStatus;
+  digitalReview: DigitalReviewStatus;
+  physicalOriginal: PhysicalOriginalStatus;
+  currency: CurrencyStatus;
+  consistency: string;
+  resolution: ResolutionStatus;
+  lifecycle: ChecklistItemLifecycle;
+  computedResolution: ResolutionStatus;
+}
+
+/** Mirrors `ChecklistRead` — the active checklist for a matter. */
+export interface ApiChecklist {
+  snapshotId: string;
+  matterId: string;
+  fingerprint: string;
+  rulePackVersion: string;
+  compilerVersion: string;
+  taxonomyVersion: string;
+  checklistVersion: string;
+  moduleDefinitionIds: string[];
+  supersedesId: string | null;
+  createdAt: string;
+  items: ApiChecklistItemState[];
+  blockingRequirementIds: string[];
+}
+
 /** Mirrors `ChecklistDeltaRead`. */
 export interface ApiChecklistDelta {
   added: string[];
