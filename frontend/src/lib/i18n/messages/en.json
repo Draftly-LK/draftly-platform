@@ -553,7 +553,16 @@
     "readinessCounter": "{satisfied} of {total} required details ready",
     "readinessOptional": "optional",
     "readinessGateHint": "Resolve the outstanding required details before generating.",
-    "fieldPending": "— pending verification —"
+    "fieldPending": "— pending verification —",
+    "loadError": "Could not load forms",
+    "generationError": "Could not generate form",
+    "conflictError": "Form changed since loaded. Please refresh and try again.",
+    "decisionError": "Could not record field decision",
+    "preflightError": "Could not run preflight check",
+    "runPreflight": "Run preflight",
+    "runningPreflight": "Running preflight…",
+    "staleError": "Could not mark form stale",
+    "loading": "Loading form…"
   },
   "checks": {
     "title": "Checks and missing evidence",
