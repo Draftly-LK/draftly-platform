@@ -10,6 +10,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
@@ -322,14 +323,24 @@ function DraftEditorScreenContent({
             </div>
           )}
 
-          <Button onClick={() => void handleRunPreflight()} disabled={runningPreflight}>
-            {runningPreflight ? (
-              <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} />
-            ) : (
-              <Check className="size-4" strokeWidth={1.5} />
+          <div className="flex gap-2">
+            <Button onClick={() => void handleRunPreflight()} disabled={runningPreflight}>
+              {runningPreflight ? (
+                <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} />
+              ) : (
+                <Check className="size-4" strokeWidth={1.5} />
+              )}
+              {runningPreflight ? t("runningPreflight") : t("runPreflight")}
+            </Button>
+            {form.preflight.approvalReady && (
+              <Link href={`/matters/${matterId}/drafts/${form.id}/approval`}>
+                <Button variant="primary">
+                  <Check className="size-4" strokeWidth={1.5} />
+                  Approve
+                </Button>
+              </Link>
             )}
-            {runningPreflight ? t("runningPreflight") : t("runPreflight")}
-          </Button>
+          </div>
         </section>
 
         {/* Mark stale section */}
