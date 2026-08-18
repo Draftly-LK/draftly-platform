@@ -767,8 +767,12 @@
     "fileState": {
       "selected": "Selected",
       "attached": "Attached",
-      "pendingUpload": "Pending upload"
-    }
+      "pendingUpload": "Pending upload",
+      "uploading": "Uploading",
+      "failed": "Failed"
+    },
+    "uploadOnFinishHint": "Files upload when you finish this step.",
+    "uploadPartialFailure": "{count, plural, one {# file} other {# files}} failed to upload. You can retry from the document inbox."
   },
   "rta": {
     "family": {

@@ -53,6 +53,7 @@ import {
   saveIntakeAnswer,
 } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
+import { uploadSourceFile } from "@/lib/api/documents";
 import {
   RTA_TAXONOMY,
   statutoryFamilies,
@@ -175,7 +176,7 @@ const TIER_BADGES = {
 
 const TOTAL_STEPS = 7;
 
-type FileState = "selected" | "attached" | "pendingUpload";
+type FileState = "selected" | "attached" | "pendingUpload" | "uploading" | "failed";
 interface SelectedFile {
   file: File;
   state: FileState;
@@ -382,12 +383,42 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
   /**
    * Finish. The matter already exists at this point in API mode — uploading is
-   * not part of creating it (§4.2 Q07), so files are attached afterwards.
+   * not part of creating it (§4.2 Q07); each selected file is posted to
+   * `POST /matters/{id}/source-files` in turn, then the lawyer lands on the
+   * document inbox to review what came in (§6.1, §11.1 screen 4→6).
    */
-  function finish() {
+  async function finish() {
+    if (matterId !== null && getToken !== null) {
+      setBusy(true);
+      setError(null);
+      setFiles((current) => current.map((entry) => ({ ...entry, state: "uploading" })));
+      let failureCount = 0;
+      for (const entry of files) {
+        try {
+          await uploadSourceFile(getToken, matterId, entry.file);
+          setFiles((current) =>
+            current.map((item) =>
+              item.file === entry.file ? { ...item, state: "attached" } : item,
+            ),
+          );
+        } catch {
+          failureCount += 1;
+          setFiles((current) =>
+            current.map((item) => (item.file === entry.file ? { ...item, state: "failed" } : item)),
+          );
+        }
+      }
+      setBusy(false);
+      if (failureCount > 0) {
+        setError(t("uploadPartialFailure", { count: failureCount }));
+        return;
+      }
+      router.push(`/matters/${matterId}/documents`);
+      return;
+    }
     if (matterId !== null) {
-      // No ingestion endpoint exists yet, so the selected files are held for
-      // attachment rather than reported as uploaded.
+      // No token available (offline/unauthenticated): hold the files rather
+      // than report them uploaded.
       setFiles((current) => current.map((entry) => ({ ...entry, state: "pendingUpload" })));
       router.push(`/matters/${matterId}`);
       return;
@@ -889,7 +920,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               </ul>
             )}
             {getToken !== null && files.length > 0 && (
-              <p className="text-muted-ink mt-3 text-sm">{t("uploadPendingIngestion")}</p>
+              <p className="text-muted-ink mt-3 text-sm">{t("uploadOnFinishHint")}</p>
             )}
           </section>
         )}
@@ -916,8 +947,8 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
             </Button>
           ) : (
-            <Button className="ml-auto" variant="primary" disabled={busy} onClick={finish}>
-              {t("create")}
+            <Button className="ml-auto" variant="primary" disabled={busy} onClick={() => void finish()}>
+              {busy ? t("saving") : t("create")}
               <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
             </Button>
           )}
