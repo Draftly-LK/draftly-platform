@@ -1,0 +1,22 @@
+{
+  "id": "pty_synthetic_0001",
+  "partyKind": "natural-person",
+  "displayName": "N. M. Silva (synthetic)",
+  "nameParts": { "full": "N. M. Silva (synthetic)" },
+  "formerNames": [],
+  "dateOfBirth": "1985-03-12",
+  "registrationNumber": null,
+  "nationality": "LK",
+  "residencyStatus": "resident",
+  "addresses": [{ "line1": "12 Synthetic Lane, Colombo (demo)" }],
+  "contactPoints": [],
+  "riskRating": "unassessed",
+  "screeningStatus": null,
+  "confidentialityLevel": "standard",
+  "effectiveConfidentiality": "standard",
+  "mergedIntoPartyId": null,
+  "version": 1,
+  "createdAt": "2026-01-01T09:00:00Z",
+  "updatedAt": "2026-01-01T09:00:00Z",
+  "duplicateCandidates": []
+}

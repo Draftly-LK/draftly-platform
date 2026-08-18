@@ -66,7 +66,7 @@ OCR escalation ladder is large enough to need one.
 | [draft-service](draft-service.md) | Draft creation, versioning, restore, submit for review | 7 | L0 |
 | [approval-service](approval-service.md) | The approval gate, content-hash pinning, invalidation | 7 | L0 |
 | [export-service](export-service.md) | Rendering approved instruments and supporting documents, manifests | 7 | L0 |
-| [notification-service](notification-service.md) | Preferences, templates, delivery, retries, provider webhooks | 5 | L0 |
+| [notification-service](notification-service.md) | Preferences, templates, delivery, retries, provider webhooks | 5 | L3 |
 | [voice-service](voice-service.md) | Live transcription, candidate transcripts, review and confirmation | V0/V1 by schedule | L0 |
 | [retention-service](retention-service.md) | Retention policies, legal holds, disposition, tombstones | 8 | L0 |
 | [audit-service](audit-service.md) | The append-only, hash-chained event log and its read surface | all | L0 |

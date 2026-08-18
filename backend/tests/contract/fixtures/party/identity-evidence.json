@@ -1,0 +1,15 @@
+{
+  "id": "ide_synthetic_0001",
+  "partyId": "pty_synthetic_0001",
+  "evidenceKind": "nic",
+  "identifierLast4": "5678",
+  "issuedOn": "2018-06-01",
+  "expiresOn": null,
+  "issuingAuthority": "Synthetic Registrar (demo)",
+  "documentId": "doc_synthetic_0001",
+  "documentVersionId": "dver_synthetic_0001",
+  "evidenceSpan": { "page": 1, "bbox": [0.1, 0.1, 0.4, 0.15] },
+  "state": "recorded",
+  "supersedesEvidenceId": null,
+  "version": 1
+}
