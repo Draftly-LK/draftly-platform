@@ -1,11 +1,14 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { SignOutButton, useUser } from "@clerk/nextjs";
 import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
+import { getMe, updateMe, type ApiUser, type ProfileUpdate } from "@/lib/api/auth";
+import { isApiEnabled } from "@/lib/api/client";
+import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useDemoStore } from "@/lib/store";
 import type { User } from "@/types";
 
@@ -33,6 +36,35 @@ type EditableProfile = Pick<
 function displayOrDash(value: string): string {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : "—";
+}
+
+/**
+ * The API returns null for "not provided"; the store and inputs use "".
+ *
+ * Kept one-directional on purpose: `toProfileUpdate` below drops empty strings
+ * rather than sending them, so a cleared optional field stays null in the
+ * database instead of becoming an empty string.
+ */
+function fromApiUser(user: ApiUser): EditableProfile {
+  return {
+    qualifications: user.qualifications ?? "",
+    professionalTitles: user.professionalTitles ?? "",
+    notaryRegistration: user.notaryRegistration ?? "",
+    jurisdiction: user.jurisdiction ?? "",
+    addressLine1: user.addressLine1 ?? "",
+    addressLine2: user.addressLine2 ?? "",
+    phone: user.phone ?? "",
+  };
+}
+
+/** Only non-empty values travel; `UpdateProfileRequest` sets `extra="forbid"`. */
+function toProfileUpdate(draft: EditableProfile): ProfileUpdate {
+  const update: ProfileUpdate = {};
+  for (const [key, value] of Object.entries(draft) as [keyof EditableProfile, string][]) {
+    const trimmed = value.trim();
+    if (trimmed) update[key] = trimmed;
+  }
+  return update;
 }
 
 function ProfilePhoto({
@@ -157,7 +189,7 @@ function ProfileBody({
   uploading,
   photoError,
   showSignOut,
-  clerkEnabled,
+  onPersist,
 }: {
   /** From Clerk when signed in; empty shows "—" */
   authName: string;
@@ -168,8 +200,12 @@ function ProfileBody({
   uploading: boolean;
   photoError: string | null;
   showSignOut: boolean;
-  /** When true the edit button is disabled — profile persisted via API (coming soon). */
-  clerkEnabled: boolean;
+  /**
+   * Persists the edit server-side. Supplied only when the backend is
+   * configured; without it the screen edits the local demonstration profile,
+   * which is what the offline demo expects.
+   */
+  onPersist?: (changes: ProfileUpdate) => Promise<void>;
 }) {
   const t = useTranslations("profile");
   const profile = useDemoStore((s) => s.profile);
@@ -177,6 +213,8 @@ function ProfileBody({
 
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [draft, setDraft] = useState<EditableProfile>({
     qualifications: profile.qualifications,
     professionalTitles: profile.professionalTitles,
@@ -202,10 +240,25 @@ function ProfileBody({
     });
     setEditing(true);
     setSaved(false);
+    setSaveError(null);
   }
 
-  function save() {
-    // TODO(api): PATCH /api/v1/me
+  async function save() {
+    setSaveError(null);
+    if (onPersist) {
+      // The store is updated only after the server accepts the change, so a
+      // failed save never leaves the screen showing a value that was not
+      // written.
+      setSavingProfile(true);
+      try {
+        await onPersist(toProfileUpdate(draft));
+      } catch {
+        setSaveError(t("saveFailed"));
+        return;
+      } finally {
+        setSavingProfile(false);
+      }
+    }
     updateProfile(draft);
     setEditing(false);
     setSaved(true);
@@ -235,10 +288,7 @@ function ProfileBody({
               <button
                 type="button"
                 className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={clerkEnabled}
-                title={clerkEnabled ? t("profileEditComingSoon") : undefined}
-                aria-disabled={clerkEnabled}
-                onClick={clerkEnabled ? undefined : startEdit}
+                onClick={startEdit}
               >
                 {t("edit")}
               </button>
@@ -246,14 +296,16 @@ function ProfileBody({
               <>
                 <button
                   type="button"
-                  className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white"
-                  onClick={save}
+                  className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={savingProfile}
+                  onClick={() => void save()}
                 >
-                  {t("save")}
+                  {savingProfile ? t("saving") : t("save")}
                 </button>
                 <button
                   type="button"
-                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-[6px] border px-3 py-2 text-sm"
+                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-[6px] border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={savingProfile}
                   onClick={() => setEditing(false)}
                 >
                   {t("cancel")}
@@ -274,6 +326,11 @@ function ProfileBody({
           {saved && (
             <p aria-live="polite" className="text-forest text-sm">
               {t("saved")}
+            </p>
+          )}
+          {saveError && (
+            <p role="alert" className="text-red text-sm">
+              {saveError}
             </p>
           )}
           {photoError && (
@@ -368,6 +425,35 @@ function ClerkProfileBody() {
   const { user: clerkUser, isLoaded } = useUser();
   const [uploading, setUploading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // Only this branch may call `useTokenProvider`: it needs Clerk's `useAuth`,
+  // and the demo branch renders without a ClerkProvider.
+  const getToken = useTokenProvider();
+  const setProfile = useDemoStore((s) => s.updateProfile);
+  const apiEnabled = isApiEnabled();
+
+  // The notarial details live on the server (onboarding writes them there), so
+  // the screen shows what is stored rather than the seeded demonstration
+  // profile. A failure leaves the seed in place; the fields stay editable.
+  useEffect(() => {
+    if (!apiEnabled) return;
+    let cancelled = false;
+    void getMe(getToken)
+      .then((user) => {
+        if (!cancelled) setProfile(fromApiUser(user));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [apiEnabled, getToken, setProfile]);
+
+  const persist = useCallback(
+    async (changes: ProfileUpdate) => {
+      const user = await updateMe(getToken, changes);
+      setProfile(fromApiUser(user));
+    },
+    [getToken, setProfile],
+  );
 
   const authName = clerkUser ? clerkDisplayName(clerkUser) : "";
   const email =
@@ -397,7 +483,7 @@ function ClerkProfileBody() {
       uploading={uploading}
       photoError={photoError}
       showSignOut={Boolean(clerkUser)}
-      clerkEnabled={true}
+      onPersist={apiEnabled ? persist : undefined}
     />
   );
 }
@@ -414,7 +500,6 @@ function DemoProfileBody() {
       uploading={false}
       photoError={null}
       showSignOut={false}
-      clerkEnabled={false}
     />
   );
 }

@@ -6,6 +6,8 @@ import {
   Library,
   MessageSquareText,
   Mic,
+  MessageCircleQuestion,
+  Trash2,
   PanelRightClose,
   PanelRightOpen,
   PlusCircle,
@@ -13,7 +15,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { answers } from "@/lib/mocks";
 import {
   authorityTypeLabels,
@@ -22,6 +24,10 @@ import {
 } from "@/lib/i18n/labels";
 import { useDemoStore } from "@/lib/store";
 import type { Citation } from "@/types";
+import {
+  ConversationRail,
+  type ResearchConversation,
+} from "@/components/assistant/conversation-rail";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
@@ -44,15 +50,63 @@ export function AssistantScreen() {
   const [evidenceOpen, setEvidenceOpen] = useState(true);
   const [question, setQuestion] = useState("");
   const [announcement, setAnnouncement] = useState("");
+
+  // TODO(api): GET /api/assistant/conversations — seeded locally until the
+  // research service exists (research-service.md §2.2). The seeded thread is
+  // the one that carries the worked grounded answer below.
+  const seededConversation = useMemo<ResearchConversation>(
+    () => ({ id: "conv-seeded", title: grounded?.question ?? "", seeded: true }),
+    [grounded?.question],
+  );
+  const [conversations, setConversations] = useState<ResearchConversation[]>([]);
+  const [selectedId, setSelectedId] = useState("conv-seeded");
+  /**
+   * Questions asked in this session, per conversation.
+   *
+   * They stay unanswered on purpose: with no corpus wired there is nothing to
+   * ground an answer in, and answering from the model alone is exactly what
+   * this product must not do.
+   */
+  const [asked, setAsked] = useState<Record<string, string[]>>({});
+  const allConversations = [seededConversation, ...conversations];
+  const activeConversation =
+    allConversations.find((item) => item.id === selectedId) ?? seededConversation;
+  const pending = asked[activeConversation.id] ?? [];
+
+  const createConversation = () => {
+    // TODO(api): POST /api/assistant/conversations
+    const id = `conv-local-${conversations.length + 1}`;
+    setConversations((current) => [
+      ...current,
+      { id, title: t("newConversation"), seeded: false },
+    ]);
+    setSelectedId(id);
+    setQuestion("");
+  };
   const action = (name: string) => {
     recordAction(grounded?.id ?? "answer-grounded", name, activeMatterId);
     setAnnouncement(t("actionRecorded"));
   };
   const submit = () => {
-    if (!question.trim()) return;
+    const text = question.trim();
+    if (!text) return;
+    // TODO(api): POST /api/assistant/conversations/{id}/messages, then stream
+    // GET /api/assistant/jobs/{id}/events.
     recordAction("answer-grounded", "question-asked", activeMatterId);
+    setAsked((current) => ({
+      ...current,
+      [activeConversation.id]: [...(current[activeConversation.id] ?? []), text],
+    }));
     setQuestion("");
     setAnnouncement(t("questionRecorded"));
+  };
+  const removeAsked = (index: number) => {
+    setAsked((current) => ({
+      ...current,
+      [activeConversation.id]: (current[activeConversation.id] ?? []).filter(
+        (_, position) => position !== index,
+      ),
+    }));
   };
   if (
     !grounded ||
@@ -68,8 +122,16 @@ export function AssistantScreen() {
         {announcement}
       </div>
       <div
-        className={`grid min-h-[calc(100vh-105px)] ${evidenceOpen ? "min-[1280px]:grid-cols-[minmax(0,1fr)_380px]" : ""}`}
+        className={`grid min-h-[calc(100vh-105px)] min-[1024px]:grid-cols-[260px_minmax(0,1fr)] ${
+          evidenceOpen ? "min-[1280px]:grid-cols-[260px_minmax(0,1fr)_380px]" : ""
+        }`}
       >
+        <ConversationRail
+          conversations={allConversations}
+          selectedId={activeConversation.id}
+          onSelect={setSelectedId}
+          onCreate={createConversation}
+        />
         <main className="min-w-0 p-6">
           <section aria-labelledby="scope-title">
             <h2 id="scope-title" className="text-sm font-semibold">
@@ -131,6 +193,36 @@ export function AssistantScreen() {
               </Button>
             </div>
           </form>
+          {pending.length > 0 && (
+            <section aria-label={t("thread")} className="mt-6 space-y-4">
+              {pending.map((text, index) => (
+                <article
+                  key={`${text}-${index}`}
+                  className="border-border-strong bg-surface rounded border"
+                >
+                  <header className="border-border flex items-start gap-3 border-b px-5 py-4">
+                    <div className="bg-selected-bg text-forest grid size-9 shrink-0 place-items-center rounded">
+                      <MessageCircleQuestion className="size-5" strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-muted-ink text-xs font-semibold uppercase">
+                        {t("you")}
+                      </div>
+                      <p className="mt-1 leading-7">{text}</p>
+                    </div>
+                    <IconButton label={t("remove")} onClick={() => removeAsked(index)}>
+                      <Trash2 className="size-5" strokeWidth={1.5} />
+                    </IconButton>
+                  </header>
+                  <div className="border-amber bg-amber-bg text-amber-text border-l-2 px-5 py-4">
+                    <h3 className="font-semibold">{t("pendingTitle")}</h3>
+                    <p className="mt-1 text-sm">{t("pendingBody")}</p>
+                    <p className="mt-2 font-mono text-xs">{t("pendingEndpoint", { id: activeConversation.id })}</p>
+                  </div>
+                </article>
+              ))}
+            </section>
+          )}
           <section className="border-border-strong bg-surface mt-6 rounded border">
             <header className="border-border flex items-center gap-3 border-b px-5 py-4">
               <div className="bg-soft-green text-forest grid size-9 place-items-center rounded">
@@ -194,6 +286,7 @@ export function AssistantScreen() {
             <footer className="border-border bg-canvas text-muted-ink border-t px-5 py-3 text-sm">
               <strong className="text-ink">{t("corpusLimits")}:</strong>{" "}
               {t("corpusLimit")}
+              <span className="mt-1 block">{t("exampleNotice")}</span>
             </footer>
           </section>
           <section className="border-red bg-red-bg mt-6 border-l-2 p-5">
