@@ -644,7 +644,123 @@
     "selectedFiles": "{count, plural, =0 {No documents selected} one {# document selected} other {# documents selected}}",
     "create": "Create matter",
     "creating": "Creating matter",
-    "privacy": "Synthetic demonstration only"
+    "privacy": "Synthetic demonstration only",
+    "stepOf": "Step {current} of {total}",
+    "next": "Next",
+    "saving": "Saving",
+    "retry": "Try again",
+    "genericError": "Something went wrong. Nothing was saved — try again.",
+    "metadataTitle": "Name this matter",
+    "metadataBody": "References are yours to choose. Use an internal token rather than client personal data.",
+    "instrumentLanguage": "Language of the instrument",
+    "instrumentLanguageHint": "The language the instrument will be executed in. Separate from the language of this interface.",
+    "language": {
+      "en": "English",
+      "si": "Sinhala",
+      "ta": "Tamil"
+    },
+    "responsibleLawyerNote": "Note for the responsible lawyer",
+    "responsibleLawyerNoteHint": "Optional. Instructions, deadlines, or context you want carried with the matter.",
+    "titleSystemTitle": "Registration system",
+    "q01Prompt": "Does this parcel already have a Title Certificate or Title Register under the Registration of Title Act?",
+    "answer": {
+      "YES": "Yes",
+      "NO": "No",
+      "UNKNOWN": "Not known yet"
+    },
+    "unknownIsAcceptable": "\"Not known yet\" is a valid answer. Draftly records the gap rather than assuming one way or the other.",
+    "q01Why": "This separates an initial settlement from a later transaction, and it decides which workflow the matter follows.",
+    "initialCompilationTitle": "Initial compilation triage",
+    "initialCompilationBody": "With no title certificate on record the parcel is not yet on the title register, so this is an initial compilation rather than a subsequent transaction.",
+    "initialCompilationContinue": "You can continue. The matter is flagged for triage, and no drafting step opens until the regime is confirmed.",
+    "familyTitle": "Intended action",
+    "q02Prompt": "What legal action is the client asking you to take?",
+    "familyTransactionsHeading": "Transactions",
+    "familyStatutoryHeading": "Statutory and registry actions",
+    "familyStatutoryBody": "Applications and register actions rather than a disposition between parties.",
+    "familyOtherHeading": "Not listed",
+    "familyOtherNote": "Recorded for triage. Draftly will not route an instrument it does not model.",
+    "subtypeTitle": "Exact instrument",
+    "subtypeBody": "The subtype fixes the prescribed form, the checklist, and the checks that must pass before drafting.",
+    "noGazetteForm": "No prescribed Gazette form",
+    "gazetteForm": "Gazette Form {number}",
+    "legalBasisLabel": "Legal basis",
+    "legalBasisHint": "Shown so you can confirm the routing matches the section you are acting under.",
+    "legalBasisConfirm": "I confirm this is the instrument for this matter.",
+    "tierV0": "In this release",
+    "tierPlanned": "Planned",
+    "tierManualOnly": "Manual only",
+    "routingTitle": "Routing questions",
+    "routingBody": "Four questions that open the conditional modules and catch stop conditions early.",
+    "q03Prompt": "Is the action for the whole registered parcel, part of it, or an undivided interest?",
+    "scope": {
+      "WHOLE_REGISTERED_PARCEL": "Whole registered parcel",
+      "PART_OF_PARCEL": "Part of the parcel",
+      "UNDIVIDED_INTEREST": "Undivided interest",
+      "UNKNOWN": "Not known yet"
+    },
+    "q04Prompt": "Is this ordinary land, an existing condominium unit, or a building being converted to condominium title?",
+    "parcelKind": {
+      "ORDINARY": "Ordinary land",
+      "CONDOMINIUM_UNIT": "Existing condominium unit",
+      "CONVERSION_TO_CONDOMINIUM": "Conversion to condominium",
+      "UNKNOWN": "Not known yet"
+    },
+    "q05Prompt": "Is any current owner or signing party a company, estate, attorney, public body, or other non-individual?",
+    "q05Hint": "Capacity and authority evidence depends on this answer.",
+    "partyContext": {
+      "NATURAL_PERSONS_ONLY": "Individuals only",
+      "COMPANY": "Company",
+      "ESTATE_OR_DECEASED": "Estate or deceased owner",
+      "ATTORNEY_POWER_OF_ATTORNEY": "Attorney under power of attorney",
+      "PUBLIC_BODY": "Public body",
+      "OTHER_NON_INDIVIDUAL": "Other non-individual",
+      "UNKNOWN": "Not screened yet"
+    },
+    "q06Prompt": "Do you know of any ownership claim, title-settlement issue, court case, caveat, seizure, priority notice, or lis pendens?",
+    "q06Hint": "Absence cannot be inferred from missing documents; confirm after the registry search.",
+    "checklistTitle": "Requirement checklist",
+    "checklistBody": "Compiled from the answers above. Items are grouped by why they are required.",
+    "compiling": "Compiling the checklist",
+    "compilerUnavailableTitle": "Checklist compiler not configured",
+    "compilerUnavailableBody": "No rule pack is wired in this environment, so no checklist can be compiled. The matter can still be created and the checklist added later.",
+    "compileFailedTitle": "Could not compile the checklist",
+    "compileFailedBody": "The rule pack did not return a checklist for these answers. Nothing has been saved.",
+    "scopeAutomatedTitle": "Automated in this release",
+    "scopeAutomatedBody": "Draftly can prepare and check this instrument. Every output still needs your verification.",
+    "scopeManualTitle": "Manual handling",
+    "scopeManualBody": "This instrument is outside what Draftly prepares. The matter tracks facts, evidence, and the checklist; drafting stays with you.",
+    "unmetGatesHeading": "Gates not yet met",
+    "groupLegalRegistry": "Legal and registry requirements",
+    "groupTitleExamination": "Title examination",
+    "groupConditional": "Conditional on your answers",
+    "groupOfficeAdded": "Added by your office",
+    "basisLegal": "Statute",
+    "basisRegulatory": "Regulation",
+    "basisOperational": "Operational",
+    "basisLawyerPractice": "Office practice",
+    "basisProductSafety": "Product safety",
+    "basisLocalAuthority": "Local authority",
+    "basisConditional": "Conditional",
+    "inclusionBase": "Required for every matter",
+    "inclusionRegime": "Required by the registration system",
+    "inclusionExactInstrument": "Required by this instrument",
+    "inclusionConditionalModule": "Opened by a routing answer",
+    "inclusionOfficePolicy": "Office policy",
+    "inclusionLocalAuthorityPolicy": "Local authority policy",
+    "inclusionLawyerAdded": "Added by the lawyer",
+    "inclusionRetainedAfterReview": "Kept after review",
+    "uploadTitle": "Add evidence",
+    "uploadBody": "Attach what you already hold. Anything missing stays open on the checklist.",
+    "uploadRecommended": "Recommended for this matter",
+    "uploadLimits": "PDF, JPG, or PNG. Scans are fine.",
+    "uploadConfidentiality": "Files are stored against this matter and treated as client-confidential.",
+    "fileState": {
+      "selected": "Ready to upload",
+      "pendingUpload": "Uploading",
+      "attached": "Attached"
+    },
+    "uploadPendingIngestion": "Uploaded files are recorded as awaiting processing. No text is extracted until processing runs."
   },
   "library": {
     "title": "Legal sources",
@@ -700,5 +816,650 @@
     "primary": "Primary action",
     "secondary": "Secondary action",
     "disabled": "Disabled action"
+  },
+  "rta": {
+    "family": {
+      "ownership_change": {
+        "label": "Ownership change",
+        "purpose": "Move ownership of a registered parcel from one party to another."
+      },
+      "agreement_security": {
+        "label": "Agreement and security",
+        "purpose": "Create or vary a charge, mortgage, or other security over the title."
+      },
+      "use_interest": {
+        "label": "Use and lesser interests",
+        "purpose": "Grant a lease, servitude, or other right short of ownership."
+      },
+      "cancel_release": {
+        "label": "Cancellation and release",
+        "purpose": "Remove or discharge an interest already on the register."
+      },
+      "notice_admin": {
+        "label": "Notices and register administration",
+        "purpose": "Lodge, amend, or withdraw a notice or an administrative entry."
+      },
+      "parcel_structure": {
+        "label": "Parcel structure",
+        "purpose": "Change the parcel itself — subdivision, amalgamation, or conversion."
+      },
+      "title_settlement": {
+        "label": "Title settlement",
+        "purpose": "First registration and settlement of title, rather than a later dealing."
+      },
+      "dispute_rectification": {
+        "label": "Disputes and rectification",
+        "purpose": "Correct the register or act on a claim, objection, or court outcome."
+      },
+      "controlled_other": {
+        "label": "Other controlled matters",
+        "purpose": "Matters this release does not model; recorded for triage only."
+      }
+    },
+    "gate": {
+      "block_apparently_uncancelled_mortgage": {
+        "reason": "Apparently uncancelled mortgage"
+      },
+      "block_missing_critical_form_facts": {
+        "reason": "Missing critical form facts"
+      },
+      "block_owner_transferor_mismatch": {
+        "reason": "Owner transferor mismatch"
+      },
+      "block_title_or_parcel_identifier_conflict": {
+        "reason": "Title or parcel identifier conflict"
+      },
+      "block_uncompleted_transmission": {
+        "reason": "Uncompleted transmission"
+      },
+      "v0_all_critical_facts_lawyer_confirmed": {
+        "reason": "Not yet established: all critical facts lawyer confirmed"
+      },
+      "v0_current_title_register_confirmed": {
+        "reason": "Not yet established: current title register confirmed"
+      },
+      "v0_exact_subtype_selected": {
+        "reason": "Not yet established: exact subtype selected"
+      },
+      "v0_f12_cancellation_route_confirmed": {
+        "reason": "Not yet established: cancellation route confirmed"
+      },
+      "v0_f12_discharge_evidence_sufficient": {
+        "reason": "Not yet established: discharge evidence sufficient"
+      },
+      "v0_f12_mortgage_identified": {
+        "reason": "Not yet established: mortgage identified"
+      },
+      "v0_f12_parcel_is_ordinary_no_dispute": {
+        "reason": "Not yet established: parcel is ordinary no dispute"
+      },
+      "v0_f12_releasor_authority_confirmed": {
+        "reason": "Not yet established: releasor authority confirmed"
+      },
+      "v0_no_active_dispute_or_court_notice": {
+        "reason": "Not yet established: no active dispute or court notice"
+      },
+      "v0_no_life_interest_or_special_condition": {
+        "reason": "Not yet established: no life interest or special condition"
+      },
+      "v0_no_power_of_attorney": {
+        "reason": "Not yet established: no power of attorney"
+      },
+      "v0_no_proposed_coownership_creation": {
+        "reason": "Not yet established: no proposed coownership creation"
+      },
+      "v0_no_uncompleted_transmission": {
+        "reason": "Not yet established: no uncompleted transmission"
+      },
+      "v0_no_unresolved_lease_or_occupation": {
+        "reason": "Not yet established: no unresolved lease or occupation"
+      },
+      "v0_no_unresolved_mortgage": {
+        "reason": "Not yet established: no unresolved mortgage"
+      },
+      "v0_no_unresolved_notice_or_seizure": {
+        "reason": "Not yet established: no unresolved notice or seizure"
+      },
+      "v0_parcel_is_ordinary": {
+        "reason": "Not yet established: parcel is ordinary"
+      },
+      "v0_parties_are_natural_persons": {
+        "reason": "Not yet established: parties are natural persons"
+      },
+      "v0_regime_is_rta": {
+        "reason": "Not yet established: regime is RTA"
+      },
+      "v0_scope_is_whole_registered_parcel": {
+        "reason": "Not yet established: scope is whole registered parcel"
+      },
+      "v0_subtype_is_a_pilot_path": {
+        "reason": "Not yet established: subtype is a pilot path"
+      },
+      "v0_subtype_lawyer_confirmed": {
+        "reason": "Not yet established: subtype lawyer confirmed"
+      },
+      "v0_template_and_sources_verified": {
+        "reason": "Not yet established: template and sources verified"
+      },
+      "v0_title_certificate_available_or_verified": {
+        "reason": "Not yet established: title certificate available or verified"
+      },
+      "v0_transferor_is_current_registered_owner": {
+        "reason": "Not yet established: transferor is current registered owner"
+      }
+    },
+    "module": {
+      "company_party": "Company party",
+      "estate_or_deceased_owner": "Estate or deceased owner",
+      "power_of_attorney": "Power of attorney",
+      "coowners": "Coowners",
+      "mortgage_present": "Mortgage present",
+      "lease_or_occupation": "Lease or occupation",
+      "life_interest": "Life interest",
+      "servitude": "Servitude",
+      "building_present": "Building present",
+      "local_authority_clearance": "Local authority clearance",
+      "missing_original": "Missing original",
+      "active_notice_or_litigation": "Active notice or litigation",
+      "court_or_statutory_sale": "Court or statutory sale",
+      "state_land": "State land",
+      "special_personal_law": "Special personal law",
+      "subdivision_amalgamation": "Subdivision amalgamation",
+      "condominium_strata": "Condominium strata",
+      "initial_compilation_triage": "Initial compilation triage"
+    },
+    "process": {
+      "court_order_owner_register": "Court order affecting the owner register",
+      "initial_compilation": "Initial compilation of title",
+      "rectification_indemnity": "Rectification and indemnity",
+      "second_class_challenge": "Challenge to a second-class title",
+      "title_settlement_dispute": "Title-settlement dispute",
+      "transmission_intestate": "Transmission on death — intestate",
+      "transmission_testate": "Transmission on death — testate"
+    },
+    "requirement": {
+      "R_C00_CLIENT_INSTRUCTIONS_SCOPE": {
+        "label": "Client instructions scope"
+      },
+      "R_C00_CONFLICT_CHECK_RECORDED": {
+        "label": "Conflict check recorded"
+      },
+      "R_C00_ENGAGEMENT_AND_PARTY_ROLES": {
+        "label": "Engagement and party roles"
+      },
+      "R_C00_FEE_SCHEDULE_VERSION_RECORDED": {
+        "label": "Fee schedule version recorded"
+      },
+      "R_C00_MATTER_AND_CLIENT_REFERENCE": {
+        "label": "Matter and client reference"
+      },
+      "R_C00_REGISTRY_OFFICE_AND_JURISDICTION": {
+        "label": "Registry office and jurisdiction"
+      },
+      "R_C00_RESPONSIBLE_LAWYER_ASSIGNED": {
+        "label": "Responsible lawyer assigned"
+      },
+      "R_C00_SOURCE_CURRENCY_VERIFIED": {
+        "label": "Source currency verified"
+      },
+      "R_C00_WORKING_AND_DOCUMENT_LANGUAGE": {
+        "label": "Working and document language"
+      },
+      "R_C01_NAME_SCRIPT_CONSISTENCY": {
+        "label": "Name script consistency"
+      },
+      "R_C01_NOTARIAL_ATTESTATION": {
+        "label": "Notarial attestation"
+      },
+      "R_C01_PARTY_CAPACITY_CONFIRMED": {
+        "label": "Party capacity confirmed"
+      },
+      "R_C01_PARTY_IDENTITY_VERIFIED": {
+        "label": "Party identity verified"
+      },
+      "R_C01_PARTY_ROLES_RECORDED": {
+        "label": "Party roles recorded"
+      },
+      "R_C01_REPRESENTATIVE_AUTHORITY": {
+        "label": "Representative authority"
+      },
+      "R_C01_TRANSFEREE_CERTIFIED_ID": {
+        "label": "Transferee certified ID"
+      },
+      "R_C01_TRANSFEROR_CERTIFIED_ID": {
+        "label": "Transferor certified ID"
+      },
+      "R_C01_TWO_WITNESSES_AT_EXECUTION": {
+        "label": "Two witnesses at execution"
+      },
+      "R_C02_CERTIFICATE_MATCHES_REGISTER": {
+        "label": "Certificate matches register"
+      },
+      "R_C02_CURRENT_TITLE_CERTIFICATE": {
+        "label": "Current title certificate"
+      },
+      "R_C02_NEW_TITLE_CERTIFICATE_APPLICATION": {
+        "label": "New title certificate application"
+      },
+      "R_C02_PLACE_OF_REGISTRATION": {
+        "label": "Place of registration"
+      },
+      "R_C02_REGISTERED_INTEREST_HOLDERS": {
+        "label": "Registered interest holders"
+      },
+      "R_C02_REGISTERED_OWNER_IDENTIFIED": {
+        "label": "Registered owner identified"
+      },
+      "R_C02_RTA_COVERAGE_CONFIRMED": {
+        "label": "RTA coverage confirmed"
+      },
+      "R_C02_TITLE_CLASS_RECORDED": {
+        "label": "Title class recorded"
+      },
+      "R_C02_TITLE_REGISTER_REFERENCE": {
+        "label": "Title register reference"
+      },
+      "R_C02_TITLE_STATUS_NOT_INITIAL_COMPILATION": {
+        "label": "Title status not initial compilation"
+      },
+      "R_C03_CERTIFIED_REGISTER_EXTRACT": {
+        "label": "Certified register extract"
+      },
+      "R_C03_NO_LATER_ENTRY_ACKNOWLEDGED": {
+        "label": "No later entry acknowledged"
+      },
+      "R_C03_PENDING_AND_DAY_BOOK_ENTRIES": {
+        "label": "Pending and day book entries"
+      },
+      "R_C03_PRE_ATTESTATION_SEARCH": {
+        "label": "Pre attestation search"
+      },
+      "R_C03_REGISTERED_INSTRUMENT_COPIES": {
+        "label": "Registered instrument copies"
+      },
+      "R_C03_SEARCH_DATETIME_RECORDED": {
+        "label": "Search datetime recorded"
+      },
+      "R_C03_SEARCH_MATCHES_MATTER_PARCEL": {
+        "label": "Search matches matter parcel"
+      },
+      "R_C03_TITLE_REGISTER_INSPECTION": {
+        "label": "Title register inspection"
+      },
+      "R_C04_ACCESS_DEPICTED": {
+        "label": "Access depicted"
+      },
+      "R_C04_ADMINISTRATIVE_LOCATION": {
+        "label": "Administrative location"
+      },
+      "R_C04_BOUNDARIES_RECORDED": {
+        "label": "Boundaries recorded"
+      },
+      "R_C04_CADASTRAL_MAP_EXTRACT": {
+        "label": "Cadastral map extract"
+      },
+      "R_C04_EXTENT_SUBJECT_TO_TRANSACTION": {
+        "label": "Extent subject to transaction"
+      },
+      "R_C04_PARCEL_IDENTIFIERS": {
+        "label": "Parcel identifiers"
+      },
+      "R_C04_PLAN_MATCHES_REGISTER": {
+        "label": "Plan matches register"
+      },
+      "R_C04_REGISTERED_EXTENT": {
+        "label": "Registered extent"
+      },
+      "R_C04_SURVEY_PLAN": {
+        "label": "Survey plan"
+      },
+      "R_C05_CHAIN_TABLE_PREPARED": {
+        "label": "Chain table prepared"
+      },
+      "R_C05_DEED_HISTORY_NOT_A_SUBSTITUTE": {
+        "label": "Deed history not a substitute"
+      },
+      "R_C05_PRIOR_INSTRUMENT_CHAIN": {
+        "label": "Prior instrument chain"
+      },
+      "R_C06_ABSENCE_REQUIRES_CURRENT_SEARCH": {
+        "label": "Absence requires current search"
+      },
+      "R_C06_CAVEAT_SEIZURE_AND_NOTICE_ENTRIES": {
+        "label": "Caveat seizure and notice entries"
+      },
+      "R_C06_ENCUMBRANCE_SCHEDULE": {
+        "label": "Encumbrance schedule"
+      },
+      "R_C06_INSTRUMENT_COPIES_FOR_ENTRIES": {
+        "label": "Instrument copies for entries"
+      },
+      "R_C06_LEASE_STATUS_DETERMINED": {
+        "label": "Lease status determined"
+      },
+      "R_C06_LIFE_INTEREST_ENTRIES": {
+        "label": "Life interest entries"
+      },
+      "R_C06_MORTGAGE_STATUS_DETERMINED": {
+        "label": "Mortgage status determined"
+      },
+      "R_C06_SALE_AGREEMENT_ENTRIES": {
+        "label": "Sale agreement entries"
+      },
+      "R_C06_SERVITUDE_ENTRIES": {
+        "label": "Servitude entries"
+      },
+      "R_C07_CANCELLATION_REGISTERED": {
+        "label": "Cancellation registered"
+      },
+      "R_C07_DISCHARGE_EVIDENCE": {
+        "label": "Discharge evidence"
+      },
+      "R_C07_INSTITUTIONAL_RELEASE_LETTER": {
+        "label": "Institutional release letter"
+      },
+      "R_C07_MORTGAGEE_IDENTITY": {
+        "label": "Mortgagee identity"
+      },
+      "R_C07_MORTGAGEE_SIGNING_AUTHORITY": {
+        "label": "Mortgagee signing authority"
+      },
+      "R_C07_MORTGAGE_ENTRY_STILL_ACTIVE": {
+        "label": "Mortgage entry still active"
+      },
+      "R_C07_OTHER_CHARGES_AND_PRIORITY": {
+        "label": "Other charges and priority"
+      },
+      "R_C07_REGISTERED_MORTGAGE_INSTRUMENT": {
+        "label": "Registered mortgage instrument"
+      },
+      "R_C07_RELEASE_OR_CANCELLED_BOND": {
+        "label": "Release or cancelled bond"
+      },
+      "R_C08_LEASE_CANCELLATION_EVIDENCE": {
+        "label": "Lease cancellation evidence"
+      },
+      "R_C08_LEASE_INSTRUMENT_AND_TERMS": {
+        "label": "Lease instrument and terms"
+      },
+      "R_C08_OCCUPATION_STATUS": {
+        "label": "Occupation status"
+      },
+      "R_C08_VACANT_POSSESSION_INSTRUCTION": {
+        "label": "Vacant possession instruction"
+      },
+      "R_C09_DEATH_EVIDENCE": {
+        "label": "Death evidence"
+      },
+      "R_C09_ESTATE_DISTRIBUTION_EVIDENCE": {
+        "label": "Estate distribution evidence"
+      },
+      "R_C09_INTESTATE_PATH_EVIDENCE": {
+        "label": "Intestate path evidence"
+      },
+      "R_C09_TESTATE_PATH_EVIDENCE": {
+        "label": "Testate path evidence"
+      },
+      "R_C09_TRANSMISSION_REGISTERED": {
+        "label": "Transmission registered"
+      },
+      "R_C10_BOARD_RESOLUTION": {
+        "label": "Board resolution"
+      },
+      "R_C10_CURRENT_DIRECTORS_AND_OFFICERS": {
+        "label": "Current directors and officers"
+      },
+      "R_C10_INCORPORATION_EVIDENCE": {
+        "label": "Incorporation evidence"
+      },
+      "R_C10_SIGNING_AUTHORITY_AND_SEAL": {
+        "label": "Signing authority and seal"
+      },
+      "R_C11_ASSESSMENT_NOTICE": {
+        "label": "Assessment notice"
+      },
+      "R_C11_ASSESSMENT_OWNERSHIP_CERTIFICATE": {
+        "label": "Assessment ownership certificate"
+      },
+      "R_C11_BUILDING_LINE": {
+        "label": "Building line"
+      },
+      "R_C11_NON_VESTING": {
+        "label": "Non vesting"
+      },
+      "R_C11_RATES_AND_TAXES_PAID": {
+        "label": "Rates and taxes paid"
+      },
+      "R_C11_STREET_LINE": {
+        "label": "Street line"
+      },
+      "R_C12_ALTERATIONS_REVIEWED": {
+        "label": "Alterations reviewed"
+      },
+      "R_C12_APPROVED_BUILDING_PLAN": {
+        "label": "Approved building plan"
+      },
+      "R_C12_CERTIFICATE_OF_CONFORMITY": {
+        "label": "Certificate of conformity"
+      },
+      "R_C12_DEVELOPMENT_PERMIT": {
+        "label": "Development permit"
+      },
+      "R_C13_AUTHORIZED_SURVEYOR_PLAN": {
+        "label": "Authorized surveyor plan"
+      },
+      "R_C13_ENCUMBRANCES_AND_ORDERS_DISCLOSED": {
+        "label": "Encumbrances and orders disclosed"
+      },
+      "R_C13_OWNER_APPLICATION": {
+        "label": "Owner application"
+      },
+      "R_C13_SURVEY_DEPARTMENT_CERTIFICATION": {
+        "label": "Survey department certification"
+      },
+      "R_C13_VALID_SALE_AGREEMENTS_CANCELLED": {
+        "label": "Valid sale agreements cancelled"
+      },
+      "R_C14_APARTMENT_OWNERSHIP_LAW_DOCUMENTS": {
+        "label": "Apartment ownership law documents"
+      },
+      "R_C14_CONDOMINIUM_DECLARATION": {
+        "label": "Condominium declaration"
+      },
+      "R_C14_CONDOMINIUM_PLAN_AND_CERTIFICATION": {
+        "label": "Condominium plan and certification"
+      },
+      "R_C14_PARENT_TITLE": {
+        "label": "Parent title"
+      },
+      "R_C14_PRESCRIBED_APPLICATION": {
+        "label": "Prescribed application"
+      },
+      "R_C15_CONSENT_CANCELLATION_OR_DEATH_EVIDENCE": {
+        "label": "Consent cancellation or death evidence"
+      },
+      "R_C15_HOLDER_AND_OWNER_IDENTIFIED": {
+        "label": "Holder and owner identified"
+      },
+      "R_C15_PERMITTED_CONDITIONS_REVIEWED": {
+        "label": "Permitted conditions reviewed"
+      },
+      "R_C15_REGISTRATION_REFERENCE": {
+        "label": "Registration reference"
+      },
+      "R_C16_ACCESS_DEPICTED_ON_PLAN": {
+        "label": "Access depicted on plan"
+      },
+      "R_C16_AFFECTED_PARTIES_AND_TERMS": {
+        "label": "Affected parties and terms"
+      },
+      "R_C16_DOMINANT_AND_SERVIENT_PARCELS": {
+        "label": "Dominant and servient parcels"
+      },
+      "R_C16_REGISTERED_RIGHT_ENTRY": {
+        "label": "Registered right entry"
+      },
+      "R_C17_CAVEAT_OR_NOTICE_DOCUMENT": {
+        "label": "Caveat or notice document"
+      },
+      "R_C17_CLAIMANT_AND_REGISTERED_DATE": {
+        "label": "Claimant and registered date"
+      },
+      "R_C17_COURT_PLEADINGS_AND_ORDERS": {
+        "label": "Court pleadings and orders"
+      },
+      "R_C17_SEIZURE_INJUNCTION_OR_LIS_PENDENS": {
+        "label": "Seizure injunction or lis pendens"
+      },
+      "R_C17_TITLE_SETTLEMENT_STAGE_RECORDED": {
+        "label": "Title settlement stage recorded"
+      },
+      "R_C18_CANCELLATION_FORM_MATCHES_PRIOR": {
+        "label": "Cancellation form matches prior"
+      },
+      "R_C18_CANCELLATION_REGISTERED": {
+        "label": "Cancellation registered"
+      },
+      "R_C18_ELIGIBLE_CANCELLING_PARTIES": {
+        "label": "Eligible cancelling parties"
+      },
+      "R_C18_GROUND_EVIDENCE": {
+        "label": "Ground evidence"
+      },
+      "R_C18_GROUND_FOR_CANCELLATION": {
+        "label": "Ground for cancellation"
+      },
+      "R_C18_OPERATIVE_WORDING_LAWYER_AUTHORED": {
+        "label": "Operative wording lawyer authored"
+      },
+      "R_C18_ORIGINAL_TITLE_CERTIFICATE_HANDLING": {
+        "label": "Original title certificate handling"
+      },
+      "R_C18_PRIOR_INSTRUMENT_IDENTIFIED": {
+        "label": "Prior instrument identified"
+      },
+      "R_C19_CERTIFICATE_OF_SALE": {
+        "label": "Certificate of sale"
+      },
+      "R_C19_COURT_OR_AUTHORITY_IDENTIFIED": {
+        "label": "Court or authority identified"
+      },
+      "R_C19_FINALITY_AND_AUTHORITY_CONFIRMED": {
+        "label": "Finality and authority confirmed"
+      },
+      "R_C19_ORDER_AND_DECREE": {
+        "label": "Order and decree"
+      },
+      "R_C19_PURCHASER_AND_REGISTRATION_EVIDENCE": {
+        "label": "Purchaser and registration evidence"
+      },
+      "R_C20_ATTESTATION_DATE_RECORDED": {
+        "label": "Attestation date recorded"
+      },
+      "R_C20_CONSIDERATION_RECORDED": {
+        "label": "Consideration recorded"
+      },
+      "R_C20_DUPLICATE_INSTRUMENT": {
+        "label": "Duplicate instrument"
+      },
+      "R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED": {
+        "label": "Original title certificate inspected"
+      },
+      "R_C20_PARTY_PHOTOGRAPHS": {
+        "label": "Party photographs"
+      },
+      "R_C20_PRESCRIBED_INSTRUMENT_FORM": {
+        "label": "Prescribed instrument form"
+      },
+      "R_C20_PRESENTATION_AND_DAY_BOOK": {
+        "label": "Presentation and day book"
+      },
+      "R_C20_REGISTRATION_FEE_AND_SUBMISSION": {
+        "label": "Registration fee and submission"
+      },
+      "R_C20_REGISTRATION_RESULT_RECORDED": {
+        "label": "Registration result recorded"
+      },
+      "R_C20_SEVEN_WORKING_DAY_FORWARDING": {
+        "label": "Seven working day forwarding"
+      },
+      "R_C20_STAMP_DUTY_RECEIPT": {
+        "label": "Stamp duty receipt"
+      },
+      "R_C20_TITLE_CERTIFICATE_FORWARDED": {
+        "label": "Title certificate forwarded"
+      },
+      "R_C21_EXPRESS_TRANSACTION_CAPACITY": {
+        "label": "Express transaction capacity"
+      },
+      "R_C21_PRINCIPAL_AND_ATTORNEY_IDENTIFICATION": {
+        "label": "Principal and attorney identification"
+      },
+      "R_C21_REGISTERED_CURRENT_POA": {
+        "label": "Registered current poa"
+      },
+      "R_C21_REVOCATION_CHECKED": {
+        "label": "Revocation checked"
+      },
+      "R_C22_ALL_NECESSARY_PARTIES_JOINED": {
+        "label": "All necessary parties joined"
+      },
+      "R_C22_CURRENT_SHARES_AND_RIGHTS": {
+        "label": "Current shares and rights"
+      },
+      "R_C22_NO_PROHIBITED_COOWNERSHIP_EFFECT": {
+        "label": "No prohibited coownership effect"
+      },
+      "R_C22_SEPARATE_INSTRUMENT_PER_COOWNER": {
+        "label": "Separate instrument per coowner"
+      }
+    },
+    "service": {
+      "certified_extract": "Certified extract from the register",
+      "inspect_title_register": "Inspection of the title register",
+      "new_title_certificate_application": "Application for a new title certificate"
+    },
+    "subtype": {
+      "address_register": "Change of address on the register",
+      "caveat": "Caveat",
+      "caveat_cancel": "Withdrawal of a caveat",
+      "certificate_sale_cancel": "Cancellation of a certificate of sale",
+      "certificate_sale_register": "Certificate of sale — entry on the register",
+      "condominium_register": "Condominium registration",
+      "gift": "Gift",
+      "gift_cancel": "Cancellation of a gift",
+      "land_exchange": "Exchange of land",
+      "lease": "Lease",
+      "lease_cancel": "Cancellation of a lease",
+      "life_interest_cancel": "Cancellation of a life interest",
+      "life_interest_cancel_death": "Cancellation of a life interest on death",
+      "life_interest_holder_lease": "Lease by a life-interest holder",
+      "mortgage": "Mortgage",
+      "mortgage_cancel": "Cancellation of a mortgage",
+      "other_declared_instrument": "Other instrument — legal basis declared",
+      "sale_agreement": "Agreement to sell",
+      "sale_agreement_cancel": "Cancellation of an agreement to sell",
+      "security_bond_transfer": "Transfer of a security bond",
+      "servitude_access_transfer": "Servitude or access right",
+      "subdivision_amalgamation": "Subdivision or amalgamation",
+      "transfer_sale": "Transfer on sale"
+    },
+    "v0_exclusion": {
+      "administrative_service": "An administrative registry service rather than an instrument this release prepares.",
+      "condominium": "Condominium and conversion matters follow the ss. 50–52 path, which is not piloted.",
+      "court_or_statutory_sale": "A court or statutory sale; the authority for the sale needs lawyer analysis.",
+      "grounds_need_lawyer_analysis": "The grounds have to be settled by the lawyer before any instrument is prepared.",
+      "initial_compilation": "Initial compilation of title, which is outside the piloted transaction set.",
+      "life_interest": "Life interests need interest-specific drafting that is not piloted.",
+      "litigation_hold": "Held while litigation or a dispute is live.",
+      "other_declared_instrument": "An instrument with no prescribed form; the legal basis has to be declared.",
+      "parcel_restructure": "Restructuring the parcel changes the cadastral record and is not piloted.",
+      "rectification": "Rectification of the register needs lawyer analysis of the error and its effect.",
+      "servitude_analysis": "Servitudes need analysis of the right and the affected parcels.",
+      "specialist_validation_required": "Needs specialist validation before it can be prepared here.",
+      "subtype_not_piloted": "Not part of the piloted set in this release.",
+      "transmission": "Transmission on death follows the estate path, which is not piloted.",
+      "two_parcel_examination": "Two parcels must be examined together; this release examines one."
+    }
   }
 }
