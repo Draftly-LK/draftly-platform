@@ -104,7 +104,36 @@
     "menu": "Matter actions",
     "regime": "RTA",
     "type": "Transfer",
-    "status": "In review"
+    "status": "In review",
+    "missingDocuments": "Missing documents",
+    "exports": "Export & registration",
+    "loadError": "Couldn't load this matter.",
+    "stage": {
+      "intake": "Intake",
+      "evidence": "Evidence",
+      "review": "Review",
+      "drafting": "Drafting",
+      "approval": "Approval",
+      "export": "Export"
+    },
+    "stateLabel": {
+      "INTAKE_DRAFT": "Intake draft",
+      "ROUTED": "Routed",
+      "EVIDENCE_COLLECTION": "Evidence collection",
+      "REVIEW_REQUIRED": "Review required",
+      "LEGAL_REVIEW": "Legal review",
+      "READY_TO_DRAFT": "Ready to draft",
+      "DRAFTING": "Drafting",
+      "APPROVAL_PENDING": "Approval pending",
+      "APPROVED": "Approved",
+      "EXPORTED": "Exported",
+      "SUBMITTED": "Submitted",
+      "REGISTERED": "Registered",
+      "CLOSED": "Closed",
+      "MANUAL_SUPPORTED": "Manual supported",
+      "LITIGATION_HOLD": "Litigation hold",
+      "CANCELLED": "Cancelled"
+    }
   },
   "placeholder": {
     "title": "{screen}",
