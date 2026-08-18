@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from sqlalchemy import select, update
@@ -313,6 +314,28 @@ class SqlChecklistRepository:
             .where(
                 SatisfactionLinkRow.user_id == user_id,
                 SatisfactionLinkRow.checklist_item_id == item_id,
+            )
+            .order_by(SatisfactionLinkRow.created_at.asc())
+        )
+        return [_to_link(row) for row in result.scalars().all()]
+
+    async def list_links_for_items(
+        self, user_id: str, item_ids: Sequence[str]
+    ) -> list[SatisfactionLink]:
+        """Every link for a set of items, in one round trip.
+
+        Reading a checklist needs the links for all of its items, and asking per
+        item costs one query each — 79 on an ordinary transfer, against a remote
+        database. The caller groups the result; `is_live` stays a domain rule
+        rather than being restated as SQL here, where it could drift.
+        """
+        if not item_ids:
+            return []
+        result = await self._session.execute(
+            select(SatisfactionLinkRow)
+            .where(
+                SatisfactionLinkRow.user_id == user_id,
+                SatisfactionLinkRow.checklist_item_id.in_(list(item_ids)),
             )
             .order_by(SatisfactionLinkRow.created_at.asc())
         )

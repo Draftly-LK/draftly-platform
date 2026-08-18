@@ -204,6 +204,11 @@ class ChecklistService:
         if snapshot is None or snapshot.matter_id != matter_id:
             raise ChecklistSnapshotNotFoundError()
         items = await self._repo.list_items(user_id, snapshot.id)
+        # One query for every item's links, not one per item: this read is on
+        # the matter dashboard's critical path.
+        links_by_item: dict[str, list[SatisfactionLink]] = {}
+        for link in await self._repo.list_links_for_items(user_id, [item.id for item in items]):
+            links_by_item.setdefault(link.checklist_item_id, []).append(link)
         views: list[ChecklistItemView] = []
         for item in items:
             requirement = get_requirement(item.requirement_definition_id)
@@ -217,8 +222,7 @@ class ChecklistService:
                     item_id=item.id,
                 )
                 continue
-            links = await self._repo.list_links_for_item(user_id, item.id)
-            live = sum(1 for link in links if link.is_live)
+            live = sum(1 for link in links_by_item.get(item.id, []) if link.is_live)
             views.append(
                 ChecklistItemView(
                     item=item,
