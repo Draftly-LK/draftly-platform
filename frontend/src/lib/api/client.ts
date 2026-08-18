@@ -71,6 +71,7 @@ export function isApiEnabled(): boolean {
 
 interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  /** A `FormData` body is sent as-is (multipart); anything else is JSON-encoded. */
   body?: unknown;
   getToken: TokenProvider;
   /**
@@ -87,6 +88,15 @@ interface RequestOptions {
    */
   stepUpToken?: string;
   signal?: AbortSignal;
+}
+
+/**
+ * `If-Match: "<version>"` for a conditional request (api-conventions §3). A
+ * missing header is 428 and a stale one is 412. Shared by every module's
+ * accessor file so the quoting rule lives in exactly one place.
+ */
+export function ifMatch(version: number): Record<string, string> {
+  return { "If-Match": `"${version}"` };
 }
 
 async function toApiError(response: Response): Promise<ApiError> {
@@ -132,7 +142,10 @@ export async function apiFetch<T>(path: string, options: RequestOptions): Promis
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
   };
-  if (options.body !== undefined) {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (options.body !== undefined && !isFormData) {
+    // Left unset for FormData: the browser must set its own multipart
+    // boundary, which it can only do if this client does not pre-empt it.
     headers["Content-Type"] = "application/json";
   }
   if (options.stepUpToken) {
@@ -145,7 +158,12 @@ export async function apiFetch<T>(path: string, options: RequestOptions): Promis
   const response = await fetch(`${baseUrl}${path}`, {
     method: options.method ?? "GET",
     headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    body:
+      options.body === undefined
+        ? undefined
+        : isFormData
+          ? (options.body as FormData)
+          : JSON.stringify(options.body),
     signal: options.signal,
   });
 
