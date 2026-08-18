@@ -27,16 +27,13 @@ class Settings(BaseSettings):
     )
 
     # ── Database ────────────────────────────────────────────────────────────
-    # Pooled endpoint for the app runtime (PgBouncer)
     database_url: str
-    # Direct (un-pooled) endpoint for Alembic migrations
     database_url_direct: str
 
     # ── Clerk identity provider ─────────────────────────────────────────────
     clerk_issuer: str = ""
     clerk_secret_key: str = ""
     clerk_audience: str = ""
-    # Required when using the real Clerk adapter — must match JWT `azp`
     clerk_authorized_party: str = ""
     # Tolerance for clock drift between this host and Clerk, in seconds.
     #
@@ -93,14 +90,59 @@ class Settings(BaseSettings):
 
     # ── App behaviour ───────────────────────────────────────────────────────
     environment: str = "local"
-    # Seconds a Clerk session may be before step-up auth is required
     step_up_max_age_seconds: int = 600
-    # When true, skip Clerk and use the deterministic stub identity (CI/local)
     use_stub_identity: bool = False
+
+    # ── Party field encryption (local/test adapter only) ────────────────────
+    party_identifier_key: str = ""
+    party_blind_index_key: str = ""
+
+    # ── Billing / PayHere ───────────────────────────────────────────────────
+    use_stub_billing: bool = True
+    payhere_merchant_secret: str = ""
+    payhere_checkout_base_url: str = "https://payhere.lk"
+    billing_grace_period_days: int = 14
+    billing_webhook_max_body_bytes: int = 65536
+    platform_admin_user_ids: str = ""
+    api_cursor_signing_key: str = ""
+
+    # ── Notification / Resend ───────────────────────────────────────────────
+    resend_api_key: str = ""
+    resend_from_email: str = "Draftly <notifications@draftly.local>"
+    resend_webhook_secret: str = ""
+    resend_outbound_enabled: bool = False
+    resend_allowed_recipient_domains: str = "example.com,example.org,draftly.local"
+    notification_compliance_allowlist: str = ""
+    notification_require_published_template: bool = False
+    email_sending_enabled: bool = False
+    resend_recipient_allowlist: str = ""
+    compliance_alert_user_ids: str = ""
 
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def is_non_production(self) -> bool:
+        return self.environment in {"local", "test", "ci", "preview", "demo"}
+
+    @property
+    def payhere_configured(self) -> bool:
+        return bool(self.payhere_merchant_secret)
+
+    @property
+    def provider_email_enabled(self) -> bool:
+        return bool(self.email_sending_enabled and self.resend_api_key)
+
+    def parsed_recipient_allowlist(self) -> tuple[str, ...]:
+        return tuple(
+            entry.strip() for entry in self.resend_recipient_allowlist.split(",") if entry.strip()
+        )
+
+    def parsed_compliance_user_ids(self) -> tuple[str, ...]:
+        return tuple(
+            entry.strip() for entry in self.compliance_alert_user_ids.split(",") if entry.strip()
+        )
 
     @property
     def clerk_configured(self) -> bool:

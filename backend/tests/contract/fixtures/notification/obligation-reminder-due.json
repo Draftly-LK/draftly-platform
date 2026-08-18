@@ -1,0 +1,16 @@
+{
+  "event": "obligation.reminder-due",
+  "eventId": "evt-01K2DRAFTLY000000000001",
+  "occurredAt": "2026-08-05T17:00:00+05:30",
+  "obligationId": "obl-001",
+  "matterId": "matter-synthetic-001",
+  "recipientUserId": "user-synthetic-123",
+  "dueAt": "2026-08-06T17:00:00+05:30",
+  "reminderType": "due-in-24-hours",
+  "obligationClass": "legal-deadline",
+  "urgency": "critical",
+  "confidentialityLevel": "private-matter",
+  "templateKey": "obligation.reminder.due_in_24_hours",
+  "deliveryPolicyKey": "legal-deadline.standard",
+  "correlationId": "corr-01K2DRAFTLY00000000001"
+}

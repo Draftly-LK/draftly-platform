@@ -8,6 +8,10 @@ This service belongs to the M3 backend foundation and the P1 reminder scope.
 It is a module in the Draftly FastAPI backend, not a separately deployed
 microservice in V0.
 
+**Status:** L3 functional (V0 hardening, August 2026). React Email publication,
+production domain verification, and approved product copy remain gated on human
+review (see §15–§16).
+
 ## 1. Decision
 
 `obligations_service` decides that a reminder is due.

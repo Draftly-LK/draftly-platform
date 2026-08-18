@@ -30,7 +30,7 @@
 
 - name: billing_service
   doc: docs/services/billing-service.md
-  level: L0
+  level: L3
   phase: 2B
   matter_scoped: false
   routes_prefix: /api/v1/billing
@@ -73,7 +73,7 @@
 
 - name: party_service
   doc: docs/services/party-service.md
-  level: L0
+  level: L3
   phase: 3B
   matter_scoped: false
   routes_prefix: /api/v1/parties
@@ -187,7 +187,7 @@
 
 - name: obligations_service
   doc: docs/services/obligations-service.md
-  level: L0
+  level: L3
   phase: 5
   matter_scoped: false
   routes_prefix: /api/v1/obligations
@@ -213,7 +213,7 @@
 
 - name: notarial_register_service
   doc: docs/services/notarial-register-service.md
-  level: L0
+  level: L3
   phase: 5B
   matter_scoped: true
   routes_prefix: /api/v1/matters/{matterId}/attestations
@@ -380,7 +380,7 @@
 
 - name: notification_service
   doc: docs/services/notification-service.md
-  level: L0
+  level: L3
   phase: 5
   matter_scoped: false
   routes_prefix: /api/v1
