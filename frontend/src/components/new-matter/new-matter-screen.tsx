@@ -31,6 +31,8 @@ import {
   LoaderCircle,
   MapPinned,
   Scale,
+  ChevronRight,
+  Layers,
   ScrollText,
   ShieldCheck,
   Upload,
@@ -71,6 +73,7 @@ import type {
   MatterFamilyId,
   ParcelKind,
   PartyContext,
+  PhysicalOriginalStatus,
   RequirementGroup,
   RtaSubtypeDefinition,
   TriState,
@@ -847,29 +850,75 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               </div>
             )}
 
-            {snapshot !== null &&
-              GROUP_ORDER.map((group) => {
-                const items = snapshot.items.filter((item) => item.group === group);
-                if (items.length === 0) return null;
-                return (
-                  <div key={group} className="mt-6">
-                    <h2 className="text-muted-ink text-xs font-semibold uppercase">
-                      {t(GROUP_MESSAGE_KEYS[group])}
-                    </h2>
-                    <ul className="divide-border border-border mt-2 divide-y border-y">
-                      {items.map((item) => (
-                        <ChecklistRow
-                          key={item.requirementDefinitionId}
-                          item={item}
-                          label={tRoot(item.labelKey)}
-                          reason={inclusionText(item, t)}
-                          basisLabel={t(BASIS_MESSAGE_KEYS[item.mandatoryBasis])}
-                        />
-                      ))}
-                    </ul>
+            {snapshot !== null && (
+              <>
+                {/* A compiled checklist runs to ~150 requirements. Listing them
+                    all at once buries the shape of the matter, so the groups
+                    collapse to counts and open on demand. */}
+                <div className="border-border-strong bg-surface mt-6 rounded border p-4">
+                  <p className="font-medium">
+                    {t("checklistSummary", {
+                      total: snapshot.items.length,
+                      groups: GROUP_ORDER.filter((group) =>
+                        snapshot.items.some((item) => item.group === group),
+                      ).length,
+                    })}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {GROUP_ORDER.map((group) => {
+                      const count = snapshot.items.filter((item) => item.group === group).length;
+                      if (count === 0) return null;
+                      return (
+                        <span
+                          key={group}
+                          className="border-border-strong text-muted-ink inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium"
+                        >
+                          {t(GROUP_MESSAGE_KEYS[group])}
+                          <span className="text-ink font-semibold tabular-nums">{count}</span>
+                        </span>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+
+                {GROUP_ORDER.map((group) => {
+                  const items = snapshot.items.filter((item) => item.group === group);
+                  if (items.length === 0) return null;
+                  return (
+                    <details
+                      key={group}
+                      // Closed by default. The counts above already say what is
+                      // in the checklist; opening all four at once is ~150 rows
+                      // and buries the shape of the matter.
+                      className="border-border mt-4 border-b"
+                    >
+                      <summary className="hover:bg-hover-bg flex min-h-11 cursor-pointer items-center gap-3 py-2">
+                        <ChevronRight
+                          className="size-4 shrink-0 transition-transform [details[open]_&]:rotate-90"
+                          strokeWidth={1.5}
+                          aria-hidden="true"
+                        />
+                        <span className="font-heading flex-1 text-lg font-semibold">
+                          {t(GROUP_MESSAGE_KEYS[group])}
+                        </span>
+                        <span className="text-muted-ink text-sm tabular-nums">{items.length}</span>
+                      </summary>
+                      <ul className="divide-border border-border mb-3 divide-y border-t">
+                        {items.map((item) => (
+                          <ChecklistRow
+                            key={item.requirementDefinitionId}
+                            item={item}
+                            label={tRoot(item.labelKey)}
+                            reason={inclusionText(item, t)}
+                            basisLabel={t(BASIS_MESSAGE_KEYS[item.mandatoryBasis])}
+                          />
+                        ))}
+                      </ul>
+                    </details>
+                  );
+                })}
+              </>
+            )}
           </section>
         )}
 
@@ -900,6 +949,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               />
             </label>
             <p className="text-muted-ink mt-3 text-sm">{t("uploadLimits")}</p>
+            <RequiredDocuments snapshot={snapshot} />
             <div className="border-amber bg-amber-bg text-amber-text mt-3 border-l-2 p-3 text-sm">
               {t("uploadConfidentiality")}
             </div>
@@ -1123,6 +1173,105 @@ function SubtypeRow({
       </span>
       {selected && <Check className="size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />}
     </button>
+  );
+}
+
+/**
+ * True when the requirement demands a physical original.
+ *
+ * `physical_original_policy` is the level the requirement demands (§5.4), so
+ * only the two ORIGINAL_* levels change what the lawyer must physically
+ * produce; NOT_REQUIRED, UNKNOWN and COPY_ONLY do not.
+ */
+function demandsOriginal(policy: PhysicalOriginalStatus): boolean {
+  return policy === "ORIGINAL_REPORTED" || policy === "ORIGINAL_INSPECTED";
+}
+
+/**
+ * Every document class the compiled checklist will accept, so the upload step
+ * can say what to bring rather than leaving the lawyer to guess.
+ *
+ * The checklist owns the direction requirement -> accepted classes, so this
+ * only inverts it for display: one row per class, carrying how many
+ * requirements it can satisfy and the two facts that change what the lawyer
+ * must physically produce.
+ */
+function RequiredDocuments({ snapshot }: { snapshot: ApiChecklistSnapshot | null }) {
+  const t = useTranslations("newMatter");
+  const tRoot = useTranslations();
+
+  const classes = useMemo(() => {
+    if (snapshot === null) return [];
+    const byId = new Map<
+      string,
+      { id: string; requirementCount: number; original: boolean; combined: boolean }
+    >();
+    for (const item of snapshot.items) {
+      for (const classId of item.acceptedDocumentClassIds) {
+        const existing = byId.get(classId);
+        if (existing === undefined) {
+          byId.set(classId, {
+            id: classId,
+            requirementCount: 1,
+            original: demandsOriginal(item.physicalOriginalPolicy),
+            combined: item.mayBeSatisfiedByCombinedDocument,
+          });
+          continue;
+        }
+        existing.requirementCount += 1;
+        existing.original ||= demandsOriginal(item.physicalOriginalPolicy);
+        existing.combined ||= item.mayBeSatisfiedByCombinedDocument;
+      }
+    }
+    // Most-demanded first: the documents that unblock the most requirements are
+    // the ones worth chasing first.
+    return [...byId.values()].sort(
+      (a, b) => b.requirementCount - a.requirementCount || a.id.localeCompare(b.id),
+    );
+  }, [snapshot]);
+
+  if (snapshot === null) return null;
+
+  return (
+    <section className="mt-6">
+      <h2 className="font-heading text-xl font-semibold">{t("requiredDocsTitle")}</h2>
+      {classes.length === 0 ? (
+        <p className="text-muted-ink mt-1 text-sm">{t("requiredDocsNone")}</p>
+      ) : (
+        <>
+          <p className="text-muted-ink mt-1 text-sm">
+            {t("requiredDocsBody", { count: classes.length })}
+          </p>
+          <ul className="divide-border border-border mt-3 divide-y border-y">
+            {classes.map((entry) => (
+              <li
+                key={entry.id}
+                className="flex min-h-11 flex-wrap items-start gap-x-3 gap-y-1 py-2.5"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{tRoot(`${entry.id}.label`)}</span>
+                  <span className="text-muted-ink block text-sm">
+                    {t("satisfiesCount", { count: entry.requirementCount })}
+                  </span>
+                </span>
+                {entry.original && (
+                  <span className="border-amber text-amber-text inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
+                    <ScrollText className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                    {t("originalRequired")}
+                  </span>
+                )}
+                {entry.combined && (
+                  <span className="border-border-strong text-muted-ink inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
+                    <Layers className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                    {t("combinedAccepted")}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }
 

@@ -936,7 +936,18 @@
     },
     "uploadPendingIngestion": "Files will be attached once the matter is created.",
     "uploadOnFinishHint": "Files upload when you finish this step.",
-    "uploadPartialFailure": "{count, plural, one {# file} other {# files}} failed to upload. You can retry from the document inbox."
+    "uploadPartialFailure": "{count, plural, one {# file} other {# files}} failed to upload. You can retry from the document inbox.",
+    "requiredDocsTitle": "Documents to upload",
+    "requiredDocsBody": "Compiled from your checklist. {count, plural, one {# document class} other {# document classes}} can satisfy a requirement on this matter — attach what you hold now, and the rest stays open.",
+    "requiredDocsNone": "The checklist did not name any document class for this matter.",
+    "satisfiesCount": "{count, plural, one {Satisfies # requirement} other {Satisfies # requirements}}",
+    "originalRequired": "Original required",
+    "combinedAccepted": "One file may cover several",
+    "checklistSummary": "{total, plural, one {# requirement} other {# requirements}} across {groups, plural, one {# group} other {# groups}}",
+    "expandGroup": "Show",
+    "collapseGroup": "Hide",
+    "blockingOnly": "Blocking items only",
+    "groupEmptyFiltered": "No blocking item in this group."
   },
   "library": {
     "title": "Legal sources",
@@ -994,6 +1005,164 @@
     "disabled": "Disabled action"
   },
   "rta": {
+    "doc": {
+      "approved_building_plan": {
+        "label": "Approved building plan"
+      },
+      "assessment_certificate": {
+        "label": "Assessment certificate"
+      },
+      "assessment_notice": {
+        "label": "Assessment notice"
+      },
+      "building_line_certificate": {
+        "label": "Building line certificate"
+      },
+      "cadastral_map_extract": {
+        "label": "Cadastral map extract"
+      },
+      "caveat": {
+        "label": "Caveat"
+      },
+      "certificate_of_conformity": {
+        "label": "Certificate of conformity"
+      },
+      "certificate_of_sale": {
+        "label": "Certificate of sale"
+      },
+      "combined_local_authority_certificate": {
+        "label": "Combined local authority certificate"
+      },
+      "company_incorporation_record": {
+        "label": "Company incorporation record"
+      },
+      "company_resolution": {
+        "label": "Company resolution"
+      },
+      "condominium_declaration": {
+        "label": "Condominium declaration"
+      },
+      "condominium_plan": {
+        "label": "Condominium plan"
+      },
+      "consent_letter": {
+        "label": "Consent letter"
+      },
+      "court_notice": {
+        "label": "Court notice"
+      },
+      "court_order": {
+        "label": "Court order"
+      },
+      "death_certificate": {
+        "label": "Death certificate"
+      },
+      "development_permit": {
+        "label": "Development permit"
+      },
+      "driving_licence": {
+        "label": "Driving licence"
+      },
+      "estate_inventory": {
+        "label": "Estate inventory"
+      },
+      "form12_instrument": {
+        "label": "Form 12 instrument"
+      },
+      "form8_instrument": {
+        "label": "Form 8 instrument"
+      },
+      "lease": {
+        "label": "Lease"
+      },
+      "life_interest_instrument": {
+        "label": "Life interest instrument"
+      },
+      "mortgage_discharge_evidence": {
+        "label": "Mortgage discharge evidence"
+      },
+      "nic": {
+        "label": "NIC"
+      },
+      "non_vesting_certificate": {
+        "label": "Non vesting certificate"
+      },
+      "passport": {
+        "label": "Passport"
+      },
+      "power_of_attorney": {
+        "label": "Power of attorney"
+      },
+      "prescribed_instrument": {
+        "label": "Prescribed instrument"
+      },
+      "prior_deed": {
+        "label": "Prior deed"
+      },
+      "priority_notice": {
+        "label": "Priority notice"
+      },
+      "probate_letters_of_administration": {
+        "label": "Probate letters of administration"
+      },
+      "rates_receipt": {
+        "label": "Rates receipt"
+      },
+      "registered_instrument_copy": {
+        "label": "Registered instrument copy"
+      },
+      "registered_mortgage_instrument": {
+        "label": "Registered mortgage instrument"
+      },
+      "registration_fee_receipt": {
+        "label": "Registration fee receipt"
+      },
+      "registry_search_request": {
+        "label": "Registry search request"
+      },
+      "registry_search_result": {
+        "label": "Registry search result"
+      },
+      "sale_agreement": {
+        "label": "Sale agreement"
+      },
+      "seizure_notice": {
+        "label": "Seizure notice"
+      },
+      "servitude_instrument": {
+        "label": "Servitude instrument"
+      },
+      "stamp_duty_receipt": {
+        "label": "Stamp duty receipt"
+      },
+      "street_line_certificate": {
+        "label": "Street line certificate"
+      },
+      "subdivision_plan": {
+        "label": "Subdivision plan"
+      },
+      "survey_department_certification": {
+        "label": "Survey department certification"
+      },
+      "survey_plan": {
+        "label": "Survey plan"
+      },
+      "tire31_application": {
+        "label": "TIRE 31 application"
+      },
+      "title_certificate": {
+        "label": "Title certificate"
+      },
+      "title_register_extract": {
+        "label": "Title register extract"
+      },
+      "unidentified": {
+        "label": "Unidentified"
+      },
+      "will": {
+        "label": "Will"
+      }
+    },
     "family": {
       "ownership_change": {
         "label": "Ownership change",
