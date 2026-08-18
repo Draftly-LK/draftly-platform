@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.content_governance.contracts import (
@@ -41,6 +42,7 @@ from src.modules.matter.infrastructure.orm import (
     MatterRow,
 )
 from src.platform import ids
+from src.platform.errors import ConflictError
 
 
 def _to_matter(row: MatterRow) -> Matter:
@@ -163,7 +165,19 @@ class SqlMatterRepository:
         )
         _apply(row, matter)
         self._session.add(row)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            # uq_matters_user_reference: one reference per user. Reported as a
+            # conflict so the caller can say which field clashed, rather than
+            # escaping as a 500 — an unhandled error also loses the CORS
+            # headers, which makes a duplicate reference look like a network
+            # fault in the browser.
+            if _is_duplicate_reference(exc):
+                raise ConflictError(
+                    f"Matter reference '{matter.reference}' is already used."
+                ) from exc
+            raise
         return _to_matter(row)
 
     async def update(self, matter: Matter, expected_version: int) -> Matter:
@@ -312,3 +326,8 @@ class SqlIntakeAnswerRepository:
         self._session.add(row)
         await self._session.flush()
         return _to_answer(row)
+
+
+def _is_duplicate_reference(exc: IntegrityError) -> bool:
+    """True when the violated constraint is the per-user reference index."""
+    return "uq_matters_user_reference" in str(getattr(exc, "orig", exc))
