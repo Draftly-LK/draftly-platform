@@ -47,6 +47,15 @@ App: [http://localhost:4310](http://localhost:4310)
   its middleware / AppShell usages, and remove `AUTH_BYPASS` from
   `frontend/.env.example`.
 
+### Interface language
+
+- `MULTILINGUAL_LANGUAGE_SUPPORT` in `frontend/.env` controls the Sinhala UI
+  locale. Default (unset or any value but `false`) keeps English + Sinhala.
+- `MULTILINGUAL_LANGUAGE_SUPPORT=false` serves English only: the
+  `draftly-locale` cookie is ignored and the locale toggle is not rendered.
+- The flag gates interface chrome only. A matter's instrument language and a
+  document's language stay part of the matter record either way.
+
 #### Clerk Dashboard (required for one email + one session)
 
 In [dashboard.clerk.com](https://dashboard.clerk.com) for this app:

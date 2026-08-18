@@ -2,14 +2,21 @@
 
 import { Languages } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useMultilingualEnabled } from "./multilingual-provider";
 
 export function LocaleToggle() {
   const locale = useLocale();
   const t = useTranslations("shell");
+  const multilingual = useMultilingualEnabled();
   const changeLocale = (next: "en" | "si") => {
     document.cookie = `draftly-locale=${next};path=/;max-age=31536000;samesite=lax`;
     window.location.reload();
   };
+  // MULTILINGUAL_LANGUAGE_SUPPORT=false → English only, so there is nothing
+  // to switch between.
+  if (!multilingual) {
+    return null;
+  }
   return (
     <div
       aria-label={t("locale")}

@@ -9,7 +9,9 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { ProvisionGate } from "@/components/auth/provision-gate";
+import { MultilingualProvider } from "@/components/shell/multilingual-provider";
 import { isClerkConfigured } from "@/lib/auth/clerk";
+import { isMultilingualEnabled } from "@/lib/i18n/multilingual";
 import "@/styles/globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -44,9 +46,10 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const multilingual = isMultilingualEnabled();
   const body = (
     <NextIntlClientProvider locale={locale} messages={messages} timeZone="Asia/Colombo">
-      {children}
+      <MultilingualProvider enabled={multilingual}>{children}</MultilingualProvider>
     </NextIntlClientProvider>
   );
 
