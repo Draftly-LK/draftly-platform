@@ -17,7 +17,7 @@ import {
   listExports,
   listRegistrationEvents,
 } from "@/lib/api/approvals";
-import { listForms } from "@/lib/api/drafts";
+import { getForm, listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type {
@@ -30,6 +30,9 @@ import type {
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
+
+/** §9.6: an attested or registered event records an act on one identified instrument. */
+const FORM_REQUIRED_EVENT_TYPES: RegistrationEventType[] = ["ATTESTED", "REGISTERED"];
 
 export function ExportsScreen({ matterId }: { matterId: string }) {
   return isApiEnabled() ? (
@@ -79,6 +82,10 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
   const [registryOffice, setRegistryOffice] = useState("");
   const [resultNote, setResultNote] = useState("");
   const [creatingEvent, setCreatingEvent] = useState(false);
+  const [eventFormId, setEventFormId] = useState<string>("");
+  const [eventFormEvidenceIds, setEventFormEvidenceIds] = useState<string[]>([]);
+  const [loadingEventFormEvidence, setLoadingEventFormEvidence] = useState(false);
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<string[]>([]);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
@@ -117,6 +124,33 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
     void fetchData();
   }, [fetchData]);
 
+  // Load the evidence references bound to the form the registration event relates to
+  useEffect(() => {
+    if (!eventFormId) {
+      setEventFormEvidenceIds([]);
+      setSelectedEvidenceIds([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingEventFormEvidence(true);
+    getForm(getToken, eventFormId)
+      .then((form) => {
+        if (cancelled) return;
+        const ids = Array.from(new Set(form.fields.flatMap((field) => field.evidenceReferenceIds)));
+        setEventFormEvidenceIds(ids);
+        setSelectedEvidenceIds((current) => current.filter((id) => ids.includes(id)));
+      })
+      .catch(() => {
+        if (!cancelled) setEventFormEvidenceIds([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEventFormEvidence(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getToken, eventFormId]);
+
   // Handle create export
   const handleCreateExport = useCallback(async () => {
     if (!selectedFormId) {
@@ -148,6 +182,14 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       setError("Event date is required.");
       return;
     }
+    if (FORM_REQUIRED_EVENT_TYPES.includes(eventType) && !eventFormId) {
+      setError(t("formRequiredForEvent"));
+      return;
+    }
+    if (selectedEvidenceIds.length === 0) {
+      setError(t("evidenceRequired"));
+      return;
+    }
 
     setCreatingEvent(true);
     setError(null);
@@ -155,6 +197,8 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       const result = await createRegistrationEvent(getToken, matterId, {
         eventType,
         eventDate,
+        evidenceReferenceIds: selectedEvidenceIds,
+        ...(eventFormId && { generatedFormId: eventFormId }),
         ...(dayBookReference && { dayBookReference }),
         ...(registryOffice && { registryOffice }),
         ...(resultNote && { resultNote }),
@@ -171,12 +215,26 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       setDayBookReference("");
       setRegistryOffice("");
       setResultNote("");
+      setEventFormId("");
+      setSelectedEvidenceIds([]);
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : t("createError"));
     } finally {
       setCreatingEvent(false);
     }
-  }, [getToken, matterId, eventType, eventDate, dayBookReference, registryOffice, resultNote, eventList, t]);
+  }, [
+    getToken,
+    matterId,
+    eventType,
+    eventDate,
+    eventFormId,
+    selectedEvidenceIds,
+    dayBookReference,
+    registryOffice,
+    resultNote,
+    eventList,
+    t,
+  ]);
 
   if (loading) {
     return (
@@ -306,6 +364,13 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                   </div>
                 </div>
 
+                {error && (
+                  <div className="border-red bg-red-bg text-red flex gap-3 rounded border p-3 text-sm">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                    <p>{error}</p>
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-2">
                   <Button
                     variant="primary"
@@ -405,6 +470,64 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                 </div>
 
                 <div>
+                  <label className="block text-sm font-semibold">
+                    {t("relatedForm")}
+                    {FORM_REQUIRED_EVENT_TYPES.includes(eventType) ? "" : ` (${t("optional")})`}
+                  </label>
+                  <select
+                    value={eventFormId}
+                    onChange={(e) => setEventFormId(e.target.value)}
+                    className="border-border-strong bg-surface mt-2 w-full rounded border px-3 py-2 text-sm"
+                  >
+                    <option value="">{t("selectForm")}…</option>
+                    {availableForms.map((form, idx) => (
+                      <option key={form.id} value={form.id}>
+                        Form {idx + 1}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold">{t("evidenceReferences")}</label>
+                  {!eventFormId ? (
+                    <p className="text-muted-ink mt-2 text-xs">{t("selectFormFirst")}</p>
+                  ) : loadingEventFormEvidence ? (
+                    <div className="text-muted-ink mt-2 flex items-center gap-2 text-xs">
+                      <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} aria-hidden="true" />
+                      Loading…
+                    </div>
+                  ) : eventFormEvidenceIds.length === 0 ? (
+                    <p className="text-muted-ink mt-2 text-xs">{t("noEvidenceAvailable")}</p>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      {eventFormEvidenceIds.map((id) => {
+                        const inputId = `evidence-${id}`;
+                        return (
+                          <div key={id} className="flex items-center gap-2">
+                            <input
+                              id={inputId}
+                              type="checkbox"
+                              checked={selectedEvidenceIds.includes(id)}
+                              onChange={(e) =>
+                                setSelectedEvidenceIds((current) =>
+                                  e.target.checked
+                                    ? [...current, id]
+                                    : current.filter((existing) => existing !== id),
+                                )
+                              }
+                            />
+                            <label htmlFor={inputId} className="cursor-pointer font-mono text-xs">
+                              {id}
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div>
                   <label className="block text-sm font-semibold">{t("dayBookReference")}</label>
                   <input
                     type="text"
@@ -437,6 +560,13 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                   />
                 </div>
 
+                {error && (
+                  <div className="border-red bg-red-bg text-red flex gap-3 rounded border p-3 text-sm">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+                    <p>{error}</p>
+                  </div>
+                )}
+
                 <div className="flex gap-2 pt-2">
                   <Button
                     variant="primary"
@@ -450,7 +580,15 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     )}
                     {creatingEvent ? "Recording…" : "Record event"}
                   </Button>
-                  <Button onClick={() => setShowEventForm(false)}>Cancel</Button>
+                  <Button
+                    onClick={() => {
+                      setShowEventForm(false);
+                      setEventFormId("");
+                      setSelectedEvidenceIds([]);
+                    }}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               </div>
             </div>

@@ -422,7 +422,15 @@
     "awaitingConfirmation": "Awaiting confirmation",
     "reviewedByLabel": "Reviewed by {reviewer}",
     "loading": "Loading facts…",
-    "error": "Could not load facts"
+    "error": "Could not load facts",
+    "confirm": "Confirm",
+    "clearValue": "Clear value",
+    "conflictError": "Fact changed since loaded. Please refresh and try again.",
+    "decisionError": "Could not record fact decision",
+    "filterLabel": "Filter",
+    "noMatchingFilter": "No facts match this filter.",
+    "criticalBadge": "Critical",
+    "requiredBadge": "Required"
   },
   "sections": {
     "parcel": "Land parcel particulars",
@@ -1860,6 +1868,125 @@
       "subtype_not_piloted": "Draftly does not prepare this instrument yet.",
       "transmission": "transmission on death is handled through the estate path.",
       "two_parcel_examination": "two parcels have to be examined together, and Draftly examines one."
+    },
+    "form": {
+      "reg_2022_form_08": {
+        "title": "Form 8 — Deed of Transfer",
+        "section": {
+          "parcel": "Parcel identification",
+          "title": "Title particulars",
+          "transferor": "Transferor",
+          "transferee": "Transferee",
+          "consideration": "Consideration",
+          "attestation": "Attestation"
+        },
+        "field": {
+          "district": {
+            "label": "District"
+          },
+          "ds_division": {
+            "label": "Divisional Secretary's Division"
+          },
+          "gn_division": {
+            "label": "Grama Niladhari Division"
+          },
+          "village": {
+            "label": "Village or town"
+          },
+          "assessment_number": {
+            "label": "Assessment number"
+          },
+          "cadastral_map_no": {
+            "label": "Cadastral map number"
+          },
+          "block_no": {
+            "label": "Block number"
+          },
+          "sheet_no": {
+            "label": "Sheet number"
+          },
+          "parcel_no": {
+            "label": "Parcel number"
+          },
+          "extent": {
+            "label": "Parcel extent"
+          },
+          "extent_subject_to_transfer": {
+            "label": "Extent subject to transfer"
+          },
+          "place_of_registration": {
+            "label": "Place of registration"
+          },
+          "title_certificate_no": {
+            "label": "Title certificate number"
+          },
+          "class_of_title": {
+            "label": "Class of title"
+          },
+          "transferor_name": {
+            "label": "Transferor name"
+          },
+          "transferor_nic": {
+            "label": "Transferor identity card number"
+          },
+          "transferor_address": {
+            "label": "Transferor address"
+          },
+          "transferee_name": {
+            "label": "Transferee name"
+          },
+          "transferee_nic": {
+            "label": "Transferee identity card number"
+          },
+          "transferee_address": {
+            "label": "Transferee address"
+          },
+          "consideration": {
+            "label": "Consideration"
+          },
+          "consideration_words": {
+            "label": "Consideration in words"
+          },
+          "notary_name": {
+            "label": "Notary"
+          },
+          "notary_code": {
+            "label": "Notary code"
+          },
+          "attestation_date": {
+            "label": "Date of attestation"
+          }
+        }
+      },
+      "preflight": {
+        "unresolved_required_field": "A required field has no resolved value.",
+        "field_conflicted": "A field is bound to conflicting fact candidates that have not been resolved.",
+        "form_stale": "The form is stale and must be re-evaluated against its current inputs.",
+        "open_blocking_issue": "An open check finding is blocking this form.",
+        "open_statutory_blocker": "An open statutory blocker has not been resolved.",
+        "open_high_risk_issue": "An open high-risk check finding has not been resolved.",
+        "critical_fact_unconfirmed": "A critical fact bound to this form has not been confirmed.",
+        "checklist_requirement_blocking": "A blocking checklist requirement has not been satisfied.",
+        "unacknowledged_warning_issue": "A warning-level check finding has not been acknowledged.",
+        "template_not_validated": "This template has not completed lawyer validation.",
+        "source_reverification_required": "The source record backing this template needs re-verification.",
+        "unresolved_optional_field": "An optional field has no resolved value.",
+        "field_awaiting_confirmation": "A field is awaiting lawyer confirmation.",
+        "template_source_defect": "The template carries a known defect in its source text."
+      },
+      "defect": {
+        "caption_or_request_sentence_mismatch": "The gazetted English text has a mismatch between a caption and its request sentence. The source defect is flagged, not corrected.",
+        "deceased_rendered_diseased": "The gazetted English text prints “diseased” where “deceased” is intended. The source defect is flagged, not corrected.",
+        "english_text_not_lawyer_validated": "The English text of this template has not completed lawyer validation.",
+        "sinhala_tamil_text_not_held": "No Sinhala or Tamil text is held for this template.",
+        "translation_unverified": "A translation for this template has not been verified.",
+        "current_revision_unverified": "It has not been verified that this template reflects the current gazetted revision.",
+        "official_artifact_not_held": "The official gazetted artifact for this template is not held in the system.",
+        "scan_contains_private_sample_data": "The held scan contains private sample data and is restricted accordingly."
+      },
+      "watermark": {
+        "draft_not_approved": "DRAFT — Not approved"
+      }
     }
   },
   "approval": {
@@ -1925,7 +2052,14 @@
     "eventRecorded": "Registration event recorded.",
     "loadError": "Could not load export or registration data",
     "createError": "Could not record event",
-    "conflictError": "Data has changed. Please refresh and try again."
+    "conflictError": "Data has changed. Please refresh and try again.",
+    "relatedForm": "Related form",
+    "optional": "optional",
+    "selectFormFirst": "Select a related form to choose its evidence references.",
+    "noEvidenceAvailable": "No evidence references are bound to this form yet.",
+    "evidenceRequired": "At least one evidence reference is required. Attestation, presentation, and registration are recorded from official evidence, never from the passage of time.",
+    "formRequiredForEvent": "This event type records an act on one identified instrument; select the related form first.",
+    "evidenceReferences": "Evidence references"
   },
   "processing": {
     "title": "Processing",
@@ -1973,5 +2107,18 @@
     "viewAllIssues": "View all issues",
     "loading": "Loading missing documents…",
     "error": "Could not load missing documents"
+  },
+  "generatedFormState": {
+    "GENERATED_DRAFT": "Generated draft",
+    "UNRESOLVED": "Unresolved",
+    "REVIEW_READY": "Review ready",
+    "LAWYER_REVIEWED": "Lawyer reviewed",
+    "APPROVAL_PENDING": "Approval pending",
+    "APPROVED": "Approved",
+    "EXPORTED": "Exported",
+    "SUBMITTED": "Submitted",
+    "REGISTERED": "Registered",
+    "STALE_TEMPLATE": "Stale — template changed",
+    "STALE_AFTER_APPROVAL": "Stale — changed after approval"
   }
 }

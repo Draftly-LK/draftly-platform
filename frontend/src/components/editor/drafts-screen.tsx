@@ -10,6 +10,7 @@ import { generateForm, listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useDemoStore } from "@/lib/store";
+import { subtypeLabelKey } from "@/lib/rta/taxonomy";
 import { cn } from "@/lib/utils";
 import type { ApiGeneratedFormSummary, ApiRtaMatter, GeneratedFormState } from "@/types/rta";
 import { AppShell } from "@/components/shell/app-shell";
@@ -243,12 +244,13 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                 {forms.map((form) => {
                   const StateIcon = FORM_STATE_ICONS[form.state];
                   const formattedDate = new Date(form.createdAt).toLocaleDateString();
+                  const subtypeKey = matter?.subtypeId ? subtypeLabelKey(matter.subtypeId) : undefined;
                   return (
                     <tr
                       key={form.id}
                       className="border-border h-11 border-b last:border-b-0"
                     >
-                      <td className="px-4">{tRoot(matter?.subtypeId ? `rta.subtype.${matter.subtypeId}` : "label.form")}</td>
+                      <td className="px-4">{subtypeKey ? tRoot(subtypeKey) : t("form8Name")}</td>
                       <td className="px-4 tabular-nums">v{form.formVersion}</td>
                       <td className="px-4">
                         <span className={cn(
