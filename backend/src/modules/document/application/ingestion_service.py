@@ -468,6 +468,10 @@ class SourceFileIngestionService:
         # on (§6.5). The run is recorded and its candidates are returned for
         # comparison, but the organised inbox is left alone.
         documents = () if existing else await self._materialise(run, final)
+        if run.v1_report is not None and documents:
+            await self._repo.link_v1_logical_documents(
+                user_id, run.id, tuple(view.document.id for view in documents)
+            )
 
         await self._record(
             user_id=user_id,

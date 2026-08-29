@@ -13,6 +13,13 @@ Two gates are checked before any byte is read:
    ``PROCESSING_FAILED`` with ``DATA_PROTECTION_GATE``, and the client's
    evidence never leaves the deployment.
 
+A third check sits between the read and the pipeline: the bytes are hashed and
+compared against the hash recorded at upload. Storage pins the object version,
+which proves the bytes came from the object of record; this proves they are
+still the bytes of record. It raises rather than failing the run, because a
+mismatch means stored evidence was altered — that is a fault to investigate,
+not an outcome to file against the document.
+
 Neither path invents progress, sleeps, or marks the file ``PROCESSED``. A
 document nothing processed is reported as unprocessed, with a reason the lawyer
 can act on. The persisted-ingestion path deliberately has no ``synthetic``
@@ -22,6 +29,7 @@ there is no flag a caller could set to talk its way past the closed gate.
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 
 import structlog
@@ -31,9 +39,11 @@ from src.modules.document.application.processing_service import (
     REASON_DATA_APPROVAL,
     DocumentProcessingService,
 )
+from src.modules.document.application.v1_pipeline import V1DocumentPipeline
 from src.modules.document.domain.errors import (
     ExtractionProviderError,
     SourceFileNotProcessableError,
+    SourceObjectIntegrityError,
     UnsupportedDocumentError,
 )
 from src.modules.document.domain.ingestion import (
@@ -47,7 +57,8 @@ from src.modules.document.domain.ingestion_policies import (
     failure_explanation_key,
 )
 from src.modules.document.domain.models import ProcessingOutcome, ProcessingReport
-from src.modules.document.ports import SourceFileStoragePort
+from src.modules.document.domain.v1 import V1PipelineReport
+from src.modules.document.ports import MatterDocumentTypesPort, SourceFileStoragePort
 from src.platform import ids
 
 log = structlog.get_logger(__name__)
@@ -63,16 +74,20 @@ class SynchronousProcessingJob:
         pipeline: DocumentProcessingService | None,
         provider_name: str,
         data_protection_approved: bool,
+        v1_pipeline: V1DocumentPipeline | None = None,
+        matter_document_types: MatterDocumentTypesPort | None = None,
     ) -> None:
         self._storage = storage
         self._pipeline = pipeline
         self._provider_name = provider_name
         self._data_protection_approved = data_protection_approved
+        self._v1_pipeline = v1_pipeline
+        self._matter_document_types = matter_document_types
 
     async def enqueue(self, *, source_file: SourceFile, correlation_id: str = "") -> ProcessingRun:
         started_at = datetime.now(tz=UTC)
 
-        if self._pipeline is None:
+        if self._pipeline is None and self._v1_pipeline is None:
             return self._failed(
                 source_file, started_at, ProcessingFailureReason.NOT_CONFIGURED, correlation_id
             )
@@ -91,13 +106,44 @@ class SynchronousProcessingJob:
                 state=source_file.state.value,
             )
 
-        data = await self._storage.get(source_file.storage_object_key)
+        data = await self._storage.get(
+            source_file.storage_object_key, version=source_file.storage_object_version
+        )
+        # Storage proved these bytes came from the recorded object; this proves
+        # they are the bytes that were hashed at upload. It runs before the
+        # pipeline so nothing unverified reaches a provider.
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != source_file.sha256:
+            log.error(
+                "source_file.storage.integrity_failed",
+                source_file_id=source_file.id,
+                storage_object_key=source_file.storage_object_key,
+                expected_sha256=source_file.sha256,
+                found_sha256=digest,
+            )
+            raise SourceObjectIntegrityError(
+                sourceFileId=source_file.id,
+                storageObjectKey=source_file.storage_object_key,
+                storageObjectVersion=source_file.storage_object_version,
+            )
+
         try:
+            if self._v1_pipeline is not None and self._matter_document_types is not None:
+                types = await self._matter_document_types.for_matter(
+                    user_id=source_file.user_id, matter_id=source_file.matter_id
+                )
+                v1_report = await self._v1_pipeline.process(
+                    data,
+                    source_file.media_type,
+                    allowed_type_ids=types.allowed_type_ids,
+                    extraction_schemas=types.extraction_schemas,
+                )
+                return await self._from_v1_report(
+                    source_file, started_at, v1_report, correlation_id
+                )
+            assert self._pipeline is not None
             report = await self._pipeline.process(
-                data,
-                source_file.media_type,
-                synthetic=False,
-                correlation_id=correlation_id,
+                data, source_file.media_type, synthetic=False, correlation_id=correlation_id
             )
         except UnsupportedDocumentError:
             return self._failed(
@@ -109,6 +155,85 @@ class SynchronousProcessingJob:
             )
 
         return self._from_report(source_file, started_at, report, correlation_id)
+
+    async def _from_v1_report(
+        self,
+        source_file: SourceFile,
+        started_at: datetime,
+        report: V1PipelineReport,
+        correlation_id: str,
+    ) -> ProcessingRun:
+        """Persist rebuildable page artifacts and map groups to existing candidates."""
+        run_id = ids.new_id(ids.PROCESSING_RUN)
+        for page in report.pages:
+            base = f"{source_file.storage_object_key}/derivatives/{run_id}/pages/{page.page_no}"
+            for kind, suffix, payload in (
+                ("corrected_webp", "page.webp", page.corrected_webp),
+                ("corrected_ocr_json", "ocr.json", page.ocr_json),
+                ("plain_ocr_text", "text.txt", page.plain_text),
+            ):
+                key = f"{base}/{suffix}"
+                version = await self._storage.put(key, payload)
+                page.derivative_refs[kind] = (key, version)
+
+        pages_by_no = {page.page_no: page for page in report.pages}
+        candidates: list[DocumentCandidate] = []
+        for document in report.logical_documents:
+            logical = document.logical_document
+            page_classifications = [
+                pages_by_no[page_no].classification for page_no in logical.page_numbers
+            ]
+            assert all(item is not None for item in page_classifications)
+            confidence = min(
+                item.model_reported_confidence for item in page_classifications if item is not None
+            )
+            languages = sorted(
+                {
+                    language.code
+                    for page_no in logical.page_numbers
+                    for language in pages_by_no[page_no].ocr.detected_languages
+                }
+            )
+            class_id = logical.type_id if logical.type_id != "other" else None
+            candidates.append(
+                DocumentCandidate(
+                    page_start=min(logical.page_numbers),
+                    page_end=max(logical.page_numbers),
+                    source_file_id=source_file.id,
+                    boundary_confidence=confidence,
+                    continuity_anomaly=False,
+                    class_id=class_id,
+                    class_confidence=confidence,
+                    class_top_two_margin=0.0,
+                    language_codes=tuple(languages),
+                    candidate_fields=tuple(
+                        CandidateFieldRef(
+                            key=item.key,
+                            value=item.value,
+                            page_no=item.page_no,
+                            source_file_id=source_file.id,
+                            model_reported_confidence=item.model_reported_confidence,
+                            provider="gemini-2.5-flash-lite",
+                        )
+                        for item in document.candidates
+                    ),
+                )
+            )
+        return ProcessingRun(
+            id=run_id,
+            user_id=source_file.user_id,
+            matter_id=source_file.matter_id,
+            source_file_id=source_file.id,
+            provider="google-vision+gemini-2.5-flash-lite",
+            outcome=SourceFileState.PROCESSED,
+            started_at=started_at,
+            finished_at=datetime.now(tz=UTC),
+            correlation_id=correlation_id,
+            pages_processed=len(report.pages),
+            ai_extraction_calls=report.classification_calls + report.extraction_calls,
+            candidates=tuple(candidates),
+            v1_report=report,
+        )
 
     # ── Mapping ──────────────────────────────────────────────────────────────
 

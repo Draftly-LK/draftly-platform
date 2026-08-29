@@ -7,7 +7,8 @@ specific adapters (infrastructure.md §Principle: provider-neutral behind ports)
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +19,7 @@ from src.modules.billing.infrastructure.platform_admin import (
     SettingsPlatformAdminAdapter,
 )
 from src.modules.billing.ports import BillingProviderPort, PlatformAdminPort
+from src.modules.document.ports import SourceFileStoragePort
 from src.modules.notification.infrastructure.email.resend_adapter import ResendEmailAdapter
 from src.modules.notification.ports import EmailPort
 from src.modules.obligations.infrastructure.deadline_rule_fixture import FixtureDeadlineRulePort
@@ -36,6 +38,7 @@ from src.platform.request_context import RequestContext
 
 if TYPE_CHECKING:
     from src.modules.auth.application.auth_service import AuthService
+    from src.modules.document.application.review_service import DocumentReviewService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,6 +98,11 @@ than an open door.
 """
 STUB_IDENTITY_ENVIRONMENTS = frozenset({"local", "test", "ci"})
 STUB_EXTRACTION_ENVIRONMENTS = STUB_IDENTITY_ENVIRONMENTS
+
+#: Where local-disk storage of client evidence is tolerated. Same membership as
+#: the stub sets, but named separately: this gate is about durability and access
+#: control, not about bypassing a provider, and the two could diverge.
+LOCAL_ONLY_STORAGE_ENVIRONMENTS = frozenset({"local", "test", "ci"})
 
 
 def build_identity_adapter() -> IdentityPort:
@@ -250,12 +258,136 @@ def build_approval_service(session: AsyncSession) -> ApprovalService:
     )
 
 
+@lru_cache(maxsize=1)
+def _gcs_client(project: str, bucket_name: str) -> Any:
+    """One storage client per process, with the bucket policy checked once.
+
+    `build_ingestion_service` runs per HTTP request (the router resolves it
+    through `Depends`), so building a client here rather than caching would mean
+    an ADC token refresh and a fresh connection pool on every upload.
+    `storage.Client` is thread-safe, so one instance is safe across the
+    `asyncio.to_thread` hops the adapter uses.
+
+    The bucket-policy check rides along for the same reason: it costs one API
+    call per process instead of one per request.
+
+    Tests that change storage settings must call ``_gcs_client.cache_clear()``
+    as well as resetting the settings cache, or a client built under one
+    configuration leaks into the next test.
+    """
+    from google.auth.exceptions import DefaultCredentialsError
+    from google.cloud import storage  # type: ignore[attr-defined]
+
+    try:
+        # Passed explicitly rather than inferred from ADC: the bucket does not
+        # necessarily live in the caller's default gcloud project.
+        client = storage.Client(project=project)
+    except DefaultCredentialsError as exc:
+        # Reported like every other wiring failure here — naming what to set —
+        # rather than as a provider stack trace from the composition root.
+        raise RuntimeError(
+            "SOURCE_FILE_STORAGE=gcs found no Application Default Credentials. "
+            "In a deployed environment attach a workload identity; locally run "
+            "'gcloud auth application-default login'."
+        ) from exc
+    _assert_bucket_policy(client, bucket_name)
+    return client
+
+
+def _assert_bucket_policy(client: Any, bucket_name: str) -> None:
+    """Refuse to start against a bucket that is not configured to hold evidence.
+
+    `storage-service.md` §7 requires startup to refuse a missing bucket, public
+    access, disabled uniform access, or an unapproved location. Finding this at
+    boot is the difference between a deployment that fails and a deployment that
+    quietly stores client evidence somewhere readable.
+
+    Note for deployment: this calls `get_bucket`, which needs
+    `storage.buckets.get`. `roles/storage.objectAdmin` does not grant it — the
+    runtime identity also needs `roles/storage.legacyBucketReader` or a custom
+    role, or boot fails with a 403.
+    """
+    from google.api_core.exceptions import GoogleAPIError
+
+    settings = get_settings()
+    try:
+        bucket = client.get_bucket(bucket_name)
+    except GoogleAPIError as exc:
+        raise RuntimeError(
+            f"DRAFTLY_GCS_BUCKET '{bucket_name}' could not be read at startup: "
+            f"{type(exc).__name__}. Check the bucket exists and the runtime "
+            f"identity has storage.buckets.get."
+        ) from exc
+
+    iam = bucket.iam_configuration
+    if not iam.uniform_bucket_level_access_enabled:
+        raise RuntimeError(
+            f"Bucket '{bucket_name}' does not have uniform bucket-level access "
+            f"enabled. Object ACLs are never used for client evidence."
+        )
+    if iam.public_access_prevention != "enforced":
+        raise RuntimeError(f"Bucket '{bucket_name}' does not enforce public access prevention.")
+    expected = settings.gcs_location
+    if expected and (bucket.location or "").lower() != expected.lower():
+        raise RuntimeError(
+            f"Bucket '{bucket_name}' is in '{bucket.location}', not the approved "
+            f"DRAFTLY_GCS_LOCATION '{expected}'. Data residency is an approval item."
+        )
+
+
+def build_source_file_storage() -> SourceFileStoragePort:
+    """Select the object store for uploaded evidence.
+
+    Filesystem is confined to local/test/ci because it has no encryption at
+    rest, no object versioning, and no lifecycle policy. GCS carries no
+    environment restriction — a developer working against the staging bucket is
+    a supported case — but it is gated on the real-data approval instead, since
+    a matter's uploaded evidence is client material by definition.
+    """
+    settings = get_settings()
+
+    if settings.source_file_storage == "filesystem":
+        if settings.environment not in LOCAL_ONLY_STORAGE_ENVIRONMENTS:
+            raise RuntimeError(
+                f"SOURCE_FILE_STORAGE=filesystem is not permitted in environment "
+                f"'{settings.environment}'. Local-disk storage of client evidence is "
+                f"limited to {sorted(LOCAL_ONLY_STORAGE_ENVIRONMENTS)}."
+            )
+        from src.modules.document.infrastructure.storage_filesystem import (
+            FilesystemSourceFileStorage,
+        )
+
+        return FilesystemSourceFileStorage(settings.source_file_storage_dir)
+
+    if settings.source_file_storage == "gcs":
+        if not settings.gcs_bucket:
+            raise RuntimeError("DRAFTLY_GCS_BUCKET is required when SOURCE_FILE_STORAGE=gcs.")
+        if not settings.gcs_project_id:
+            raise RuntimeError("DRAFTLY_GCS_PROJECT_ID is required when SOURCE_FILE_STORAGE=gcs.")
+        if not settings.storage_real_data_approved:
+            raise RuntimeError(
+                "DRAFTLY_STORAGE_REAL_DATA_APPROVED must be true before "
+                "SOURCE_FILE_STORAGE=gcs can accept client evidence. Record the "
+                "bucket region, retention, access, and deletion terms first."
+            )
+        from src.modules.document.infrastructure.storage_gcs import GcsSourceFileStorage
+
+        return GcsSourceFileStorage(
+            client=_gcs_client(settings.gcs_project_id, settings.gcs_bucket),
+            bucket_name=settings.gcs_bucket,
+            real_data_approved=settings.storage_real_data_approved,
+        )
+
+    raise RuntimeError(
+        f"Unknown SOURCE_FILE_STORAGE '{settings.source_file_storage}'. Valid: filesystem, gcs."
+    )
+
+
 def build_ingestion_service(session: AsyncSession) -> SourceFileIngestionService:
     """Assemble source-file ingestion and the document inbox.
 
-    Storage follows the same fail-closed posture as identity and extraction: the
-    local filesystem adapter is confined to local/test/ci, because it is not a
-    durable or access-controlled store for client evidence.
+    Storage follows the same fail-closed posture as identity and extraction —
+    see `build_source_file_storage`.
 
     When no extraction provider is configured, or the data-protection gate is
     closed, ``pipeline`` stays ``None`` and every run finishes as
@@ -271,28 +403,31 @@ def build_ingestion_service(session: AsyncSession) -> SourceFileIngestionService
     from src.modules.document.infrastructure.repository import (
         SqlDocumentIngestionRepository,
     )
-    from src.modules.document.infrastructure.storage_filesystem import (
-        FilesystemSourceFileStorage,
-    )
 
     settings = get_settings()
-
-    if settings.source_file_storage != "filesystem":
-        raise RuntimeError(
-            f"Unknown SOURCE_FILE_STORAGE '{settings.source_file_storage}'. Valid: filesystem."
-        )
-    if settings.environment not in STUB_EXTRACTION_ENVIRONMENTS:
-        raise RuntimeError(
-            f"SOURCE_FILE_STORAGE=filesystem is not permitted in environment "
-            f"'{settings.environment}'. Local-disk storage of client evidence is "
-            f"limited to {sorted(STUB_EXTRACTION_ENVIRONMENTS)}."
-        )
-    storage = FilesystemSourceFileStorage(settings.source_file_storage_dir)
+    storage = build_source_file_storage()
 
     provider_configured = settings.extraction_provider == "stub" or (
-        settings.extraction_provider == "gemini" and bool(settings.gemini_api_key)
+        settings.extraction_provider in {"gemini", "vision-gemini"}
+        and bool(settings.gemini_api_key)
     )
-    pipeline = build_processing_service() if provider_configured else None
+    pipeline = (
+        build_processing_service()
+        if provider_configured and settings.extraction_provider != "vision-gemini"
+        else None
+    )
+    v1_pipeline = (
+        build_v1_processing_pipeline()
+        if provider_configured and settings.extraction_provider == "vision-gemini"
+        else None
+    )
+    matter_types = None
+    if v1_pipeline is not None:
+        from src.modules.document.infrastructure.matter_document_types import (
+            ChecklistMatterDocumentTypesAdapter,
+        )
+
+        matter_types = ChecklistMatterDocumentTypesAdapter(build_checklist_service(session))
 
     return SourceFileIngestionService(
         repository=SqlDocumentIngestionRepository(session),
@@ -302,11 +437,61 @@ def build_ingestion_service(session: AsyncSession) -> SourceFileIngestionService
             pipeline=pipeline,
             provider_name=settings.extraction_provider,
             data_protection_approved=settings.provider_data_approval,
+            v1_pipeline=v1_pipeline,
+            matter_document_types=matter_types,
         ),
         audit=AuditService(repository=SqlAuditRepository(session)),
         max_upload_bytes=settings.max_source_file_bytes,
         max_page_count=settings.max_source_file_pages,
         checklist_links=build_checklist_service(session),
+    )
+
+
+def build_document_review_service(session: AsyncSession) -> DocumentReviewService:
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.document.application.review_service import DocumentReviewService
+    from src.modules.document.infrastructure.repository import SqlDocumentIngestionRepository
+    from src.modules.verification.application.candidate_approval import (
+        VerificationCandidateApprovalAdapter,
+    )
+    from src.modules.verification.infrastructure.repository import SqlVerificationRepository
+
+    return DocumentReviewService(
+        repository=SqlDocumentIngestionRepository(session),
+        storage=build_source_file_storage(),
+        audit=AuditService(repository=SqlAuditRepository(session)),
+        candidate_approval=VerificationCandidateApprovalAdapter(SqlVerificationRepository(session)),
+    )
+
+
+def build_v1_processing_pipeline() -> Any:
+    """Wire the proposal's Vision OCR + Flash-Lite path using ADC and one model."""
+    settings = get_settings()
+    if settings.extraction_provider != "vision-gemini":
+        raise RuntimeError("V1 processing requires EXTRACTION_PROVIDER=vision-gemini.")
+    if not settings.gemini_api_key:
+        raise RuntimeError("GEMINI_API_KEY is required for V1 document processing.")
+
+    from google import genai
+    from google.cloud import vision
+
+    from src.modules.document.application.v1_pipeline import V1DocumentPipeline
+    from src.modules.document.infrastructure.gemini_adapter import GeminiExtractionAdapter
+    from src.modules.document.infrastructure.rasterizer_pypdfium import PypdfiumRasterizer
+    from src.modules.document.infrastructure.vision_adapter import GoogleVisionOcrAdapter
+
+    gemini = GeminiExtractionAdapter(
+        client=genai.Client(api_key=settings.gemini_api_key),
+        classify_model=settings.gemini_classify_model,
+        extract_model=settings.gemini_extract_model,
+    )
+    return V1DocumentPipeline(
+        rasterizer=PypdfiumRasterizer(dpi=settings.raster_dpi),
+        ocr=GoogleVisionOcrAdapter(client=vision.ImageAnnotatorClient()),
+        classifier=gemini,
+        extractor=gemini,
+        classification_confidence_threshold=settings.confidence_threshold,
     )
 
 

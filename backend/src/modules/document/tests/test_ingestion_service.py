@@ -194,14 +194,20 @@ class FakeRepository:
 
 
 class FakeStorage:
+    """In-memory stand-in that records the version each read was pinned to."""
+
     def __init__(self) -> None:
         self.objects: dict[str, bytes] = {}
+        #: (key, version) per read, so a test can assert the version recorded at
+        #: upload is the one used to fetch the bytes back.
+        self.reads: list[tuple[str, str]] = []
 
     async def put(self, key: str, data: bytes) -> str:
         self.objects[key] = data
         return f"sha256:{len(data)}"
 
-    async def get(self, key: str) -> bytes:
+    async def get(self, key: str, *, version: str) -> bytes:
+        self.reads.append((key, version))
         return self.objects[key]
 
     async def exists(self, key: str) -> bool:
@@ -742,7 +748,7 @@ async def test_stored_bytes_are_written_once_and_read_back_identically(tmp_path)
     version = await storage.put(key, synthetic_pdf())
 
     assert await storage.exists(key) is True
-    assert await storage.get(key) == synthetic_pdf()
+    assert await storage.get(key, version=version) == synthetic_pdf()
     # A retried upload of identical bytes is idempotent, not a conflict.
     assert await storage.put(key, synthetic_pdf()) == version
 
@@ -755,10 +761,10 @@ async def test_different_bytes_never_replace_stored_evidence(tmp_path) -> None: 
 
     storage = FilesystemSourceFileStorage(tmp_path)
     key = "sources/usr_1/mat_1/src_1"
-    await storage.put(key, synthetic_pdf())
+    version = await storage.put(key, synthetic_pdf())
     with pytest.raises(SourceObjectImmutableError):
         await storage.put(key, synthetic_pdf(pages=9))
-    assert await storage.get(key) == synthetic_pdf()
+    assert await storage.get(key, version=version) == synthetic_pdf()
 
 
 async def test_a_key_cannot_escape_the_storage_root(tmp_path) -> None:  # type: ignore[no-untyped-def]
@@ -769,3 +775,31 @@ async def test_a_key_cannot_escape_the_storage_root(tmp_path) -> None:  # type: 
     storage = FilesystemSourceFileStorage(tmp_path)
     with pytest.raises(ValueError):
         await storage.put("../outside/src_1", b"%PDF-1.7\n")
+
+
+async def test_bytes_that_no_longer_match_the_recorded_version_are_refused(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from src.modules.document.domain.errors import SourceObjectIntegrityError
+    from src.modules.document.infrastructure.storage_filesystem import (
+        FilesystemSourceFileStorage,
+    )
+
+    storage = FilesystemSourceFileStorage(tmp_path)
+    key = "sources/usr_1/mat_1/src_1"
+    version = await storage.put(key, synthetic_pdf())
+    # Tamper underneath the adapter, the way a bad restore or a stray process
+    # would. The recorded version is what catches it.
+    (tmp_path / "sources" / "usr_1" / "mat_1" / "src_1").write_bytes(synthetic_pdf(pages=9))
+
+    with pytest.raises(SourceObjectIntegrityError):
+        await storage.get(key, version=version)
+
+
+async def test_a_missing_stored_object_is_a_typed_not_found(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from src.modules.document.domain.errors import SourceObjectNotFoundError
+    from src.modules.document.infrastructure.storage_filesystem import (
+        FilesystemSourceFileStorage,
+    )
+
+    storage = FilesystemSourceFileStorage(tmp_path)
+    with pytest.raises(SourceObjectNotFoundError):
+        await storage.get("sources/usr_1/mat_1/src_gone", version="sha256:whatever")

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _backend_env = Path(__file__).resolve().parents[2] / ".env"  # backend/.env
@@ -50,23 +51,47 @@ class Settings(BaseSettings):
     # their lifetime — raise it only if a host genuinely cannot keep time.
     clerk_leeway_seconds: int = 30
 
-    # ── Object storage ──────────────────────────────────────────────────────
-    object_storage_bucket: str = ""
-    object_storage_endpoint_url: str = ""
-    object_storage_region: str = "auto"
-    object_storage_access_key_id: str = ""
-    object_storage_secret_access_key: str = ""
+    # ── Object storage (storage-service.md §7) ──────────────────────────────
+    #
+    # Names follow the DRAFTLY_* namespace the storage service design uses, so
+    # `AliasChoices` carries both that name and the field name. A bare
+    # `validation_alias` would *replace* the field-name lookup, and without
+    # `populate_by_name` that breaks `Settings(gcs_bucket=...)` in tests.
+    #
+    # There is no credentials setting. GCS uses Application Default
+    # Credentials — attached workload identity in a deployed environment, and
+    # `gcloud auth application-default login` locally. A service-account key
+    # never belongs in this file or in `.env`.
+    gcs_bucket: str = Field(
+        default="", validation_alias=AliasChoices("DRAFTLY_GCS_BUCKET", "gcs_bucket")
+    )
+    gcs_project_id: str = Field(
+        default="", validation_alias=AliasChoices("DRAFTLY_GCS_PROJECT_ID", "gcs_project_id")
+    )
+    # The bucket's own region, checked at startup. Distinct from `gcp_location`
+    # below, which is the Gemini/Vertex region and is a different value.
+    gcs_location: str = Field(
+        default="", validation_alias=AliasChoices("DRAFTLY_GCS_LOCATION", "gcs_location")
+    )
+    # The storage counterpart of `provider_data_approval`: while false, the GCS
+    # adapter refuses uploads and bootstrap refuses to select it. Flip only
+    # after bucket region, retention, access, and deletion terms are recorded.
+    storage_real_data_approved: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "DRAFTLY_STORAGE_REAL_DATA_APPROVED", "storage_real_data_approved"
+        ),
+    )
 
     # ── Google Cloud / Gemini ───────────────────────────────────────────────
     gcp_project_id: str = ""
     gcp_location: str = "asia-south1"
-    docai_processor_id: str = ""
     gemini_api_key: str = ""
-    gemini_classify_model: str = "gemini-3.1-flash-lite"
-    gemini_extract_model: str = "gemini-3.5-flash"
+    gemini_classify_model: str = "gemini-2.5-flash-lite"
+    gemini_extract_model: str = "gemini-2.5-flash-lite"
 
     # ── Document processing (document-processing.md) ────────────────────────
-    # "gemini" | "stub". The stub is confined to local/test/ci at bootstrap.
+    # "vision-gemini" | "gemini" | "stub". The stub is local/test/ci only.
     extraction_provider: str = "stub"
     # §10A data-protection gate: while false, the pipeline refuses documents
     # not flagged synthetic and routes them to manual_review. Flip only after
@@ -87,9 +112,11 @@ class Settings(BaseSettings):
     raster_dpi: int = 200
 
     # ── Source-file ingestion (RTA workflow §6.2) ───────────────────────────
-    # "filesystem" | "object_storage". The filesystem adapter is confined to
-    # local/test/ci at bootstrap, like the stub identity and extraction
-    # adapters: it has no encryption-at-rest or object versioning guarantee.
+    # "filesystem" | "gcs". The filesystem adapter is confined to local/test/ci
+    # at bootstrap, like the stub identity and extraction adapters: it has no
+    # encryption-at-rest or object versioning guarantee. GCS may be selected in
+    # any environment, including local, so a developer can work against the
+    # staging bucket — subject to `storage_real_data_approved` above.
     source_file_storage: str = "filesystem"
     source_file_storage_dir: str = ".data/source-files"
     # §6.2 stage 1 limits. Enforced server-side; the client's progress bar is

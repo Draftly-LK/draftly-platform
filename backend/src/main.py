@@ -49,6 +49,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     configure_logging("DEBUG" if settings.environment == "local" else "INFO")
     log = structlog.get_logger()
+    if settings.source_file_storage == "gcs":
+        # Build the client and validate the bucket policy now. Otherwise a bad
+        # bucket, a missing IAM grant, or an unapproved region first shows up
+        # when a lawyer tries to upload. Refusing to start is the right answer.
+        from src.bootstrap import build_source_file_storage
+
+        build_source_file_storage()
+        log.info("startup.storage_ready", bucket=settings.gcs_bucket)
     log.info("startup", environment=settings.environment)
     yield
     log.info("shutdown")
