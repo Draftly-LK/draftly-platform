@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from src.platform.errors import ConflictError, DomainRuleError, NotFoundError
+from src.platform.errors import (
+    CapabilityDeniedError,
+    ConflictError,
+    DomainRuleError,
+    DraftlyError,
+    NotFoundError,
+)
 
 __all__ = [
     "BoundaryDecisionRequiresFragmentsError",
@@ -17,8 +23,15 @@ __all__ = [
     "SourceFileSupersedeTargetError",
     "SourceFileTooLargeError",
     "SourceObjectImmutableError",
+    "SourceObjectIntegrityError",
+    "SourceObjectNotFoundError",
+    "SourceObjectUnavailableError",
+    "SourceStorageNotApprovedError",
     "UnknownDocumentClassError",
     "UnsupportedDocumentError",
+    "DocumentReviewNotFoundError",
+    "CandidateFieldStaleError",
+    "CandidateAlreadyApprovedError",
 ]
 
 
@@ -52,6 +65,21 @@ class SourceFileNotFoundError(NotFoundError):
 class DetectedDocumentNotFoundError(NotFoundError):
     code = "detected_document_not_found"
     message = "The requested detected document was not found."
+
+
+class DocumentReviewNotFoundError(NotFoundError):
+    code = "document_review_not_found"
+    message = "The requested document review was not found."
+
+
+class CandidateFieldStaleError(ConflictError):
+    code = "candidate_field_version_stale"
+    message = "The candidate field changed since your last read."
+
+
+class CandidateAlreadyApprovedError(ConflictError):
+    code = "candidate_field_already_approved"
+    message = "An approved candidate cannot be edited or approved again."
 
 
 class IllegalSourceFileTransitionError(DomainRuleError):
@@ -112,6 +140,58 @@ class SourceObjectImmutableError(ConflictError):
 
     code = "source_object_immutable"
     message = "A different object is already stored under that key."
+
+
+class SourceObjectNotFoundError(NotFoundError):
+    """The recorded object, at the recorded version, is not there to be read.
+
+    Raised when the key is absent and when the pinned version no longer names a
+    live object. Both are reported the same way on purpose: from the caller's
+    position the evidence of record cannot be produced, and guessing at a
+    different version would defeat the point of pinning one.
+    """
+
+    code = "source_object_not_found"
+    message = "The stored object for this source file could not be found."
+
+
+class SourceObjectIntegrityError(DraftlyError):
+    """Stored bytes did not match the hash recorded when they were uploaded.
+
+    500 rather than 422: the request was well formed and the caller can do
+    nothing about it. Something replaced, truncated, or corrupted evidence of
+    record, and the honest response is a server fault, not a validation
+    complaint. `storage-service.md` §5 forbids silently replacing the object,
+    so the read fails and the bytes go nowhere.
+    """
+
+    code = "source_object_integrity_failed"
+    http_status = 500
+    message = "The stored bytes do not match the hash recorded for this source file."
+
+
+class SourceObjectUnavailableError(DomainRuleError):
+    """Object storage could not be reached, or refused the read.
+
+    Carries no provider text, for the same reason `ExtractionProviderError`
+    does not: provider messages embed keys and request fragments, and error
+    envelopes reach the client.
+    """
+
+    code = "source_object_unavailable"
+    http_status = 502
+    message = "Object storage is unavailable."
+
+
+class SourceStorageNotApprovedError(CapabilityDeniedError):
+    """The real-data gate is closed, so client evidence must not be uploaded.
+
+    Mirrors the provider-data gate on extraction: an unapproved destination is
+    a refusal to send, not a failure to store (`storage-service.md` §7).
+    """
+
+    code = "storage_real_data_not_approved"
+    message = "Storing client evidence in this environment has not been approved."
 
 
 class SourceFileStaleError(ConflictError):
