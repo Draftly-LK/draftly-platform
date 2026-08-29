@@ -1,4 +1,4 @@
-import { ClassificationReviewScreen } from "@/components/matter/classification-review-screen";
+import { DocumentProcessingReviewScreen } from "@/components/matter/document-processing-review-screen";
 
 export default async function ClassificationReviewPage({
   params,
@@ -6,5 +6,7 @@ export default async function ClassificationReviewPage({
   params: Promise<{ id: string; documentId: string }>;
 }) {
   const { id, documentId } = await params;
-  return <ClassificationReviewScreen matterId={id} documentId={documentId} />;
+  return (
+    <DocumentProcessingReviewScreen matterId={id} documentId={documentId} />
+  );
 }

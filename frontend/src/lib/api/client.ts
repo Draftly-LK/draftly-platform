@@ -122,7 +122,10 @@ async function toApiError(response: Response): Promise<ApiError> {
  *
  * Throws `ApiError` on any non-2xx response so callers handle one error type.
  */
-export async function apiFetch<T>(path: string, options: RequestOptions): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  options: RequestOptions,
+): Promise<T> {
   const baseUrl = apiBaseUrl();
   if (baseUrl === null) {
     throw new ApiError(
@@ -142,7 +145,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions): Promis
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
   };
-  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
   if (options.body !== undefined && !isFormData) {
     // Left unset for FormData: the browser must set its own multipart
     // boundary, which it can only do if this client does not pre-empt it.
@@ -175,4 +179,30 @@ export async function apiFetch<T>(path: string, options: RequestOptions): Promis
     return undefined as T;
   }
   return (await response.json()) as T;
+}
+
+/** Authenticated binary read for private document derivatives. */
+export async function apiFetchBlob(
+  path: string,
+  options: RequestOptions,
+): Promise<Blob> {
+  const baseUrl = apiBaseUrl();
+  if (baseUrl === null) {
+    throw new ApiError(
+      0,
+      "api_not_configured",
+      "The backend is unavailable.",
+      "",
+      {},
+    );
+  }
+  const token = await options.getToken();
+  if (!token)
+    throw new ApiError(401, "unauthenticated", "No active session.", "", {});
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: options.signal,
+  });
+  if (!response.ok) throw await toApiError(response);
+  return response.blob();
 }

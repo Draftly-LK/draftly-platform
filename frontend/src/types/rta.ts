@@ -15,7 +15,11 @@
 /* ── Regime, family, subtype identity (§3.1–§3.4) ───────────────────────── */
 
 /** Registration system that governs the parcel (§3.1). Mirrors `LegalRegime`. */
-export type RtaRegimeId = "lk.rta" | "lk.deed" | "lk.condominium" | "lk.special_area";
+export type RtaRegimeId =
+  | "lk.rta"
+  | "lk.deed"
+  | "lk.condominium"
+  | "lk.special_area";
 
 /** Lawyer-facing grouping shown instead of 22 flat tiles (§3.2). Mirrors `MatterFamily`. */
 export type MatterFamilyId =
@@ -47,7 +51,12 @@ export type RtaSubtypeKind =
   | "CONTROLLED_OTHER";
 
 /** Draftly workflow decision, not terminology used by the Act (§3.3). */
-export type ExaminationLevel = "FULL" | "FOCUSED" | "SPECIAL" | "MINIMAL" | "TRACKING";
+export type ExaminationLevel =
+  | "FULL"
+  | "FOCUSED"
+  | "SPECIAL"
+  | "MINIMAL"
+  | "TRACKING";
 
 /** How far Draftly automates this subtype today (§3.3, §2.2). */
 export type ReleaseTier = "V0" | "V1" | "DEFERRED" | "MANUAL_ONLY";
@@ -79,7 +88,11 @@ export type RtaMatterState =
   | "CANCELLED";
 
 /** How much of the matter Draftly may automate (§2.3). */
-export type AutomationScope = "ASSESSING" | "V0_AUTOMATED" | "MANUAL_SUPPORTED" | "LITIGATION_HOLD";
+export type AutomationScope =
+  | "ASSESSING"
+  | "V0_AUTOMATED"
+  | "MANUAL_SUPPORTED"
+  | "LITIGATION_HOLD";
 
 /**
  * Whether the exact instrument is still provisional (§12.2 `Matter`).
@@ -125,7 +138,11 @@ export type PartyContext =
 export type TriState = "YES" | "NO" | "UNKNOWN" | "NOT_APPLICABLE";
 
 /** Provenance of an intake answer (§12.2 `IntakeAnswer`). */
-export type AnswerStatus = "PROVISIONAL" | "INFERRED" | "LAWYER_CONFIRMED" | "SUPERSEDED";
+export type AnswerStatus =
+  | "PROVISIONAL"
+  | "INFERRED"
+  | "LAWYER_CONFIRMED"
+  | "SUPERSEDED";
 
 /** When a question is asked (§4.1). */
 export type QuestionStage = "ROUTING" | "RESOLUTION" | "PRE_DRAFT";
@@ -171,7 +188,12 @@ export type ApplicabilityStatus =
   | "WAIVED_BY_LAWYER";
 
 /** §5.4 — has the evidence arrived? */
-export type CollectionStatus = "NOT_REQUESTED" | "REQUESTED" | "MISSING" | "PARTIAL" | "RECEIVED";
+export type CollectionStatus =
+  | "NOT_REQUESTED"
+  | "REQUESTED"
+  | "MISSING"
+  | "PARTIAL"
+  | "RECEIVED";
 
 /**
  * §5.4 — how far has the digital copy been reviewed?
@@ -196,10 +218,19 @@ export type PhysicalOriginalStatus =
   | "ORIGINAL_INSPECTED";
 
 /** §5.4 — is the evidence still current enough? */
-export type CurrencyStatus = "NOT_APPLICABLE" | "UNKNOWN" | "CURRENT" | "STALE" | "EXPIRED";
+export type CurrencyStatus =
+  | "NOT_APPLICABLE"
+  | "UNKNOWN"
+  | "CURRENT"
+  | "STALE"
+  | "EXPIRED";
 
 /** §5.4 — does the evidence agree with the rest of the matter? */
-export type ConsistencyStatus = "NOT_CHECKED" | "MATCHED" | "MISMATCH" | "INCONCLUSIVE";
+export type ConsistencyStatus =
+  | "NOT_CHECKED"
+  | "MATCHED"
+  | "MISMATCH"
+  | "INCONCLUSIVE";
 
 /** §5.4 — the lawyer-facing disposition of the item. */
 export type ResolutionStatus =
@@ -283,7 +314,11 @@ export type FactStatus =
 export type CheckOutcome = "PASS" | "FAIL" | "INCONCLUSIVE" | "NOT_RUN";
 
 /** §7.3 — gates on draft generation, approval, and export. */
-export type IssueSeverity = "INFORMATION" | "WARNING" | "HIGH_RISK" | "BLOCKING";
+export type IssueSeverity =
+  | "INFORMATION"
+  | "WARNING"
+  | "HIGH_RISK"
+  | "BLOCKING";
 
 /** §7.3 — who, if anyone, may override the blocker. `STATUTORY` nobody may. */
 export type BlockerKind =
@@ -714,6 +749,40 @@ export interface ApiProcessingRun {
   candidatesWithheld: boolean;
 }
 
+export interface ApiDocumentReviewPage {
+  id: string;
+  pageNo: number;
+  correctedWidth: number;
+  correctedHeight: number;
+  qualityStatus: "normal" | "likely_blank" | "ocr_sparse" | "ocr_failed";
+  rotationStatus: "not_required" | "applied" | "rotation_uncertain";
+  classificationTypeId: string;
+  classificationConfidence: number;
+  imageUrl: string;
+  ocrUrl: string;
+}
+
+export interface ApiReviewCandidate {
+  id: string;
+  key: string;
+  candidateValue: string;
+  editedValue: string | null;
+  pageNo: number;
+  modelReportedConfidence: number;
+  reviewState: "unverified" | "approved";
+  version: number;
+}
+
+export interface ApiDocumentReview {
+  id: string;
+  matterId: string;
+  detectedDocumentId: string;
+  typeId: string;
+  suggestedName: string | null;
+  pages: ApiDocumentReviewPage[];
+  candidates: ApiReviewCandidate[];
+}
+
 /* ── Check and legal-issue API wire types ───────────────────────────────── */
 /* Mirrors backend/src/modules/check/api/schemas.py. */
 
@@ -986,7 +1055,10 @@ export interface ApiApprovalList {
 }
 
 /** What this module can actually produce. Each member names a record, not a document. */
-export type ExportFormat = "WORKING_DRAFT_MANIFEST" | "APPROVED_MANIFEST" | "EVIDENCE_SCHEDULE";
+export type ExportFormat =
+  | "WORKING_DRAFT_MANIFEST"
+  | "APPROVED_MANIFEST"
+  | "EVIDENCE_SCHEDULE";
 
 /** Mirrors `FormExportRead`. `registrationReady` is false in every case (§9.5). */
 export interface ApiFormExport {

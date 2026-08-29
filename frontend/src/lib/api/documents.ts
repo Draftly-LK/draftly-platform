@@ -7,18 +7,71 @@
  * `user_id` first and authorises against the matter it turns out to belong to.
  */
 
-import { apiFetch, ifMatch, type TokenProvider } from "@/lib/api/client";
+import {
+  apiFetch,
+  apiFetchBlob,
+  ifMatch,
+  type TokenProvider,
+} from "@/lib/api/client";
 import type {
   ApiDetectedDocument,
+  ApiDocumentReview,
   ApiDocumentInbox,
   ApiProcessingRun,
   ApiSourceFile,
   ApiSourceFileList,
+  ApiReviewCandidate,
 } from "@/types/rta";
 
 export interface ListSourceFilesParams {
   limit?: number;
   cursor?: string;
+}
+
+export function getDocumentReview(
+  getToken: TokenProvider,
+  documentId: string,
+): Promise<ApiDocumentReview> {
+  return apiFetch<ApiDocumentReview>(
+    `/api/v1/detected-documents/${encodeURIComponent(documentId)}/review`,
+    { getToken },
+  );
+}
+
+export function getPrivateDocumentArtifact(
+  getToken: TokenProvider,
+  path: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  return apiFetchBlob(path, { getToken, signal });
+}
+
+export function editReviewCandidate(
+  getToken: TokenProvider,
+  candidateId: string,
+  value: string,
+  version: number,
+): Promise<ApiReviewCandidate> {
+  return apiFetch<ApiReviewCandidate>(
+    `/api/v1/candidate-fields/${encodeURIComponent(candidateId)}`,
+    {
+      method: "PATCH",
+      body: { value },
+      headers: ifMatch(version),
+      getToken,
+    },
+  );
+}
+
+export function approveReviewCandidate(
+  getToken: TokenProvider,
+  candidateId: string,
+  version: number,
+): Promise<ApiReviewCandidate> {
+  return apiFetch<ApiReviewCandidate>(
+    `/api/v1/candidate-fields/${encodeURIComponent(candidateId)}/approve`,
+    { method: "POST", headers: ifMatch(version), getToken },
+  );
 }
 
 /** Upload one file into a matter. Multipart; the browser sets its own boundary. */
@@ -29,11 +82,14 @@ export function uploadSourceFile(
 ): Promise<ApiSourceFile> {
   const body = new FormData();
   body.append("file", file);
-  return apiFetch<ApiSourceFile>(`/api/v1/matters/${encodeURIComponent(matterId)}/source-files`, {
-    method: "POST",
-    body,
-    getToken,
-  });
+  return apiFetch<ApiSourceFile>(
+    `/api/v1/matters/${encodeURIComponent(matterId)}/source-files`,
+    {
+      method: "POST",
+      body,
+      getToken,
+    },
+  );
 }
 
 export function listSourceFiles(
@@ -56,9 +112,12 @@ export function getSourceFile(
   getToken: TokenProvider,
   sourceFileId: string,
 ): Promise<ApiSourceFile> {
-  return apiFetch<ApiSourceFile>(`/api/v1/source-files/${encodeURIComponent(sourceFileId)}`, {
-    getToken,
-  });
+  return apiFetch<ApiSourceFile>(
+    `/api/v1/source-files/${encodeURIComponent(sourceFileId)}`,
+    {
+      getToken,
+    },
+  );
 }
 
 /**
