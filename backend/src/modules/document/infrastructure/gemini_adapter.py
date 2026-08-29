@@ -17,9 +17,10 @@ from typing import TypeVar
 import structlog
 from google import genai
 from google.genai import types
-from google.genai.errors import ClientError
+from google.genai.errors import APIError, ClientError
 from pydantic import BaseModel, Field
 
+from src.modules.content_governance.contracts import get_document_class
 from src.modules.document.domain.errors import ExtractionProviderError
 from src.modules.document.domain.registry import (
     OTHER_KIND,
@@ -27,8 +28,11 @@ from src.modules.document.domain.registry import (
     registered_kinds,
     resolve_extraction_template,
 )
+from src.modules.document.domain.v1 import ExtractedCandidate, PageClassification
 from src.modules.document.ports import (
+    ClassificationPageInput,
     ClassificationResult,
+    ExtractionFieldSchema,
     ExtractionResult,
     PageRaster,
 )
@@ -55,8 +59,48 @@ class _ExtractResponse(BaseModel):
     fields: dict[str, str | None] = Field(default_factory=dict)
 
 
+class _PageClassificationItem(BaseModel):
+    page_no: int = Field(ge=1)
+    type_id: str
+    suggested_name: str | None = None
+    starts_new_document: bool
+    model_reported_confidence: float = Field(ge=0.0, le=1.0)
+
+
+class _BatchClassificationResponse(BaseModel):
+    pages: list[_PageClassificationItem]
+
+
+class _CandidateItem(BaseModel):
+    key: str
+    value: str
+    page_no: int = Field(ge=1)
+    model_reported_confidence: float = Field(ge=0.0, le=1.0)
+
+
+class _DocumentExtractionResponse(BaseModel):
+    fields: list[_CandidateItem] = Field(default_factory=list)
+
+
 def _clamp(value: float) -> float:
     return max(0.0, min(1.0, value))
+
+
+def _classification_catalog(allowed_type_ids: tuple[str, ...]) -> str:
+    """Give Gemini meaning, while keeping the governed IDs authoritative."""
+
+    rows: list[str] = []
+    for type_id in allowed_type_ids:
+        definition = get_document_class(type_id)
+        template = (
+            resolve_extraction_template(definition.extraction_template_kind)
+            if definition and definition.extraction_template_kind
+            else None
+        )
+        human_name = type_id.removeprefix("rta.doc.").replace("_", " ")
+        hint = template.classification_hint if template else human_name
+        rows.append(f"- {type_id}: {hint}")
+    return "\n".join(rows)
 
 
 class GeminiExtractionAdapter:
@@ -105,6 +149,89 @@ class GeminiExtractionAdapter:
             fields=dict(response.fields),
             transcript=response.transcript,
             model_reported_confidence=_clamp(response.confidence),
+        )
+
+    async def classify_pages(
+        self,
+        pages: list[ClassificationPageInput],
+        *,
+        allowed_type_ids: tuple[str, ...],
+        text_limit: int | None,
+    ) -> list[PageClassification]:
+        """Classify one upload in one structured request.
+
+        The application may make one additional batched call with full text for
+        low-confidence pages.  This method itself never fans out per page.
+        """
+
+        catalog = _classification_catalog(allowed_type_ids)
+        page_blocks = []
+        for page in pages:
+            text = page.text if text_limit is None else page.text[:text_limit]
+            page_blocks.append(f"<<<PAGE {page.page_no}; STATUS {page.quality_status}>>>\n{text}")
+        prompt = (
+            "Classify every page of one Sri Lankan conveyancing upload. Return exactly "
+            "one row for each supplied page. The governed type catalog is below; type_id must "
+            "be one of those exact IDs or other.\n"
+            f"{catalog}\n- other: none of the governed types fits\n\n"
+            "Use other when none fits; only then provide a short suggested_name. "
+            "starts_new_document is true when this page begins a new logical instrument, "
+            "including when it follows another instrument of the same type. Confidence is "
+            "your own 0-1 estimate. Never create or rename a permanent type.\n\n"
+            + "\n\n".join(page_blocks)
+        )
+        response = await self._generate_text(
+            model=self._classify_model,
+            prompt=prompt,
+            schema=_BatchClassificationResponse,
+        )
+        return [
+            PageClassification(
+                page_no=item.page_no,
+                type_id=item.type_id,
+                suggested_name=item.suggested_name,
+                starts_new_document=item.starts_new_document,
+                model_reported_confidence=item.model_reported_confidence,
+            )
+            for item in response.pages
+        ]
+
+    async def extract_document(
+        self,
+        *,
+        type_id: str,
+        text: str,
+        page_numbers: tuple[int, ...],
+        fields: tuple[ExtractionFieldSchema, ...],
+    ) -> tuple[ExtractedCandidate, ...]:
+        """Extract exact strings from the complete logical-document OCR text."""
+
+        field_list = "\n".join(f"- {field.key}: {field.description}" for field in fields)
+        prompt = (
+            "You extract structured fields from OCR text of Sri Lankan land-registration "
+            "documents. Return only values present in the text. Never infer, translate, "
+            "normalise, or complete a value. Copy values exactly, preserving leading zeros, "
+            "punctuation, and separators. Omit fields that are absent. Every value must be a "
+            "JSON string. page_no must name one of the supplied page markers.\n\n"
+            f"Document type: {type_id}\nAllowed pages: {list(page_numbers)}\n"
+            f"Strict fields:\n{field_list}\n\n{text}"
+        )
+        response = await self._generate_text(
+            model=self._extract_model,
+            prompt=prompt,
+            schema=_DocumentExtractionResponse,
+        )
+        allowed_keys = {field.key for field in fields}
+        allowed_pages = set(page_numbers)
+        return tuple(
+            ExtractedCandidate(
+                key=item.key,
+                value=item.value,
+                page_no=item.page_no,
+                model_reported_confidence=item.model_reported_confidence,
+            )
+            for item in response.fields
+            if item.key in allowed_keys and item.page_no in allowed_pages
         )
 
     # ── provider call with retry ─────────────────────────────────────────────
@@ -172,5 +299,33 @@ class GeminiExtractionAdapter:
                 )
                 await asyncio.sleep(wait)
                 delay = min(delay * 2, _MAX_DELAY_S)
+            except APIError as exc:
+                raise ExtractionProviderError() from exc
 
         raise ExtractionProviderError() from last_error
+
+    async def _generate_text(
+        self,
+        *,
+        model: str,
+        prompt: str,
+        schema: type[_SchemaT],
+    ) -> _SchemaT:
+        config = types.GenerateContentConfig(
+            temperature=0,
+            response_mime_type="application/json",
+            response_schema=schema,
+        )
+        try:
+            response = await asyncio.to_thread(
+                self._client.models.generate_content,
+                model=model,
+                contents=prompt,
+                config=config,
+            )
+        except APIError as exc:
+            raise ExtractionProviderError() from exc
+        parsed = response.parsed
+        if not isinstance(parsed, schema):
+            raise ExtractionProviderError("Provider returned an unparseable response.")
+        return parsed

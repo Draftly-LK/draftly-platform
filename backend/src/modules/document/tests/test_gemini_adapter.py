@@ -16,10 +16,14 @@ from google.genai.errors import ClientError
 from src.modules.document.domain.errors import ExtractionProviderError
 from src.modules.document.infrastructure.gemini_adapter import (
     GeminiExtractionAdapter,
+    _BatchClassificationResponse,
+    _CandidateItem,
     _ClassifyResponse,
+    _DocumentExtractionResponse,
     _ExtractResponse,
+    _PageClassificationItem,
 )
-from src.modules.document.ports import PageRaster
+from src.modules.document.ports import ClassificationPageInput, ExtractionFieldSchema, PageRaster
 
 PAGE = PageRaster(page_no=1, png_bytes=b"png", width_px=100, height_px=140, dpi=200)
 
@@ -38,9 +42,11 @@ class FakeModels:
         self._errors = list(errors or [])
         self._parsed = parsed
         self.calls = 0
+        self.last_kwargs: dict[str, object] = {}
 
-    def generate_content(self, **_kwargs: object) -> SimpleNamespace:
+    def generate_content(self, **kwargs: object) -> SimpleNamespace:
         self.calls += 1
+        self.last_kwargs = kwargs
         if self._errors:
             raise self._errors.pop(0)
         return SimpleNamespace(parsed=self._parsed)
@@ -146,3 +152,67 @@ class TestRetryPolicy:
         with pytest.raises(ExtractionProviderError):
             await make_adapter(models).classify(PAGE)
         assert models.calls == 1
+
+
+async def test_v1_classification_is_one_structured_call() -> None:
+    models = FakeModels(
+        parsed=_BatchClassificationResponse(
+            pages=[
+                _PageClassificationItem(
+                    page_no=1,
+                    type_id="rta.doc.title_certificate",
+                    starts_new_document=True,
+                    model_reported_confidence=0.9,
+                ),
+                _PageClassificationItem(
+                    page_no=2,
+                    type_id="other",
+                    suggested_name="Cover letter",
+                    starts_new_document=True,
+                    model_reported_confidence=0.7,
+                ),
+            ]
+        )
+    )
+    result = await make_adapter(models).classify_pages(
+        [
+            ClassificationPageInput(1, "title", "normal"),
+            ClassificationPageInput(2, "letter", "ocr_sparse"),
+        ],
+        allowed_type_ids=("rta.doc.title_certificate",),
+        text_limit=300,
+    )
+    assert models.calls == 1
+    assert [item.type_id for item in result] == ["rta.doc.title_certificate", "other"]
+    assert result[1].suggested_name == "Cover letter"
+    assert "Registration of Title Act certificate" in str(models.last_kwargs["contents"])
+
+
+async def test_v1_extraction_preserves_exact_strings_and_filters_schema() -> None:
+    models = FakeModels(
+        parsed=_DocumentExtractionResponse(
+            fields=[
+                _CandidateItem(
+                    key="parcelNo",
+                    value="0020-A",
+                    page_no=2,
+                    model_reported_confidence=0.83,
+                ),
+                _CandidateItem(
+                    key="invented",
+                    value="drop me",
+                    page_no=2,
+                    model_reported_confidence=0.99,
+                ),
+            ]
+        )
+    )
+    result = await make_adapter(models).extract_document(
+        type_id="rta.doc.title_certificate",
+        text="<<<PAGE 2>>>\nParcel: 0020-A",
+        page_numbers=(2,),
+        fields=(ExtractionFieldSchema("parcelNo", "Parcel number"),),
+    )
+    assert models.calls == 1
+    assert len(result) == 1
+    assert result[0].value == "0020-A"
