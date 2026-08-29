@@ -75,6 +75,36 @@ GCS is not S3-compatible and must not be accessed through an S3 emulation layer.
 Its adapter uses native generation preconditions, checksum metadata, and signed
 URLs. MinIO uses the S3 adapter; local development uses the filesystem adapter.
 
+### Configuring source-file storage today
+
+`SOURCE_FILE_STORAGE` selects the adapter: `filesystem` or `gcs`. There is no
+S3/MinIO adapter yet, and the former `OBJECT_STORAGE_*` (Cloudflare R2) settings
+have been removed — they described an architecture that was never built and that
+this section forbids reaching GCS through.
+
+| Variable | Purpose |
+| --- | --- |
+| `SOURCE_FILE_STORAGE` | `filesystem` \| `gcs`. Filesystem is refused outside `local`/`test`/`ci`. |
+| `DRAFTLY_GCS_BUCKET` | Private bucket holding uploaded evidence. |
+| `DRAFTLY_GCS_PROJECT_ID` | Passed explicitly, so the bucket need not live in the caller's default project. |
+| `DRAFTLY_GCS_LOCATION` | Checked against the bucket at startup; residency is an approval item. |
+| `DRAFTLY_STORAGE_REAL_DATA_APPROVED` | Default `false`. While false, GCS is refused at startup and uploads are refused by the adapter. |
+
+`gcs` carries no environment restriction — working against the staging bucket
+from a developer machine is supported — because the gate that matters is the
+approval flag, not the environment name. There is no synthetic escape hatch: a
+matter's uploaded evidence is client material by definition.
+
+Credentials are Application Default Credentials only. Deployed environments use
+attached workload identity; locally, `gcloud auth application-default login`.
+No credentials setting exists, and a service-account key belongs in neither
+`.env` nor Neon.
+
+**IAM:** startup validates the bucket policy with `get_bucket`, which requires
+`storage.buckets.get`. `roles/storage.objectAdmin` does **not** grant it — the
+runtime identity also needs `roles/storage.legacyBucketReader` or an equivalent
+custom role, or the application refuses to start with a 403.
+
 Key layout, one bucket with separate prefixes and separate retention (plan §10):
 
 ```text

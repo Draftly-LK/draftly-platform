@@ -9,6 +9,45 @@ object metadata and workflow state; Google Cloud Storage (GCS), MinIO, or the
 local filesystem stores bytes. No application service imports a Google or S3
 SDK directly.
 
+## 0. Implementation status
+
+**This service does not exist as a module.** There is no `src/modules/storage/`,
+no `ObjectStoragePort`, and no `BlobStorePort`. What ships today is the narrow
+slice the RTA evidence path needs, built against the existing
+`SourceFileStoragePort` in the document module:
+
+| Designed here | Shipped today |
+| --- | --- |
+| `ObjectStoragePort` → `BlobStorePort` → `GcsBlobStore` | `SourceFileStoragePort` → `GcsSourceFileStorage` |
+| `put_immutable` conditional on absence | `put()` with `if_generation_match=0` |
+| Reads resolve the exact pinned generation | `get(key, version=...)` pins the generation |
+| Verify checksums at finalisation | `processing_job` verifies SHA-256 after every download |
+| `quarantined` / `integrity-failed` object states | a typed `SourceObjectIntegrityError`; the read fails and the bytes go nowhere |
+| Upload reservations, signed URL grants | not built — uploads go through the API |
+| Deletion receipts, tombstones, orphan sweeps | not built |
+| MinIO / S3 adapter | not built, and no S3 code exists |
+
+`validate_object_key` and `content_sha256` in
+`modules/document/infrastructure/object_store_support.py` are the designated
+lift-out seam: they are provider-neutral and move into `storage_service`
+unchanged. Provider-error translation is isolated as `_translate` in
+`storage_gcs.py` for the same reason.
+
+Deliberate deviations, so the gap is visible rather than silent:
+
+- Object metadata lives on the `source_files` table, not a `storage_objects`
+  table. There is no `providerGeneration` column — the generation *is*
+  `storage_object_version`.
+- Verification happens on read rather than at finalisation, because there is no
+  finalisation step to hang it on.
+- An integrity failure raises rather than transitioning the object to
+  `integrity-failed`. Quarantining needs an object state machine this slice does
+  not have. **Follow-up:** add `ProcessingFailureReason.INTEGRITY_FAILED`, an
+  explanation key, and the frontend label, so a lawyer sees a reason rather than
+  a 500.
+- The bucket-policy checks in §7 run once per process in `bootstrap._gcs_client`,
+  not in a storage service.
+
 ## 1. What it owns
 
 `storage_service` owns:

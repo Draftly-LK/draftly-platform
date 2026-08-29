@@ -109,7 +109,8 @@ uv init --package --name draftly-api
 uv add fastapi "uvicorn[standard]" pydantic-settings
 uv add sqlalchemy "psycopg[binary]" alembic
 uv add python-multipart httpx structlog
-uv add google-cloud-documentai google-cloud-storage
+uv add google-cloud-storage        # done; Document AI not added (Gemini is the
+                                   # extraction provider — see document-processing.md)
 uv add --dev pytest pytest-asyncio httpx ruff mypy
 uv lock
 uv run uvicorn main:app --app-dir src --reload

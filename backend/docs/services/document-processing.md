@@ -1,306 +1,243 @@
-# document-processing — implementation design
+# Draftly V1 Document Processing
 
-Companion to `backend/backend-implementation-plan-v0.md` and
-`document-service.md`. This is the component behind `DocumentProcessingPort` —
-the worker-side pipeline that reads an uploaded document and produces
-non-authoritative candidate fields for lawyer verification.
+Proposal. This lives in the research repo and does not describe what the platform
+currently implements.
 
-Maps to plan **Phase 3** (the processing half), the `document_processing.py`
-port (§4 ports), and the trust-boundary row *Derivatives* (§5.2).
-
-## 1. What it owns
-
-Reading an immutable document version and producing derivatives — page rasters,
-OCR text with provenance, a document class, and candidate structured fields. It
-runs in the `document_jobs` worker, never in an API request.
-
-It does **not** accept uploads (`document_service` does), does **not** decide
-correctness, and does **not** promote anything to a verified fact
-(`verification_service` does, lawyer-gated). Everything it emits is a candidate,
-marked non-authoritative and rebuildable.
-
-## 2. Boundary with document_service
+The pipeline:
 
 ```text
-document_service (sync)          document-processing (async worker)
-  store original + enqueue  ──▶   claim job
-                                  DocumentProcessingPort.process(version_ref)
-                                    ├─ ClassifierPort
-                                    ├─ OcrPort   (the escalation ladder)
-                                    └─ ExtractorPort
-                                  store derivatives + candidates
-                                  mark version processed / manual_review
+Upload
+  -> Cloud Vision OCR
+  -> quality / blank check
+  -> deterministic rotation (with abstention)
+  -> page classification
+  -> split and group pages
+  -> derivatives
+  -> Gemini structured extraction
+  -> store
+  -> user review
 ```
 
-The original file is read, never written. All output is a derivative keyed to a
-`ProcessingRun` and can be deleted and rebuilt without touching the evidence of
-record.
+## 1. Upload
 
-## 3. Ports — the adapter pattern
+Store the original file in GCS and never modify it. Record its GCS key,
+generation, hash and matter ID in Neon. Every later artifact is a derivative that
+can be rebuilt from the original, so the original stays the single source of
+truth for any dispute about what the document said.
 
-Processing is not one call. It is a pipeline of stages, each its own port with
-interchangeable adapters, so the processor, model, or provider changes by
-swapping an adapter and an endpoint — no change to the worker or to
-`document_service`.
+## 2. Cloud Vision OCR
 
-```text
-DocumentProcessingPort (orchestrates the stages)
-  ├─ ClassifierPort   which document type is this?      → GeminiFlashLiteAdapter
-  ├─ OcrPort          text + where it sits on the page  → DocumentAiAdapter (primary)
-  │                                                       GeminiVisionAdapter (fallback)
-  └─ ExtractorPort    structured fields from the text   → GeminiAdapter
-```
+Render each page and run Cloud Vision `document_text_detection` with language
+hints `si`, `ta`, `en`. Keep the full response: text, words, per element
+confidence, detected languages, and the four point bounding polygons.
 
-Each adapter is selected by configuration. Adding Surya, Tesseract, or a
-self-hosted model later is a new adapter and a settings value, nothing more.
+Vision is the only engine measured on this corpus that reads Sinhala and Tamil.
+On the same 26 pages, Vision produced 6,419 Sinhala and 2,083 Tamil characters
+while docTR, RapidOCR and the Document AI OCR processor each produced none. Since
+roughly 29% of the corpus by character is Sinhala or Tamil, that difference
+decides the engine.
 
-## 4. Rasterization — render every page once, reuse three ways
+Keep the polygons in their original vertex order. Flattening them to
+`[x0, y0, x1, y1]` rectangles destroys the rotation signal, and it cannot be
+recovered afterwards.
 
-Document AI accepts a PDF directly, so rasterization is not for Document AI. It
-is needed for three other things, so it runs once up front and the result is
-stored as a derivative:
+## 3. Quality and blank check
 
-1. **Cropping a region** — to cut a page by a bounding box you need a bitmap.
-2. **The whole-page fallback** — the Gemini vision path needs a page image.
-3. **The verification UI** — the lawyer is shown the page anyway.
+Retain every page. Mark it `likely_blank`, `ocr_sparse` or `ocr_failed`, and
+exclude it from automated extraction only when appropriate.
 
-Render each page with PyMuPDF or `pdftoppm` at about 300 DPI, locally and
-deterministically. Record the render DPI or scale with the raster; the OCR
-coordinate mapping in §6 depends on it.
+A page that looks empty to an ink-ratio check may still carry a stamp, a
+signature, a marginal note or a handwritten endorsement, any of which can matter
+legally. Dropping such a page loses evidence silently. Flagging it keeps it
+visible to the reviewer while keeping it out of the extraction prompt.
 
-## 5. The OCR escalation ladder
+The distinction also separates two failures that look identical downstream: a
+genuinely blank separator page, and a page the pipeline could not read.
 
-Document AI is the backbone — literal text, bounding boxes, and a confidence per
-field. The Gemini vision tier is a confidence-gated fallback, scoped as tightly
-as the available box allows. Three rungs:
+## 4. Rotation, with abstention
 
-```text
-Level 0  Document AI on the whole PDF        → tokens + boxes + confidence
-         │
-         ├─ field confident         → keep. precise box provenance. normal review.
-         │
-Level 1  field LOW-confidence, box exists     → crop page to the box → Gemini reads the crop
-         │                                       (precise provenance survives — the box is Document AI's)
-         │
-Level 2  Document AI gave little / no boxes    → render the WHOLE page image → Gemini reads the page
-         │  (photo, dense scan, odd layout)       ask for fields + approximate regions
-         │                                        (provenance degrades to "here is the page")
-         │
-Level 3  both weak / handwriting / degraded    → no machine value → manual entry, page shown to lawyer
-```
+Detect orientation from the vertex order of high confidence word polygons. Vision
+emits vertices starting at the text's own top left and running clockwise, so the
+first edge points along the reading direction. Weight each word's vote by
+confidence multiplied by top edge length, then snap to 0, 90, 180 or 270 degrees.
 
-### The key move: escalate the region, not the document
+Accept the result only when both hold:
 
-Do not hand a whole page to Gemini and ask it to read everything. Document AI
-already located the field (the box). When its confidence on that box is low,
-crop the page to that box and ask Gemini to read only the crop. Two things fall
-out of it:
+- at least 10 usable words on the page
+- the dominant orientation holds at least 70% of the weighted vote
 
-- **Provenance survives.** The source span (page and region) came from Document
-  AI's box and stays true even though the text came from Gemini. Invariant 1
-  holds — the lawyer clicks the field and still sees the exact spot on the scan.
-- **The hallucination surface shrinks.** A model reading one cropped cell has
-  far less room to invent than one free-reading a full page.
+Below either threshold, mark the page `uncertain`, leave it unrotated, and flag it
+for review. Guessing an orientation on a legal instrument is worse than leaving it
+alone, and a page with almost no text cannot support a decision either way.
 
-The whole-page path (Level 2) exists only when there is no box to crop. It is a
-lower rung, and the cost is provenance, not correctness — the lawyer still
-verifies against the page image.
+When rotating a page, transform every OCR polygon into the corrected page
+coordinate system. Store the original and corrected orientation, the corrected
+page dimensions and the transformed polygons alongside the originals. Without
+this, browser overlays are drawn in the wrong places on exactly the pages that
+were rotated, and the error is invisible in the OCR text itself.
 
-### Guardrail: the fallback is escalation-gated, never the default
+This step is not cosmetic. Across the 26 page sample, 16 pages required rotation
+in three different directions, including one fully inverted page. Reading order,
+page grouping and any later region work are all wrong on an uncorrected page.
 
-Whole-page Gemini fires only when Document AI is weak on that specific page. If
-every page went to Gemini, the backbone, the cost control, and the
-hallucination containment would all be lost. The classifier can pre-route here:
-a page tagged photo or handwriting can skip straight to Level 2 or Level 3
-instead of spending a Document AI call.
+Record the detected orientation, the correction applied, the vote share, the
+usable word count and the status on every page.
 
-Level 3 is a legitimate, expected path, not a failure. The SRS lists handwriting
-and severely degraded scans as explicit V0 limitations. The job there is to
-route to manual entry cleanly, not to guess.
+## 5. Page classification
 
-## 6. Coordinate mapping
+Classify all pages of an upload in a single Gemini 2.5 Flash-Lite call, not one
+call per page. Supply the document types expected from the matter checklist and
+ask for one row per page.
 
-Document AI returns **normalized coordinates (0–1)**, not pixels. To crop, or to
-draw a highlight in the UI, multiply by the rendered page's pixel dimensions.
-Record the render DPI or scale with each raster (see §4) so the mapping is exact
-across the OCR space, the stored image, and the browser. Getting this wrong puts
-crops and highlights in the wrong place.
+For each page the model returns:
 
-## 7. Reconciliation — two readings are a trust signal
+- `type_id`, a checklist type or `other`
+- `suggested_name`, a short name, only when `type_id` is `other`
+- `starts_new_document`, whether this page begins a new logical document
+- `model_reported_confidence`
 
-When both engines read the same box, the comparison itself is information:
+`starts_new_document` is what makes splitting possible. Type alone cannot separate
+two consecutive documents of the same type, which is common in a bundle holding
+several instruments of one kind. Without a boundary signal they merge into one
+logical document and the second one's fields are attributed to the first.
 
-| Document AI | Gemini (on the crop) | Result |
+A `suggested_name` is a hint for the reviewer. It never becomes a permanent
+platform document type on its own, because that would let model output silently
+expand the product's vocabulary. Adding a type stays a deliberate change.
+
+Show low confidence classifications as low confidence in the interface rather than
+resolving them quietly.
+
+### Batching and truncation
+
+Classification and extraction are separate steps, so the naive shape sends every
+page to Gemini twice: once to find out what it is, once to pull fields out of it.
+On the 26 page sample that is 30 calls and about 19,400 prompt tokens, with the
+full OCR text paid for twice.
+
+Batching all pages into one call removes that duplication. Sending only the first
+300 characters of each page is a further proposed optimization, on the reasoning
+that a page's type is usually carried by its heading, form number and opening
+lines.
+
+| approach | calls | prompt tokens |
 | --- | --- | --- |
-| high confidence | not called | candidate, normal review |
-| low, text `4471` | text `4471` | agreement — stronger candidate, still lawyer-gated |
-| low, text `4471` | text `4474` | conflict — surface both, priority review |
-| missing or unreadable | text `4474` | recovered — candidate, lowest trust, priority review |
+| one call per page, full text | 30 | ~19,400 |
+| one batched call, 300 chars per page | 5 | ~11,600 |
 
-Agreement between two engines that fail differently is a real signal. This is a
-small ensemble, and it is stronger than either engine alone — which matches the
-team's test finding that the dedicated OCR dropped data the Gemini tier
-recovered. A disagreement flows straight into the verification layer's conflict
-comparison step (plan Phase 4), which is already planned.
+The batching saving is arithmetic. The truncation saving is not measured: whether
+300 characters preserves the same classification and boundary decisions has not
+been tested, and a page whose distinguishing content sits below a long letterhead
+could be misclassified. Implement truncation with a fallback that re-sends more of
+the page text when `model_reported_confidence` is low or `starts_new_document` is
+uncertain, and sweep the character budget once a second labelled matter exists.
 
-## 8. The honesty rules
+## 6. Split and group pages
 
-Recovered and low-confidence values are the most useful (data otherwise lost)
-and the most dangerous (hardest to read, so highest invention risk). Therefore:
+Form logical documents using both signals: start a new group where
+`starts_new_document` is true, and treat a change in `type_id` as a boundary as
+well. Run extraction once per logical document.
 
-- **Never auto-accept a recovered or machine value.** Always a candidate, always
-  lawyer-gated. V0 already routes everything through verification.
-- **Store both readings**, not only the winner. The lawyer sees "Document AI
-  4471 (low) / Gemini 4474" beside the cropped image and decides.
-- **Record which engine produced each field** (`source: document_ai` versus
-  `source: gemini_recovered`) so the audit trail shows provenance per value.
-- **No provider response ever sets a particular to verified** (Phase 3 exit
-  gate).
+Do not classify a multi-page upload from its first page. One upload in the sample
+is a 16 page bundle holding several instruments; a single classification taken
+from page one applies one schema to all of it and mislabels most of the pages.
 
-## 9. V0 defaults
+## 7. Derivatives
 
-- **Classification:** a small Gemini tier (Flash-Lite class) routes each page to
-  the right extraction path cheaply.
-- **OCR:** Document AI primary; Gemini vision as the confidence-gated fallback
-  on the ladder above.
-- **Extraction:** the Gemini tier turns OCR text into candidate structured
-  fields.
+Produce and store in GCS:
 
-Model versions are named by tier here and pinned to exact IDs at implementation,
-because the adapter makes the specific version a configuration value and a
-hardcoded version number goes stale. The `OcrPort` keeps both adapters wired so
-the choice can be made per document type on evidence, not up front.
+- corrected page images in WebP
+- OCR JSON, including polygons and per word confidence
+- plain OCR text in reading order
 
-## 9B. Implementation status — v1 is Gemini-only, by decision
+The bounding box overlay can be drawn in the browser from the corrected image and
+the OCR JSON, so it does not need to be a stored artifact. Storing it costs
+roughly 400 KB per page with no information the client cannot already derive.
+Cache it later if profiling shows a reason.
 
-Implemented in `src/modules/document/` (ports in `ports.py`, orchestration in
-`application/processing_service.py`, adapters in `infrastructure/`). The team
-decided v1 ships **without Document AI**: `ClassifierPort` and
-`OcrExtractorPort` are both served by `GeminiExtractionAdapter`, selected in
-`bootstrap.build_processing_service()` by `EXTRACTION_PROVIDER`. What that
-changes, and what it deliberately does not:
+The original upload stays untouched.
 
-- **The §5 ladder is collapsed for now.** Every page is effectively Level 2.
-  The ports and this document keep the ladder as the target shape; adding
-  `DocumentAiAdapter` later is an adapter file plus a settings value, with no
-  application-layer change. §7 reconciliation returns with the second engine.
-- **Provenance is page-level and never fabricated** (resolves §13 open
-  decision 3 for v1). Pages are rasterized individually and sent one at a
-  time, so every candidate carries a true 1-based page number — and no
-  bounding box. `region` is absent from the candidate shape rather than
-  faked; the earlier demo-fixture exercise showed fabricated boxes are worse
-  than none.
-- **Model-reported confidence never gates anything.** It is stored as
-  `model_reported_confidence` and routes low-confidence classification to
-  `manual_review`; deterministic per-field validators (NIC format, ISO date,
-  extent) provide the only trusted signal. This follows the project-wide
-  finding that self-reported model confidence is uninformative.
-- **Rasterization uses pypdfium2, not PyMuPDF.** §4 suggested PyMuPDF or
-  `pdftoppm`; PyMuPDF is AGPL-licensed, pypdfium2 is BSD/Apache and already
-  proven in the research pipeline. DPI is recorded per page (§6 still holds).
-- **The §10A gate is enforced in code.** `PROVIDER_DATA_APPROVAL=false`
-  routes any non-synthetic document to `manual_review` before rasterization;
-  the stub provider is refused outside local/test/ci; Gemini without an API
-  key fails startup. Metering is a structured log line
-  (`document.processing.metering`) until the billing module exists — the
-  interim meter, stated as such.
-- **Interim synchronous route.** `POST /api/v1/documents/process` runs the
-  pipeline inline because the outbox/worker runtime does not exist yet. The
-  worker's `document.process` job will call the same
-  `DocumentProcessingService`; the route then becomes upload-and-enqueue.
-  No events are emitted until the outbox lands.
-- **Field vocabulary = the form contract.** Template field keys in
-  `domain/registry.py` are the same keys as the frontend
-  `FormTemplate.fields[].factBinding`, so extraction, the drafting gate, and
-  rendering share one contract.
+## 8. Structured extraction
 
-Verification: unit + contract suites run in CI with the stub;
-`tests/e2e/test_gemini_live.py` is an env-gated live smoke that also
-validates the configured model ids; `scripts/eval_extraction.py` measures
-field accuracy against the expected-values file inside the gitignored real
-bundle. Accuracy numbers may be recorded in review docs; extracted values may
-not.
+Send each logical document's OCR text to Gemini 2.5 Flash-Lite with the field
+schema for its type. Return candidate fields with a value, a page number and a
+model reported confidence.
 
-## 10. Confidence threshold
+Flash-Lite is the measured choice. Across four models on the same prompt and the
+same documents, it produced the best F1 (0.635), ran in 2.6 seconds per document,
+and cost about a quarter of Gemini 2.5 Flash. That comparison rests on four
+labelled documents and 37 fields, so treat it as a starting position rather than a
+settled result.
 
-The Level 0 to Level 1 threshold is tunable and must be measured, not guessed.
-Set it conservative at first (escalate generously), then tune against a labelled
-sample. Too high wastes Gemini calls; too low loses the recovery the fallback
-exists for.
+Every value stays a string end to end. A parcel number such as `0021` parsed as an
+integer becomes `21`, which is a different parcel.
 
-## 10A. Metering and the data-protection gate
+## 9. Grounding is out of scope for V1
 
-Two things this document did not previously state, both of which bite on the
-first real client bundle.
+V1 does not establish exact field-level provenance. Therefore, it cannot prove
+which OCR words produced each extracted field. All fields remain unverified until
+reviewed.
 
-### Metering
+The interface has to carry that honestly:
 
-The worker consumes what `document_service` reserved at upload
-(`document-service.md` §5A):
+- every extracted field is labelled an unverified candidate
+- no field click highlighting, and nothing that implies a field has an exact
+  source region
+- the reviewer corrects and approves each field
 
-```text
-reserved at upload:  document_pages.monthly = validated page count
-consumed here:       actual pages processed, per ProcessingRun
-released here:       on dead_letter, the full reservation
-```
+Field to polygon grounding is the obvious V2 candidate, and it is what would let
+the interface show a reviewer where a value came from.
 
-Gemini escalation calls are metered separately as
-`ai_extraction_calls.monthly`, because a page that escalates to Level 1 or 2
-costs materially more than one that does not. Level 3 (manual entry) consumes
-nothing.
+## 10. Storage
 
-### Sending client documents to Google
+Neon holds GCS object references, processing run metadata, page classifications
+with confidence and boundary flags, logical document groupings, candidate
+structured fields and review state.
 
-`infrastructure.md` is explicit that real client matter data may only reach
-managed cloud infrastructure once data residency, a processor agreement, and
-lawyer sign-off are confirmed under PDPA 2022. **That gate applies to Document
-AI and Gemini exactly as it applies to Neon**, and it applies harder, because
-here the payload is the scanned deed itself rather than metadata.
+Model output is never marked verified automatically. A field becomes verified when
+a person approves it, and the record keeps who approved it and when.
 
-Before any real bundle is processed, plan §10 requires recording the Document AI
-and Gemini **region, retention period, deletion behaviour, training-use terms,
-quota, cost, and exit path**. Until those are recorded and approved:
+## 11. Security and retention
 
-- V0 runs on synthetic and pilot documents only;
-- the adapter refuses to run when the settings module reports
-  `provider_data_approval = false` and the document is not flagged synthetic;
-- the refusal routes the version to `manual_review`, which is a legitimate
-  state, not an error.
+These documents carry NICs, names, addresses and consideration amounts.
 
-This is the same fail-closed posture the corpus governance service takes for
-legal sources: an unapproved provider path is blocked by construction rather
-than by a note in a document.
+- private storage only, no public objects
+- encryption in transit and at rest
+- tenant scoped authorization on every read and write
+- short lived signed URLs for client access
+- least privilege service accounts, separated by function
+- retention and deletion configurable per matter, with deletion covering
+  derivatives as well as originals
+- never write OCR text or extracted personal data into logs or traces
 
-## 11. Effect on the SRS and architecture
+## What was removed
 
-The SRS and architecture documents name Google Document AI as the V0 processing
-dependency. This design keeps Document AI as the primary OCR engine and adds a
-scoped, confidence-gated Gemini fallback plus a Gemini classification and
-extraction stage. It is an addendum to the named dependency, not a replacement,
-so the documents need a short update rather than a rewrite. Track that as a
-follow-up.
+The Document AI escalation ladder and the multi provider adapter discussion are
+both gone. Document AI's OCR processor returned no Sinhala or Tamil on any page
+tested, so it cannot serve this corpus, and a fallback ladder that cannot read the
+documents adds cost and complexity without adding coverage.
 
-## 12. Test list
+Keep the provider boundary as a plain interface so a second engine can be added
+when there is evidence for one. Do not build the ladder before that evidence
+exists.
 
-- **Unit:** ladder routing (which rung fires for which confidence and box
-  state), coordinate mapping normalized to pixels, reconciliation outcomes,
-  never-auto-accept enforcement.
-- **Contract:** each port's adapter contract, provider-result normalisation into
-  the common candidate schema, the `ProcessingRun` provider-metadata fields.
-- **Integration:** PDF to rasters, Document AI adapter on a sample document,
-  crop-and-escalate on a low-confidence field, whole-page fallback, manual-entry
-  routing on an unreadable page.
-- **Evaluation:** on a labelled sample, measure recovery yield (fields the
-  fallback saved), false-recovery rate (fallback introduced a wrong value), and
-  the agreement and conflict rates, to set the threshold and the review
-  expectations.
+## Evidence and limits
 
-## 13. Open decisions
+The measurements above come from `ocr-benchmark/` in this repo, over one matter:
+7 uploaded files and 26 pages, of which 4 files carry gold labels totalling 37
+fields. The uploads are an identity card, a survey plan, a title certificate, a
+16 page Form 8 bundle, an RTA sale instrument, a vendor board resolution and a
+payment cheque.
 
-1. **Confidence threshold value** — start conservative, tune on a labelled
-   sample (§10).
-2. **Classifier pre-routing** — how aggressively the classifier sends pages
-   straight to Level 2 or 3 versus always trying Document AI first.
-3. **Gemini approximate boxes at Level 2** — whether to ask for and store
-   approximate regions or degrade to page-level provenance only.
-4. **Exact model IDs** per stage, pinned at implementation.
+No splitting has been run on them, so 7 is a count of uploaded files rather than
+of logical documents. The Form 8 bundle alone almost certainly holds several, so
+the logical document count will be higher than 7 once step 6 runs.
+
+That is enough to choose an OCR engine, since the Sinhala result is categorical
+rather than marginal. It is not enough to settle extraction accuracy, where the
+four models sit within a few labelled fields of each other.
+
+Sinhala field extraction is still unmeasured. All 37 labels are Latin or numeric
+identifiers, so a model that ignored every Sinhala word on the page would still
+score well. Labelling fields whose values are Sinhala, such as names, addresses
+and boundaries, is what would close that gap.
