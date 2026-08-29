@@ -60,7 +60,13 @@ class PageInfo(_CamelModel):
 
 
 class SourceFileRead(_CamelModel):
-    """One uploaded file. ``storageObjectKey`` is never exposed."""
+    """One uploaded file. ``storageObjectKey`` is never exposed.
+
+    ``storageObjectVersion`` is an opaque provider token — a GCS generation
+    (``"1740..."``) or a content hash (``"sha256:..."``), depending on which
+    adapter stored the bytes. Clients must not parse, compare, or display it;
+    its only job is to let the server fetch that exact object again.
+    """
 
     id: str
     matter_id: str
@@ -225,3 +231,41 @@ class ClassificationDecisionRequest(_StrictCamel):
 
     class_id: str
     note: str | None = None
+
+
+class ReviewPageRead(_CamelModel):
+    id: str
+    page_no: int
+    corrected_width: int
+    corrected_height: int
+    quality_status: str
+    rotation_status: str
+    classification_type_id: str
+    classification_confidence: float
+    image_url: str
+    ocr_url: str
+
+
+class ReviewCandidateRead(_CamelModel):
+    id: str
+    key: str
+    candidate_value: str
+    edited_value: str | None
+    page_no: int
+    model_reported_confidence: float
+    review_state: str
+    version: int
+
+
+class DocumentReviewRead(_CamelModel):
+    id: str
+    matter_id: str
+    detected_document_id: str
+    type_id: str
+    suggested_name: str | None
+    pages: list[ReviewPageRead]
+    candidates: list[ReviewCandidateRead]
+
+
+class CandidateEditRequest(_StrictCamel):
+    value: str

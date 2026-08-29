@@ -49,3 +49,8 @@ class FactSupersededError(ConflictError):
 class FactStaleError(ConflictError):
     code = "fact_version_stale"
     message = "The fact changed since your last read."
+
+
+class CandidateFactTypeNotFoundError(DomainRuleError):
+    code = "candidate_fact_type_not_found"
+    message = "This candidate field is not mapped to a governed fact type."

@@ -50,3 +50,27 @@ class EvidenceReadPort(Protocol):
     ) -> tuple[tuple[str, int], ...]:
         """Return ``(source_file_id, page_number)`` for each reference, in order."""
         ...
+
+
+@dataclass(frozen=True)
+class CandidateApprovalInput:
+    candidate_id: str
+    user_id: str
+    matter_id: str
+    source_file_id: str
+    detected_document_id: str
+    extraction_run_id: str
+    source_sha256: str
+    field_key: str
+    value: str
+    page_no: int
+    model_reported_confidence: float
+    review_state: str
+
+
+class CandidateApprovalPort(Protocol):
+    """Promote one explicitly approved candidate into verification-owned records."""
+
+    async def approve(
+        self, candidate: CandidateApprovalInput, *, reviewer_id: str, reviewer_role: str
+    ) -> str: ...

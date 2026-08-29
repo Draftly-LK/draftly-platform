@@ -35,13 +35,17 @@ from src.modules.content_governance.contracts import (
 )
 from src.modules.document.api.schemas import (
     BoundaryDecisionRequest,
+    CandidateEditRequest,
     ClassificationDecisionRequest,
     DetectedDocumentRead,
     DocumentFragmentRead,
     DocumentInboxRead,
+    DocumentReviewRead,
     PageCandidateRead,
     PageInfo,
     ProcessingRunRead,
+    ReviewCandidateRead,
+    ReviewPageRead,
     SourceFileListRead,
     SourceFileRead,
     SupersedeSourceFileRequest,
@@ -53,6 +57,7 @@ from src.modules.document.application.ingestion_service import (
     SourceFileIngestionService,
     SourceFileView,
 )
+from src.modules.document.application.review_service import DocumentReviewService
 from src.modules.document.domain.errors import SourceFileTooLargeError
 from src.modules.document.domain.ingestion import FragmentRange
 from src.modules.matter.contracts import require_rta_capability
@@ -73,6 +78,12 @@ def get_ingestion_service(session: AsyncSession = Depends(get_db)) -> SourceFile
     from src.bootstrap import build_ingestion_service
 
     return build_ingestion_service(session)
+
+
+def get_review_service(session: AsyncSession = Depends(get_db)) -> DocumentReviewService:
+    from src.bootstrap import build_document_review_service
+
+    return build_document_review_service(session)
 
 
 async def _authorized_matter(
@@ -458,3 +469,114 @@ async def decide_classification(
     )
     response.headers["ETag"] = f'"{view.document.version}"'
     return _to_document_read(view)
+
+
+def _to_candidate_read(candidate: object) -> ReviewCandidateRead:
+    return ReviewCandidateRead.model_validate(candidate, from_attributes=True)
+
+
+@router.get("/detected-documents/{document_id}/review", response_model=DocumentReviewRead)
+async def get_document_review(
+    document_id: str,
+    ctx: RequestContext = Depends(get_request_context),
+    service: DocumentReviewService = Depends(get_review_service),
+    session: AsyncSession = Depends(get_db),
+) -> DocumentReviewRead:
+    review = await service.get_review(user_id=ctx.actor_id, detected_document_id=document_id)
+    await _authorized_matter(ctx, review.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    return DocumentReviewRead(
+        id=review.id,
+        matter_id=review.matter_id,
+        detected_document_id=review.detected_document_id,
+        type_id=review.type_id,
+        suggested_name=review.suggested_name,
+        pages=[
+            ReviewPageRead(
+                id=page.id,
+                page_no=page.page_no,
+                corrected_width=page.corrected_width,
+                corrected_height=page.corrected_height,
+                quality_status=page.quality_status,
+                rotation_status=page.rotation_status,
+                classification_type_id=page.classification_type_id,
+                classification_confidence=page.classification_confidence,
+                image_url=f"/api/v1/processing-pages/{page.id}/image",
+                ocr_url=f"/api/v1/processing-pages/{page.id}/ocr",
+            )
+            for page in review.pages
+        ],
+        candidates=[_to_candidate_read(candidate) for candidate in review.candidates],
+    )
+
+
+@router.get("/processing-pages/{page_id}/{artifact_kind}")
+async def get_processing_page_artifact(
+    page_id: str,
+    artifact_kind: str,
+    ctx: RequestContext = Depends(get_request_context),
+    service: DocumentReviewService = Depends(get_review_service),
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    if artifact_kind not in {"image", "ocr"}:
+        from src.modules.document.domain.errors import DocumentReviewNotFoundError
+
+        raise DocumentReviewNotFoundError()
+    matter_id = await service.page_matter_id(user_id=ctx.actor_id, page_id=page_id)
+    await _authorized_matter(ctx, matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    payload = await service.get_artifact(user_id=ctx.actor_id, page_id=page_id, kind=artifact_kind)
+    media_type = "image/webp" if artifact_kind == "image" else "application/json"
+    return Response(
+        content=payload,
+        media_type=media_type,
+        headers={"Cache-Control": "private, max-age=60, no-store"},
+    )
+
+
+@router.patch("/candidate-fields/{candidate_id}", response_model=ReviewCandidateRead)
+async def edit_candidate_field(
+    candidate_id: str,
+    body: CandidateEditRequest,
+    ctx: RequestContext = Depends(get_request_context),
+    service: DocumentReviewService = Depends(get_review_service),
+    session: AsyncSession = Depends(get_db),
+    uow: UnitOfWork = Depends(get_uow),
+    expected_version: int = Depends(require_if_match),
+) -> ReviewCandidateRead:
+    _ = uow
+    matter_id = await service.candidate_matter_id(user_id=ctx.actor_id, candidate_id=candidate_id)
+    await _authorized_matter(ctx, matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    saved = await service.edit_candidate(
+        user_id=ctx.actor_id,
+        actor_id=ctx.actor_id,
+        candidate_id=candidate_id,
+        value=body.value,
+        expected_version=expected_version,
+        correlation_id=ctx.correlation_id,
+    )
+    return _to_candidate_read(saved)
+
+
+@router.post("/candidate-fields/{candidate_id}/approve", response_model=ReviewCandidateRead)
+async def approve_candidate_field(
+    candidate_id: str,
+    ctx: RequestContext = Depends(get_request_context),
+    service: DocumentReviewService = Depends(get_review_service),
+    session: AsyncSession = Depends(get_db),
+    uow: UnitOfWork = Depends(get_uow),
+    expected_version: int = Depends(require_if_match),
+) -> ReviewCandidateRead:
+    _ = uow
+    matter_id = await service.candidate_matter_id(user_id=ctx.actor_id, candidate_id=candidate_id)
+    capability = await service.candidate_approval_capability(
+        user_id=ctx.actor_id, candidate_id=candidate_id
+    )
+    await _authorized_matter(ctx, matter_id, session, capability)
+    saved = await service.approve_candidate(
+        user_id=ctx.actor_id,
+        actor_id=ctx.actor_id,
+        candidate_id=candidate_id,
+        expected_version=expected_version,
+        correlation_id=ctx.correlation_id,
+        reviewer_role=ctx.account_role.value,
+    )
+    return _to_candidate_read(saved)
