@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from src.modules.content_governance.contracts import (
     BoundaryStatus,
@@ -29,6 +30,9 @@ from src.modules.content_governance.contracts import (
     ProcessingFailureReason,
     SourceFileState,
 )
+
+if TYPE_CHECKING:
+    from src.modules.document.domain.v1 import V1PipelineReport
 
 #: Retention class recorded on every uploaded source until a retention policy
 #: module exists to assign a narrower one. Stored rather than assumed so the
@@ -216,6 +220,9 @@ class ProcessingRun:
     #: fragments by the ingestion service, and returned to the caller so
     #: verification can consume the page-level candidates.
     candidates: tuple[DocumentCandidate, ...] = field(default_factory=tuple)
+    #: Full V1 page/group result. Repository adapters persist it into owned
+    #: child tables; it is not placed in logs or event payloads.
+    v1_report: V1PipelineReport | None = None
 
     @property
     def succeeded(self) -> bool:

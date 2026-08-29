@@ -13,6 +13,7 @@ never be marked processed, and a fragment can never claim page 0.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -24,6 +25,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -213,3 +215,99 @@ class SourceFileProcessingRunRow(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+
+
+class DocumentProcessingPageRow(Base):
+    """Review metadata and immutable GCS references for one retained page."""
+
+    __tablename__ = "document_processing_pages"
+    __table_args__ = (
+        Index("ix_processing_pages_user_run", "user_id", "processing_run_id"),
+        Index("ix_processing_pages_source", "user_id", "source_file_id", "page_no"),
+        CheckConstraint("page_no >= 1", name="ck_processing_page_number_positive"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    processing_run_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("source_file_processing_runs.id", ondelete="CASCADE"), nullable=False
+    )
+    source_file_id: Mapped[str] = mapped_column(String(64), ForeignKey("source_files.id"))
+    page_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    quality_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    original_width: Mapped[int] = mapped_column(Integer, nullable=False)
+    original_height: Mapped[int] = mapped_column(Integer, nullable=False)
+    corrected_width: Mapped[int] = mapped_column(Integer, nullable=False)
+    corrected_height: Mapped[int] = mapped_column(Integer, nullable=False)
+    detected_orientation: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    correction_degrees: Mapped[int] = mapped_column(Integer, nullable=False)
+    rotation_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    rotation_vote_share: Mapped[float] = mapped_column(Float, nullable=False)
+    usable_word_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    detected_languages: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    classification_type_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    suggested_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    starts_new_document: Mapped[bool] = mapped_column(nullable=False)
+    classification_confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    corrected_webp_key: Mapped[str] = mapped_column(String(768), nullable=False)
+    corrected_webp_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    corrected_ocr_key: Mapped[str] = mapped_column(String(768), nullable=False)
+    corrected_ocr_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    plain_text_key: Mapped[str] = mapped_column(String(768), nullable=False)
+    plain_text_version: Mapped[str] = mapped_column(String(128), nullable=False)
+
+
+class ProcessingLogicalDocumentRow(Base):
+    __tablename__ = "processing_logical_documents"
+    __table_args__ = (Index("ix_logical_documents_user_run", "user_id", "processing_run_id"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    processing_run_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("source_file_processing_runs.id", ondelete="CASCADE"), nullable=False
+    )
+    source_file_id: Mapped[str] = mapped_column(String(64), ForeignKey("source_files.id"))
+    detected_document_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    document_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    type_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    suggested_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    page_numbers: Mapped[list[int]] = mapped_column(JSON, nullable=False)
+
+
+class ProcessingCandidateFieldRow(Base):
+    """AI output stays unverified until the explicit approve transition."""
+
+    __tablename__ = "processing_candidate_fields"
+    __table_args__ = (
+        Index("ix_candidate_fields_user_document", "user_id", "logical_document_id"),
+        CheckConstraint(
+            "(review_state = 'unverified' AND approved_by IS NULL AND approved_at IS NULL "
+            "AND approved_fact_id IS NULL) OR (review_state = 'approved' "
+            "AND approved_by IS NOT NULL AND approved_at IS NOT NULL "
+            "AND approved_fact_id IS NOT NULL)",
+            name="ck_candidate_review_state_valid",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    logical_document_id: Mapped[str] = mapped_column(
+        String(64),
+        ForeignKey("processing_logical_documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    key: Mapped[str] = mapped_column(String(128), nullable=False)
+    candidate_value: Mapped[str] = mapped_column(Text, nullable=False)
+    edited_value: Mapped[str | None] = mapped_column(Text, nullable=True)
+    page_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    model_reported_confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    review_state: Mapped[str] = mapped_column(String(32), nullable=False, default="unverified")
+    approved_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_fact_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("extracted_facts.id"), nullable=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

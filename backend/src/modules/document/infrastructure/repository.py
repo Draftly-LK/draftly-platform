@@ -26,7 +26,10 @@ from src.modules.content_governance.contracts import (
     SourceFileState,
 )
 from src.modules.document.domain.errors import (
+    CandidateAlreadyApprovedError,
+    CandidateFieldStaleError,
     DetectedDocumentStaleError,
+    DocumentReviewNotFoundError,
     SourceFileStaleError,
 )
 from src.modules.document.domain.ingestion import (
@@ -35,12 +38,18 @@ from src.modules.document.domain.ingestion import (
     ProcessingRun,
     SourceFile,
 )
+from src.modules.document.domain.v1 import DocumentReview, ReviewCandidate, ReviewPage
 from src.modules.document.infrastructure.orm import (
     DetectedDocumentRow,
     DocumentFragmentRow,
+    DocumentProcessingPageRow,
+    ProcessingCandidateFieldRow,
+    ProcessingLogicalDocumentRow,
     SourceFileProcessingRunRow,
     SourceFileRow,
 )
+from src.modules.verification.contracts import CandidateApprovalInput
+from src.platform import ids
 
 
 def _to_source_file(row: SourceFileRow) -> SourceFile:
@@ -444,8 +453,327 @@ class SqlDocumentIngestionRepository:
             correlation_id=run.correlation_id,
         )
         self._session.add(row)
+        if run.v1_report is not None:
+            await self._add_v1_details(run)
         await self._session.flush()
         return run
+
+    async def _add_v1_details(self, run: ProcessingRun) -> None:
+        assert run.v1_report is not None
+        for page in run.v1_report.pages:
+            classification = page.classification
+            assert classification is not None
+            webp = page.derivative_refs["corrected_webp"]
+            ocr = page.derivative_refs["corrected_ocr_json"]
+            text = page.derivative_refs["plain_ocr_text"]
+            self._session.add(
+                DocumentProcessingPageRow(
+                    id=ids.new_id(ids.PROCESSING_PAGE),
+                    user_id=run.user_id,
+                    matter_id=run.matter_id,
+                    processing_run_id=run.id,
+                    source_file_id=run.source_file_id,
+                    page_no=page.page_no,
+                    quality_status=page.quality_status.value,
+                    original_width=page.original_width,
+                    original_height=page.original_height,
+                    corrected_width=page.corrected_width,
+                    corrected_height=page.corrected_height,
+                    detected_orientation=page.rotation.detected_orientation,
+                    correction_degrees=page.rotation.correction_applied,
+                    rotation_status=page.rotation.status.value,
+                    rotation_vote_share=page.rotation.vote_share,
+                    usable_word_count=page.rotation.usable_word_count,
+                    detected_languages=[
+                        {"code": item.code, "confidence": item.confidence}
+                        for item in page.ocr.detected_languages
+                    ],
+                    classification_type_id=classification.type_id,
+                    suggested_name=classification.suggested_name,
+                    starts_new_document=classification.starts_new_document,
+                    classification_confidence=classification.model_reported_confidence,
+                    corrected_webp_key=webp[0],
+                    corrected_webp_version=webp[1],
+                    corrected_ocr_key=ocr[0],
+                    corrected_ocr_version=ocr[1],
+                    plain_text_key=text[0],
+                    plain_text_version=text[1],
+                )
+            )
+        for document in run.v1_report.logical_documents:
+            logical = document.logical_document
+            logical_id = ids.new_id(ids.LOGICAL_DOCUMENT)
+            self._session.add(
+                ProcessingLogicalDocumentRow(
+                    id=logical_id,
+                    user_id=run.user_id,
+                    matter_id=run.matter_id,
+                    processing_run_id=run.id,
+                    source_file_id=run.source_file_id,
+                    document_index=logical.index,
+                    type_id=logical.type_id,
+                    suggested_name=logical.suggested_name,
+                    page_numbers=list(logical.page_numbers),
+                )
+            )
+            for candidate in document.candidates:
+                self._session.add(
+                    ProcessingCandidateFieldRow(
+                        id=ids.new_id(ids.CANDIDATE_FIELD),
+                        user_id=run.user_id,
+                        matter_id=run.matter_id,
+                        logical_document_id=logical_id,
+                        key=candidate.key,
+                        candidate_value=str(candidate.value),
+                        page_no=candidate.page_no,
+                        model_reported_confidence=candidate.model_reported_confidence,
+                        review_state="unverified",
+                    )
+                )
+
+    async def link_v1_logical_documents(
+        self, user_id: str, run_id: str, detected_document_ids: tuple[str, ...]
+    ) -> None:
+        rows = list(
+            (
+                await self._session.execute(
+                    select(ProcessingLogicalDocumentRow)
+                    .where(
+                        ProcessingLogicalDocumentRow.user_id == user_id,
+                        ProcessingLogicalDocumentRow.processing_run_id == run_id,
+                    )
+                    .order_by(ProcessingLogicalDocumentRow.document_index)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for row, document_id in zip(rows, detected_document_ids, strict=False):
+            row.detected_document_id = document_id
+        await self._session.flush()
+
+    async def get_document_review(
+        self, user_id: str, detected_document_id: str
+    ) -> DocumentReview | None:
+        logical = (
+            await self._session.execute(
+                select(ProcessingLogicalDocumentRow).where(
+                    ProcessingLogicalDocumentRow.user_id == user_id,
+                    ProcessingLogicalDocumentRow.detected_document_id == detected_document_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if logical is None:
+            return None
+        page_rows = list(
+            (
+                await self._session.execute(
+                    select(DocumentProcessingPageRow)
+                    .where(
+                        DocumentProcessingPageRow.user_id == user_id,
+                        DocumentProcessingPageRow.processing_run_id == logical.processing_run_id,
+                        DocumentProcessingPageRow.page_no.in_(logical.page_numbers),
+                    )
+                    .order_by(DocumentProcessingPageRow.page_no)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        candidate_rows = list(
+            (
+                await self._session.execute(
+                    select(ProcessingCandidateFieldRow)
+                    .where(
+                        ProcessingCandidateFieldRow.user_id == user_id,
+                        ProcessingCandidateFieldRow.logical_document_id == logical.id,
+                    )
+                    .order_by(ProcessingCandidateFieldRow.key)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return DocumentReview(
+            id=logical.id,
+            matter_id=logical.matter_id,
+            detected_document_id=detected_document_id,
+            type_id=logical.type_id,
+            suggested_name=logical.suggested_name,
+            pages=tuple(
+                ReviewPage(
+                    id=row.id,
+                    page_no=row.page_no,
+                    corrected_width=row.corrected_width,
+                    corrected_height=row.corrected_height,
+                    quality_status=row.quality_status,
+                    rotation_status=row.rotation_status,
+                    classification_type_id=row.classification_type_id,
+                    classification_confidence=row.classification_confidence,
+                    corrected_webp_ref=(row.corrected_webp_key, row.corrected_webp_version),
+                    corrected_ocr_ref=(row.corrected_ocr_key, row.corrected_ocr_version),
+                )
+                for row in page_rows
+            ),
+            candidates=tuple(self._to_review_candidate(row) for row in candidate_rows),
+        )
+
+    async def get_page_artifact_ref(
+        self, user_id: str, page_id: str, kind: str
+    ) -> tuple[str, str] | None:
+        row = (
+            await self._session.execute(
+                select(DocumentProcessingPageRow).where(
+                    DocumentProcessingPageRow.user_id == user_id,
+                    DocumentProcessingPageRow.id == page_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        if kind == "image":
+            return row.corrected_webp_key, row.corrected_webp_version
+        if kind == "ocr":
+            return row.corrected_ocr_key, row.corrected_ocr_version
+        return None
+
+    async def get_page_matter_id(self, user_id: str, page_id: str) -> str | None:
+        return (
+            await self._session.execute(
+                select(DocumentProcessingPageRow.matter_id).where(
+                    DocumentProcessingPageRow.user_id == user_id,
+                    DocumentProcessingPageRow.id == page_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+    async def get_candidate_matter_id(self, user_id: str, candidate_id: str) -> str | None:
+        return (
+            await self._session.execute(
+                select(ProcessingCandidateFieldRow.matter_id).where(
+                    ProcessingCandidateFieldRow.user_id == user_id,
+                    ProcessingCandidateFieldRow.id == candidate_id,
+                )
+            )
+        ).scalar_one_or_none()
+
+    async def get_candidate_approval_input(
+        self, user_id: str, candidate_id: str
+    ) -> CandidateApprovalInput | None:
+        result = await self._session.execute(
+            select(
+                ProcessingCandidateFieldRow,
+                ProcessingLogicalDocumentRow,
+                SourceFileRow,
+            )
+            .join(
+                ProcessingLogicalDocumentRow,
+                ProcessingLogicalDocumentRow.id == ProcessingCandidateFieldRow.logical_document_id,
+            )
+            .join(SourceFileRow, SourceFileRow.id == ProcessingLogicalDocumentRow.source_file_id)
+            .where(
+                ProcessingCandidateFieldRow.user_id == user_id,
+                ProcessingLogicalDocumentRow.user_id == user_id,
+                SourceFileRow.user_id == user_id,
+                ProcessingCandidateFieldRow.id == candidate_id,
+            )
+        )
+        row = result.one_or_none()
+        if row is None or row[1].detected_document_id is None:
+            return None
+        candidate, logical, source = row
+        return CandidateApprovalInput(
+            candidate_id=candidate.id,
+            user_id=user_id,
+            matter_id=candidate.matter_id,
+            source_file_id=source.id,
+            detected_document_id=logical.detected_document_id,
+            extraction_run_id=logical.processing_run_id,
+            source_sha256=source.sha256,
+            field_key=candidate.key,
+            value=candidate.edited_value or candidate.candidate_value,
+            page_no=candidate.page_no,
+            model_reported_confidence=candidate.model_reported_confidence,
+            review_state=candidate.review_state,
+        )
+
+    @staticmethod
+    def _to_review_candidate(row: ProcessingCandidateFieldRow) -> ReviewCandidate:
+        return ReviewCandidate(
+            id=row.id,
+            key=row.key,
+            candidate_value=row.candidate_value,
+            edited_value=row.edited_value,
+            page_no=row.page_no,
+            model_reported_confidence=row.model_reported_confidence,
+            review_state=row.review_state,
+            version=row.version,
+        )
+
+    async def update_candidate(
+        self, user_id: str, candidate_id: str, value: str, expected_version: int
+    ) -> ReviewCandidate:
+        result = await self._session.execute(
+            update(ProcessingCandidateFieldRow)
+            .where(
+                ProcessingCandidateFieldRow.user_id == user_id,
+                ProcessingCandidateFieldRow.id == candidate_id,
+                ProcessingCandidateFieldRow.version == expected_version,
+                ProcessingCandidateFieldRow.review_state != "approved",
+            )
+            .values(
+                edited_value=value,
+                review_state="unverified",
+                approved_by=None,
+                approved_at=None,
+                version=expected_version + 1,
+            )
+            .returning(ProcessingCandidateFieldRow)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            if await self.get_candidate_matter_id(user_id, candidate_id) is None:
+                raise DocumentReviewNotFoundError()
+            current = await self.get_candidate_approval_input(user_id, candidate_id)
+            if current is not None and current.review_state == "approved":
+                raise CandidateAlreadyApprovedError()
+            raise CandidateFieldStaleError(expectedVersion=expected_version)
+        return self._to_review_candidate(row)
+
+    async def approve_candidate(
+        self,
+        user_id: str,
+        candidate_id: str,
+        actor_id: str,
+        approved_fact_id: str,
+        expected_version: int,
+    ) -> ReviewCandidate:
+        result = await self._session.execute(
+            update(ProcessingCandidateFieldRow)
+            .where(
+                ProcessingCandidateFieldRow.user_id == user_id,
+                ProcessingCandidateFieldRow.id == candidate_id,
+                ProcessingCandidateFieldRow.version == expected_version,
+                ProcessingCandidateFieldRow.review_state != "approved",
+            )
+            .values(
+                review_state="approved",
+                approved_by=actor_id,
+                approved_at=datetime.now(tz=UTC),
+                approved_fact_id=approved_fact_id,
+                version=expected_version + 1,
+            )
+            .returning(ProcessingCandidateFieldRow)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            if await self.get_candidate_matter_id(user_id, candidate_id) is None:
+                raise DocumentReviewNotFoundError()
+            current = await self.get_candidate_approval_input(user_id, candidate_id)
+            if current is not None and current.review_state == "approved":
+                raise CandidateAlreadyApprovedError()
+            raise CandidateFieldStaleError(expectedVersion=expected_version)
+        return self._to_review_candidate(row)
 
     async def list_runs_for_source_file(
         self, user_id: str, source_file_id: str
