@@ -11,10 +11,16 @@ a new adapter and a settings value, not an application change.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from src.modules.document.domain.ingestion import ProcessingRun, SourceFile
+    from src.modules.document.domain.v1 import (
+        ExtractedCandidate,
+        OcrPage,
+        PageClassification,
+    )
 
 
 class PageRaster:
@@ -135,11 +141,22 @@ class SourceFileStoragePort(Protocol):
     the same bytes that were hashed. There is deliberately no ``delete`` and no
     ``overwrite`` — original evidence is immutable, and a cleaned copy is a new
     object under a new key.
+
+    ``version`` is an opaque provider token — a GCS generation, a content hash,
+    whatever the adapter can honestly guarantee. Nothing outside the adapter
+    parses it. It is keyword-only and required on ``get`` so that a caller
+    cannot quietly read "whatever is at this key now": an unpinned read is the
+    failure this port exists to prevent.
+
+    The port guarantees *identity* — that the bytes came from the object
+    recorded at upload. It does not guarantee *integrity*; verifying the
+    evidence hash is the caller's job, because the expected hash lives on the
+    SourceFile rather than in storage.
     """
 
     async def put(self, key: str, data: bytes) -> str: ...
 
-    async def get(self, key: str) -> bytes: ...
+    async def get(self, key: str, *, version: str) -> bytes: ...
 
     async def exists(self, key: str) -> bool: ...
 
@@ -157,3 +174,59 @@ class ProcessingJobPort(Protocol):
     async def enqueue(
         self, *, source_file: SourceFile, correlation_id: str = ""
     ) -> ProcessingRun: ...
+
+
+@dataclass(frozen=True)
+class ClassificationPageInput:
+    page_no: int
+    text: str
+    quality_status: str
+
+
+@dataclass(frozen=True)
+class ExtractionFieldSchema:
+    key: str
+    description: str
+
+
+@dataclass(frozen=True)
+class MatterDocumentTypes:
+    allowed_type_ids: tuple[str, ...]
+    extraction_schemas: dict[str, tuple[ExtractionFieldSchema, ...]]
+
+
+class MatterDocumentTypesPort(Protocol):
+    """Allowed types and strict schemas derived from the current matter checklist."""
+
+    async def for_matter(self, *, user_id: str, matter_id: str) -> MatterDocumentTypes: ...
+
+
+class VisionOcrPort(Protocol):
+    """Cloud Vision document OCR normalized without losing polygon order."""
+
+    async def document_text_detection(self, page: PageRaster) -> OcrPage: ...
+
+
+class BatchPageClassifierPort(Protocol):
+    """Classify all pages in one structured request where provider limits allow."""
+
+    async def classify_pages(
+        self,
+        pages: list[ClassificationPageInput],
+        *,
+        allowed_type_ids: tuple[str, ...],
+        text_limit: int | None,
+    ) -> list[PageClassification]: ...
+
+
+class StructuredDocumentExtractorPort(Protocol):
+    """Extract string candidates from one complete logical-document transcript."""
+
+    async def extract_document(
+        self,
+        *,
+        type_id: str,
+        text: str,
+        page_numbers: tuple[int, ...],
+        fields: tuple[ExtractionFieldSchema, ...],
+    ) -> tuple[ExtractedCandidate, ...]: ...
