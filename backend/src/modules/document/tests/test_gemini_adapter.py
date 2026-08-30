@@ -20,6 +20,7 @@ from src.modules.document.infrastructure.gemini_adapter import (
     _CandidateItem,
     _ClassifyResponse,
     _DocumentExtractionResponse,
+    _ExtractFieldItem,
     _ExtractResponse,
     _PageClassificationItem,
 )
@@ -97,12 +98,18 @@ class TestExtract:
             parsed=_ExtractResponse(
                 transcript="text",
                 confidence=0.8,
-                fields={"district": "Colombo", "extent": None},
+                fields=[
+                    _ExtractFieldItem(key="district", value="Colombo"),
+                    _ExtractFieldItem(key="extent", value=None),
+                ],
             )
         )
         result = await make_adapter(models).extract(PAGE, "form8-instrument")
         assert result.fields["district"] == "Colombo"
         assert result.transcript == "text"
+
+    def test_schema_avoids_developer_api_additional_properties(self):
+        assert "additionalProperties" not in str(_ExtractResponse.model_json_schema())
 
     async def test_unregistered_kind_is_refused_without_a_call(self):
         models = FakeModels(parsed=None)
@@ -151,6 +158,12 @@ class TestRetryPolicy:
         )
         with pytest.raises(ExtractionProviderError):
             await make_adapter(models).classify(PAGE)
+        assert models.calls == 1
+
+    async def test_local_schema_value_error_is_a_typed_provider_failure(self):
+        models = FakeModels(errors=[ValueError("unsupported schema detail")])
+        with pytest.raises(ExtractionProviderError):
+            await make_adapter(models).extract(PAGE, "form8-instrument")
         assert models.calls == 1
 
 

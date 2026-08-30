@@ -53,10 +53,19 @@ class _ClassifyResponse(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+class _ExtractFieldItem(BaseModel):
+    key: str
+    value: str | None = None
+
+
 class _ExtractResponse(BaseModel):
     transcript: str = ""
     confidence: float = Field(ge=0.0, le=1.0)
-    fields: dict[str, str | None] = Field(default_factory=dict)
+    # The Gemini Developer API rejects JSON Schema's `additionalProperties`,
+    # which is how Pydantic represents dict[str, ...]. A strict array of typed
+    # key/value objects is equivalent at the port boundary and is supported by
+    # both the Developer API and Vertex/enterprise modes.
+    fields: list[_ExtractFieldItem] = Field(default_factory=list)
 
 
 class _PageClassificationItem(BaseModel):
@@ -146,7 +155,7 @@ class GeminiExtractionAdapter:
             schema=_ExtractResponse,
         )
         return ExtractionResult(
-            fields=dict(response.fields),
+            fields={item.key: item.value for item in response.fields},
             transcript=response.transcript,
             model_reported_confidence=_clamp(response.confidence),
         )
@@ -299,7 +308,7 @@ class GeminiExtractionAdapter:
                 )
                 await asyncio.sleep(wait)
                 delay = min(delay * 2, _MAX_DELAY_S)
-            except APIError as exc:
+            except (APIError, ValueError) as exc:
                 raise ExtractionProviderError() from exc
 
         raise ExtractionProviderError() from last_error
@@ -323,7 +332,7 @@ class GeminiExtractionAdapter:
                 contents=prompt,
                 config=config,
             )
-        except APIError as exc:
+        except (APIError, ValueError) as exc:
             raise ExtractionProviderError() from exc
         parsed = response.parsed
         if not isinstance(parsed, schema):
