@@ -8,6 +8,7 @@ import { updateMe, type ProfileUpdate } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useProvisionGate } from "@/components/auth/provision-gate";
+import { BrandMark } from "@/components/ui/brand-mark";
 
 /**
  * First-run capture of the professional details Draftly prints on forms.
@@ -150,6 +151,7 @@ export function OnboardingScreen() {
   return (
     <main className="bg-canvas flex min-h-screen flex-col items-center px-4 py-12">
       <div className="w-full max-w-2xl">
+        <BrandMark className="mb-4 size-12" priority />
         <h1 className="font-heading text-ink text-3xl font-semibold tracking-tight">
           {t("title")}
         </h1>

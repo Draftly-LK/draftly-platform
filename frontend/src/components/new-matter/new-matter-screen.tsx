@@ -45,6 +45,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LocaleToggle } from "@/components/shell/locale-toggle";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
 import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import {
@@ -486,7 +487,8 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
   if (step === 0) {
     return (
       <main className="bg-canvas min-h-screen">
-        <header className="absolute inset-x-0 top-0 z-10 flex h-16 items-center px-6">
+        <header className="absolute inset-x-0 top-0 z-10 flex h-16 items-center gap-3 px-6">
+          <BrandMark tone="white" className="size-9 shrink-0" priority />
           <div className="font-heading text-on-dark text-3xl font-semibold">
             {t("entryTitle")}
           </div>
@@ -567,7 +569,8 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
   return (
     <main className="bg-canvas min-h-screen">
-      <header className="border-border bg-surface flex h-16 items-center border-b px-6">
+      <header className="border-border bg-surface flex h-16 items-center gap-3 border-b px-6">
+        <BrandMark className="size-8 shrink-0" />
         <div className="font-heading text-2xl font-semibold">
           {t("entryTitle")}
         </div>

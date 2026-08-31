@@ -65,9 +65,18 @@ export default async function RootLayout({
       lang={locale}
       className={`${plex.variable} ${newsreader.variable} ${notoSansSi.variable} ${notoSerifSi.variable}`}
     >
-      <body>
-        <NextIntlClientProvider locale={locale} messages={messages} timeZone="Asia/Colombo">
-          <MultilingualProvider enabled={multilingual}>{body}</MultilingualProvider>
+      {/* Browser extensions such as Grammarly add data attributes to body
+          before React hydrates. Limit suppression to this host element so
+          genuine mismatches inside the application remain visible. */}
+      <body suppressHydrationWarning>
+        <NextIntlClientProvider
+          locale={locale}
+          messages={messages}
+          timeZone="Asia/Colombo"
+        >
+          <MultilingualProvider enabled={multilingual}>
+            {body}
+          </MultilingualProvider>
         </NextIntlClientProvider>
       </body>
     </html>

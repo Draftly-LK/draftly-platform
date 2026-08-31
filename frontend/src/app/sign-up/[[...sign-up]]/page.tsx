@@ -1,6 +1,7 @@
 import { SignUp } from "@clerk/nextjs";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { isClerkConfigured } from "@/lib/auth/clerk";
 
 export default async function SignUpPage() {
@@ -12,7 +13,8 @@ export default async function SignUpPage() {
 
   return (
     <main className="bg-canvas flex min-h-screen flex-col items-center justify-center px-4 py-4">
-      <div className="mb-8 text-center">
+      <div className="mb-8 flex flex-col items-center text-center">
+        <BrandMark className="mb-4 size-14" priority />
         <h1 className="font-heading text-ink text-3xl font-semibold tracking-tight">
           {t("signUpTitle")}
         </h1>
