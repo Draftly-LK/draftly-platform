@@ -82,6 +82,9 @@
     "settings": "Settings",
     "help": "Help",
     "recentMatters": "Recent matters",
+    "recentLoading": "Loading recent matters…",
+    "recentEmpty": "No matters yet",
+    "recentLoadFailed": "Recent matters unavailable",
     "resetDemo": "Reset demo",
     "openNavigation": "Open navigation",
     "close": "Close",
@@ -152,6 +155,9 @@
     "workflowTitle": "Open a guided workflow",
     "workflowBody": "Continue a repeatable notarial procedure",
     "recentTitle": "Recent matters",
+    "recentLoading": "Loading recent matters…",
+    "recentEmpty": "No matters yet. Create one to get started.",
+    "recentLoadFailed": "Recent matters could not be loaded.",
     "status": "Status",
     "activeFunction": "Active function",
     "openIssues": "{count, plural, =0 {No open issues} one {# open issue} other {# open issues}}",
@@ -174,6 +180,7 @@
     "title": "Matters",
     "description": "Role-aware work assigned to your notarial practice.",
     "reference": "Reference",
+    "clientReference": "Client reference",
     "parties": "Parties",
     "regime": "Regime",
     "transaction": "Transaction",
@@ -184,7 +191,11 @@
     "syntheticOwner": "N. M. Silva (synthetic)",
     "rta": "RTA",
     "transfer": "Transfer",
-    "inReview": "In review"
+    "inReview": "In review",
+    "notSelected": "Not selected",
+    "loading": "Loading matters…",
+    "loadFailed": "Matters could not be loaded.",
+    "empty": "No matters yet."
   },
   "overview": {
     "activeFunction": "Active function",
@@ -1940,6 +1951,31 @@
     "succeeded": "Success",
     "failed": "Failed",
     "noUnprocessed": "All documents have been processed."
+  },
+  "documentProcessingReview": {
+    "title": "Document review",
+    "description": "Compare corrected pages with unverified extracted fields.",
+    "page": "Page {page}",
+    "pageAlt": "Corrected document page {page}",
+    "overlayNote": "OCR word polygons are shown for review. Fields are not linked to polygons in V1.",
+    "fieldsTitle": "Candidate fields",
+    "fieldsDescription": "AI-extracted values remain unverified until you approve each one.",
+    "unverified": "Unverified",
+    "approved": "Approved",
+    "save": "Save edit",
+    "approve": "Approve",
+    "back": "Back to documents",
+    "loadError": "Could not load this review.",
+    "artifactError": "Could not load the private page derivative.",
+    "saveError": "Could not save the edit.",
+    "approveError": "Could not approve the field.",
+    "rotationWarning": "Page rotation is uncertain. Check the page before approval.",
+    "classificationWarning": "Page classification confidence is low.",
+    "quality": {
+      "likely_blank": "This page is likely blank.",
+      "ocr_sparse": "OCR found very little text on this page.",
+      "ocr_failed": "OCR failed for this page."
+    }
   },
   "classificationReview": {
     "title": "Classification Review",

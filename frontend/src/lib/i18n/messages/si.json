@@ -82,6 +82,9 @@
     "settings": "Settings",
     "help": "Help",
     "recentMatters": "Recent matters",
+    "recentLoading": "Loading recent matters…",
+    "recentEmpty": "No matters yet",
+    "recentLoadFailed": "Recent matters unavailable",
     "resetDemo": "Reset demo",
     "openNavigation": "Open navigation",
     "close": "Close",
@@ -152,6 +155,9 @@
     "workflowTitle": "Open a guided workflow",
     "workflowBody": "Continue a repeatable notarial procedure",
     "recentTitle": "Recent matters",
+    "recentLoading": "Loading recent matters…",
+    "recentEmpty": "No matters yet. Create one to get started.",
+    "recentLoadFailed": "Recent matters could not be loaded.",
     "status": "Status",
     "activeFunction": "Active function",
     "openIssues": "{count, plural, =0 {No open issues} one {# open issue} other {# open issues}}",
@@ -174,6 +180,7 @@
     "title": "Matters",
     "description": "Role-aware work assigned to your notarial practice.",
     "reference": "Reference",
+    "clientReference": "Client reference",
     "parties": "Parties",
     "regime": "Regime",
     "transaction": "Transaction",
@@ -184,7 +191,11 @@
     "syntheticOwner": "N. M. Silva (synthetic)",
     "rta": "RTA",
     "transfer": "Transfer",
-    "inReview": "In review"
+    "inReview": "In review",
+    "notSelected": "Not selected",
+    "loading": "Loading matters…",
+    "loadFailed": "Matters could not be loaded.",
+    "empty": "No matters yet."
   },
   "overview": {
     "activeFunction": "Active function",
@@ -1941,6 +1952,31 @@
     "succeeded": "සාර්ථකයි",
     "failed": "අසාර්ථක",
     "noUnprocessed": "සියලු ඩොකුමෙන්ටු ක්‍රියා කරන ලදී."
+  },
+  "documentProcessingReview": {
+    "title": "ලේඛන සමාලෝචනය",
+    "description": "නිවැරදි කළ පිටු සත්‍යාපනය නොකළ උපුටාගත් ක්ෂේත්‍ර සමඟ සසඳන්න.",
+    "page": "පිටුව {page}",
+    "pageAlt": "නිවැරදි කළ ලේඛන පිටුව {page}",
+    "overlayNote": "සමාලෝචනය සඳහා OCR වචන බහුඅස්‍ර පෙන්වයි. V1 හි ක්ෂේත්‍ර බහුඅස්‍ර සමඟ සම්බන්ධ නොවේ.",
+    "fieldsTitle": "අපේක්ෂක ක්ෂේත්‍ර",
+    "fieldsDescription": "AI මඟින් උපුටාගත් අගයන් ඔබ එක් එක් අගය අනුමත කරන තුරු සත්‍යාපනය නොකළ ලෙස පවතී.",
+    "unverified": "සත්‍යාපනය නොකළ",
+    "approved": "අනුමතයි",
+    "save": "සංස්කරණය සුරකින්න",
+    "approve": "අනුමත කරන්න",
+    "back": "ලේඛන වෙත ආපසු",
+    "loadError": "මෙම සමාලෝචනය පූරණය කළ නොහැකි විය.",
+    "artifactError": "පෞද්ගලික පිටු ව්‍යුත්පන්නය පූරණය කළ නොහැකි විය.",
+    "saveError": "සංස්කරණය සුරැකිය නොහැකි විය.",
+    "approveError": "ක්ෂේත්‍රය අනුමත කළ නොහැකි විය.",
+    "rotationWarning": "පිටුවේ භ්‍රමණය අවිනිශ්චිතය. අනුමත කිරීමට පෙර පිටුව පරීක්ෂා කරන්න.",
+    "classificationWarning": "පිටු වර්ගීකරණයේ විශ්වාසය අඩුය.",
+    "quality": {
+      "likely_blank": "මෙම පිටුව හිස් වීමට ඉඩ ඇත.",
+      "ocr_sparse": "OCR මඟින් මෙම පිටුවේ ඉතා සුළු පෙළක් පමණක් හඳුනාගෙන ඇත.",
+      "ocr_failed": "මෙම පිටුව සඳහා OCR අසාර්ථක විය."
+    }
   },
   "classificationReview": {
     "title": "වර්ගීකරණ සමාලෝචනය",

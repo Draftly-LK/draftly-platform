@@ -17,11 +17,13 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { isApiEnabled } from "@/lib/api/client";
+import { useRecentMatters } from "@/lib/api/use-recent-matters";
 import { useDemoStore } from "@/lib/store";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { IconButton } from "@/components/ui/icon-button";
 import { CommandPalette } from "./command-palette";
 import { UserButton } from "./user-button";
-
 
 export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
   const t = useTranslations("shell");
@@ -60,12 +62,7 @@ export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
         className={`border-border bg-canvas fixed inset-y-0 left-0 z-20 flex w-[244px] flex-col border-r p-3 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-12 items-center gap-3 px-2">
-          <div
-            aria-hidden="true"
-            className="border-forest font-heading text-forest grid size-8 place-items-center rounded border-2 text-lg font-semibold"
-          >
-            D
-          </div>
+          <BrandMark className="size-8 shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="font-heading text-xl font-semibold">
               {app("name")}
@@ -109,15 +106,11 @@ export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
           <div className="text-muted-ink px-3 text-xs font-semibold uppercase">
             {t("recentMatters")}
           </div>
-          {matters.slice(0, 2).map((matter) => (
-            <Link
-              key={matter.id}
-              href={`/matters/${matter.id}`}
-              className="hover:bg-hover-bg mt-1 block truncate rounded px-3 py-2 text-sm"
-            >
-              {matter.reference}
-            </Link>
-          ))}
+          {isApiEnabled() ? (
+            <ApiRecentMatterLinks />
+          ) : (
+            <RecentMatterLinks matters={matters.slice(0, 2)} />
+          )}
         </div>
         <div className="border-border mt-auto border-t pt-3">
           {/* ── Profile / user button ──────────────────────────── */}
@@ -147,8 +140,44 @@ export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
             </Link>
           </div>
         </div>
-
       </aside>
     </>
   );
+}
+
+function ApiRecentMatterLinks() {
+  const { matters, loading, failed } = useRecentMatters();
+  const t = useTranslations("shell");
+  if (loading) {
+    return (
+      <p className="text-muted-ink px-3 py-2 text-xs">{t("recentLoading")}</p>
+    );
+  }
+  if (failed) {
+    return (
+      <p className="text-red px-3 py-2 text-xs">{t("recentLoadFailed")}</p>
+    );
+  }
+  if (matters.length === 0) {
+    return (
+      <p className="text-muted-ink px-3 py-2 text-xs">{t("recentEmpty")}</p>
+    );
+  }
+  return <RecentMatterLinks matters={matters.slice(0, 2)} />;
+}
+
+function RecentMatterLinks({
+  matters,
+}: {
+  matters: readonly { id: string; reference: string }[];
+}) {
+  return matters.map((matter) => (
+    <Link
+      key={matter.id}
+      href={`/matters/${matter.id}`}
+      className="hover:bg-hover-bg mt-1 block truncate rounded px-3 py-2 text-sm"
+    >
+      {matter.reference}
+    </Link>
+  ));
 }
