@@ -52,6 +52,7 @@ from src.modules.task.domain.policies import (
     apply_physical_original,
     compute_resolution,
     derive_lifecycle,
+    guard_administrative_collection,
     guard_resolution_write,
     initial_item_statuses,
     is_blocking_unsatisfied,
@@ -329,6 +330,61 @@ class ChecklistService:
                 f"{saved.consistency.value}/{saved.resolution.value}"
             ),
             reason=reason,
+        )
+        return await self._view(user_id, saved, requirement)
+
+    async def administer_item(
+        self,
+        *,
+        user_id: str,
+        matter_id: str,
+        item_id: str,
+        actor_id: str,
+        correlation_id: str,
+        expected_version: int,
+        assigned_to: str | None = None,
+        due_at: datetime | None = None,
+        collection: CollectionStatus | None = None,
+    ) -> ChecklistItemView:
+        """Administrative housekeeping only: assignment, due date, receipt.
+
+        A deliberately narrow door beside ``decide_satisfaction``. The broad
+        method can reach applicability, waiver, digital review, currency,
+        consistency and resolution; those are legal decisions. This one cannot
+        touch any of them, so an automated caller — the matter agent — has no
+        path to them even when it holds the umbrella capability
+        (`matter-agent-service.md` §Automatic write tools).
+
+        ``collection`` accepts only ``REQUESTED`` and ``RECEIVED``, and never
+        regresses evidence that has already arrived. *We received something* is
+        not *a lawyer accepted it as legally sufficient*: ``SATISFIED`` stays
+        computed from the requirement policy and is unreachable from here.
+        """
+        item, requirement = await self._load(user_id, matter_id, item_id)
+        before = f"{item.collection.value}/{item.assigned_to}/{item.due_at}"
+
+        if collection is not None:
+            guard_administrative_collection(current=item.collection, target=collection)
+            item.collection = collection
+        if assigned_to is not None:
+            item.assigned_to = assigned_to
+        if due_at is not None:
+            item.due_at = due_at
+
+        # Resolution is recomputed, never supplied. Recording receipt can move
+        # an item to SATISFIED only when the requirement's own policy says so.
+        item.resolution = compute_resolution(item, requirement)
+
+        saved = await self._repo.update_item(item, expected_version)
+        await self._record(
+            user_id=user_id,
+            matter_id=matter_id,
+            actor_id=actor_id,
+            correlation_id=correlation_id,
+            action=AuditAction.RTA_CHECKLIST_ITEM_DECIDED,
+            target_id=saved.id,
+            before_ref=before,
+            after_ref=f"{saved.collection.value}/{saved.assigned_to}/{saved.due_at}",
         )
         return await self._view(user_id, saved, requirement)
 

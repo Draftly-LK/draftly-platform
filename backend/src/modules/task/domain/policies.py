@@ -30,6 +30,7 @@ from src.modules.content_governance.contracts import (
     ResolutionStatus,
 )
 from src.modules.task.domain.errors import (
+    CollectionTransitionNotAdministrativeError,
     OriginalInspectionRequiresHumanError,
     SatisfactionIsComputedError,
     StatutoryRequirementNotWaivableError,
@@ -161,6 +162,37 @@ def guard_resolution_write(target: ResolutionStatus) -> None:
     """Reject a caller trying to set SATISFIED by hand."""
     if target is ResolutionStatus.SATISFIED:
         raise SatisfactionIsComputedError()
+
+
+#: The only collection transitions an administrative caller may make.
+#: Everything else is a lawyer decision through ``decide_satisfaction``.
+ADMINISTRATIVE_COLLECTION_TARGETS = frozenset(
+    {CollectionStatus.REQUESTED, CollectionStatus.RECEIVED}
+)
+
+#: Collection states that already record arrived evidence. An administrative
+#: caller may never move an item backwards out of one of these.
+_ARRIVED_COLLECTION = frozenset({CollectionStatus.PARTIAL, CollectionStatus.RECEIVED})
+
+
+def guard_administrative_collection(*, current: CollectionStatus, target: CollectionStatus) -> None:
+    """Reject an administrative collection change that is not housekeeping.
+
+    Two rules, both from `matter-agent-service.md` §Automatic write tools:
+    only REQUESTED and RECEIVED are administrative, and received evidence is
+    never downgraded. Requesting a document that already arrived would quietly
+    erase the fact that it did.
+    """
+    if target not in ADMINISTRATIVE_COLLECTION_TARGETS:
+        raise CollectionTransitionNotAdministrativeError(
+            f"Collection cannot be set to {target.value} administratively.",
+            target=target.value,
+        )
+    if target is CollectionStatus.REQUESTED and current in _ARRIVED_COLLECTION:
+        raise CollectionTransitionNotAdministrativeError(
+            "Evidence has already been received; requesting it again would discard that record.",
+            current=current.value,
+        )
 
 
 def derive_lifecycle(

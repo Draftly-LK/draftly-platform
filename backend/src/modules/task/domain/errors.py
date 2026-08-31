@@ -54,6 +54,22 @@ class SatisfactionIsComputedError(DomainRuleError):
     )
 
 
+class CollectionTransitionNotAdministrativeError(DomainRuleError):
+    """The collection change is a legal decision, not housekeeping.
+
+    Raised by `guard_administrative_collection` so an automated caller cannot
+    reach applicability, satisfaction or evidence acceptance through the
+    narrow administration command.
+    """
+
+    code = "rta_collection_transition_not_administrative"
+    message = (
+        "This collection change is not administrative. Only REQUESTED and "
+        "RECEIVED can be recorded this way, and received evidence is never "
+        "downgraded."
+    )
+
+
 class ChecklistItemStaleError(ConflictError):
     code = "checklist_item_version_stale"
     message = "The checklist item changed since your last read."
