@@ -1,0 +1,421 @@
+"""Session provisioning, transcript reads, and message append.
+
+Matter ownership is resolved here through ``MatterAccessPort`` and a foreign or
+missing matter produces the same ``AgentSessionNotFoundError`` — a 404 that is
+byte-identical to a genuinely absent session (``security-model.md`` §5).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime
+from typing import Protocol
+
+from src.modules.auth.ports import AuditEventInput, AuditPort
+from src.modules.matter_agent.application.actions import (
+    ACTION_SPECS,
+    ActionExecutor,
+    AuthorizationPort,
+    UnknownActionKindError,
+    guard_target_version,
+)
+from src.modules.matter_agent.domain.errors import (
+    AgentDisabledError,
+    AgentSessionNotFoundError,
+    PendingActionExpiredError,
+    PendingActionNotFoundError,
+)
+from src.modules.matter_agent.domain.models import (
+    AgentMessage,
+    AgentSession,
+    JobState,
+    MessageRole,
+    PendingAction,
+    PendingActionState,
+    SessionState,
+)
+from src.modules.matter_agent.ports import (
+    AgentEventPort,
+    AgentSessionRepository,
+    ConversationPort,
+    MessagePage,
+    PendingActionRepository,
+)
+from src.platform import ids
+from src.platform.pagination import Cursor
+from src.platform.request_context import RequestContext
+
+
+class MatterAccessPort(Protocol):
+    """Minimal ownership question, answered by ``matter_service``."""
+
+    async def owns_matter(self, *, user_id: str, matter_id: str) -> bool: ...
+
+
+class TargetVersionPort(Protocol):
+    """Current optimistic version of whatever a pending action points at.
+
+    Kept as a narrow port so a card can target a fact, a checklist item or a
+    draft without this service knowing any of those aggregates.
+    """
+
+    async def current_version(self, *, matter_id: str, target_ref: str) -> int: ...
+
+
+@dataclass(frozen=True)
+class AgentJob:
+    """A queued or finished turn, as the API reports it."""
+
+    job_id: str
+    state: JobState
+    tool_call_count: int = 0
+    failure_class: str | None = None
+
+
+class AgentJobPort(Protocol):
+    """Job rows plus the outbox enqueue, both inside the caller's transaction."""
+
+    async def create(
+        self, *, session_id: str, user_id: str, matter_id: str, correlation_id: str
+    ) -> AgentJob: ...
+
+    async def enqueue(
+        self, *, job_id: str, session_id: str, message_id: str, user_id: str
+    ) -> None: ...
+
+    async def get(self, *, job_id: str, user_id: str) -> AgentJob | None: ...
+
+
+@dataclass(frozen=True)
+class AgentSettings:
+    """Deployment switches (``matter-agent-service.md`` §Configuration)."""
+
+    enabled: bool = False
+    model: str = "gemini-flash-latest"
+    prompt_version: str = "v1"
+    max_tool_calls: int = 8
+    turn_timeout_seconds: int = 120
+
+
+class AgentService:
+    """Reads and writes the matter's single chat session."""
+
+    def __init__(
+        self,
+        *,
+        sessions: AgentSessionRepository,
+        conversation: ConversationPort,
+        matters: MatterAccessPort,
+        audit: AuditPort,
+        settings: AgentSettings,
+        jobs: AgentJobPort,
+        actions: PendingActionRepository,
+        targets: TargetVersionPort,
+        events: AgentEventPort | None = None,
+        authorizer: AuthorizationPort | None = None,
+        action_executor: ActionExecutor | None = None,
+    ) -> None:
+        self._sessions = sessions
+        self._conversation = conversation
+        self._matters = matters
+        self._audit = audit
+        self._settings = settings
+        self._jobs = jobs
+        self._actions = actions
+        self._targets = targets
+        self._events = events
+        self._authorizer = authorizer
+        self._action_executor = action_executor
+
+    async def get_or_create_session(self, ctx: RequestContext, matter_id: str) -> AgentSession:
+        """Return the matter's session, provisioning it lazily on first use."""
+        if not self._settings.enabled:
+            raise AgentDisabledError()
+        await self._require_matter(ctx, matter_id)
+
+        existing = await self._sessions.find(user_id=ctx.actor_id, matter_id=matter_id)
+        if existing is not None:
+            return existing
+
+        now = datetime.now(tz=UTC)
+        session = AgentSession(
+            id=ids.new_id(ids.AGENT_SESSION),
+            user_id=ctx.actor_id,
+            matter_id=matter_id,
+            model_version=self._settings.model,
+            prompt_version=self._settings.prompt_version,
+            state=SessionState.ACTIVE,
+            created_at=now,
+            updated_at=now,
+        )
+        created = await self._sessions.create(session)
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                matter_id=matter_id,
+                actor=ctx.actor_id,
+                action="agent.session-created",
+                target_type="agent_session",
+                target_id=created.id,
+                correlation_id=ctx.correlation_id,
+            )
+        )
+        await self._publish(
+            "agent.session-created",
+            ctx,
+            matter_id,
+            key=f"agent.session-created:{created.id}",
+            data={"sessionId": created.id},
+        )
+        return created
+
+    async def list_messages(
+        self,
+        ctx: RequestContext,
+        matter_id: str,
+        *,
+        limit: int,
+        cursor: Cursor | None = None,
+    ) -> MessagePage:
+        """The authoritative transcript, read from Neon. Never from a provider."""
+        session = await self.get_or_create_session(ctx, matter_id)
+        return await self._conversation.page(session_id=session.id, limit=limit, cursor=cursor)
+
+    async def append_user_message(
+        self, ctx: RequestContext, matter_id: str, *, content: str, job_id: str
+    ) -> AgentMessage:
+        """Append the user's turn. Commits with its outbox event."""
+        session = await self.get_or_create_session(ctx, matter_id)
+        message = await self._conversation.append(
+            session=session,
+            role=MessageRole.USER,
+            content=content,
+            job_id=job_id,
+        )
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                matter_id=matter_id,
+                actor=ctx.actor_id,
+                action="agent.message-appended",
+                target_type="agent_message",
+                target_id=message.id,
+                correlation_id=ctx.correlation_id,
+            )
+        )
+        return message
+
+    async def start_turn(
+        self,
+        ctx: RequestContext,
+        matter_id: str,
+        *,
+        content: str,
+    ) -> AgentJob:
+        """Append the user's message and queue the turn.
+
+        The message row, the job row and the outbox entry commit together, so a
+        queued turn always has a message behind it and a rollback leaves
+        neither. The request never waits on the model.
+        """
+        session = await self.get_or_create_session(ctx, matter_id)
+        job = await self._jobs.create(
+            session_id=session.id,
+            user_id=ctx.actor_id,
+            matter_id=matter_id,
+            correlation_id=ctx.correlation_id,
+        )
+        message = await self._conversation.append(
+            session=session,
+            role=MessageRole.USER,
+            content=content,
+            job_id=job.job_id,
+        )
+        await self._jobs.enqueue(
+            job_id=job.job_id,
+            session_id=session.id,
+            message_id=message.id,
+            user_id=ctx.actor_id,
+        )
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                matter_id=matter_id,
+                actor=ctx.actor_id,
+                action="agent.message-appended",
+                target_type="agent_message",
+                target_id=message.id,
+                correlation_id=ctx.correlation_id,
+            )
+        )
+        await self._publish(
+            "agent.message-appended",
+            ctx,
+            matter_id,
+            key=f"agent.message-appended:{message.id}",
+            data={
+                "sessionId": session.id,
+                "messageId": message.id,
+                "sequence": message.sequence,
+                "role": message.role.value,
+            },
+        )
+        return job
+
+    async def read_job(self, ctx: RequestContext, job_id: str) -> AgentJob:
+        """A job owned by another user is absent, not forbidden."""
+        job = await self._jobs.get(job_id=job_id, user_id=ctx.actor_id)
+        if job is None:
+            raise AgentSessionNotFoundError()
+        return job
+
+    async def confirm_action(
+        self,
+        ctx: RequestContext,
+        matter_id: str,
+        *,
+        action_id: str,
+    ) -> PendingAction:
+        """Re-check authority and version, then mark the card confirmed.
+
+        Nothing about the original proposal is trusted: capability, practising
+        status, ownership and the target version are all re-read now. A card
+        whose target moved is 412 and must be regenerated.
+
+        Confirming twice is safe without an idempotency key: an already
+        confirmed card is returned unchanged rather than applied again.
+        """
+        await self._require_matter(ctx, matter_id)
+        existing = await self._actions.get(action_id=action_id, matter_id=matter_id)
+        if existing is not None and existing.state is PendingActionState.CONFIRMED:
+            return existing
+        action = await self._require_open_action(matter_id, action_id)
+
+        # Authority is re-read now, not inherited from the proposal. A role
+        # change or a lapsed practice certificate between proposal and
+        # confirmation takes effect immediately.
+        spec = ACTION_SPECS.get(action.action_kind)
+        if spec is None:
+            raise UnknownActionKindError()
+        if self._authorizer is not None:
+            await self._authorizer.authorize(ctx, spec.capability, matter_id)
+            if spec.requires_practising:
+                await self._authorizer.require_practising_notary(ctx, matter_id)
+
+        current = await self._targets.current_version(
+            matter_id=matter_id, target_ref=action.target_ref
+        )
+        guard_target_version(action, current)
+
+        # The effect happens before the card is marked confirmed, so a failure
+        # leaves the card open rather than claiming an action that never ran.
+        if self._action_executor is not None:
+            await self._action_executor.execute(action, ctx)
+
+        confirmed = replace(
+            action,
+            state=PendingActionState.CONFIRMED,
+            confirmed_by=ctx.actor_id,
+            confirmed_at=datetime.now(tz=UTC),
+        )
+        await self._actions.update(confirmed)
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                matter_id=matter_id,
+                actor=ctx.actor_id,
+                action="agent.action-confirmed",
+                target_type="agent_pending_action",
+                target_id=action.id,
+                correlation_id=ctx.correlation_id,
+            )
+        )
+        await self._publish(
+            "agent.action-confirmed",
+            ctx,
+            matter_id,
+            key=f"agent.action-confirmed:{action.id}",
+            data={"actionId": action.id, "targetVersion": action.target_version},
+        )
+        return confirmed
+
+    async def reject_action(
+        self,
+        ctx: RequestContext,
+        matter_id: str,
+        *,
+        action_id: str,
+        reason: str | None,
+    ) -> PendingAction:
+        """Preserve the rejected proposal rather than deleting it.
+
+        A rejection is evidence about the agent's behaviour and is kept.
+        """
+        await self._require_matter(ctx, matter_id)
+        action = await self._require_open_action(matter_id, action_id)
+        rejected = replace(
+            action,
+            state=PendingActionState.REJECTED,
+            reason_code="rejected_by_user",
+            confirmed_by=ctx.actor_id,
+            confirmed_at=datetime.now(tz=UTC),
+        )
+        await self._actions.update(rejected)
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                matter_id=matter_id,
+                actor=ctx.actor_id,
+                action="agent.action-rejected",
+                target_type="agent_pending_action",
+                target_id=action.id,
+                reason=reason,
+                correlation_id=ctx.correlation_id,
+            )
+        )
+        await self._publish(
+            "agent.action-rejected",
+            ctx,
+            matter_id,
+            key=f"agent.action-rejected:{action.id}",
+            data={"actionId": action.id, "reasonCode": "rejected_by_user"},
+        )
+        return rejected
+
+    async def _publish(
+        self,
+        event_name: str,
+        ctx: RequestContext,
+        matter_id: str,
+        *,
+        key: str,
+        data: dict[str, object],
+    ) -> None:
+        """Publish into the caller's transaction, or do nothing if unwired.
+
+        Payloads carry identifiers and closed enums only; a consumer that needs
+        the wording re-reads it from Neon (`events.md` §2).
+        """
+        if self._events is None:
+            return
+        await self._events.publish(
+            event_name,
+            user_id=ctx.actor_id,
+            matter_id=matter_id,
+            actor_id=ctx.actor_id,
+            correlation_id=ctx.correlation_id,
+            idempotency_key=key,
+            data=data,
+        )
+
+    async def _require_open_action(self, matter_id: str, action_id: str) -> PendingAction:
+        action = await self._actions.get(action_id=action_id, matter_id=matter_id)
+        if action is None:
+            raise PendingActionNotFoundError()
+        if not action.is_open(now=datetime.now(tz=UTC)):
+            raise PendingActionExpiredError()
+        return action
+
+    async def _require_matter(self, ctx: RequestContext, matter_id: str) -> None:
+        if not await self._matters.owns_matter(user_id=ctx.actor_id, matter_id=matter_id):
+            raise AgentSessionNotFoundError()
