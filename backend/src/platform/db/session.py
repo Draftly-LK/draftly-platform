@@ -38,6 +38,7 @@ def get_engine() -> AsyncEngine:
         _engine = create_async_engine(
             settings.database_url,
             echo=settings.environment == "local",
+            hide_parameters=True,
             pool_pre_ping=True,
         )
     return _engine

@@ -142,8 +142,16 @@ async def unhandled_exception_handler(
     exc: Exception,
 ) -> JSONResponse:
     log = structlog.get_logger()
-    log.error("unhandled_exception", exc_type=type(exc).__name__, exc=str(exc))
     correlation_id = getattr(request.state, "correlation_id", "")
+    # Exception messages may contain SQL parameter sets, provider payloads, or
+    # extracted document values. Log only operational metadata; callers can use
+    # the correlation id to locate the failing request safely.
+    log.error(
+        "unhandled_exception",
+        exc_type=type(exc).__name__,
+        path=request.url.path,
+        correlation_id=correlation_id,
+    )
     envelope = ErrorEnvelope(
         error=ErrorDetail(
             code="internal_error",
