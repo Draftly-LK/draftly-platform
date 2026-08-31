@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 import uuid
 
 import structlog
@@ -91,5 +92,16 @@ async def run_forever(poll_seconds: float = DEFAULT_POLL_SECONDS) -> None:  # pr
             await asyncio.sleep(poll_seconds)
 
 
+def use_selector_loop_on_windows() -> None:
+    """psycopg's async mode cannot run on Windows' default proactor loop.
+
+    Without this the worker raises ``InterfaceError`` on its first claim, so
+    this is what makes the runtime usable on a Windows dev machine at all.
+    """
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
 if __name__ == "__main__":  # pragma: no cover
+    use_selector_loop_on_windows()
     asyncio.run(run_forever())

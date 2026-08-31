@@ -39,6 +39,7 @@ from src.platform.request_context import RequestContext
 if TYPE_CHECKING:
     from src.modules.auth.application.auth_service import AuthService
     from src.modules.document.application.review_service import DocumentReviewService
+    from src.modules.matter_agent.application.agent_service import AgentService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,6 +69,7 @@ def register_routers(app: FastAPI) -> None:
     from src.modules.document.api.router import router as document_router
     from src.modules.draft.api.router import router as draft_router
     from src.modules.matter.api.router import router as matter_router
+    from src.modules.matter_agent.api.router import router as matter_agent_router
     from src.modules.notarial_register.api.router import router as notarial_register_router
     from src.modules.notification.api.router import router as notification_router
     from src.modules.obligations.api.router import router as obligations_router
@@ -83,6 +85,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(verification_router, prefix="/api/v1")
     app.include_router(check_router, prefix="/api/v1")
     app.include_router(draft_router, prefix="/api/v1")
+    app.include_router(matter_agent_router, prefix="/api/v1")
     app.include_router(approval_router, prefix="/api/v1")
     app.include_router(billing_router, prefix="/api/v1")
     app.include_router(billing_admin_router, prefix="/api/v1")
@@ -180,6 +183,304 @@ def build_matter_service(session: AsyncSession) -> MatterService:
         checklist=build_checklist_service(session),
         audit=AuditService(repository=SqlAuditRepository(session)),
     )
+
+
+def build_agent_service(session: AsyncSession) -> AgentService:
+    """Assemble the matter agent over one request's session.
+
+    Memory is the null implementation unless Supermemory is both enabled and
+    approved, so the default deployment runs Neon-only and a missing provider
+    is a configuration, not a failure (`matter-agent-service.md` §Failure
+    Modes).
+    """
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.matter_agent.application.actions import ActionExecutor
+    from src.modules.matter_agent.application.agent_service import AgentService, AgentSettings
+    from src.modules.matter_agent.infrastructure.event_publisher import AgentEventPublisher
+    from src.modules.matter_agent.infrastructure.job_repository import SqlAgentJobPort
+    from src.modules.matter_agent.infrastructure.matter_access import (
+        SqlMatterAccessAdapter,
+        SqlTargetVersionAdapter,
+    )
+    from src.modules.matter_agent.infrastructure.repository import (
+        NeonConversationAdapter,
+        SqlAgentSessionRepository,
+        SqlPendingActionRepository,
+    )
+
+    settings = get_settings()
+    return AgentService(
+        sessions=SqlAgentSessionRepository(session),
+        conversation=NeonConversationAdapter(session),
+        matters=SqlMatterAccessAdapter(session),
+        audit=AuditService(repository=SqlAuditRepository(session)),
+        settings=AgentSettings(
+            enabled=settings.matter_agent_enabled,
+            model=settings.matter_agent_model,
+            max_tool_calls=settings.matter_agent_max_tool_calls,
+            turn_timeout_seconds=settings.matter_agent_turn_timeout_seconds,
+        ),
+        jobs=SqlAgentJobPort(session),
+        actions=SqlPendingActionRepository(session),
+        targets=SqlTargetVersionAdapter(session),
+        events=AgentEventPublisher(session),
+        authorizer=_build_agent_authorizer(session),
+        action_executor=ActionExecutor(checklist=build_checklist_service(session)),
+    )
+
+
+def _build_agent_authorizer(session: AsyncSession) -> Any:
+    """The real `auth_service`, so confirmation re-checks the live role map."""
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.auth.application.auth_service import AuthService
+    from src.modules.auth.infrastructure.repository import (
+        SqlUserIdentityRepository,
+        SqlUserRepository,
+    )
+
+    return AuthService(
+        identity_port=build_identity_adapter(),
+        user_identity_repo=SqlUserIdentityRepository(session),
+        user_repo=SqlUserRepository(session),
+        audit_port=AuditService(repository=SqlAuditRepository(session)),
+    )
+
+
+async def run_agent_turn(
+    session: AsyncSession,
+    *,
+    job_id: str,
+    chat_session: Any,
+    user_message: Any,
+) -> Any:
+    """Assemble and run one agent turn inside the worker's transaction.
+
+    The user's role is re-read here rather than trusted from the queued
+    payload, so a role change between enqueue and execution takes effect
+    immediately and a stale payload cannot widen authority.
+    """
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.auth.domain.policies import CAPABILITY_MAP
+    from src.modules.auth.infrastructure.repository import SqlUserRepository
+    from src.modules.matter_agent.application.tool_executor import ExecutionContext, ToolExecutor
+    from src.modules.matter_agent.application.turn_runner import TurnRequest, TurnRunner
+    from src.modules.matter_agent.domain.models import AgentSession, SessionState, TurnBudget
+    from src.modules.matter_agent.infrastructure.event_publisher import AgentEventPublisher
+    from src.modules.matter_agent.infrastructure.repository import (
+        NeonConversationAdapter,
+        SqlToolCallRepository,
+    )
+    from src.platform.request_context import RequestContext
+
+    settings = get_settings()
+    user = await SqlUserRepository(session).get(chat_session.user_id)
+    if user is None:
+        from src.modules.matter_agent.domain.models import JobState, TurnResult
+
+        return TurnResult(
+            job_id=job_id, outcome=JobState.FAILED, tool_call_count=0, failure_class="unknown_actor"
+        )
+
+    role = user.role
+    if role is None:
+        from src.modules.matter_agent.domain.models import JobState, TurnResult
+
+        return TurnResult(
+            job_id=job_id, outcome=JobState.FAILED, tool_call_count=0, failure_class="unknown_role"
+        )
+    capabilities = CAPABILITY_MAP.get(role, frozenset())
+    domain_session = AgentSession(
+        id=chat_session.id,
+        user_id=chat_session.user_id,
+        matter_id=chat_session.matter_id,
+        model_version=chat_session.model_version,
+        prompt_version=chat_session.prompt_version,
+        state=SessionState(chat_session.state),
+        created_at=chat_session.created_at,
+        updated_at=chat_session.updated_at,
+    )
+    ctx = RequestContext(actor_id=chat_session.user_id, account_role=role)
+    execution = ExecutionContext(
+        ctx=ctx,
+        session_id=chat_session.id,
+        matter_id=chat_session.matter_id,
+        job_id=job_id,
+        model_version=chat_session.model_version,
+        prompt_version=chat_session.prompt_version,
+        user_capabilities=frozenset(capabilities),
+        matter_owned=True,
+        is_practising_notary=bool(user.notary_registration),
+    )
+    tools = build_agent_tools(session, session_id=chat_session.id, memory=build_agent_memory())
+    runner = TurnRunner(
+        model=build_agent_model(),
+        conversation=NeonConversationAdapter(session),
+        memory=build_agent_memory(),
+        executor=ToolExecutor(
+            tools=tools,
+            tool_calls=SqlToolCallRepository(session),
+            audit=AuditService(repository=SqlAuditRepository(session)),
+            events=AgentEventPublisher(session),
+        ),
+    )
+    result = await runner.run(
+        TurnRequest(
+            session=domain_session,
+            job_id=job_id,
+            user_message=user_message.content,
+            execution=execution,
+            budget=TurnBudget(
+                max_tool_calls=settings.matter_agent_max_tool_calls,
+                timeout_seconds=settings.matter_agent_turn_timeout_seconds,
+            ),
+        )
+    )
+
+    from src.modules.matter_agent.domain.models import JobState as _JobState
+    from src.modules.matter_agent.infrastructure.stream_repository import (
+        SqlStreamEventRepository,
+    )
+
+    succeeded = result.outcome is _JobState.SUCCEEDED
+    await AgentEventPublisher(session).publish(
+        "agent.turn-completed" if succeeded else "agent.turn-failed",
+        user_id=chat_session.user_id,
+        matter_id=chat_session.matter_id,
+        actor_id=chat_session.user_id,
+        correlation_id=ctx.correlation_id,
+        idempotency_key=f"agent.turn:{job_id}",
+        data=(
+            {
+                "jobId": job_id,
+                "toolCallCount": result.tool_call_count,
+                "outcome": result.outcome.value,
+            }
+            if succeeded
+            else {"jobId": job_id, "failureClass": result.failure_class or "unknown"}
+        ),
+    )
+    # A progress frame so a reconnecting client sees the outcome without a poll.
+    await SqlStreamEventRepository(session).append(
+        job_id=job_id,
+        user_id=chat_session.user_id,
+        event_type="turn-finished",
+        data={
+            "jobId": job_id,
+            "state": result.outcome.value,
+            "toolCallCount": result.tool_call_count,
+            "pendingActionIds": list(result.pending_action_ids),
+        },
+    )
+    return result
+
+
+def build_agent_tools(session: AsyncSession, *, session_id: str, memory: Any) -> dict[str, Any]:
+    """Bind every implemented tool to the application service that owns it.
+
+    Tools call services, never repositories: the agent inherits each service's
+    rules rather than re-deriving them. A name absent from this registry is
+    denied with `tool_not_implemented` and audited — see
+    `matter_agent.application.tools.OUT_OF_SCOPE` for why each gap exists.
+    """
+    from src.modules.matter_agent.application import read_adapters as ra
+    from src.modules.matter_agent.application import read_tools as rt
+    from src.modules.matter_agent.application import write_tools as wt
+    from src.modules.matter_agent.application.tools import SaveWorkingNoteTool, build_tool_registry
+    from src.modules.matter_agent.infrastructure.note_repository import SqlMatterNoteRepository
+    from src.modules.matter_agent.infrastructure.repository import SqlPendingActionRepository
+    from src.modules.verification.application.fact_query_service import FactQueryService
+    from src.modules.verification.infrastructure.repository import SqlVerificationRepository
+
+    matters = build_matter_service(session)
+    checklist = build_checklist_service(session)
+    ingestion = build_ingestion_service(session)
+    review = build_document_review_service(session)
+    checks = build_check_service(session)
+    drafts = build_draft_service(session)
+    facts = FactQueryService(repository=SqlVerificationRepository(session))
+
+    documents = ra.DocumentReadAdapter(ingestion=ingestion, review=review)
+
+    return build_tool_registry(
+        {
+            # Reads
+            rt.ReadMatterSummaryTool.name: rt.ReadMatterSummaryTool(
+                ra.MatterSummaryAdapter(matters)
+            ),
+            rt.ReadChecklistStateTool.name: rt.ReadChecklistStateTool(
+                ra.ChecklistSummaryAdapter(checklist)
+            ),
+            rt.ReadDocumentStatusTool.name: rt.ReadDocumentStatusTool(documents),
+            rt.ReadDocumentExtractionTool.name: rt.ReadDocumentExtractionTool(documents),
+            rt.ReadDocumentOcrPagesTool.name: rt.ReadDocumentOcrPagesTool(documents),
+            rt.ReadVerifiedFactsTool.name: rt.ReadVerifiedFactsTool(ra.FactReadAdapter(facts)),
+            rt.ReadDraftPreflightTool.name: rt.ReadDraftPreflightTool(ra.DraftReadAdapter(drafts)),
+            rt.SearchMatterMemoryTool.name: rt.SearchMatterMemoryTool(memory),
+            rt.ListMatterInventoryTool.name: rt.ListMatterInventoryTool(
+                ra.InventoryAdapter(matters=matters, documents=documents)
+            ),
+            # Writes
+            wt.RunChecksTool.name: wt.RunChecksTool(checks, matters),
+            wt.GenerateWorkingDraftTool.name: wt.GenerateWorkingDraftTool(drafts, matters),
+            SaveWorkingNoteTool.name: SaveWorkingNoteTool(
+                SqlMatterNoteRepository(session), session_id=session_id
+            ),
+            wt.AssignChecklistItemTool.name: wt.AssignChecklistItemTool(checklist),
+            wt.UpdateChecklistDueDateTool.name: wt.UpdateChecklistDueDateTool(checklist),
+            wt.RequestChecklistCollectionTool.name: wt.RequestChecklistCollectionTool(checklist),
+            wt.RecordDocumentReceiptTool.name: wt.RecordDocumentReceiptTool(checklist),
+            wt.ProposeDocumentLinkTool.name: wt.ProposeDocumentLinkTool(checklist),
+            wt.UpdateFieldCandidateTool.name: wt.UpdateFieldCandidateTool(review),
+            wt.ProposeChecklistDecisionTool.name: wt.ProposeChecklistDecisionTool(
+                SqlPendingActionRepository(session), session_id=session_id
+            ),
+        }
+    )
+
+
+def build_agent_model() -> Any:
+    """The model adapter. Deterministic fake unless Gemini is configured.
+
+    Falling back to the fake rather than raising means a missing key degrades
+    the assistant instead of breaking the deployment, and no test ever reaches
+    a provider by accident.
+    """
+    settings = get_settings()
+    if settings.matter_agent_enabled and settings.gemini_api_key:
+        from src.modules.matter_agent.infrastructure.gemini_adapter import GeminiAgentAdapter
+
+        return GeminiAgentAdapter(
+            api_key=settings.gemini_api_key, model=settings.matter_agent_model
+        )
+    from src.modules.matter_agent.infrastructure.fake_model import FakeAgentModelAdapter
+
+    return FakeAgentModelAdapter()
+
+
+def build_agent_memory() -> Any:
+    """Semantic memory, or the null implementation.
+
+    Supermemory needs both the feature switch and the data-transfer approval.
+    Either one absent means no recall, never an error
+    (`memory-service.md` §11.2).
+    """
+    settings = get_settings()
+    if settings.supermemory_enabled and settings.supermemory_real_data_approved:
+        from src.modules.matter_agent.infrastructure.supermemory_adapter import (
+            SupermemoryMemoryAdapter,
+        )
+
+        return SupermemoryMemoryAdapter(
+            api_key=settings.supermemory_api_key,
+            base_url=settings.supermemory_base_url,
+            hmac_key=settings.supermemory_container_hmac_key,
+        )
+    from src.modules.matter_agent.ports import NullMemoryPort
+
+    return NullMemoryPort()
 
 
 def build_check_service(session: AsyncSession) -> CheckService:
@@ -667,6 +968,20 @@ def build_dispatcher() -> MessageDispatcher:
         return MessageResult.FAILED
 
     dispatcher.register_job(DELIVER_JOB_TYPE, deliver_handler)
+
+    from src.modules.matter_agent.jobs import RUN_TURN_JOB_TYPE, run_turn_job
+
+    async def agent_turn_handler(session: AsyncSession, message: ClaimedMessage) -> MessageResult:
+        outcome = await run_turn_job(session, message.payload)
+        if outcome in {"completed", "unknown-job"}:
+            return MessageResult.DONE
+        if outcome == "retry":
+            return MessageResult.RETRY
+        # A failed turn is a finished job with a recorded failure, not a
+        # message to redeliver: replaying it would answer the user twice.
+        return MessageResult.DONE
+
+    dispatcher.register_job(RUN_TURN_JOB_TYPE, agent_turn_handler)
 
     def make_event_handler(event_name: str) -> Handler:
         async def handler(session: AsyncSession, message: ClaimedMessage) -> MessageResult:
