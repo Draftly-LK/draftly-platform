@@ -114,8 +114,12 @@ audit action.
 
 `user`, `organisation`, `matter`, `party`, `document`, `instrument`,
 `particular`, `check`, `finding`, `workflow`, `obligation`, `draft`, `export`,
-`corpus`, `content`, `assistant`, `voice`, `retention`, `notification`,
-`billing`.
+`corpus`, `content`, `assistant`, `agent`, `memory`, `voice`, `retention`,
+`notification`, `billing`.
+
+`assistant` and `agent` are distinct: `assistant` is the global research
+conversation (`research_service`), `agent` is the per-matter chat session
+(`matter_agent_service`).
 
 Note that `check.*` and `finding.*` are separate aggregates published by the
 same service: a `check` is a rule evaluation, a `finding` is its disposition.
@@ -361,8 +365,41 @@ approval gate (`draft-service.md` §5.6).
 Billing event names lose their underscores (`billing.trial_ending` →
 `billing.trial-ending`). Voice event names lose theirs the same way.
 
-`memory_service` publishes nothing. It is a consumer and a cache
-(`memory-service.md` §4).
+### 5.13 Matter agent — `matter_agent_service`
+
+| Event | Payload | Consumers |
+| --- | --- | --- |
+| `agent.session-created` | `sessionId` | `memory_service` |
+| `agent.message-appended` | `sessionId`, `messageId`, `sequence`, `role` | `memory_service` |
+| `agent.turn-completed` | `jobId`, `toolCallCount`, `outcome` | — |
+| `agent.turn-failed` | `jobId`, `failureClass` | — |
+| `agent.tool-executed` | `toolCallId`, `tool`, `capability` | — |
+| `agent.tool-denied` | `toolCallId`, `tool`, `capability`, `reasonCode` | `notification_service` |
+| `agent.action-proposed` | `actionId`, `actionKind` | — |
+| `agent.action-confirmed` | `actionId`, `targetVersion` | `memory_service` |
+| `agent.action-rejected` | `actionId`, `reasonCode` | — |
+| `agent.suggestion-created` | `suggestionKind`, `targetRef`, `sourceDocumentVersionId` | `task_service`, `memory_service` |
+
+No payload carries message text, tool arguments, or prompt content. The message
+body stays in Neon and the `memory.sync` worker re-reads it by `messageId`,
+because §2 forbids private matter content in an event.
+
+`agent.tool-denied` is consumed by `notification_service` so a run of denials
+against prohibited capabilities in one session can raise an operator alert. That
+pattern is what a prompt injection looks like from the outside.
+
+### 5.14 Memory scopes — `memory_service`
+
+| Event | Payload | Consumers |
+| --- | --- | --- |
+| `memory.scope-initialised` | `scopeId`, `provider`, `entryCount` | — |
+| `memory.scope-degraded` | `scopeId`, `state`, `reasonCode` | `notification_service` |
+| `memory.scope-destroyed` | `scopeId`, `deletionReceiptId`, `entryCount` | `retention_service` |
+
+`memory_service` previously published nothing. It still publishes nothing about
+remembered content — these three describe the lifecycle of an external scope, so
+retention can confirm erasure and operators can see a degraded provider. It
+remains a consumer and a cache (`memory-service.md` §4).
 
 ## 6. Renames applied
 

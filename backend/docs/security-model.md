@@ -55,6 +55,44 @@ Consequences that the individual service docs previously missed:
 There is no organisation workspace in V0 auth. Subscriptions attach to
 `user_id` (`billing-service.md`).
 
+### 2.1 Blocking central decision — `user_id` versus `organisation_id`
+
+**Status: open. Owner: the platform team. Blocks L2 for every service.**
+
+Three cross-cutting documents disagree about what the tenant key is, and the
+conflict is load-bearing rather than cosmetic:
+
+| Document | Requires |
+| --- | --- |
+| This file, §2 and §4 | `user_id` is the outer boundary; there is no organisation workspace in V0 |
+| `events.md` §2 | `organisationId` is **required on every event** |
+| `service-definition-of-done.md` §4.1.5 | Every persisted table has a **non-null `organisation_id`** column, checked by a schema test |
+
+So a new service cannot satisfy all three. It either omits `organisation_id`
+and fails the schema test, or adds a column that §2 says does not describe a V0
+tenant. `auth_service` already carries an exemption for `users` and
+`user_identities` for exactly this reason, which is a symptom, not a resolution.
+
+**What the code already does.** Every shipped table — `matters`,
+`source_files`, `detected_documents`, `processing_runs`, `candidate_fields` and
+the rest — carries `user_id` and **no** `organisation_id`. The running system
+has already answered this question in favour of §2; `events.md` §2 and DoD
+§4.1.5 are the documents out of step with it.
+
+Until the decision is taken centrally, **new services follow the code**:
+`user_id` only, no `organisation_id` column, and no per-service exemption. A
+service-local exemption would let each service answer the question differently
+and quietly retire a release-blocking gate, and a lone service carrying an
+organisation column no other table has would be worse — it would look like a
+tenancy boundary while enforcing nothing. Cross-organisation disclosure remains
+on the release-blocker list (`service-definition-of-done.md` §7), which is why
+this needs resolving rather than absorbing.
+
+The decision to take: either V0 gains a real organisation aggregate and §2 is
+rewritten around it, or `organisation_id` is retired from `events.md` §2 and
+DoD §4.1.5 in favour of `user_id` and the `auth_service` exemption is removed.
+Both are one-way doors for the schema, so this is not a per-service call.
+
 ## 3. Capabilities, not role names in prose
 
 Service docs previously gated on "an authorised lawyer". Neither "lawyer" nor
@@ -73,7 +111,17 @@ authorization is expressed through capability keys.
 | `requirement.review` | Accepting or rejecting evidence against a requirement | `task_service` |
 | `particular.verify`, `particular.correct`, `particular.add` | Verified-record decisions | `verification_service` |
 | `finding.resolve`, `finding.waive` | Disposing of a check finding | `check_service` |
+| `check.run` | Running deterministic checks on a matter | `check_service` |
 | `step.complete`, `step.override` | Workflow completion and authorised override | `task_service` |
+| `checklist.administer` | The dedicated checklist-administration command as a whole | `task_service` |
+| `checklist.assign` | Changing a checklist item's assignee | `task_service` |
+| `checklist.update-due-date` | Changing a checklist item's due date | `task_service` |
+| `checklist.request-collection` | Moving collection state to REQUESTED | `task_service` |
+| `note.create` | Saving a non-authoritative matter working note | `matter_agent_service` |
+| `checklist.record-receipt` | Recording that a document was physically received | `task_service` |
+| `checklist.suggest-item` | Creating an ad-hoc AI_SUGGESTED checklist item | `task_service` |
+| `document.propose-link` | Creating an unverified document-to-parcel or document-to-requirement link | `document_service` |
+| `candidate.create`, `candidate.update` | Unverified structured-field candidates | `verification_service` |
 | `deadline.confirm` | Confirming or correcting a hard legal deadline | `obligations_service` |
 | `draft.create`, `draft.save`, `draft.restore` | Draft authoring | `draft_service` |
 | `draft.submit-for-review` | Moving a draft to `in-review` | `draft_service` |
@@ -93,6 +141,18 @@ authorization is expressed through capability keys.
 A capability the map does not grant is denied. Capabilities are not additive by
 seniority.
 
+The four `checklist.*` keys work as an umbrella plus a narrow key: a checklist
+write requires `checklist.administer` **and** the specific key for the field
+being changed, so the field operations stay independently grantable and
+independently revocable. `checklist.administer` alone grants nothing.
+
+`checklist.record-receipt` records that a document arrived. It is deliberately
+not `requirement.review`, which is the evidence-acceptance gate. *We received
+something* and *a lawyer accepted it as legally sufficient* are different
+decisions, and only the second is a legal act. The same line separates
+`candidate.create`/`candidate.update` from `particular.verify`: a candidate is a
+proposal, and no candidate may overwrite a verified value.
+
 ### 3.2 Role to capability map
 
 Roles are the four in `frontend/src/types/user.ts`. No fifth role is invented.
@@ -102,6 +162,8 @@ Roles are the four in `frontend/src/types/user.ts`. No fifth role is invented.
 | Matter lifecycle (`matter.*` except unused membership) | create only | yes | no | yes |
 | Roles (`user.role.set`) | no | yes | no | yes |
 | Evidence (`document.*`, `requirement.review`) | yes | yes | no | no |
+| Matter administration (`check.run`, `note.create`, `checklist.administer`, `checklist.assign`, `checklist.update-due-date`, `checklist.request-collection`, `checklist.record-receipt`, `checklist.suggest-item`) | yes | yes | no | no |
+| Candidates and links (`candidate.create`, `candidate.update`, `document.propose-link`) | yes | yes | no | no |
 | Verified record (`particular.*`) | yes | yes | no | no |
 | Findings (`finding.resolve`, `finding.waive`) | resolve only | yes | no | no |
 | Workflow (`step.complete`, `step.override`) | complete only | yes | no | no |
@@ -143,6 +205,32 @@ required by `instrument.attest`, `draft.approve`, `particular.verify`,
 
 The word "clerk" is retired from all service docs. The refusal case is
 "an actor holding a capability the map does not grant".
+
+None of the six matter-administration keys is territorial, so none joins the
+`require_practising_notary` set.
+
+### 3.5 Agent-mediated execution
+
+`matter_agent_service` executes tools on a user's behalf. It has **no identity
+of its own** and is never a principal. Its effective permission is an
+intersection, never a union:
+
+```text
+effective = authenticated user's capabilities
+          ∩ agent tool allowlist
+          ∩ matter ownership
+```
+
+- The agent can never exceed the user driving it, and a user can never reach an
+  omitted capability by asking the agent. A `reviewer` using the agent has a
+  reviewer's powers.
+- The allowlist is a positive server-side registry. A capability absent from it
+  is unreachable even for a user who holds it, so a prompt injection reaching
+  for a prohibited action fails at the executor rather than at the model's
+  discretion.
+- Matter ownership is re-derived from `RequestContext` on every tool call, never
+  carried over from the turn that proposed the action.
+- Both executed and denied tool calls are audited, per §5.
 
 ### 3.4 Grants that are not role-derived
 

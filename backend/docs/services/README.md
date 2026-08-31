@@ -70,6 +70,7 @@ OCR escalation ladder is large enough to need one.
 | [voice-service](voice-service.md) | Live transcription, candidate transcripts, review and confirmation | V0/V1 by schedule | L0 |
 | [retention-service](retention-service.md) | Retention policies, legal holds, disposition, tombstones | 8 | L0 |
 | [audit-service](audit-service.md) | The append-only, hash-chained event log and its read surface | all | L0 |
+| [matter-agent-service](matter-agent-service.md) | Per-matter chat session and transcript, agent turn loop, tool executor and allowlist, working notes | V1 | L0 |
 
 ## 3. Ownership at a glance
 

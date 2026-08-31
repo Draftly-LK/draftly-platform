@@ -190,6 +190,8 @@ Provider-neutral port so the store is swappable, mirroring the benchmark's
 - `ingest_voice_event(scope_id, transcript_event_ref) -> None`
 - `retrieve(matter_id, probe) -> RetrievalResult` (episodes plus provenance)
 - `invalidate(matter_id, source_ref)` and `supersede(matter_id, old, new)`
+- `initialise_scope(matter_id)` and `rebuild_scope(matter_id)` — the same
+  convergent, idempotent operation, one on a new matter and one on a stale scope
 - `purge(scope)` — called by `retention_service` on an approved destruction
 - organisation and per-matter scoping on every call
 
@@ -224,6 +226,53 @@ gives isolation; a cross-matter read is a bug, not a feature.
 Standalone assistant dictation that has no matter uses a capturing-user scope
 instead of a matter scope. It must never be returned in another user's or
 another matter's memory query.
+
+### 11.1 The Supermemory semantic layer
+
+Supermemory is the selected semantic-memory provider behind `SessionMemoryPort`.
+It sits **beside** the Postgres tables above, never in place of them, and it is
+never authoritative for anything.
+
+- Two further tables live in Postgres: `external_memory_scopes` (provider,
+  opaque container tag, enabled state, scope state, last synced sequence,
+  rebuild state, deletion receipt) and `external_memory_entries` (scope, memory
+  kind, Neon resource ID and version, provider document ID, sync state). The
+  entry index is what lets a correction find the stale memory to supersede and
+  lets a rebuild tell converged from duplicated. Neither holds content.
+- A scope is optional. A matter with no scope, or a scope that never reaches
+  READY, is fully functional with reduced recall.
+- Scopes are built by `memory.initialize` on `matter.created`, kept current by
+  `memory.sync`, and repaired by `memory.rebuild` — all asynchronous, all
+  idempotent, none able to block the publisher.
+- The §4 cache discipline is unchanged and is the reason this is safe: every
+  scope is rebuildable from the authoritative stores, so a provider loss costs a
+  re-derivation and nothing else.
+- Both tables carry `organisation_id` like every other table in the service
+  (`security-model.md` §2.1).
+
+### 11.2 The external-data-transfer boundary
+
+V1 sends the complete chat and matter context to Supermemory unredacted. This is
+an **approved external-data-transfer boundary to a named sub-processor**, not an
+exemption from any privacy control.
+
+- The transfer is a deliberate, recorded decision, gated by
+  `SUPERMEMORY_REAL_DATA_APPROVED` and a signed DPA covering residency,
+  retention, deletion and security. Real-client matters cannot use it until that
+  gate is opened.
+- Raw PDF bytes, full OCR payloads, provider response payloads, database rows
+  and storage paths are never sent. Memory receives summaries, relationships and
+  decisions.
+- **The privacy denylist is untouched and applies in full.** No party name, NIC
+  or passport pattern, snippet, transcript text, extracted value, suspicion
+  narrative, recipient address, secret or token may appear in a log line, error
+  body, event payload, audit payload, notification body or metric label
+  (`service-definition-of-done.md` §4.7). The `memory.sync` outbox payload
+  therefore carries identifiers only, and the worker re-reads content from Neon.
+- The boundary is one hop wide: the provider request body. Nothing else in the
+  system relaxes.
+- No conformance exemption is claimed, because §4.7 governs internal surfaces
+  and a sub-processor transfer is a different control.
 
 ## 12. Honesty rules
 

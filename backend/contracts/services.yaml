@@ -95,7 +95,7 @@
   phase: 3
   matter_scoped: true
   routes_prefix: /api/v1/matters/{matterId}/documents
-  capabilities: [document.upload, document.replace]
+  capabilities: [document.upload, document.replace, document.propose-link]
   publishes: [document.uploaded, document.replaced, document.version-superseded,
               document.processing-completed, document.processing-failed,
               document.extraction-completed]
@@ -128,7 +128,8 @@
   phase: 4
   matter_scoped: true
   routes_prefix: /api/v1/matters/{matterId}/facts
-  capabilities: [particular.verify, particular.correct, particular.add]
+  capabilities: [particular.verify, particular.correct, particular.add,
+                 candidate.create, candidate.update]
   publishes: [particular.verified, particular.corrected, particular.added,
               particular.blocked, particular.evidence-stale]
   consumes: [document.extraction-completed, document.version-superseded]
@@ -144,7 +145,7 @@
   phase: 5
   matter_scoped: true
   routes_prefix: /api/v1/matters/{matterId}/checks
-  capabilities: [finding.resolve, finding.waive]
+  capabilities: [finding.resolve, finding.waive, check.run]
   publishes: [check.result-changed, check.document-requested, finding.resolved,
               finding.waived, finding.remediation-requested]
   consumes: [particular.verified, particular.corrected, particular.added,
@@ -162,7 +163,10 @@
   phase: 5
   matter_scoped: true
   routes_prefix: /api/v1/matters/{matterId}/workflows
-  capabilities: [step.complete, step.override, requirement.review]
+  capabilities: [step.complete, step.override, requirement.review,
+                 checklist.administer, checklist.assign,
+                 checklist.update-due-date, checklist.request-collection,
+                 checklist.record-receipt, checklist.suggest-item]
   publishes: [workflow.instantiated, workflow.setup-failed, workflow.step-completed,
               workflow.step-overridden, workflow.step-stale,
               workflow.applicability-changed, workflow.run-stale,
@@ -314,18 +318,36 @@
   matter_scoped: true
   routes_prefix: /api/v1/matters/{matterId}/memory
   capabilities: []
-  publishes: []
-  consumes: [document.version-superseded, particular.corrected,
-             corpus.source-quarantined, corpus.source-policy-changed,
-             corpus.release-retired, assistant.answer-composed,
+  publishes: [memory.scope-initialised, memory.scope-degraded,
+              memory.scope-destroyed]
+  consumes: [matter.created, document.version-superseded,
+             document.processing-completed, particular.verified,
+             particular.corrected, corpus.source-quarantined,
+             corpus.source-policy-changed, corpus.release-retired,
+             assistant.answer-composed, agent.session-created,
+             agent.message-appended, agent.action-confirmed,
+             workflow.requirement-changed, draft.created, finding.resolved,
              voice.transcript-partial-superseded, voice.transcript-finalised,
              voice.transcript-revised, voice.transcript-confirmed,
-             retention.destruction-approved]
+             retention.hold-placed, retention.destruction-approved]
   metered: []
   owns_tables: [memory_episodes, memory_notes, memory_note_episodes,
-                memory_embeddings]
-  jobs: [memory.ingest, memory.compact]
+                memory_embeddings, external_memory_scopes,
+                external_memory_entries]
+  jobs: [memory.ingest, memory.compact, memory.initialize, memory.sync,
+         memory.rebuild, memory.reconcile-scopes]
   exemptions: []
+  # No exemption is claimed for the Supermemory transfer. Sending matter
+  # content to an approved sub-processor is an external-data-transfer
+  # boundary, not a relaxation of the privacy denylist: the denylist in
+  # service-definition-of-done.md §4.7 governs logs, error bodies, event
+  # payloads, audit payloads, notification bodies and metric labels, and it
+  # continues to apply in full. The transfer is gated by
+  # SUPERMEMORY_REAL_DATA_APPROVED and a signed DPA and is documented in
+  # memory-service.md §11.1.
+  # external_memory_scopes and external_memory_entries carry organisation_id
+  # like every other table. See the blocking central decision in
+  # security-model.md §2.1.
 
 - name: draft_service
   doc: docs/services/draft-service.md
@@ -459,3 +481,22 @@
       reason: >-
         This service is the audit sink; the test is applied to every other
         service and would be circular here.
+
+- name: matter_agent_service
+  doc: docs/services/matter-agent-service.md
+  level: L0
+  phase: V1
+  matter_scoped: true
+  routes_prefix: /api/v1/matters/{matterId}/agent
+  capabilities: [note.create]
+  publishes: [agent.session-created, agent.message-appended, agent.turn-completed,
+              agent.turn-failed, agent.tool-executed, agent.tool-denied,
+              agent.action-proposed, agent.action-confirmed, agent.action-rejected,
+              agent.suggestion-created]
+  consumes: [document.processing-completed, retention.hold-placed,
+             retention.hold-released, retention.destruction-approved]
+  metered: [{feature: matter_agent.enabled, metric: agent_turns.monthly}]
+  owns_tables: [agent_sessions, agent_messages, agent_jobs, agent_tool_calls,
+                agent_pending_actions, agent_stream_events, matter_notes]
+  jobs: [agent.run-turn, agent.purge-stream-events]
+  exemptions: []

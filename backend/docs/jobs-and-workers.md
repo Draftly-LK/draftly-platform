@@ -123,6 +123,10 @@ Rules that hold for every job type:
 | `notification.deliver` | `obligation.reminder-due` and other notify events | `modules/notification/jobs.py` | 120s | Provider idempotency key = delivery id |
 | `voice.finalise` | Session close | `modules/voice/jobs.py` | 300s | Persists recording and candidate transcript |
 | `memory.ingest` | Any memory-relevant event | `modules/memory/jobs.py` | 60s | Non-authoritative; failure never blocks the publisher |
+| `agent.run-turn` | `POST /matters/{id}/agent/messages` | `modules/matter_agent/jobs.py` | 180s | 120s turn budget plus margin; emits resumable stream events |
+| `memory.initialize` | `matter.created` | `modules/memory/jobs.py` | 600s | Container, profile, checklist, facts, document summaries, then READY. Failure never blocks matter creation |
+| `memory.sync` | `agent.message-appended`, `document.processing-completed`, `particular.verified`, `particular.corrected`, `workflow.requirement-changed`, `draft.created`, `finding.resolved` | `modules/memory/jobs.py` | 120s | Payload carries identifiers only; the worker re-reads content from Neon |
+| `memory.rebuild` | Operator, or a scope in STALE | `modules/memory/jobs.py` | 900s | Idempotent; converges rather than duplicating. Same code path as initialise |
 | `corpus.rebuild-index` | `corpus.release-published` | `modules/corpus_governance/jobs.py` | 3600s | Builds per-audience index from the signed manifest |
 
 ## 6. Scheduled job registry
@@ -139,7 +143,9 @@ successful run, and each is safe to run late.
 | hourly | `export.expire` | `export_service` | Mark exports past `expires_at` |
 | daily 02:00 Asia/Colombo | `storage.collect-orphans` | `storage_service` | Hold-aware reconciliation of expired reservations, missing objects, and unclaimed blobs older than 24h |
 | daily 02:30 Asia/Colombo | `retention.evaluate` | `retention_service` | Policy evaluation and `retention.review-due` |
+| hourly | `agent.purge-stream-events` | `matter_agent_service` | Delete resumable stream events older than 24 hours |
 | daily 03:00 Asia/Colombo | `memory.compact` | `memory_service` | Note reconsolidation and superseded-episode pruning |
+| daily 03:15 Asia/Colombo | `memory.reconcile-scopes` | `memory_service` | Repair STALE scopes; delete unmapped provider containers older than 24h after a fail-closed hold check |
 | monthly, 1st 00:15 Asia/Colombo | `register.close-month` | `notarial_register_service` | Emits `register.monthly-period-closed` |
 
 All wall-clock schedules are `Asia/Colombo`. A job that computes a legal date
@@ -156,6 +162,7 @@ each has a named sweep rather than a hope:
 | Storage put succeeded, DB commit failed → orphan blob | `storage.collect-orphans`: reconcile reservations and provider inventory; delete only mapped blobs older than 24h after a fail-closed hold check |
 | DB commit succeeded, enqueue failed | `outbox.drain` retries; the row was never lost because it was in the same transaction |
 | Provider accepted, local persist failed | Idempotency key replay: re-send with the same key, provider returns the original result |
+| Memory container created, scope row failed → orphan container | `memory.reconcile-scopes`: delete unmapped containers older than 24h after a fail-closed hold check |
 
 ## 8. Observability contract
 

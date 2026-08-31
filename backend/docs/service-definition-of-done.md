@@ -222,6 +222,7 @@ service.
 | `voice_service` | V0 or V1 by schedule | Provider transcript is always a candidate; no silent verification, wording change, approval, or downstream call; version history preserved; benchmark thresholds met before live use | L0 |
 | `retention_service` | 8 | Nothing destroyed automatically; a hold beats every policy at both approval and execution; tombstone precedes destruction; audit out of scope | L0 |
 | `audit_service` | all | Every mutating method across every service produces exactly one event; chain verification detects tampering; feed filtered by organisation, membership, and capability | L0 |
+| `matter_agent_service` | V1 | Effective permission is user ∩ allowlist ∩ matter ownership, never a union; a capability outside the allowlist is unreachable even for a user who holds it; prompt injection is refused by the executor and audited; chat history is served only from Neon; the agent never verifies, approves, exports, attests, waives, or changes holds, roles, billing or provider config; without legal retrieval a legal question always abstains | L0 |
 
 ## 7. Release-blocking gates
 
