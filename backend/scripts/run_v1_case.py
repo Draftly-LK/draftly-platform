@@ -38,7 +38,9 @@ def _schemas() -> tuple[tuple[str, ...], dict[str, tuple[ExtractionFieldSchema, 
     allowed = tuple(item.id for item in DOCUMENT_CLASSES)
     schemas: dict[str, tuple[ExtractionFieldSchema, ...]] = {}
     for item in DOCUMENT_CLASSES:
-        template = get_template(item.extraction_template_kind) if item.extraction_template_kind else None
+        template = (
+            get_template(item.extraction_template_kind) if item.extraction_template_kind else None
+        )
         if template is None:
             continue
         schemas[item.id] = tuple(
@@ -88,9 +90,7 @@ async def _run(case_dir: Path, report_path: Path) -> dict[str, Any]:
     pipeline = build_v1_processing_pipeline()
     allowed_types, schemas = _schemas()
     expected = _expected(case_dir)
-    template_by_class = {
-        item.id: item.extraction_template_kind for item in DOCUMENT_CLASSES
-    }
+    template_by_class = {item.id: item.extraction_template_kind for item in DOCUMENT_CLASSES}
     run_id = uuid.uuid4().hex
     prefix = f"document-processing-v1/case-001/{run_id}"
     sources: list[dict[str, Any]] = []
@@ -135,9 +135,7 @@ async def _run(case_dir: Path, report_path: Path) -> dict[str, Any]:
             derivative_generations.append(stored)
 
         candidates = [
-            candidate
-            for document in result.logical_documents
-            for candidate in document.candidates
+            candidate for document in result.logical_documents for candidate in document.candidates
         ]
         expected_source = expected.get(pdf.name, {})
         expected_kind = expected_source.get("kind") if isinstance(expected_source, dict) else None

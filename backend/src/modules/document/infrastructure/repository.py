@@ -38,7 +38,12 @@ from src.modules.document.domain.ingestion import (
     ProcessingRun,
     SourceFile,
 )
-from src.modules.document.domain.v1 import DocumentReview, ReviewCandidate, ReviewPage
+from src.modules.document.domain.v1 import (
+    DocumentReview,
+    ProcessedLogicalDocument,
+    ReviewCandidate,
+    ReviewPage,
+)
 from src.modules.document.infrastructure.orm import (
     DetectedDocumentRow,
     DocumentFragmentRow,
@@ -453,6 +458,10 @@ class SqlDocumentIngestionRepository:
             correlation_id=run.correlation_id,
         )
         self._session.add(row)
+        # SQLAlchemy cannot infer insert ordering here because the V1 child
+        # rows are built from domain objects rather than ORM relationships.
+        # Materialise the FK parent before adding pages/groups/candidates.
+        await self._session.flush()
         if run.v1_report is not None:
             await self._add_v1_details(run)
         await self._session.flush()
@@ -500,6 +509,7 @@ class SqlDocumentIngestionRepository:
                     plain_text_version=text[1],
                 )
             )
+        logical_rows: list[tuple[str, ProcessedLogicalDocument]] = []
         for document in run.v1_report.logical_documents:
             logical = document.logical_document
             logical_id = ids.new_id(ids.LOGICAL_DOCUMENT)
@@ -516,6 +526,15 @@ class SqlDocumentIngestionRepository:
                     page_numbers=list(logical.page_numbers),
                 )
             )
+            logical_rows.append((logical_id, document))
+
+        # Candidate rows reference logical-document ids, but these ORM rows are
+        # intentionally assembled without relationships. Persist every parent
+        # first so SQLAlchemy cannot schedule candidates ahead of them.
+        if logical_rows:
+            await self._session.flush()
+
+        for logical_id, document in logical_rows:
             for candidate in document.candidates:
                 self._session.add(
                     ProcessingCandidateFieldRow(
