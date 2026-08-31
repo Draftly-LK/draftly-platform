@@ -36,6 +36,14 @@ GENERATED_FORM_FIELD: Final = "fld"
 APPROVAL: Final = "apr"
 REGISTRATION_EVENT: Final = "reg"
 EXPORT: Final = "exp"
+AGENT_SESSION: Final = "asess"
+AGENT_MESSAGE: Final = "amsg"
+AGENT_JOB: Final = "ajob"
+AGENT_TOOL_CALL: Final = "atc"
+PENDING_ACTION: Final = "apa"
+MATTER_NOTE: Final = "note"
+MEMORY_SCOPE: Final = "mscope"
+MEMORY_ENTRY: Final = "ment"
 
 
 def new_id(prefix: str) -> str:

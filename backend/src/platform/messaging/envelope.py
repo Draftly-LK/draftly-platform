@@ -31,6 +31,8 @@ REGISTERED_AGGREGATES = frozenset(
         "corpus",
         "content",
         "assistant",
+        "agent",
+        "memory",
         "voice",
         "retention",
         "notification",

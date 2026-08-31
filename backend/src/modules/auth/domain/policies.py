@@ -33,6 +33,19 @@ CAPABILITY_MAP: dict[Role, frozenset[str]] = {
             "finding.resolve",
             # Workflow
             "step.complete",
+            # Matter administration
+            "check.run",
+            "note.create",
+            "checklist.administer",
+            "checklist.assign",
+            "checklist.update-due-date",
+            "checklist.request-collection",
+            "checklist.record-receipt",
+            "checklist.suggest-item",
+            # Candidates and links
+            "candidate.create",
+            "candidate.update",
+            "document.propose-link",
             # Drafting
             "draft.create",
             "draft.save",
@@ -62,6 +75,19 @@ CAPABILITY_MAP: dict[Role, frozenset[str]] = {
             "step.complete",
             "step.override",
             "deadline.confirm",
+            # Matter administration
+            "check.run",
+            "note.create",
+            "checklist.administer",
+            "checklist.assign",
+            "checklist.update-due-date",
+            "checklist.request-collection",
+            "checklist.record-receipt",
+            "checklist.suggest-item",
+            # Candidates and links
+            "candidate.create",
+            "candidate.update",
+            "document.propose-link",
             "draft.create",
             "draft.save",
             "draft.restore",

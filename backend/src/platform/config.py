@@ -90,6 +90,27 @@ class Settings(BaseSettings):
     gemini_classify_model: str = "gemini-2.5-flash-lite"
     gemini_extract_model: str = "gemini-2.5-flash-lite"
 
+    # ── Matter agent (matter-agent-service.md §Configuration) ───────────────
+    # Off by default. While false the agent refuses every route, so a partial
+    # rollout cannot be reached by guessing a URL.
+    matter_agent_enabled: bool = False
+    matter_agent_model: str = "gemini-2.5-flash-lite"
+    matter_agent_max_tool_calls: int = 8
+    matter_agent_turn_timeout_seconds: int = 120
+
+    # ── Supermemory (optional, non-authoritative) ───────────────────────────
+    # Disabled by default: Neon is authoritative for the transcript and the
+    # provider only adds semantic recall. Failure here degrades recall and
+    # never blocks chat, history, or tools.
+    supermemory_enabled: bool = False
+    supermemory_api_key: str = ""
+    supermemory_base_url: str = ""
+    supermemory_container_hmac_key: str = ""
+    # Data-transfer gate. While false the adapter refuses real client matters.
+    # Flip only once residency, retention, deletion, DPA and security approval
+    # are recorded (`memory-service.md` §11.2).
+    supermemory_real_data_approved: bool = False
+
     # ── Document processing (document-processing.md) ────────────────────────
     # "vision-gemini" | "gemini" | "stub". The stub is local/test/ci only.
     extraction_provider: str = "stub"

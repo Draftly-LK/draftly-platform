@@ -38,6 +38,7 @@ module-root = ""
 
 [dependency-groups]
 dev = [
+    "aiosqlite>=0.22.1",
     "httpx>=0.23",
     "mypy>=2.3.0",
     "pytest>=9.1.1",
@@ -68,6 +69,9 @@ exclude = ["migrations/", "src/modules/.*/tests/"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "integration: needs a reachable PostgreSQL; skips when absent",
+]
 testpaths = ["src/modules", "tests"]
 pythonpath = ["."]
 
