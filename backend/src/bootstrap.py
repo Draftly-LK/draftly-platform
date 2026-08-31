@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from src.modules.draft.application.draft_service import DraftService
     from src.modules.matter.application.matter_service import MatterService
     from src.modules.task.application.checklist_service import ChecklistService
+    from src.modules.verification.application.fact_query_service import FactQueryService
 
 
 def register_routers(app: FastAPI) -> None:
@@ -72,12 +73,14 @@ def register_routers(app: FastAPI) -> None:
     from src.modules.obligations.api.router import router as obligations_router
     from src.modules.party.api.router import router as party_router
     from src.modules.task.api.router import router as checklist_router
+    from src.modules.verification.api.router import router as verification_router
 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(rule_pack_router, prefix="/api/v1")
     app.include_router(matter_router, prefix="/api/v1")
     app.include_router(checklist_router, prefix="/api/v1")
     app.include_router(document_router, prefix="/api/v1")
+    app.include_router(verification_router, prefix="/api/v1")
     app.include_router(check_router, prefix="/api/v1")
     app.include_router(draft_router, prefix="/api/v1")
     app.include_router(approval_router, prefix="/api/v1")
@@ -196,6 +199,14 @@ def build_check_service(session: AsyncSession) -> CheckService:
         facts=SqlConfirmedFactReader(session),
         audit=AuditService(repository=SqlAuditRepository(session)),
     )
+
+
+def build_fact_query_service(session: AsyncSession) -> FactQueryService:
+    """Assemble the tenant-scoped verified-facts query service."""
+    from src.modules.verification.application.fact_query_service import FactQueryService
+    from src.modules.verification.infrastructure.repository import SqlVerificationRepository
+
+    return FactQueryService(repository=SqlVerificationRepository(session))
 
 
 def build_draft_service(session: AsyncSession) -> DraftService:
