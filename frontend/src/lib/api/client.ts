@@ -55,10 +55,26 @@ export class ApiError extends Error {
 /** Supplies a Clerk session JWT, or null when signed out. */
 export type TokenProvider = () => Promise<string | null>;
 
+/**
+ * The version segment every route lives under (`api-conventions.md` §1).
+ *
+ * The canonical split in this frontend: **the base URL is the bare origin and
+ * every endpoint path carries the prefix.** `NEXT_PUBLIC_API_BASE_URL` is
+ * therefore `http://localhost:8000`, not `http://localhost:8000/api/v1`.
+ *
+ * A base that also carried the prefix would repeat the version segment twice
+ * in every URL, so a prefix accidentally left on the env var is stripped here
+ * rather than silently doubled at every call site.
+ */
+export const API_VERSION_PREFIX = "/api/v1";
+
 export function apiBaseUrl(): string | null {
   const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (!raw) return null;
-  return raw.replace(/\/+$/, "");
+  const trimmed = raw.replace(/\/+$/, "");
+  return trimmed.endsWith(API_VERSION_PREFIX)
+    ? trimmed.slice(0, -API_VERSION_PREFIX.length).replace(/\/+$/, "")
+    : trimmed;
 }
 
 /**

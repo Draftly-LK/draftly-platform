@@ -137,7 +137,8 @@
       "MANUAL_SUPPORTED": "Manual supported",
       "LITIGATION_HOLD": "Litigation hold",
       "CANCELLED": "Cancelled"
-    }
+    },
+    "assistantTab": "Assistant"
   },
   "placeholder": {
     "title": "{screen}",
@@ -1977,5 +1978,32 @@
     "viewAllIssues": "View all issues",
     "loading": "Loading missing documents…",
     "error": "Could not load missing documents"
+  },
+  "matterAssistant": {
+    "title": "Matter assistant",
+    "subtitle": "One thread per matter. Suggestions are not decisions.",
+    "loading": "Loading the conversation…",
+    "loadOlder": "Load older messages",
+    "sending": "Sending…",
+    "working": "The assistant is working…",
+    "send": "Send",
+    "retry": "Try again",
+    "composerLabel": "Message the assistant",
+    "composerPlaceholder": "Ask about this matter…",
+    "roleAssistant": "Assistant",
+    "roleYou": "You",
+    "unverifiedNotice": "Unverified. Check anything before you rely on it.",
+    "proposalTitle": "The assistant suggests a change",
+    "proposalNothingChanged": "Nothing has changed yet. Confirm to apply it.",
+    "confirm": "Confirm",
+    "reject": "Reject",
+    "turnFailed": "The assistant could not finish. Your message was kept.",
+    "errorStale": "This suggestion is out of date. Ask the assistant again.",
+    "errorCapability": "Your role does not allow this action.",
+    "errorDisabled": "The assistant is not enabled for this workspace.",
+    "errorProvider": "The assistant is temporarily unavailable.",
+    "errorUnknown": "Something went wrong. Your message was not lost.",
+    "thread": "Conversation",
+    "empty": "No messages yet. Ask about this matter."
   }
 }

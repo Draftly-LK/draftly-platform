@@ -23,6 +23,7 @@ const NAV_TABS = [
   "missingDocuments",
   "drafts",
   "exports",
+  "assistantTab",
 ] as const;
 
 const NAV_HREF: Record<(typeof NAV_TABS)[number], (id: string) => string> = {
@@ -33,6 +34,7 @@ const NAV_HREF: Record<(typeof NAV_TABS)[number], (id: string) => string> = {
   missingDocuments: (id) => `/matters/${id}/missing-documents`,
   drafts: (id) => `/matters/${id}/drafts`,
   exports: (id) => `/matters/${id}/exports`,
+  assistantTab: (id) => `/matters/${id}/assistant`,
 };
 
 interface HeaderData {

@@ -10,7 +10,12 @@
  * which is what makes the retry button in the composer safe.
  */
 
-import { apiBaseUrl, apiFetch, type TokenProvider } from "@/lib/api/client";
+import {
+  API_VERSION_PREFIX,
+  apiBaseUrl,
+  apiFetch,
+  type TokenProvider,
+} from "@/lib/api/client";
 
 export interface ApiAgentSession {
   id: string;
@@ -55,7 +60,8 @@ export interface ApiPendingAction {
   createdAt: string;
 }
 
-const AGENT_BASE = (matterId: string) => `/matters/${matterId}/agent`;
+const AGENT_BASE = (matterId: string) =>
+  `${API_VERSION_PREFIX}/matters/${matterId}/agent`;
 
 export function getAgentSession(
   getToken: TokenProvider,
@@ -100,7 +106,7 @@ export function getAgentJob(
   getToken: TokenProvider,
   jobId: string,
 ): Promise<ApiAgentJob> {
-  return apiFetch<ApiAgentJob>(`/agent-jobs/${jobId}`, {
+  return apiFetch<ApiAgentJob>(`${API_VERSION_PREFIX}/agent-jobs/${jobId}`, {
     method: "GET",
     getToken,
   });
@@ -178,7 +184,7 @@ export async function streamAgentJobEvents(
 
   let response: Response;
   try {
-    response = await fetch(`${base}/agent-jobs/${jobId}/events`, {
+    response = await fetch(`${base}${API_VERSION_PREFIX}/agent-jobs/${jobId}/events`, {
       method: "GET",
       headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
       signal,

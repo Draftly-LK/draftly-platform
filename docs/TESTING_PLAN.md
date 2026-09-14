@@ -125,10 +125,10 @@ harness has to work. Right now the frontend test suite never runs in CI, the
 backend CI command skips 43 of 66 test files, one of the paths it does run is an
 empty directory, and seven of eight Playwright specs fail on startup because
 there is no authentication strategy. Fixing this is roughly two days and makes
-every existing test count for something. → commits 1–4 in Appendix C.
+every existing test count for something. → commit 1 in Appendix C.
 
 **Phase 1b, the safety tests.** Rules 1–7 above, the workflow and its five
-refusal cases, and the four Critical findings. → commits 5–19.
+refusal cases, and the four Critical findings. → commits 2–7.
 
 **Environment:** in-memory and SQLite for most of it, with a real Postgres
 service added to CI (§5.1) because the outbox, the audit chain, and the privacy
@@ -171,11 +171,11 @@ suite exists but covers one module rather than the system.
 
 | Week | Work | Output |
 |---|---|---|
-| 1 | Phase 1a — commits 1–4 | CI runs every suite; Playwright works; coverage baseline published |
-| 2 | Security and infrastructure — commits 5–11 | F1, F2, F4 closed; DB fixture and factories exist |
-| 3 | Domain — commits 12–19 | Rules 1, 5, 7 closed; matter/task/verification covered |
-| 4 | Frontend and E2E — commits 20–24 | Rule 4 frontend half; refusal journeys; store tested |
-| 5 | Seed script, CI jobs, ratchet — commits 25–27 | Sign-off checklist (Appendix D) |
+| 1 | Phase 1a — commit 1 | CI runs every suite; Playwright works; coverage baseline published |
+| 2 | Foundations and security — commits 2–4 | F1, F2, F4 closed; factories, DB fixture and seed script exist |
+| 3 | Persistence and domain — commits 5–6 | Rules 2 and 3 closed; matter/task/verification covered |
+| 4 | API surface — commit 7 | Rules 1, 5 and 7 closed; every router has a baseline |
+| 5 | Frontend, E2E and the ratchet — commit 8 | Store tested; refusal journeys; thresholds on. Sign-off (Appendix D) |
 
 Roughly four to five weeks, which is a week longer than the previous estimate.
 The difference is Phase 1a and the Postgres service, both of which the earlier
@@ -1418,39 +1418,34 @@ than an empty result that could also mean "nothing there".
 Group by concern, not by file. Five or more tests per commit. Conventional
 Commits with epic-id scopes, per `CLAUDE.md`.
 
+Eight commits, one per concern. Each is a reviewable unit that leaves the tree
+green; none is a single test, and none mixes two areas.
+
 | # | Commit | Contents | Approx. tests |
 |---|---|---|---|
-| 1 | `ci(test): run vitest and the full pytest suite` | F6, F7 — `ci.yml` edits, `live` marker, `pnpm check` consolidation | 0 new, +43 files now gated |
-| 2 | `test(infra): add coverage instrumentation and baseline` | F5 | 0 |
-| 3 | `test(fixtures): consolidate fakes into tests/factories` | F16 — the §10.2 tree, migrate four `fakes.py` | 0 new, ~30 refactored |
-| 4 | `test(e2e): fix Playwright auth, retries and reporters` | F3, F18, F22 — `global-setup.ts`, config, route inventory | 8 specs unblocked |
-| 5 | `test(auth): cover the real token path end to end` | F1 | ~16 |
-| 6 | `test(auth): capability, step-up and tenancy sweep` | §8.2, §8.3 — Rules 1 and 4 | ~21 |
-| 7 | `test(platform): cursor signing, ETags and correlation ids` | F4 | ~20 |
-| 8 | `test(worker): outbox policies and the runner` | F2 — §6.1–§6.3 | ~42 |
-| 9 | `test(worker): notification and agent job handlers` | §6.4 + the §6.5 `xfail`s — Rule 6 | ~25 |
-| 10 | `test(db): rollback fixture, Postgres service and repositories` | §5.1–§5.3, first six repositories | ~40 |
-| 11 | `test(db): audit chain and migration guards` | §5.3 — Rule 2 | ~13 |
-| 12 | `test(matter): routing derivation and MatterService` | F8 | ~54 |
-| 13 | `test(task): checklist policies and service` | F8 | ~46 |
-| 14 | `test(verification): auto-promotion guards and fact queries` | F9 | ~26 |
-| 15 | `test(api): baseline auth and concurrency suite per router` | §4.1, fourteen routers — Rule 5 | ~70 |
-| 16 | `test(api): intake-to-checklist and document-to-fact flows` | §4.2 | ~22 |
-| 17 | `test(api): fact-to-approved-export and the five refusals` | §4.2, Appendix A | ~14 |
-| 18 | `test(billing): PayHere webhook verification and quota` | F12, Rule 7 | ~18 |
-| 19 | `test(conformance): enforce the service registry` | F19 | ~8 |
-| 20 | `test(web): demo store actions and audit events` | F10 | ~35 |
-| 21 | `test(web): template builder, stage map and label completeness` | §3.2 | ~31 |
-| 22 | `test(web): API client modules and extracted intake helpers` | §3.2 | ~54 |
-| 23 | `test(e2e): refusal paths and matter isolation` | §7.2 P0 | ~9 |
-| 24 | `test(e2e): error recovery and upload review` | §7.2 P1 | ~11 |
-| 25 | `feat(scripts): add seed_demo for test and demo data` | F17 | ~6 |
-| 26 | `ci(test): add the e2e, neon and live jobs` | §11.4 | 0 |
-| 27 | `ci(test): enable ratcheting coverage thresholds` | §11.3 step 2 | 0 |
+| 1 | `ci(test): run every suite and measure coverage` | F5, F6, F7, F3, F18, F22 — `ci.yml` runs `pnpm check` and `pytest -m "not live"`; Postgres service; `live` marker; `pytest-cov` + `@vitest/coverage-v8` with a recorded baseline; Playwright `global-setup.ts`, retries, reporters, route inventory; the `e2e`/`neon`/`live` jobs from §11.4 | 0 new — but **+43 backend files, 13 vitest files and 8 specs start running** |
+| 2 | `test(fixtures): add factories, the DB fixture and seed_demo` | F16, F17, §5.1–§5.2, §10.2, §10.4 — the `tests/factories/` tree, migrate four `fakes.py`, the rollback `db_session` fixture, `scripts/seed_demo.py` | ~6 new, ~30 refactored |
+| 3 | `test(auth): cover the token path, capabilities and tenancy` | F1, §8.1–§8.5 — the real `HTTPBearer` → Clerk path incl. 401s, capability and step-up HTTP, the parameterised tenancy sweep, `middleware.test.ts`. Rules 1 and 4 | ~45 |
+| 4 | `test(worker): cover the outbox, the runner and its handlers` | F2, F4, §6.1–§6.5 — outbox policies, `claim_batch`/`reap_leases` on real Postgres, `process_message`'s two-session rollback path, notification and agent handlers, the §6.5 `xfail`s, the per-type lease defect, plus cursor signing, ETags and correlation ids. Rule 6 | ~110 |
+| 5 | `test(db): cover repositories, the audit chain and migrations` | F14, §5.3–§5.4 — twelve repositories against the §2 baseline, the per-user hash chain incl. concurrency and tamper detection, `alembic` up/down/single-head/no-destructive-DDL, privacy dump test on real Postgres. Rules 2 and 3 | ~65 |
+| 6 | `test(domain): cover matter routing, checklist and verification` | F8, F9, F12, §3.1 — Q01–Q22 routing, `MatterService`, `ChecklistService` and the six-axis status table, the auto-promotion guards, notarial-register policies, PayHere signature verification | ~145 |
+| 7 | `test(api): cover every router, the matter flows and conformance` | F13, F19, §4.1–§4.3 — the five-test baseline across fourteen routers, intake→checklist, document→fact, fact→approved export with Appendix A's five refusals, billing quota, the `tests/conformance/` registry suite. Rules 5 and 7 | ~125 |
+| 8 | `test(web): cover the store, lib, API clients and E2E journeys` | F10, F15, §3.2, §7.2, §11.3 — `demo-store`, `build-document`, `matter-stage`, label completeness, seven API client modules, extracted intake helpers, the refusal-path and matter-isolation specs, error recovery and upload review; then enable the ratcheting coverage thresholds | ~140 |
 
-Commits 1–4 are Phase 1a and should land together as one PR. After that, 5–11
-(security and infrastructure) before 12–19 (domain) before 20–24 (frontend),
-because the later ones depend on the factory tree and the DB fixture.
+Roughly 580 new tests.
+
+**Ordering is a dependency chain, not a preference.** Commit 1 is Phase 1a and
+should land on its own — it changes no test but makes every existing one count,
+and it is the cheapest commit here by a wide margin. Commit 2 must precede 3–8,
+or each of them reinvents a fake and the duplication in F16 triples. Commits 4
+and 5 need the Postgres service and `db_session` fixture from 1 and 2. Commit 8
+turns the coverage gate on last, once there is a number worth gating.
+
+Commits 3, 6 and 7 are the large ones and are the natural place to split further
+if a reviewer asks — 6 splits cleanly by module (matter / task / verification /
+billing) and 7 by layer (routers / flows / conformance). Do not split 4: the
+outbox, the runner and its handlers are one mechanism, and testing a third of it
+proves nothing about the other two thirds.
 
 ---
 

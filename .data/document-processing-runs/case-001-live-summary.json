@@ -1,0 +1,625 @@
+{
+  "schema_version": "1.0",
+  "run_id": "08a63111a4d04e22a65815e13de87eae",
+  "gcs_prefix": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae",
+  "provider": "vision-gemini",
+  "classification_model": "gemini-2.5-flash-lite",
+  "extraction_model": "gemini-2.5-flash-lite",
+  "raster_dpi": 200,
+  "tenant_matter_persisted": false,
+  "tenant_matter_note": "Operator run only: no verified tenant/matter ID was supplied, so no Neon rows were created and no existing matter was guessed.",
+  "source_count": 7,
+  "sources": [
+    {
+      "source_index": 1,
+      "input_name": "source-001-national-identity-card.pdf",
+      "sha256": "26e3e16f3ce4ee97546896949106096b63a8e5bc2bf59abaf7729873a2d952ad",
+      "original": {
+        "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-001/original.pdf",
+        "generation": "1788021660237643"
+      },
+      "page_count": 2,
+      "page_status_counts": {
+        "normal": 2
+      },
+      "rotation_uncertain_count": 0,
+      "classification_low_confidence_count": 0,
+      "classification_calls": 1,
+      "extraction_calls": 1,
+      "logical_document_count": 1,
+      "predicted_type_ids": [
+        "rta.doc.nic"
+      ],
+      "candidate_count": 1,
+      "all_candidates_unverified": true,
+      "derivatives": [
+        {
+          "page_no": 1,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-001/pages/0001/corrected.webp",
+            "generation": "1788021690178849"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-001/pages/0001/ocr.json",
+            "generation": "1788021690538484"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-001/pages/0001/ocr.txt",
+            "generation": "1788021690764706"
+          }
+        },
+        {
+          "page_no": 2,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-001/pages/0002/corrected.webp",
+            "generation": "1788021691646328"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-001/pages/0002/ocr.json",
+            "generation": "1788021692058287"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-001/pages/0002/ocr.txt",
+            "generation": "1788021692351235"
+          }
+        }
+      ],
+      "evaluation": {
+        "has_expected_record": true,
+        "type_exact": true,
+        "expected_field_count": 2,
+        "exact_field_match_count": 0
+      }
+    },
+    {
+      "source_index": 2,
+      "input_name": "source-002-survey-plan-2338-lot-17-18-extracts.pdf",
+      "sha256": "ddbe8ae924b1883031b920a7cbfa9ec7198aee265e186857983d09ee76b02d4e",
+      "original": {
+        "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-002/original.pdf",
+        "generation": "1788021693100130"
+      },
+      "page_count": 2,
+      "page_status_counts": {
+        "normal": 2
+      },
+      "rotation_uncertain_count": 0,
+      "classification_low_confidence_count": 0,
+      "classification_calls": 1,
+      "extraction_calls": 1,
+      "logical_document_count": 1,
+      "predicted_type_ids": [
+        "rta.doc.survey_plan"
+      ],
+      "candidate_count": 9,
+      "all_candidates_unverified": true,
+      "derivatives": [
+        {
+          "page_no": 1,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-002/pages/0001/corrected.webp",
+            "generation": "1788021717227763"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-002/pages/0001/ocr.json",
+            "generation": "1788021717970805"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-002/pages/0001/ocr.txt",
+            "generation": "1788021718221778"
+          }
+        },
+        {
+          "page_no": 2,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-002/pages/0002/corrected.webp",
+            "generation": "1788021718981652"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-002/pages/0002/ocr.json",
+            "generation": "1788021719774667"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-002/pages/0002/ocr.txt",
+            "generation": "1788021720015404"
+          }
+        }
+      ],
+      "evaluation": {
+        "has_expected_record": true,
+        "type_exact": true,
+        "expected_field_count": 10,
+        "exact_field_match_count": 8
+      }
+    },
+    {
+      "source_index": 3,
+      "input_name": "source-003-title-certificate-parcel-0021.pdf",
+      "sha256": "0449443d76ab052dfe2422b2a0d01044e44072d795eca7611df7684b43f63c2c",
+      "original": {
+        "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-003/original.pdf",
+        "generation": "1788021720749250"
+      },
+      "page_count": 2,
+      "page_status_counts": {
+        "normal": 2
+      },
+      "rotation_uncertain_count": 0,
+      "classification_low_confidence_count": 0,
+      "classification_calls": 1,
+      "extraction_calls": 2,
+      "logical_document_count": 2,
+      "predicted_type_ids": [
+        "rta.doc.title_certificate",
+        "rta.doc.form8_instrument"
+      ],
+      "candidate_count": 14,
+      "all_candidates_unverified": true,
+      "derivatives": [
+        {
+          "page_no": 1,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-003/pages/0001/corrected.webp",
+            "generation": "1788021746711499"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-003/pages/0001/ocr.json",
+            "generation": "1788021747254996"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-003/pages/0001/ocr.txt",
+            "generation": "1788021747481360"
+          }
+        },
+        {
+          "page_no": 2,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-003/pages/0002/corrected.webp",
+            "generation": "1788021748256496"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-003/pages/0002/ocr.json",
+            "generation": "1788021748808962"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-003/pages/0002/ocr.txt",
+            "generation": "1788021749031588"
+          }
+        }
+      ],
+      "evaluation": {
+        "has_expected_record": true,
+        "type_exact": true,
+        "expected_field_count": 5,
+        "exact_field_match_count": 3
+      }
+    },
+    {
+      "source_index": 4,
+      "input_name": "source-004-form8-instrument-of-transfer-with-stamp-receipt.pdf",
+      "sha256": "3630d1e9dcf29d5c223e43f972d1df2cf880bdbf43ec8543485e693d01fc40a0",
+      "original": {
+        "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/original.pdf",
+        "generation": "1788021752404853"
+      },
+      "page_count": 16,
+      "page_status_counts": {
+        "normal": 16
+      },
+      "rotation_uncertain_count": 0,
+      "classification_low_confidence_count": 0,
+      "classification_calls": 1,
+      "extraction_calls": 2,
+      "logical_document_count": 3,
+      "predicted_type_ids": [
+        "rta.doc.title_certificate",
+        "rta.doc.title_certificate",
+        "rta.doc.tire31_application"
+      ],
+      "candidate_count": 24,
+      "all_candidates_unverified": true,
+      "derivatives": [
+        {
+          "page_no": 1,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0001/corrected.webp",
+            "generation": "1788021880163550"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0001/ocr.json",
+            "generation": "1788021880877470"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0001/ocr.txt",
+            "generation": "1788021881100773"
+          }
+        },
+        {
+          "page_no": 2,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0002/corrected.webp",
+            "generation": "1788021881844161"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0002/ocr.json",
+            "generation": "1788021882438970"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0002/ocr.txt",
+            "generation": "1788021882722839"
+          }
+        },
+        {
+          "page_no": 3,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0003/corrected.webp",
+            "generation": "1788021883476162"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0003/ocr.json",
+            "generation": "1788021884177202"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0003/ocr.txt",
+            "generation": "1788021884407413"
+          }
+        },
+        {
+          "page_no": 4,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0004/corrected.webp",
+            "generation": "1788021885131706"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0004/ocr.json",
+            "generation": "1788021885696031"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0004/ocr.txt",
+            "generation": "1788021885981494"
+          }
+        },
+        {
+          "page_no": 5,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0005/corrected.webp",
+            "generation": "1788021886742327"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0005/ocr.json",
+            "generation": "1788021887296215"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0005/ocr.txt",
+            "generation": "1788021887583628"
+          }
+        },
+        {
+          "page_no": 6,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0006/corrected.webp",
+            "generation": "1788021888332587"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0006/ocr.json",
+            "generation": "1788021889016413"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0006/ocr.txt",
+            "generation": "1788021889269880"
+          }
+        },
+        {
+          "page_no": 7,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0007/corrected.webp",
+            "generation": "1788021889939813"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0007/ocr.json",
+            "generation": "1788021890486173"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0007/ocr.txt",
+            "generation": "1788021890723754"
+          }
+        },
+        {
+          "page_no": 8,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0008/corrected.webp",
+            "generation": "1788021891413483"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0008/ocr.json",
+            "generation": "1788021891964452"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0008/ocr.txt",
+            "generation": "1788021892279056"
+          }
+        },
+        {
+          "page_no": 9,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0009/corrected.webp",
+            "generation": "1788021892962071"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0009/ocr.json",
+            "generation": "1788021893539931"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0009/ocr.txt",
+            "generation": "1788021893757412"
+          }
+        },
+        {
+          "page_no": 10,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0010/corrected.webp",
+            "generation": "1788021894543979"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0010/ocr.json",
+            "generation": "1788021895260158"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0010/ocr.txt",
+            "generation": "1788021895487009"
+          }
+        },
+        {
+          "page_no": 11,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0011/corrected.webp",
+            "generation": "1788021896202414"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0011/ocr.json",
+            "generation": "1788021896767541"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0011/ocr.txt",
+            "generation": "1788021896980506"
+          }
+        },
+        {
+          "page_no": 12,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0012/corrected.webp",
+            "generation": "1788021897656515"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0012/ocr.json",
+            "generation": "1788021898174029"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0012/ocr.txt",
+            "generation": "1788021898400614"
+          }
+        },
+        {
+          "page_no": 13,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0013/corrected.webp",
+            "generation": "1788021899201431"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0013/ocr.json",
+            "generation": "1788021899900990"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0013/ocr.txt",
+            "generation": "1788021900108552"
+          }
+        },
+        {
+          "page_no": 14,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0014/corrected.webp",
+            "generation": "1788021900824803"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0014/ocr.json",
+            "generation": "1788021901358655"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0014/ocr.txt",
+            "generation": "1788021901557768"
+          }
+        },
+        {
+          "page_no": 15,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0015/corrected.webp",
+            "generation": "1788021902265333"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0015/ocr.json",
+            "generation": "1788021902878295"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0015/ocr.txt",
+            "generation": "1788021903106513"
+          }
+        },
+        {
+          "page_no": 16,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0016/corrected.webp",
+            "generation": "1788021904319516"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0016/ocr.json",
+            "generation": "1788021904710131"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-004/pages/0016/ocr.txt",
+            "generation": "1788021904934490"
+          }
+        }
+      ],
+      "evaluation": {
+        "has_expected_record": true,
+        "type_exact": false,
+        "expected_field_count": 20,
+        "exact_field_match_count": 11
+      }
+    },
+    {
+      "source_index": 5,
+      "input_name": "source-005-rta-sale-instrument-sinhala-registered.pdf",
+      "sha256": "b1b4a78d5861facd9cd2b080b52dbf0609c9e3cd939246d027c397c5b158cbda",
+      "original": {
+        "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-005/original.pdf",
+        "generation": "1788021905702201"
+      },
+      "page_count": 2,
+      "page_status_counts": {
+        "normal": 2
+      },
+      "rotation_uncertain_count": 0,
+      "classification_low_confidence_count": 0,
+      "classification_calls": 1,
+      "extraction_calls": 0,
+      "logical_document_count": 2,
+      "predicted_type_ids": [
+        "rta.doc.power_of_attorney",
+        "rta.doc.stamp_duty_receipt"
+      ],
+      "candidate_count": 0,
+      "all_candidates_unverified": true,
+      "derivatives": [
+        {
+          "page_no": 1,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-005/pages/0001/corrected.webp",
+            "generation": "1788021928270399"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-005/pages/0001/ocr.json",
+            "generation": "1788021929061658"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-005/pages/0001/ocr.txt",
+            "generation": "1788021929297036"
+          }
+        },
+        {
+          "page_no": 2,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-005/pages/0002/corrected.webp",
+            "generation": "1788021930158444"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-005/pages/0002/ocr.json",
+            "generation": "1788021930943845"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-005/pages/0002/ocr.txt",
+            "generation": "1788021931166039"
+          }
+        }
+      ],
+      "evaluation": {
+        "has_expected_record": false,
+        "type_exact": null,
+        "expected_field_count": 0,
+        "exact_field_match_count": 0
+      }
+    },
+    {
+      "source_index": 6,
+      "input_name": "source-006-vendor-board-resolution-lot-20.pdf",
+      "sha256": "0b2f0292de7261b9f3ada4a92c1969e2cca25a3cfedbb542d5928e506575d02a",
+      "original": {
+        "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-006/original.pdf",
+        "generation": "1788021931903075"
+      },
+      "page_count": 1,
+      "page_status_counts": {
+        "normal": 1
+      },
+      "rotation_uncertain_count": 0,
+      "classification_low_confidence_count": 0,
+      "classification_calls": 1,
+      "extraction_calls": 0,
+      "logical_document_count": 1,
+      "predicted_type_ids": [
+        "rta.doc.company_resolution"
+      ],
+      "candidate_count": 0,
+      "all_candidates_unverified": true,
+      "derivatives": [
+        {
+          "page_no": 1,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-006/pages/0001/corrected.webp",
+            "generation": "1788021944443229"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-006/pages/0001/ocr.json",
+            "generation": "1788021945340774"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-006/pages/0001/ocr.txt",
+            "generation": "1788021945586286"
+          }
+        }
+      ],
+      "evaluation": {
+        "has_expected_record": true,
+        "type_exact": false,
+        "expected_field_count": 0,
+        "exact_field_match_count": 0
+      }
+    },
+    {
+      "source_index": 7,
+      "input_name": "source-007-payment-cheque-part-consideration.pdf",
+      "sha256": "e2db85601ddcbd0e478676e23c307d40f4600275f9ba8fdfbea140a4139d3159",
+      "original": {
+        "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-007/original.pdf",
+        "generation": "1788021946112610"
+      },
+      "page_count": 1,
+      "page_status_counts": {
+        "normal": 1
+      },
+      "rotation_uncertain_count": 0,
+      "classification_low_confidence_count": 0,
+      "classification_calls": 1,
+      "extraction_calls": 0,
+      "logical_document_count": 1,
+      "predicted_type_ids": [
+        "rta.doc.stamp_duty_receipt"
+      ],
+      "candidate_count": 0,
+      "all_candidates_unverified": true,
+      "derivatives": [
+        {
+          "page_no": 1,
+          "corrected_webp": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-007/pages/0001/corrected.webp",
+            "generation": "1788021954162050"
+          },
+          "corrected_ocr_json": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-007/pages/0001/ocr.json",
+            "generation": "1788021954633232"
+          },
+          "plain_ocr_text": {
+            "key": "document-processing-v1/case-001/08a63111a4d04e22a65815e13de87eae/source-007/pages/0001/ocr.txt",
+            "generation": "1788021954843645"
+          }
+        }
+      ],
+      "evaluation": {
+        "has_expected_record": true,
+        "type_exact": false,
+        "expected_field_count": 0,
+        "exact_field_match_count": 0
+      }
+    }
+  ]
+}

@@ -104,13 +104,13 @@ function DocumentsFlow({
         <div className="border-border-strong bg-surface mb-6 flex flex-wrap gap-4 rounded border p-4">
           <div>
             <p className="text-muted-ink text-xs font-semibold uppercase">
-              {t("totalDocuments")}
+              {t("totalDocuments", { count: inbox.documents.length })}
             </p>
             <p className="text-2xl font-semibold">{inbox.documents.length}</p>
           </div>
           <div>
             <p className="text-muted-ink text-xs font-semibold uppercase">
-              {t("boundaryReview")}
+              {t("boundaryReview", { count: inbox.boundaryReviewDocumentIds.length })}
             </p>
             <p className="text-2xl font-semibold">
               {inbox.boundaryReviewDocumentIds.length}
@@ -118,7 +118,9 @@ function DocumentsFlow({
           </div>
           <div>
             <p className="text-muted-ink text-xs font-semibold uppercase">
-              {t("classificationReview")}
+              {t("classificationReview", {
+                count: inbox.classificationReviewDocumentIds.length,
+              })}
             </p>
             <p className="text-2xl font-semibold">
               {inbox.classificationReviewDocumentIds.length}
@@ -126,7 +128,7 @@ function DocumentsFlow({
           </div>
           <div>
             <p className="text-muted-ink text-xs font-semibold uppercase">
-              {t("unidentified")}
+              {t("unidentified", { count: inbox.unidentifiedDocumentIds.length })}
             </p>
             <p className="text-2xl font-semibold">
               {inbox.unidentifiedDocumentIds.length}
@@ -134,7 +136,7 @@ function DocumentsFlow({
           </div>
           <div>
             <p className="text-muted-ink text-xs font-semibold uppercase">
-              {t("unprocessed")}
+              {t("unprocessed", { count: inbox.unprocessedSourceFileIds.length })}
             </p>
             <p className="text-2xl font-semibold">
               {inbox.unprocessedSourceFileIds.length}

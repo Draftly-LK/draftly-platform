@@ -1,4 +1,4 @@
-import { AssistantScreen } from "@/components/matter/assistant-screen";
+import { MatterAssistantScreen } from "@/components/matter/assistant-screen";
 
 export default async function AssistantPage({
   params,
@@ -6,5 +6,5 @@ export default async function AssistantPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <AssistantScreen matterId={id} />;
+  return <MatterAssistantScreen matterId={id} />;
 }

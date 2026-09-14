@@ -3,24 +3,34 @@
 /**
  * Matter assistant — one fixed thread per matter.
  *
- * The loop this screen owns: send a message, watch the turn, show what the
- * assistant proposed, and let a lawyer confirm or reject it. Nothing the
- * assistant suggests changes the matter until someone presses Confirm.
+ * Presentation deliberately mirrors `components/assistant/assistant-screen.tsx`
+ * (the research chat): same card, composer, avatar tile and type scale, so the
+ * two chat surfaces do not look like they came from different products.
  *
- * Three deliberate behaviours:
+ * Three behaviours this screen owns:
  *
  * - **Retry never duplicates.** The idempotency key is minted once per logical
- *   send and reused on retry, so a failed network call replays the same job.
- * - **Progress degrades, it does not break.** SSE is attempted first; if the
- *   stream cannot open, polling takes over and the user sees no difference.
- * - **Unverified is labelled.** A proposal card says plainly that nothing has
- *   changed yet, because the distinction between a suggestion and a decision
- *   is the whole point of the product.
+ *   send and reused, so a failed network call replays the same job.
+ * - **Progress degrades.** SSE is attempted first; polling takes over silently
+ *   when the stream cannot be used. The job row settles the outcome either way.
+ * - **Unverified is labelled.** A proposal card states that nothing has changed
+ *   yet, because the line between a suggestion and a decision is the product.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  Check,
+  MessageCircleQuestion,
+  RotateCcw,
+  Send,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
-import { ApiError } from "@/lib/api/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AppShell } from "@/components/shell/app-shell";
+import { PageHeader } from "@/components/shell/page-header";
+import { Button } from "@/components/ui/button";
 import {
   confirmAgentAction,
   getAgentJob,
@@ -33,25 +43,22 @@ import {
   type ApiAgentJob,
   type ApiAgentMessage,
 } from "@/lib/api/agent";
+import { ApiError } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 
 const PAGE_SIZE = 20;
 const POLL_INTERVAL_MS = 1200;
+const MAX_POLLS = 40;
 
 type Phase = "idle" | "sending" | "running" | "error";
 
 interface PendingSend {
   content: string;
-  /** Minted once and reused, so a retry replays rather than duplicates. */
   idempotencyKey: string;
 }
 
-interface Props {
-  matterId: string;
-}
-
-export function AssistantScreen({ matterId }: Props) {
-  const t = useTranslations("assistant");
+export function MatterAssistantScreen({ matterId }: { matterId: string }) {
+  const t = useTranslations("matterAssistant");
   const getToken = useTokenProvider();
 
   const [messages, setMessages] = useState<ApiAgentMessage[]>([]);
@@ -93,13 +100,10 @@ export function AssistantScreen({ matterId }: Props) {
     };
   }, [loadPage, t]);
 
-  /** Watch a turn: stream if we can, poll if we cannot. */
   const watchJob = useCallback(
     async (jobId: string) => {
-      // Stream first; fall back to polling when the stream cannot be used.
-      // Either way the job row settles it, so the two cannot disagree.
       const streamed = await streamAgentJobEvents(getToken, jobId, () => {});
-      for (let attempt = 0; attempt < (streamed ? 1 : 40); attempt += 1) {
+      for (let attempt = 0; attempt < (streamed ? 1 : MAX_POLLS); attempt += 1) {
         const current = await getAgentJob(getToken, jobId);
         setJob(current);
         if (isTerminalJobState(current.state)) return current;
@@ -141,37 +145,24 @@ export function AssistantScreen({ matterId }: Props) {
     [getToken, loadPage, matterId, t, watchJob],
   );
 
-  const onSubmit = useCallback(
-    (event: React.FormEvent) => {
-      event.preventDefault();
-      const content = draft.trim();
-      if (!content || phase === "sending" || phase === "running") return;
-      const send: PendingSend = {
-        content,
-        idempotencyKey: newIdempotencyKey(),
-      };
-      pendingSend.current = send;
-      setDraft("");
-      void runSend(send);
-    },
-    [draft, phase, runSend],
-  );
+  const busy = phase === "sending" || phase === "running";
 
-  const onRetry = useCallback(() => {
-    const send = pendingSend.current;
-    if (send) void runSend(send);
-  }, [runSend]);
+  const onSubmit = useCallback(() => {
+    const content = draft.trim();
+    if (!content || busy) return;
+    const send = { content, idempotencyKey: newIdempotencyKey() };
+    pendingSend.current = send;
+    setDraft("");
+    void runSend(send);
+  }, [busy, draft, runSend]);
 
   const decide = useCallback(
     async (actionId: string, confirm: boolean) => {
       setActionBusy(actionId);
       setError(null);
       try {
-        if (confirm) {
-          await confirmAgentAction(getToken, matterId, actionId);
-        } else {
-          await rejectAgentAction(getToken, matterId, actionId);
-        }
+        if (confirm) await confirmAgentAction(getToken, matterId, actionId);
+        else await rejectAgentAction(getToken, matterId, actionId);
         await loadPage();
       } catch (cause: unknown) {
         setError(describe(cause, t));
@@ -182,91 +173,110 @@ export function AssistantScreen({ matterId }: Props) {
     [getToken, loadPage, matterId, t],
   );
 
-  const busy = phase === "sending" || phase === "running";
-
   return (
-    <section className="flex h-full flex-col gap-4" aria-label={t("title")}>
-      <header>
-        <h1 className="font-serif text-xl">{t("title")}</h1>
-        <p className="text-sm text-muted">{t("subtitle")}</p>
-      </header>
-
-      <ol
-        className="flex flex-1 flex-col-reverse gap-3 overflow-y-auto"
-        aria-live="polite"
-        aria-busy={busy}
-        data-testid="assistant-transcript"
-      >
-        {messages.map((message) => (
-          <li key={message.id} data-role={message.role}>
-            <MessageBubble message={message} t={t} />
-            {message.pendingActionId ? (
-              <ProposalCard
-                actionId={message.pendingActionId}
-                busy={actionBusy === message.pendingActionId}
-                onConfirm={() => decide(message.pendingActionId!, true)}
-                onReject={() => decide(message.pendingActionId!, false)}
-                t={t}
-              />
-            ) : null}
-          </li>
-        ))}
-        {loading ? <li className="text-sm text-muted">{t("loading")}</li> : null}
-      </ol>
-
-      {nextCursor ? (
-        <button
-          type="button"
-          className="self-start text-sm underline"
-          onClick={() => void loadPage(nextCursor)}
+    <AppShell matterId={matterId}>
+      <PageHeader title={t("title")} description={t("subtitle")} />
+      <div aria-live="polite" className="sr-only">
+        {busy ? t("working") : ""}
+      </div>
+      <main className="mx-auto min-w-0 max-w-3xl p-6">
+        <form
+          className="border-border-strong bg-surface shadow-popover rounded border p-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit();
+          }}
         >
-          {t("loadOlder")}
-        </button>
-      ) : null}
+          <label className="sr-only" htmlFor="matter-assistant-composer">
+            {t("composerLabel")}
+          </label>
+          <textarea
+            id="matter-assistant-composer"
+            className="min-h-24 w-full resize-y border-0 bg-transparent p-2 outline-none"
+            placeholder={t("composerPlaceholder")}
+            value={draft}
+            disabled={busy}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+          <div className="border-border flex items-center gap-3 border-t pt-3">
+            <p className="text-muted-ink text-xs">
+              {busy ? (job ? t("working") : t("sending")) : t("unverifiedNotice")}
+            </p>
+            <Button
+              type="submit"
+              className="ml-auto"
+              variant="primary"
+              disabled={busy || draft.trim().length === 0}
+            >
+              {t("send")}
+              <Send className="size-4" strokeWidth={1.5} />
+            </Button>
+          </div>
+        </form>
 
-      {busy ? (
-        <p className="text-sm text-muted" role="status">
-          {job ? t("working") : t("sending")}
-        </p>
-      ) : null}
+        {error && (
+          <div
+            role="alert"
+            className="border-border-strong bg-surface mt-5 flex items-start gap-3 rounded border p-4"
+          >
+            <AlertTriangle
+              className="text-amber-text size-5 shrink-0"
+              strokeWidth={1.5}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm">{error}</p>
+              {pendingSend.current && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => {
+                    const send = pendingSend.current;
+                    if (send) void runSend(send);
+                  }}
+                >
+                  <RotateCcw className="size-4" strokeWidth={1.5} />
+                  {t("retry")}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
 
-      {error ? (
-        <div role="alert" className="rounded border border-strong p-3 text-sm">
-          <p>{error}</p>
-          {pendingSend.current ? (
-            <button type="button" className="mt-2 underline" onClick={onRetry}>
-              {t("retry")}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      <form onSubmit={onSubmit} className="flex gap-2">
-        <label className="sr-only" htmlFor="assistant-composer">
-          {t("composerLabel")}
-        </label>
-        <textarea
-          id="assistant-composer"
-          className="flex-1 rounded border border-strong p-2"
-          rows={2}
-          value={draft}
-          disabled={busy}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder={t("composerPlaceholder")}
-        />
-        <button
-          type="submit"
-          className="rounded border border-strong px-4"
-          disabled={busy || draft.trim().length === 0}
-        >
-          {t("send")}
-        </button>
-      </form>
-    </section>
+        <section aria-label={t("thread")} className="mt-6 space-y-4">
+          {loading && <p className="text-muted-ink text-sm">{t("loading")}</p>}
+          {!loading && messages.length === 0 && (
+            <p className="text-muted-ink text-sm">{t("empty")}</p>
+          )}
+          {messages.map((message) => (
+            <div key={message.id}>
+              <MessageCard message={message} t={t} />
+              {message.pendingActionId && (
+                <ProposalCard
+                  busy={actionBusy === message.pendingActionId}
+                  onConfirm={() => decide(message.pendingActionId!, true)}
+                  onReject={() => decide(message.pendingActionId!, false)}
+                  t={t}
+                />
+              )}
+            </div>
+          ))}
+          {nextCursor && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void loadPage(nextCursor)}
+            >
+              {t("loadOlder")}
+            </Button>
+          )}
+        </section>
+      </main>
+    </AppShell>
   );
 }
 
-function MessageBubble({
+function MessageCard({
   message,
   t,
 }: {
@@ -275,26 +285,35 @@ function MessageBubble({
 }) {
   const isAssistant = message.role === "assistant";
   return (
-    <article className="rounded border border-strong p-3">
-      <p className="text-xs uppercase tracking-wide text-muted">
-        {isAssistant ? t("roleAssistant") : t("roleYou")}
-      </p>
-      <p className="whitespace-pre-wrap text-sm">{message.content}</p>
-      {isAssistant ? (
-        <p className="mt-1 text-xs text-muted">{t("unverifiedNotice")}</p>
-      ) : null}
+    <article
+      className="border-border-strong bg-surface rounded border"
+      data-role={message.role}
+    >
+      <header className="flex items-start gap-3 px-5 py-4">
+        <div className="bg-selected-bg text-forest grid size-9 shrink-0 place-items-center rounded">
+          {isAssistant ? (
+            <Sparkles className="size-5" strokeWidth={1.5} />
+          ) : (
+            <MessageCircleQuestion className="size-5" strokeWidth={1.5} />
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-muted-ink text-xs font-semibold uppercase">
+            {isAssistant ? t("roleAssistant") : t("roleYou")}
+          </div>
+          <p className="mt-1 leading-7 whitespace-pre-wrap">{message.content}</p>
+        </div>
+      </header>
     </article>
   );
 }
 
 function ProposalCard({
-  actionId,
   busy,
   onConfirm,
   onReject,
   t,
 }: {
-  actionId: string;
   busy: boolean;
   onConfirm: () => void;
   onReject: () => void;
@@ -302,30 +321,24 @@ function ProposalCard({
 }) {
   return (
     <div
-      className="mt-2 rounded border border-strong p-3"
+      className="border-border-strong bg-surface mt-2 ml-12 rounded border p-4"
       data-testid="proposal-card"
-      data-action-id={actionId}
     >
-      <p className="text-sm font-medium">{t("proposalTitle")}</p>
-      {/* Said plainly: a card is a suggestion until a human acts on it. */}
-      <p className="text-xs text-muted">{t("proposalNothingChanged")}</p>
-      <div className="mt-2 flex gap-2">
-        <button
-          type="button"
-          className="rounded border border-strong px-3 text-sm"
-          disabled={busy}
-          onClick={onConfirm}
-        >
+      <p className="text-sm font-semibold">{t("proposalTitle")}</p>
+      {/* Status is never colour alone: icon plus text, per the design system. */}
+      <p className="text-amber-text mt-1 flex items-center gap-2 text-xs">
+        <AlertTriangle className="size-4 shrink-0" strokeWidth={1.5} />
+        {t("proposalNothingChanged")}
+      </p>
+      <div className="mt-3 flex gap-2">
+        <Button type="button" variant="primary" disabled={busy} onClick={onConfirm}>
+          <Check className="size-4" strokeWidth={1.5} />
           {t("confirm")}
-        </button>
-        <button
-          type="button"
-          className="rounded border border-strong px-3 text-sm"
-          disabled={busy}
-          onClick={onReject}
-        >
+        </Button>
+        <Button type="button" variant="secondary" disabled={busy} onClick={onReject}>
+          <X className="size-4" strokeWidth={1.5} />
           {t("reject")}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -335,7 +348,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Map a backend error code to a message the lawyer can act on. */
+/** Map a backend error code to something the lawyer can act on. */
 function describe(
   cause: unknown,
   t: ReturnType<typeof useTranslations>,

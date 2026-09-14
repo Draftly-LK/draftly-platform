@@ -137,7 +137,8 @@
       "MANUAL_SUPPORTED": "Manual supported",
       "LITIGATION_HOLD": "Litigation hold",
       "CANCELLED": "Cancelled"
-    }
+    },
+    "assistantTab": "සහායක"
   },
   "placeholder": {
     "title": "{screen}",
@@ -1978,5 +1979,32 @@
     "viewAllIssues": "View all issues",
     "loading": "Loading missing documents…",
     "error": "Could not load missing documents"
+  },
+  "matterAssistant": {
+    "title": "කාරණා සහායක",
+    "subtitle": "එක් කාරණයකට එක් සංවාදයකි. යෝජනා තීරණ නොවේ.",
+    "loading": "සංවාදය පූරණය වෙමින්…",
+    "loadOlder": "පැරණි පණිවිඩ පූරණය කරන්න",
+    "sending": "යවමින්…",
+    "working": "සහායක ක්‍රියා කරමින්…",
+    "send": "යවන්න",
+    "retry": "නැවත උත්සාහ කරන්න",
+    "composerLabel": "සහායකට පණිවිඩයක් යවන්න",
+    "composerPlaceholder": "මෙම කාරණය ගැන අසන්න…",
+    "roleAssistant": "සහායක",
+    "roleYou": "ඔබ",
+    "unverifiedNotice": "සත්‍යාපනය නොකළ. විශ්වාස කිරීමට පෙර පරීක්ෂා කරන්න.",
+    "proposalTitle": "සහායක වෙනසක් යෝජනා කරයි",
+    "proposalNothingChanged": "තවම කිසිවක් වෙනස් වී නැත. යෙදීමට තහවුරු කරන්න.",
+    "confirm": "තහවුරු කරන්න",
+    "reject": "ප්‍රතික්ෂේප කරන්න",
+    "turnFailed": "සහායකට අවසන් කළ නොහැකි විය. ඔබේ පණිවිඩය තබා ගන්නා ලදී.",
+    "errorStale": "මෙම යෝජනාව යල් පැන ගොස් ඇත. නැවත අසන්න.",
+    "errorCapability": "ඔබේ භූමිකාවට මෙම ක්‍රියාව අවසර නැත.",
+    "errorDisabled": "මෙම ක්‍රියාකාරී අවකාශය සඳහා සහායක සක්‍රීය නැත.",
+    "errorProvider": "සහායක තාවකාලිකව ලබා ගත නොහැක.",
+    "errorUnknown": "යමක් වැරදී ඇත. ඔබේ පණිවිඩය නැති වී නැත.",
+    "thread": "සංවාදය",
+    "empty": "තවම පණිවිඩ නැත. මෙම කාරණය ගැන අසන්න."
   }
 }
