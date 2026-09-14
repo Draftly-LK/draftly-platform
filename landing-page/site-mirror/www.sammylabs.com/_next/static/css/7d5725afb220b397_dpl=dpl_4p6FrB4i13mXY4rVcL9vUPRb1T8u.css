@@ -1,0 +1,1 @@
+.delete-guide-button,.delete-rating-button,.edit-guide-button,.update-rating-button,[data-action=delete-guide],[data-action=delete-rating],[data-action=edit-guide],[data-action=update-rating],form[method=DELETE],form[method=PUT]{display:none!important}

@@ -1,0 +1,16 @@
+{
+  "name": "sammylabs-site-mirror",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reproducible local mirror of the public sammylabs.com website.",
+  "scripts": {
+    "scrape": "node scrape.mjs",
+    "scrape:rendered": "node scrape-rendered.mjs",
+    "serve": "node serve.mjs"
+  },
+  "dependencies": {
+    "website-scraper": "^5.3.1",
+    "website-scraper-puppeteer": "^2.0.1"
+  }
+}

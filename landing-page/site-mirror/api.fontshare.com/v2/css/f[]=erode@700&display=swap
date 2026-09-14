@@ -1,0 +1,12 @@
+/* Erode */
+@font-face {
+  font-family: 'Erode';
+  src: url('../../../cdn.fontshare.com/wf/W4KADQUTXSBS5JFKL5R6O3OD5Y2HUMPK/FUANNLITZ24BKB6NQZP3QPJP2PCYZG4I/4MK6ECKUA53PDOTLFHJC57TECDKREBGM.woff2') format('woff2'),
+       url('../../../cdn.fontshare.com/wf/W4KADQUTXSBS5JFKL5R6O3OD5Y2HUMPK/FUANNLITZ24BKB6NQZP3QPJP2PCYZG4I/4MK6ECKUA53PDOTLFHJC57TECDKREBGM.woff') format('woff'),
+       url('../../../cdn.fontshare.com/wf/W4KADQUTXSBS5JFKL5R6O3OD5Y2HUMPK/FUANNLITZ24BKB6NQZP3QPJP2PCYZG4I/4MK6ECKUA53PDOTLFHJC57TECDKREBGM.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+
