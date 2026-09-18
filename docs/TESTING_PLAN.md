@@ -685,12 +685,21 @@ Priority: `audit` (C2), `matter`, `task`, `verification`, `check`, `draft`,
 - migrations run against `DATABASE_URL_DIRECT`, not the pooled URL —
   `DEPLOYMENT_PLAN.md` §7.3 depends on this and nothing asserts it.
 
-The chain is currently 20 revisions, all additive: no `alter_column`, no
-`drop_column`, no raw `op.execute`. Add
-`test_no_destructive_ddl_in_upgrade_path`, a static scan of
-`migrations/versions/*.py`. `DEPLOYMENT_PLAN.md` §7.2 requires one release of
-backward compatibility; this test is what makes that enforceable rather than
-aspirational.
+The chain is not all additive, as an earlier version of this section said:
+`notification_0002_outbox_inbox.py` and `party_0002_tenant_key.py` backfill
+with `op.execute`, tighten columns to `NOT NULL` and replace a unique key.
+`test_no_new_upgrade_step_drops_or_alters_a_column` scans every other
+`migrations/versions/*.py` and names those two as exemptions that predate the
+check; whether each was safe under `DEPLOYMENT_PLAN.md` §7.2's one release of
+backward compatibility is for the team to confirm.
+
+Built in `tests/db/test_migrations.py`, which also found that
+`migrations/env.py` did not import the matter-agent models or
+`api_idempotency_keys`, so autogenerate would have proposed dropping eight
+tables. That is fixed and guarded. The autogenerate diff is not empty: 14
+entries of model-versus-migration drift (agent foreign keys, one JSON/JSONB
+type, five indexes) are listed in `KNOWN_DRIFT`, so new drift fails at once
+and a strict xfail tracks the rest until each is fixed.
 
 #### 5.4 Privacy at rest — Rule 3
 
