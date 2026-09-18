@@ -23,7 +23,12 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.pool import NullPool
 
 import src.platform.config as settings_module
@@ -119,4 +124,29 @@ async def db_session(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         finally:
             await session.close()
             await outer.rollback()
+    await db_engine.dispose()
+
+
+@pytest.fixture
+async def db_committing(db_engine: AsyncEngine) -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    """Sessions that really commit, then an emptied schema after the test.
+
+    For code that commits across sessions by design — the outbox worker claims
+    in one transaction and processes in another — which ``db_session`` cannot
+    hold inside a single rolled-back transaction. Every table except the
+    migration version is truncated afterwards, so the next test starts empty.
+    """
+    yield async_sessionmaker(db_engine, expire_on_commit=False)
+    async with db_engine.begin() as connection:
+        tables = (
+            await connection.execute(
+                text(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = current_schema()"
+                    " AND tablename <> 'alembic_version'"
+                )
+            )
+        ).scalars()
+        names = ", ".join(f'"{name}"' for name in tables)
+        if names:
+            await connection.execute(text(f"TRUNCATE {names} RESTART IDENTITY CASCADE"))
     await db_engine.dispose()

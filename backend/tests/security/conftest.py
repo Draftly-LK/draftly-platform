@@ -5,6 +5,7 @@ tenancy sweep; a suite that does not request them never touches a database.
 """
 
 from tests.db.fixtures import (
+    db_committing,
     db_engine,
     db_schema,
     db_session,
@@ -13,6 +14,7 @@ from tests.db.fixtures import (
 from tests.security.harness import harness
 
 __all__ = [
+    "db_committing",
     "db_engine",
     "db_schema",
     "db_session",
