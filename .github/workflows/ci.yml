@@ -30,10 +30,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --dir frontend install --frozen-lockfile
-      - run: pnpm --dir frontend typecheck
-      - run: pnpm --dir frontend lint
-      - run: pnpm --dir frontend build
-      - run: pnpm check:markdown
+      # The root script is the single list of frontend gates: typecheck, lint,
+      # vitest, build, markdown. Calling it here keeps CI from drifting again.
+      - run: pnpm check
 
   # Turns itself on when the backend project lands. Until backend/pyproject.toml
   # exists this job succeeds without running anything, so nobody has to remember
