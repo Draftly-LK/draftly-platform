@@ -1084,18 +1084,29 @@ library adds a dependency for little gain. What to enforce:
 
 #### 10.4 Seed data — F17
 
-Add `backend/scripts/seed_demo.py`:
+Built as `backend/scripts/seed_synthetic_matter.py`, the name
+`backend-implementation-plan-v0.md` §4 already reserves:
 
 ```bash
-uv run python -m scripts.seed_demo --profile smoke     # 1 matter, 2 parties, 1 doc
-uv run python -m scripts.seed_demo --profile full      # the Appendix B roster
-uv run python -m scripts.seed_demo --reset             # truncate then seed
+uv run python scripts/seed_synthetic_matter.py   # smoke: 1 lawyer, 1 matter, 2 parties, 1 doc
 ```
 
-Requirements: refuses to run when `ENVIRONMENT=production`; builds from
-`tests/factories/` so seed and test data cannot drift; idempotent via fixed ids
-and upsert; emits the same audit events the real paths would, so a seeded matter
-is indistinguishable from a walked-through one.
+What it does: runs only where a fake identity is already allowed (`local`,
+`test`, `ci`); builds from `tests/factories/` so seed and test data cannot
+drift; writes through the real services, so a seeded matter carries the audit
+trail a walked-through one does. `tests/db/test_seed_synthetic_matter.py`
+covers all of it against real Postgres.
+
+Three changes from the original plan, each forced by a rule that outranks it:
+
+- **Idempotent by natural key, not fixed ids.** The real services mint their
+  own ids, so fixed ids would mean bypassing them. A matter is unique per owner
+  and reference instead; a second run finds it and changes nothing.
+- **No `--reset`.** It would have to delete audit rows, and the audit log is
+  append-only. Reset by dropping the local database.
+- **No `full` profile yet.** It needs the Appendix B roster, which is a human
+  gate. The frontend-id parity in §10.5 waits on it too, and cannot use fixed
+  ids for the reason above.
 
 This unblocks three things at once: E2E against a real backend, the Playwright
 `globalSetup`, and manual supervisor demos.
@@ -1104,7 +1115,7 @@ This unblocks three things at once: E2E against a real backend, the Playwright
 
 `frontend/src/lib/mocks/fixtures.ts` is 1514 lines of deterministic seed data
 and is already the right shape. Two additions: a parity test asserting its ids
-match `seed_demo.py`'s, so an E2E spec can run against either the mock store or
+match the seeded backend's, so an E2E spec can run against either the mock store or
 a seeded backend; and typed builders (`makeMatter(overrides)`) rather than
 exported literals, for the completeness reason in §10.3.
 
@@ -1432,7 +1443,7 @@ green; none is a single test, and none mixes two areas.
 | # | Commit | Contents | Approx. tests |
 |---|---|---|---|
 | 1 | `ci(test): run every suite and measure coverage` | F5, F6, F7, F3, F18, F22 — `ci.yml` runs `pnpm check` and `pytest -m "not live"`; Postgres service; `live` marker; `pytest-cov` + `@vitest/coverage-v8` with a recorded baseline; Playwright `global-setup.ts`, retries, reporters, route inventory; the `e2e`/`neon`/`live` jobs from §11.4 | 0 new — but **+43 backend files, 13 vitest files and 8 specs start running** |
-| 2 | `test(fixtures): add factories, the DB fixture and seed_demo` | F16, F17, §5.1–§5.2, §10.2, §10.4 — the `tests/factories/` tree, migrate four `fakes.py`, the rollback `db_session` fixture, `scripts/seed_demo.py` | ~6 new, ~30 refactored |
+| 2 | `test(fixtures): add factories, the DB fixture and the seed script` | F16, F17, §5.1–§5.2, §10.2, §10.4 — the `tests/factories/` tree, migrate four `fakes.py`, the rollback `db_session` fixture, `scripts/seed_synthetic_matter.py` | ~6 new, ~30 refactored |
 | 3 | `test(auth): cover the token path, capabilities and tenancy` | F1, §8.1–§8.5 — the real `HTTPBearer` → Clerk path incl. 401s, capability and step-up HTTP, the parameterised tenancy sweep, `middleware.test.ts`. Rules 1 and 4 | ~45 |
 | 4 | `test(worker): cover the outbox, the runner and its handlers` | F2, F4, §6.1–§6.5 — outbox policies, `claim_batch`/`reap_leases` on real Postgres, `process_message`'s two-session rollback path, notification and agent handlers, the §6.5 `xfail`s, the per-type lease defect, plus cursor signing, ETags and correlation ids. Rule 6 | ~110 |
 | 5 | `test(db): cover repositories, the audit chain and migrations` | F14, §5.3–§5.4 — twelve repositories against the §2 baseline, the per-user hash chain incl. concurrency and tamper detection, `alembic` up/down/single-head/no-destructive-DDL, privacy dump test on real Postgres. Rules 2 and 3 | ~65 |
