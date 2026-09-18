@@ -11,105 +11,19 @@ from __future__ import annotations
 
 import re
 import time
-from collections.abc import AsyncIterator
-from dataclasses import dataclass
 from typing import Any
 
 import jwt
 import pytest
 import structlog
-from httpx import ASGITransport, AsyncClient
 
-from src.api.deps import get_auth_service
 from src.main import create_app
-from src.modules.auth.application.auth_service import AuthService
-from src.modules.auth.domain.models import AccountStatus, Role, UserIdentity
-from src.modules.auth.infrastructure.clerk_adapter import ClerkIdentityAdapter
-from src.platform.db.session import get_db
-from tests.factories.audit import FakeAudit
-from tests.factories.auth import InMemoryUserIdentityRepo, InMemoryUserRepo, active_user
-from tests.factories.constants import NOW, USER_A
-from tests.factories.tokens import AUTHORIZED_PARTY, ISSUER, KEY_ID, TokenMinter
+from src.modules.auth.domain.models import AccountStatus, Role
+from tests.factories.constants import USER_A
+from tests.factories.tokens import KEY_ID, TokenMinter
+from tests.security.harness import LEEWAY_SECONDS, Harness
 
 SUBJECT_A = "user_synthetic_a"
-LEEWAY_SECONDS = 30
-
-
-@dataclass
-class Harness:
-    client: AsyncClient
-    minter: TokenMinter
-    identities: InMemoryUserIdentityRepo
-    users: InMemoryUserRepo
-
-    async def link(self, subject: str, user_id: str, **user: Any) -> None:
-        """Provision ``user_id`` and link ``subject`` to it, as first login would."""
-        record = active_user(user_id)
-        for field, value in user.items():
-            setattr(record, field, value)
-        await self.users.create(record)
-        await self.identities.create(
-            UserIdentity(
-                user_id=user_id,
-                provider="clerk",
-                issuer=ISSUER,
-                subject=subject,
-                verified_email=f"{subject}@synthetic.draftly.test",
-                linked_at=NOW,
-            )
-        )
-
-    def bearer(self, token: str) -> dict[str, str]:
-        return {"Authorization": f"Bearer {token}"}
-
-
-class _NoDatabase:
-    """Lets a unit of work open and close; fails loudly on any real query.
-
-    Rejected requests must never reach the database, and the admitted ones
-    here only touch the in-memory user stores.
-    """
-
-    async def commit(self) -> None:
-        return None
-
-    async def rollback(self) -> None:
-        return None
-
-    async def close(self) -> None:
-        return None
-
-    def __getattr__(self, name: str) -> Any:
-        raise AssertionError(f"unexpected database use: session.{name}")
-
-
-async def _no_database() -> AsyncIterator[_NoDatabase]:
-    yield _NoDatabase()
-
-
-@pytest.fixture
-async def harness() -> AsyncIterator[Harness]:
-    minter = TokenMinter()
-    identities, users = InMemoryUserIdentityRepo(), InMemoryUserRepo()
-    adapter = ClerkIdentityAdapter(
-        issuer=ISSUER,
-        secret_key="sk_synthetic_unused",
-        authorized_parties=frozenset({AUTHORIZED_PARTY}),
-        leeway_seconds=LEEWAY_SECONDS,
-    )
-    # The one seam: signing keys come from this run's key, not Clerk's JWKS.
-    adapter._jwks_client = minter.jwks  # type: ignore[assignment]
-
-    app = create_app()
-    app.dependency_overrides[get_db] = _no_database
-    app.dependency_overrides[get_auth_service] = lambda: AuthService(
-        identity_port=adapter,
-        user_identity_repo=identities,
-        user_repo=users,
-        audit_port=FakeAudit(),
-    )
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        yield Harness(client, minter, identities, users)
 
 
 def _protected_routes() -> list[tuple[str, str]]:
