@@ -22,6 +22,7 @@ import os
 import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from typing import NoReturn
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -109,6 +110,16 @@ pytestmark = pytest.mark.integration
 #:     DRAFTLY_E2E_DATABASE_URL="postgresql+psycopg://..." uv run pytest -m integration
 E2E_URL_VAR = "DRAFTLY_E2E_DATABASE_URL"
 
+#: Set in CI, where Postgres is part of the job. There a skip would mean the
+#: real-database path quietly stopped running, so it fails instead.
+REQUIRE_VAR = "DRAFTLY_E2E_REQUIRE_DATABASE"
+
+
+def _skip_or_fail(reason: str) -> NoReturn:
+    if os.environ.get(REQUIRE_VAR) == "1":
+        pytest.fail(f"{reason} ({REQUIRE_VAR}=1)")
+    pytest.skip(reason)
+
 
 def _database_url() -> str | None:
     """The opt-in URL, normalised to the psycopg async driver.
@@ -137,7 +148,7 @@ def _selector_loop() -> None:
 async def pg_sessions() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     url = _database_url()
     if not url:
-        pytest.skip(f"{E2E_URL_VAR} is not set; real-database E2E is opt-in")
+        _skip_or_fail(f"{E2E_URL_VAR} is not set; real-database E2E is opt-in")
 
     schema = f"agent_e2e_{uuid.uuid4().hex[:10]}"
     admin = create_async_engine(url, isolation_level="AUTOCOMMIT")
@@ -146,7 +157,7 @@ async def pg_sessions() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
             await connection.execute(text(f'CREATE SCHEMA "{schema}"'))
     except Exception as exc:  # noqa: BLE001 - an unreachable database is a skip
         await admin.dispose()
-        pytest.skip(f"postgres unavailable: {type(exc).__name__}")
+        _skip_or_fail(f"postgres unavailable: {type(exc).__name__}")
 
     engine = create_async_engine(
         url, connect_args={"options": f"-csearch_path={schema}"}, pool_pre_ping=True

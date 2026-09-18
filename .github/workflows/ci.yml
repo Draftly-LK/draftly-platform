@@ -40,6 +40,19 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Real Postgres for the tests that SQLite cannot stand in for: the outbox,
+    # JSON columns, unique constraints and transaction semantics.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: draftly_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +75,11 @@ jobs:
       - name: Backend gates
         if: steps.probe.outputs.present == 'true'
         working-directory: backend
+        env:
+          # Points the real-database suite at the service above. REQUIRE turns
+          # an unreachable database into a failure instead of a quiet skip.
+          DRAFTLY_E2E_DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/draftly_test
+          DRAFTLY_E2E_REQUIRE_DATABASE: "1"
         run: |
           set -euo pipefail
           uv lock --check
