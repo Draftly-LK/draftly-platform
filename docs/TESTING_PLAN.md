@@ -41,11 +41,19 @@ background worker, the intake routing that decides which legal form gets used,
 and the auto-promotion rules that decide whether a machine guess can become a
 fact without a lawyer looking at it.
 
-**No coverage percentage exists for this repo.** `pytest-cov` is not installed;
-`@vitest/coverage-v8` is not installed. Any percentage quoted before F5 is
-closed is invented. What can be said is that of 275 non-`__init__` Python
-modules under `backend/src/`, roughly half are imported by no test at all. That
-is a triage signal, not a metric.
+**Coverage baseline (F5, measured 2026-09-18).** This is Step 1 of §11.3:
+recorded, not gated.
+
+| Stack | Lines | Branches | Measured with |
+|---|---|---|---|
+| Backend `src/` | **77%** (13802 / 17905) | **51%** (1466 / 2876) | `uv run pytest -m "not live" --cov`, real Postgres on |
+| Frontend `src/` | **2.4%** (292 / 12419) | not meaningful yet | `pnpm test:coverage` |
+
+The frontend branch figure is left out on purpose: v8 counts branches only in
+files a test loads, so it reads 72% while almost no component is loaded. Lines
+is the honest frontend number, and it is low because F10 and F15 are open.
+Backend combined line-and-branch coverage is 73%. CI prints both numbers on
+every run.
 
 ### A2. What we are protecting
 
@@ -165,7 +173,7 @@ suite exists but covers one module rather than the system.
 | Workflow happy path | Browser only | API-layer walk | **Yes** |
 | Workflow 5 refusals | Partial | API-layer, all five | **Yes** |
 | CI actually runs it all | **No** (F6, F7, F11) | Three edits to `ci.yml` | **Yes** |
-| Coverage measurable | **No** (F5) | Two dev dependencies | **Yes** |
+| Coverage measurable | **Yes** — baseline in §A1 (F5) | Per-path thresholds, §11.3 Step 2 | No |
 
 ### A5. Timeline
 

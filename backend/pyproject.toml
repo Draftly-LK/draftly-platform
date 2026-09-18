@@ -43,6 +43,7 @@ dev = [
     "mypy>=2.3.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.16.1",
     "types-pyyaml>=6.0.12.20260724",
 ]
@@ -75,6 +76,16 @@ markers = [
 ]
 testpaths = ["src/modules", "tests"]
 pythonpath = ["."]
+
+# Measured with `uv run pytest --cov`. No fail-under yet: the plan ratchets
+# from a recorded baseline (docs/TESTING_PLAN.md §11.3) instead of a fixed cliff.
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
 
 [tool.uv]
 package = true

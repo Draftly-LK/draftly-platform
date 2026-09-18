@@ -13,5 +13,16 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // On in CI so `pnpm check` reports the number without a second test run;
+    // locally, `pnpm test:coverage`. No thresholds yet: the plan ratchets from
+    // a recorded baseline (docs/TESTING_PLAN.md §11.3).
+    coverage: {
+      enabled: process.env.CI === "true",
+      provider: "v8",
+      reporter: ["text-summary", "lcov"],
+      all: true,
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/**/*.d.ts"],
+    },
   },
 });

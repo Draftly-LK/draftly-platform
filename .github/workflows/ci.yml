@@ -88,7 +88,7 @@ jobs:
           uv run mypy src
           # Every suite under testpaths, including the co-located module tests.
           # Only paid live-provider probes are left out.
-          uv run pytest -m "not live"
+          uv run pytest -m "not live" --cov --cov-report=term:skip-covered
 
       # The conformance suite is parameterised over backend/contracts/services.yaml
       # (backend/docs/service-definition-of-done.md §4, §9). This check keeps the
