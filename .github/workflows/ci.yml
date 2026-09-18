@@ -68,7 +68,9 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
           uv run mypy src
-          uv run pytest tests/unit tests/contract tests/conformance
+          # Every suite under testpaths, including the co-located module tests.
+          # Only paid live-provider probes are left out.
+          uv run pytest -m "not live"
 
       # The conformance suite is parameterised over backend/contracts/services.yaml
       # (backend/docs/service-definition-of-done.md §4, §9). This check keeps the
