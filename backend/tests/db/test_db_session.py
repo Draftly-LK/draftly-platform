@@ -16,7 +16,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from src.platform.db.idempotency import IdempotencyKeyRow
-from tests.db.conftest import BACKEND_ROOT
+from tests.db.fixtures import BACKEND_ROOT
 from tests.factories.constants import NOW, USER_A
 
 pytestmark = pytest.mark.integration

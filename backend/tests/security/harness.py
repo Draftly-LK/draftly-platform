@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from src.api.deps import get_auth_service
@@ -32,6 +33,7 @@ LEEWAY_SECONDS = 30
 
 @dataclass
 class Harness:
+    app: FastAPI
     client: AsyncClient
     minter: TokenMinter
     identities: InMemoryUserIdentityRepo
@@ -109,4 +111,4 @@ async def harness() -> AsyncIterator[Harness]:
         audit_port=FakeAudit(),
     )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        yield Harness(client, minter, identities, users)
+        yield Harness(app, client, minter, identities, users)
