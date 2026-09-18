@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 import pytest
 
 from src.modules.auth.domain.models import Role
-from src.modules.auth.ports import AuditEventInput
 from src.modules.notarial_register.application.notarial_register_service import (
     NotarialRegisterService,
 )
@@ -37,6 +36,7 @@ from src.modules.notarial_register.infrastructure.repository import (
     SystemClock,
 )
 from src.platform.request_context import RequestContext
+from tests.factories.audit import FakeAudit as FakeAuditPort
 
 
 class FakeAttestationRepository:
@@ -136,14 +136,6 @@ class FakeMonthlyReturnRepository:
             ):
                 return period
         return None
-
-
-class FakeAuditPort:
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
 
 
 class FakeEventPort:

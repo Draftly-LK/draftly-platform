@@ -30,9 +30,10 @@ from src.modules.billing.domain.models import (
 )
 from src.modules.billing.domain.policies import can_transition, is_known_feature_key
 from src.modules.billing.infrastructure.stub_adapter import StubBillingAdapter
-from src.modules.billing.ports import AuditEventInput, BillingUser, RawWebhook
+from src.modules.billing.ports import BillingUser, RawWebhook
 from src.platform.messaging.outbox import InMemoryEventPort
 from src.platform.request_context import RequestContext
+from tests.factories.audit import FakeAudit
 
 _NOW = datetime(2026, 8, 1, 12, 0, 0, tzinfo=UTC)
 _PERIOD_END = _NOW + timedelta(days=30)
@@ -44,14 +45,6 @@ class FakeClock:
 
     def now(self) -> datetime:
         return self._now
-
-
-class FakeAudit:
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
 
 
 class FakeEventPort(InMemoryEventPort):

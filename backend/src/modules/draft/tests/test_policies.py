@@ -65,12 +65,12 @@ from src.modules.draft.domain.policies import (
     stale_state,
 )
 from src.modules.verification.contracts import ConfirmedFactValue, FactTierSummary
+from tests.factories.constants import NOW
 
 from .fakes import (
     CONFIRMED_TRANSFER,
     FORM_08_TEMPLATE_ID,
     MATTER_ID,
-    NOW,
     TIRE_31_TEMPLATE_ID,
     TRANSFER_SUBTYPE_ID,
     USER_ID,

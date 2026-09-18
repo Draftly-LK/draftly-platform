@@ -57,12 +57,12 @@ from src.platform.privacy import (
     assert_no_private_content,
     find_private_content,
 )
-from tests.fixtures.party_fakes import ACTOR_A
-from tests.fixtures.party_synthetic import (
+from tests.factories.party import (
     SYNTHETIC_NIC,
     SYNTHETIC_NIC_OLD_FORMAT,
     SYNTHETIC_PASSPORT,
 )
+from tests.fixtures.party_fakes import ACTOR_A
 
 PARTY_TABLES = (
     PartyRow,

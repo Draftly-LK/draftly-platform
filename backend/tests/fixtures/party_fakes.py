@@ -10,7 +10,6 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 from src.modules.auth.domain.models import Role
-from src.modules.auth.ports import AuditEventInput
 from src.modules.party.application.party_service import PartyService
 from src.modules.party.domain.models import (
     BeneficialOwner,
@@ -30,21 +29,11 @@ from src.modules.party.infrastructure.stub_screening import ManualScreeningAdapt
 from src.modules.party.ports import DomainEvent, PartyListFilter, PartyPage
 from src.platform.errors import NotFoundError, PreconditionFailedError
 from src.platform.request_context import RequestContext
-from tests.fixtures.party_synthetic import SYNTHETIC_PARTY_A
+from tests.factories.audit import FakeAudit
+from tests.factories.party import SYNTHETIC_PARTY_A
 
 ACTOR_A = "usr_synthetic_a"
 ACTOR_B = "usr_synthetic_b"
-
-
-class FakeAudit:
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
-
-    def actions(self) -> list[str]:
-        return [e.action for e in self.events]
 
 
 class FakeEvents:

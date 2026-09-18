@@ -23,8 +23,9 @@ from src.modules.auth.domain.models import (
     User,
     UserIdentity,
 )
-from src.modules.auth.ports import AuditEventInput, IdentityClaims
+from src.modules.auth.ports import IdentityClaims
 from src.platform.request_context import RequestContext
+from tests.factories.audit import FakeAudit as FakeAuditPort
 
 # ── Fakes ─────────────────────────────────────────────────────────────────────
 
@@ -86,14 +87,6 @@ class FakeUserRepo:
     async def update(self, user: User) -> User:
         self._users[user.id] = user
         return user
-
-
-class FakeAuditPort:
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
 
 
 def make_ctx(role: Role = Role.REVIEWER) -> RequestContext:
