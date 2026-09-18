@@ -10,10 +10,7 @@ version an approval pinned itself to to remain readable afterwards.
 
 from __future__ import annotations
 
-import base64
-import json
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,19 +19,17 @@ from src.modules.content_governance.contracts import GeneratedFormState, Unresol
 from src.modules.draft.domain.errors import GeneratedFormStaleError
 from src.modules.draft.domain.models import GeneratedForm, GeneratedFormField
 from src.modules.draft.infrastructure.orm import GeneratedFormFieldRow, GeneratedFormRow
+from src.platform.pagination import Cursor, decode_cursor, encode_cursor
 
 
 def _encode_cursor(created_at: datetime, record_id: str) -> str:
-    payload = json.dumps({"t": created_at.isoformat(), "id": record_id})
-    return base64.urlsafe_b64encode(payload.encode()).decode()
+    return encode_cursor(Cursor(created_at=created_at, id=record_id))
 
 
 def _decode_cursor(cursor: str) -> tuple[datetime, str] | None:
-    try:
-        payload: dict[str, Any] = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-        return datetime.fromisoformat(payload["t"]), str(payload["id"])
-    except (ValueError, KeyError):
-        return None
+    """The keyset position, or InvalidCursorError (400) for a forged or bad cursor."""
+    decoded = decode_cursor(cursor)
+    return (decoded.created_at, decoded.id) if decoded is not None else None
 
 
 def _to_form(row: GeneratedFormRow) -> GeneratedForm:
