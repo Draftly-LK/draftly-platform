@@ -149,7 +149,7 @@ always pair color with an icon and a text label.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `canvas` | `#F4F3EF` | App background |
+| `canvas` | `#F4F6F8` | App background (cool grey; team decision 2026-09-18, replacing the earlier `#F4F3EF`) |
 | `surface` | `#FFFFFF` | Main work surfaces |
 | `ink` | `#1B211D` | Primary text and strong actions |
 | `muted-ink` | `#667068` | Metadata and secondary labels |
@@ -556,7 +556,7 @@ with an evidence pointer:
 
 - **(a) Mechanical** — the eight checks above.
 - **(b) Design-token conformance** (computed styles, not eyeballing): canvas
-  `#F4F3EF` shell background; 6 px radius (≤8 px dialogs); 40–44 px rows;
+  `#F4F6F8` shell background; 6 px radius (≤8 px dialogs); 40–44 px rows;
   Newsreader/IBM Plex Sans/Noto Sans Sinhala actually loaded and applied;
   status never color-only (icon + label present); no gradients/blobs on dense
   workspace surfaces.

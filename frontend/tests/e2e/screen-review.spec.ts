@@ -46,7 +46,7 @@ for (const viewport of [{ name: "1440x900", width: 1440, height: 900 }, { name: 
     await page.screenshot({ path: path.join(evidenceDir, `baseline-${viewport.name}.png`), fullPage: true });
     expect(consoleProblems).toEqual([]);
     expect(serious).toEqual([]);
-    expect(probe.canvas).toBe("rgb(244, 243, 239)");
+    expect(probe.canvas).toBe("rgb(244, 246, 248)");
     expect(probe.radius).toBe("6px");
     expect(probe.overflow).toBeLessThanOrEqual(0);
     expect(probe.bodyFont).not.toMatch(/Times New Roman/i);

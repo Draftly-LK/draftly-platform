@@ -251,9 +251,10 @@ could not show up there.
    before the related tests can be finalised.
 4. **Pre-existing browser failures.** In the last full local run, 11 of the 12
    older browser spec files had failures. The causes are outside the test code:
-   a design-token mismatch for the page background colour (`#F4F3EF` in the
-   design specification against `#f4f6f8` in the code), specs that need the
-   backend running, and specs written for older screens.
+   specs that need the backend running, specs written for older screens, and a
+   background-colour mismatch between the design plan (`#F4F3EF`) and the code
+   (`#f4f6f8`). The team has since chosen `#f4f6f8`, the colour the frontend
+   uses now, and the design plan and design-audit test were updated to match.
 5. **Tooling on Windows.** The async test loop needed a selector event loop for
    the PostgreSQL driver, and `pnpm`/`uv` were not on the default path. Both
    were solved without changing production code.
