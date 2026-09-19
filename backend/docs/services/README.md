@@ -47,17 +47,17 @@ OCR escalation ladder is large enough to need one.
 | Service | Owns | Plan phase | Status |
 | --- | --- | --- | --- |
 | [auth-service](auth-service.md) | Identity, roles, organisation and matter membership, capability checks | 2 | L0 |
-| [billing-service](billing-service.md) | Plans, subscriptions, entitlements, usage, PayHere webhooks | 2B | L0 |
+| [billing-service](billing-service.md) | Plans, subscriptions, entitlements, usage, PayHere webhooks | 2B | L3 |
 | [matter-service](matter-service.md) | Matter identity, classification, lifecycle, party references | 2 | L0 |
-| [party-service](party-service.md) | Party records, identity evidence, beneficial ownership, CDD, screening | 2 | L0 |
+| [party-service](party-service.md) | Party records, identity evidence, beneficial ownership, CDD, screening | 3B | L3 |
 | [document-service](document-service.md) | Immutable upload, versioning, processing state, viewer manifest | 3 | L0 |
 | [storage-service](storage-service.md) | Provider-neutral blob metadata, immutable operations, signed grants, reconciliation | 3 | L0 |
 | [document-processing](document-processing.md) | Worker pipeline: rasterise, classify, OCR ladder, extract | 3 | L0 |
 | [verification-service](verification-service.md) | The verified fact tier — verify, correct, conflicts, evidence spans | 4 | L0 |
 | [check-service](check-service.md) | Deterministic rules, findings, cross-document reconciliation | 5 | L0 |
 | [task-service](task-service.md) | Workflow compilation, step runs, document requirements, question responses, readiness | 5 | L0 |
-| [obligations-service](obligations-service.md) | Dated deadlines and commitments, governed deadline rules, reminders | 5 | L0 |
-| [notarial-register-service](notarial-register-service.md) | Attestations, protocol, Form F register, monthly returns, registration lifecycle | 5 | L0 |
+| [obligations-service](obligations-service.md) | Dated deadlines and commitments, governed deadline rules, reminders | 5 | L3 |
+| [notarial-register-service](notarial-register-service.md) | Attestations, protocol, Form F register, monthly returns, registration lifecycle | 5B | L3 |
 | [content-governance-service](content-governance-service.md) | Seven governed content families and their approval lifecycle | 5, 7 | L0 |
 | [corpus-governance-service](corpus-governance-service.md) | Legal source provenance, rights policy, audience releases, quarantine | 6 | L0 |
 | [library-service](library-service.md) | Read-only browse of the approved public catalogue | 6 | L0 |
@@ -67,8 +67,8 @@ OCR escalation ladder is large enough to need one.
 | [approval-service](approval-service.md) | The approval gate, content-hash pinning, invalidation | 7 | L0 |
 | [export-service](export-service.md) | Rendering approved instruments and supporting documents, manifests | 7 | L0 |
 | [notification-service](notification-service.md) | Preferences, templates, delivery, retries, provider webhooks | 5 | L3 |
-| [voice-service](voice-service.md) | Live transcription, candidate transcripts, review and confirmation | V0/V1 by schedule | L0 |
-| [retention-service](retention-service.md) | Retention policies, legal holds, disposition, tombstones | 8 | L0 |
+| [voice-service](voice-service.md) | Live transcription, candidate transcripts, review and confirmation | schedule-gated | L0 |
+| [retention-service](retention-service.md) | Retention policies, legal holds, disposition, tombstones | 7B | L0 |
 | [audit-service](audit-service.md) | The append-only, hash-chained event log and its read surface | all | L0 |
 | [matter-agent-service](matter-agent-service.md) | Per-matter chat session and transcript, agent turn loop, tool executor and allowlist, working notes | V1 | L0 |
 
