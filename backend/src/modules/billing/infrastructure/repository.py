@@ -134,6 +134,9 @@ class SqlPlanRepository:
                 effective_to=plan.effective_to,
             )
         )
+        # The entitlements' foreign key points at this row, and there is no ORM
+        # relationship to order the inserts, so the plan must reach Postgres first.
+        await self._session.flush()
         for entitlement in entitlements:
             self._session.add(
                 PlanEntitlementRow(
