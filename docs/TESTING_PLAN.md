@@ -52,6 +52,11 @@ recorded, not gated.
 The frontend branch figure is left out on purpose: v8 counts branches only in
 files a test loads, so it reads 72% while almost no component is loaded. Lines
 is the honest frontend number, and it is low because F10 and F15 are open.
+
+**Re-measured 2026-09-19, after plan commit 8.** Frontend `src/` lines
+**27.0%** (3352 / 12424); `src/lib/` **93.3%**; `src/components/` **3.1%**.
+The thresholds in `frontend/vitest.config.ts` and `fail_under` in
+`backend/pyproject.toml` now sit one point under these numbers (§11.3, Step 3).
 Backend combined line-and-branch coverage is 73%. CI prints both numbers on
 every run.
 

@@ -86,6 +86,9 @@ omit = ["*/tests/*"]
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
+# Ratchet (docs/TESTING_PLAN.md §11.3): one point under the last measured
+# total (82% lines and branches, 2026-09-19). Raise it when the suite beats it.
+fail_under = 81
 
 [tool.uv]
 package = true

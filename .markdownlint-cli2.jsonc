@@ -7,6 +7,8 @@
     "!node_modules",
     "!frontend/node_modules",
     "!backend/.venv/**",
+    "!frontend/test-results/**",
+    "!frontend/playwright-report/**",
     "!.agents/skills/avoid-ai-writing/**",
   ],
   "config": {
