@@ -1257,7 +1257,8 @@ Quarantine and fix; never re-run until green.
 - Backend tests get **zero** retries. A flaky pytest is a real bug, almost
   always shared state — the only `autouse` fixture today is
   `_reset_settings_cache` and there is no DB isolation until §5.2.
-- Run `pytest -p randomly` periodically. With 66 files and no per-directory
+- `pytest-randomly` is installed, so every run shuffles the order and prints its
+  seed; replay a failure with `--randomly-seed=<seed>`. With 66 files and no per-directory
   conftest, an ordering assumption is easy to introduce.
 
 ### 12. Tests that should not be written
@@ -1495,7 +1496,7 @@ This plan is complete when:
       not only in the browser.
 - [ ] No test in the repo asserts only on a mock call.
 - [ ] No new fake duplicates one in `tests/factories/`.
-- [ ] `pytest -p randomly` passes three consecutive runs.
+- [x] `pytest -p randomly` passes three consecutive runs (seeds 1111, 2222, 3333 on 2026-09-19; Vitest shuffled with the same seeds).
 - [ ] The `xfail`s in §6.5 are fixed, or have an owner and a date.
 - [ ] Decisions A6.1–A6.4 are recorded, including whichever way A6.4 resolves.
 
