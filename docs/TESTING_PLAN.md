@@ -52,11 +52,6 @@ recorded, not gated.
 The frontend branch figure is left out on purpose: v8 counts branches only in
 files a test loads, so it reads 72% while almost no component is loaded. Lines
 is the honest frontend number, and it is low because F10 and F15 are open.
-
-**Re-measured 2026-09-19, after plan commit 8.** Frontend `src/` lines
-**27.0%** (3352 / 12424); `src/lib/` **93.3%**; `src/components/` **3.1%**.
-The thresholds in `frontend/vitest.config.ts` and `fail_under` in
-`backend/pyproject.toml` now sit one point under these numbers (§11.3, Step 3).
 Backend combined line-and-branch coverage is 73%. CI prints both numbers on
 every run.
 
@@ -1257,8 +1252,7 @@ Quarantine and fix; never re-run until green.
 - Backend tests get **zero** retries. A flaky pytest is a real bug, almost
   always shared state — the only `autouse` fixture today is
   `_reset_settings_cache` and there is no DB isolation until §5.2.
-- `pytest-randomly` is installed, so every run shuffles the order and prints its
-  seed; replay a failure with `--randomly-seed=<seed>`. With 66 files and no per-directory
+- Run `pytest -p randomly` periodically. With 66 files and no per-directory
   conftest, an ordering assumption is easy to introduce.
 
 ### 12. Tests that should not be written
@@ -1496,7 +1490,7 @@ This plan is complete when:
       not only in the browser.
 - [ ] No test in the repo asserts only on a mock call.
 - [ ] No new fake duplicates one in `tests/factories/`.
-- [x] `pytest -p randomly` passes three consecutive runs (seeds 1111, 2222, 3333 on 2026-09-19; Vitest shuffled with the same seeds).
+- [ ] `pytest -p randomly` passes three consecutive runs.
 - [ ] The `xfail`s in §6.5 are fixed, or have an owner and a date.
 - [ ] Decisions A6.1–A6.4 are recorded, including whichever way A6.4 resolves.
 
