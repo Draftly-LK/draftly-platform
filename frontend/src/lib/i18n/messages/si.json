@@ -764,6 +764,7 @@
       "documentFailed": "Document extraction failed",
       "documentReplaced": "Document replaced",
       "documentRetryRequested": "Document retry requested",
+      "sourceFileProcessingNotConfigured": "Processing not configured",
       "factVerified": "Fact verified",
       "factCorrected": "Fact corrected",
       "factAddedManually": "Fact added manually",

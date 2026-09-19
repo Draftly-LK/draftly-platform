@@ -62,6 +62,7 @@ const actionKeys = {
   "document.failed": "documentFailed",
   "document.replaced": "documentReplaced",
   "document.retry-requested": "documentRetryRequested",
+  "source-file.processing-not-configured": "sourceFileProcessingNotConfigured",
   "fact.verified": "factVerified",
   "fact.corrected": "factCorrected",
   "fact.added-manually": "factAddedManually",

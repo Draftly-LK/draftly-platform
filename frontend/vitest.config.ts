@@ -11,6 +11,9 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  // tsconfig says `jsx: "preserve"` because Next compiles JSX itself; here
+  // esbuild must, with the same automatic runtime (no `import React`).
+  esbuild: { jsx: "automatic" },
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     // On in CI so `pnpm check` reports the number without a second test run;
