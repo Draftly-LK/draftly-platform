@@ -22,7 +22,7 @@ export default defineConfig({
       reporter: ["text-summary", "lcov"],
       all: true,
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/**/*.d.ts"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/**/*.d.ts", "src/test/**"],
     },
   },
 });
