@@ -175,6 +175,9 @@ class FakeSubscriptionRepo:
 
 
 class FakeUsageRepo:
+    async def lock_usage(self, user_id: str) -> None:
+        return None
+
     def __init__(self) -> None:
         self._ledger: dict[str, UsageLedgerEntry] = {}
         self._ledger_by_op: dict[tuple[str, str, str], UsageLedgerEntry] = {}
