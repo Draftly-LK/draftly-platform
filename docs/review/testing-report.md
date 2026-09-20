@@ -389,7 +389,7 @@ expected-failure test so it cannot be forgotten or silently fixed.
 | Known-gap tests are fixed or have an owner and a date | Not met | Owners and dates are for the team to assign (section 6.2) |
 | Decisions A6.1–A6.4 are recorded | Not met | A6.2 (ratchet) was applied and needs confirmation; the others are open |
 
-**Summary:** 6 criteria met, 1 partly met, 3 not met and 1 not verified.
+**Summary:** 6 criteria met, 1 partly met, 3 deferred for the next phase and 1 not verified.
 
 ### 8.2 Overall assessment
 
