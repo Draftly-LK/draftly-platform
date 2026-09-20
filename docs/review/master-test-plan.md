@@ -65,12 +65,12 @@ would measure a configuration nobody will deploy.
 
 | Item | Description | Relative importance |
 |---|---|---|
-| Backend application (FastAPI, Python 3.12) | 16 routers, 24 services, the domain rule pack | Highest: enforces every safety rule |
+| Backend application (FastAPI, Python 3.12) | 17 routers, 25 registered services, the domain rule pack | Highest: enforces every safety rule |
 | Domain policies | Fact promotion, checklist satisfaction, intake routing, approval gates | Highest: the legal gates |
-| PostgreSQL database and Alembic migrations | 60+ tables, optimistic concurrency, audit hash chain | Highest: correctness at rest |
+| PostgreSQL database and Alembic migrations | 61 tables, optimistic concurrency, audit hash chain | Highest: correctness at rest |
 | Outbox and background worker | Job claim, retry, dead-letter, lease reaping | High: silent failure otherwise |
 | Platform utilities | Signed pagination cursors, ETag and If-Match handling, error envelope | High: security-relevant |
-| Frontend application (Next.js 15, React 19) | 23 client screens, offline demo state store, 7 API client modules | High |
+| Frontend application (Next.js 15, React 19) | 37 client components, of which 23 carry logic; the offline demo state store; 7 API client modules | High |
 | Authentication and identity (Clerk adapter) | Token validation, roles, capabilities, step-up | Highest |
 | Third-party integrations | Payment webhook, email webhook, object storage, AI extraction and OCR | Medium: verified at the adapter boundary |
 | Continuous integration pipeline | GitHub Actions workflow, PostgreSQL service, coverage gates | High: the plan is worthless if CI does not run it |
