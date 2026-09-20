@@ -210,7 +210,7 @@ make.
 | Deliverable | Form | Audience |
 |---|---|---|
 | Automated test suites | Code in the repository, run by continuous integration on every pull request | Development team |
-| Test completion report | `docs/review/testing-report.md`, following ISO/IEC/IEEE 29119-3 | Supervisor, team, assessor |
+| Test completion report | This document, sections 6 and 7, following ISO/IEC/IEEE 29119-3 | Supervisor, team, assessor |
 | Defect records | Commit history, each fix paired with the test that proves it | Development team |
 | Coverage reports | Terminal summary per run, plus a machine-readable report for the gate | Development team |
 | Continuous-integration results | GitHub Actions run, with a JUnit XML file and an HTML report for browser runs | Whole team |
@@ -223,7 +223,7 @@ iteration. Each states: the suites run and their pass, fail and skip counts;
 the defects found, with severity and the test that now protects each fix; the
 coverage figures for both stacks; the criteria from the plan that are met, and
 those that are not, with the reason and the owner. The end-of-iteration summary
-is the test completion report named above.
+is sections 6 and 7 of this document.
 
 ### 4.2 Reporting on Test Coverage
 
@@ -273,7 +273,7 @@ Final runs on 2026-09-19:
 | Suite | Run | Passed | Failed | Skipped or excluded | Expected failures |
 |---|---|---|---|---|---|
 | Backend (pytest, real PostgreSQL) | 3922 collected | 3906 | 0 | 1 skipped, 5 `live` excluded | 10 |
-| Frontend unit and component (Vitest) | 348 | 348 | 0 | 0 | 1 (see 6.2) |
+| Frontend unit and component (Vitest) | 348 | 348 | 0 | 0 | 1 (a known gap in the offline demo) |
 | Browser: refusal journey (Playwright, new) | 3 | 3 | 0 | 0 | 0 |
 
 The expected failures are the known-gap tests described in section 3, the
@@ -367,17 +367,40 @@ Each fix has a test that failed before the fix and passes after it.
 | 14 | Medium | The offline demo exported a draft that had never been approved | `eed5fa7` |
 | 15 | Low | One activity event ("processing not configured") showed the generic text "Activity updated" | `0ef0c76` |
 
+### 6.6 Traceability: the seven safety rules
+
+| Rule | Test evidence | Result |
+|---|---|---|
+| 1. A lawyer cannot see another organisation's data | `tests/security/test_tenancy_sweep.py` (every matter-scoped route), `tests/db/test_matter_service.py` | Pass |
+| 2. Every material change is in the audit log | `tests/db/test_audit_chain.py`, audit assertions in the service and store tests | Pass; defect 2 fixed |
+| 3. Client identifiers never appear in plaintext | `tests/db/test_party_privacy_at_rest.py` (dumps the real database and searches it) | Pass |
+| 4. Only the right lawyer can act | `tests/security/test_capability_http.py`, `tests/security/test_auth_http.py` | Pass; step-up policy open (6.3) |
+| 5. The API behaves the same way everywhere | `tests/security/test_if_match_sweep.py`, `tests/security/test_obligation_versions.py`, `tests/unit/test_conditional.py` | Pass; notarial gap (6.2) |
+| 6. Messages between services are reliable | `tests/db/test_outbox_repository.py`, `tests/db/test_worker_runner.py`, `tests/db/test_notification_idempotency.py`, `tests/conformance/test_event_registry.py` | Pass; 3 known gaps (6.2) |
+| 7. Quota and metering work | `tests/db/test_billing_quota.py` | Pass; defect 8 fixed |
+
+### 6.7 Traceability: the lawyer workflow refusals
+
+| Refusal | Test evidence | Result |
+|---|---|---|
+| No draft before the lawyer confirms the instrument | `tests/db/test_lawyer_workflow.py` | Pass |
+| 1. An open statutory blocker stops draft generation | `tests/db/test_lawyer_workflow.py` | Pass |
+| 2. A fact correction makes dependent drafts stale | Server rules tested in the draft module; demo store gap recorded | Partly |
+| 3. No approved export before approval | `tests/db/test_lawyer_workflow.py`, `demo-store.test.ts` | Pass |
+| 5. Machine confidence is never enough | `tests/db/test_lawyer_workflow.py`, `src/modules/verification/tests/test_policies.py` | Pass |
+| A blocked mandatory step needs a reason | `frontend/tests/e2e/refusal-paths.spec.ts` (browser) | Pass |
+
 ## 7. Test completion evaluation
 
 ### 7.1 Exit criteria (plan Appendix D)
 
 | Criterion | Status | Evidence or reason |
 |---|---|---|
-| All Critical findings (F1–F4) have passing tests | Met | the traceability table in the completion report; the Clerk-signed browser run for F3 needs keys |
-| All High findings (F5–F12) have passing tests or an owned exception | Met | the traceability table in the completion report |
+| All Critical findings (F1–F4) have passing tests | Met | Sections 6.6 and 6.7; the browser run for the sign-in-bound screens needs provider test credentials |
+| All High findings (F5–F12) have passing tests or an owned exception | Met | Sections 6.5, 6.6 and 6.7 |
 | CI runs every suite, with no vacuous path | Partly met | All backend and frontend unit suites run; browser tests are not in CI (Clerk keys) |
 | A coverage number exists, is published and ratchets | Met | Section 6.3 |
-| Each of the seven safety rules maps to a named test file | Met | the traceability table in the completion report |
+| Each of the seven safety rules maps to a named test file | Met | Section 6.6 |
 | No new fake duplicates the shared factories | Met for this cycle | New tests use `tests/factories/` |
 | Random-order runs pass three times in a row | Met | Section 6.2 |
 
