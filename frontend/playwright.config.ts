@@ -18,6 +18,10 @@ export default defineConfig({
   // Retries absorb CI infrastructure noise only. A spec that passes only on a
   // retry is a flake to fix (TESTING_PLAN.md §11.5), not a pass.
   retries: ci ? 2 : 0,
+  // One worker: every spec talks to the same dev server, and parallel workers
+  // starve it — a full run then fails almost everything at exactly the 30 s
+  // timeout while each spec passes alone. Serial is slower and honest.
+  workers: 1,
   // CI keeps an HTML report and JUnit XML as artifacts; locally, one line.
   reporter: ci
     ? [

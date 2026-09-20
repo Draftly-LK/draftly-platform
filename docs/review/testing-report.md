@@ -255,12 +255,28 @@ could not show up there.
 3. **Open team decisions.** Four decisions in the plan (A6.1 to A6.4) and several
    policy questions found during testing (section 6.2) need an owner's answer
    before the related tests can be finalised.
-4. **Pre-existing browser failures.** In the last full local run, 11 of the 12
-   older browser spec files had failures. The causes are outside the test code:
-   specs that need the backend running, specs written for older screens, and a
-   background-colour mismatch between the design plan (`#F4F3EF`) and the code
-   (`#f4f6f8`). The team has since chosen `#f4f6f8`, the colour the frontend
-   uses now, and the design plan and design-audit test were updated to match.
+4. **Pre-existing browser failures.** The suite holds 9 spec files; the
+   configuration runs 8 of them, and `screen-review` stays skipped unless a
+   review date is supplied. A single-worker run on 2026-09-20 gave **4 passed,
+   9 failed, 2 skipped**, with the failures in 6 older spec files and all 3 new
+   refusal tests passing. The causes, one per failure:
+
+   | Spec | Cause |
+   |---|---|
+   | `design-audit` | 11 palette tokens differ from the design plan; the background is settled, the rest await the decision below |
+   | `i18n-smoke`, `responsive-i18n` (locales) | A raw message key reaches the screen: `assistant.conversationSeeded` is missing from the catalogue |
+   | `responsive-i18n` (1024 sweep) | `/new` overflows horizontally at 1024 px |
+   | `accessibility-audit` (keyboard) | Keyboard focus never reaches the "Correct" control |
+   | `spec-fidelity`, `demo-path` | Expectations written for earlier screens; `demo-path` also exceeds its 180-second budget on a dev server |
+   | `accessibility-audit` (route sweep) | Exceeds its budget sweeping every route against a dev server |
+
+   Two of these are worth separating from the rest. The **parallel-worker
+   default overloads the dev server**: running the suite with the default
+   worker count fails almost everything with timeouts at exactly 30 seconds,
+   while the same specs pass alone. The configuration now pins one worker, so a
+   failure means a defect rather than contention. And **a dev server is the
+   wrong target** for the two sweeping specs: they should run against a
+   production build, which is what the plan's CI job specifies.
 5. **Tooling on Windows.** The async test loop needed a selector event loop for
    the PostgreSQL driver, and `pnpm`/`uv` were not on the default path. Both
    were solved without changing production code.
