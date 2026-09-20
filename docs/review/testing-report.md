@@ -9,7 +9,7 @@
 | Branch | `platform/praveen` (repository `draftly-platform`) |
 | Test period | 2026-09-18 to 2026-09-19 |
 | Governing test plan | `docs/TESTING_PLAN.md` (the test plan, referred to below as "the plan") |
-| Structure | ISO/IEC/IEEE 29119-3, Test Completion Report; section 13 maps it to IEEE 829 |
+| Structure | ISO/IEC/IEEE 29119-3, Test Completion Report; section 15 maps it to IEEE 829 |
 
 ## 1. Introduction
 
@@ -402,7 +402,224 @@ frontend logic layer. Keep the plan open until the Clerk keys are provided
 and the browser journeys run in CI, and until each known gap in section 6.2
 has an owner and a date.
 
-## 9. Test deliverables
+## 9. Evaluation of the data-science parts
+
+Draftly's data-science components are evaluated in the research repository
+(`evaluation/runs/`, `ocr-benchmark/`), separately from the platform. This
+section reports their measured results as they stand on 2026-09-20. Every
+number below comes from a committed metrics file in that repository.
+
+**In one line:** the retrieval components have real numbers and they are low;
+the document-reading components have no accuracy number at all, because the
+paid runs are blocked on credentials.
+
+### 9.1 Components and how each is measured
+
+| Component | What it does | Evaluation method | Gold standard |
+|---|---|---|---|
+| Statute retrieval (BM25 baseline) | Finds the statute sections a legal question depends on | IR metrics: recall@k, MRR, nDCG@10 | Derived, unverified |
+| Statute retrieval (LSR variant) | Same task, larger question set, no reranking | IR metrics, sliced by the statute's temporal status | Derived, unverified |
+| Similar-case retrieval (v1 to v8) | Finds comparable decided cases for a fact pattern | Binary correct or incorrect, graded by 20 independent LLM subagents, one per query | None; appropriateness graded, not matched |
+| LawChain reproduction | Reimplements a published retrieval method for comparison | IR metrics on the same 4 questions | Derived, unverified |
+| Headnote rule recovery | Extracts the legal rule from a case headnote | Rule-based extractor with an LLM-bounded fallback; outputs flagged for review | None; all outputs unverified |
+| OCR and field extraction | Reads scanned deeds and pulls registry fields | Exact-match field accuracy, invented-value rate, cross-run agreement, provenance | 37 labelled fields in 1 of 4 matters |
+
+Two rules in that harness decide what counts as correct, and both are strict on
+purpose:
+
+- **Critical identifiers are exact-match only, never fuzzy.** A cadastral
+  number read as `00030085091` instead of `00030085090` is a failure whatever
+  the string similarity says, because the legal result is completely wrong.
+- **A stub run must score 100% with zero character error.** A synthetic page
+  with known text is read back by a deterministic reader; if that run is not
+  perfect, the harness itself is wrong and no model result from it is believed.
+
+### 9.2 Retrieval results
+
+| Run | Questions | Recall@1 | Recall@5 | Recall@10 | MRR | nDCG@10 |
+|---|---|---|---|---|---|---|
+| Statute retrieval, BM25 baseline | 10 | 0.250 | 0.540 | 0.590 | 0.616 | 0.520 |
+| Statute retrieval, LSR variant (no rerank) | 462 | 0.110 | 0.206 | 0.238 | 0.148 | 0.169 |
+| LawChain, reimplemented | 4 | 0.000 | 0.083 | 0.542 | 0.194 | 0.241 |
+| LawChain, existing BM25 engine, same questions | 4 | 0.375 | 0.833 | 0.833 | 0.633 | 0.670 |
+| LawChain, figures published in the paper | not stated | not stated | 0.936 | not stated | not stated | not stated |
+
+The LSR variant is sliced by whether the statute a judgment relied on is still
+in force:
+
+| Slice | Questions | Recall@5 | Recall@10 | MRR |
+|---|---|---|---|---|
+| Applicable | 282 | 0.220 | 0.245 | 0.152 |
+| Superseded since judgment | 145 | 0.152 | 0.186 | 0.116 |
+| History unknown | 35 | 0.314 | 0.400 | 0.249 |
+
+### 9.3 Similar-case retrieval, by variant
+
+Graded by LLM subagents on the same 20 exam fact patterns. The toggles are
+ranking features: verified-only edges, lexical IDF weighting, graph fan-out,
+catchword edges, and catchword-to-statute links.
+
+| Variant | Feature under test | Correct out of 20 | Accuracy |
+|---|---|---|---|
+| v1 | Baseline | 14 | 0.70 |
+| v1 rebaseline | Baseline again, different corpus snapshot | 10 | 0.50 |
+| v2 | Verified-only edges | 11 | 0.55 |
+| v3 | Lexical IDF | 6 | 0.30 |
+| v4 | Verified-only and lexical IDF | 5 | 0.25 |
+| v5 | Catchword edges | 13 | 0.65 |
+| v6 | Graph fan-out weight | 12 | 0.60 |
+| v7 | Catchword-to-statute links | 13 | 0.65 |
+| v8 | Fan-out, catchword edges and statute links together | 12 | 0.60 |
+
+### 9.4 Document reading
+
+The OCR and field-extraction benchmark defines six runs over 4 matters, 38
+documents and 282 pages. On the last recorded run:
+
+- runs A, B, D, E and F, the Gemini routes, **failed** with `401
+  UNAUTHENTICATED`: the configured key is not an AI Studio key, and the Vertex
+  route is not enabled on the project;
+- run C, the open-source box engine, was **skipped**: the candidate engine is
+  GPL-3.0 and the licence question is unresolved;
+- so **no field-accuracy figure exists yet** for any pipeline.
+
+What has been measured is a full-page vision pass over one matter:
+
+| Measure | Value |
+|---|---|
+| Pages read | 26 of 26, none failed |
+| Mean confidence | 0.904 |
+| Characters per page | 1220.7 |
+| Script mix | Latin 63.7%, Sinhala 21.7%, Tamil 7.0%, digits 7.6% |
+| Seconds per page | 3.38 (maximum 6.74) |
+| Estimated cost, full corpus | USD 0.04 |
+
+### 9.5 How far these results can be trusted
+
+Every run in the research repository is labelled development-only, and the
+label is accurate:
+
+- gold answers are **derived, not lawyer-verified**, for every retrieval run;
+- similar-case accuracy is **graded by an LLM**, which is an appropriateness
+  judgement, not an IR measurement against known-relevant documents;
+- the question sets are small: 20 queries for similar-case work, 10 for the
+  BM25 baseline, 4 for the LawChain comparison;
+- only 1 of 4 matters in the OCR corpus is labelled, with 37 fields;
+- every headnote rule output is marked unverified.
+
+Under the platform's own rule that only lawyer-verified facts may reach an
+approved output, none of these components is fit to fill a legal form
+unattended today. The platform enforces that rule independently of the models,
+and the tests in section 7.3 hold it.
+
+## 10. Error analysis of the data-science parts
+
+The failures are concentrated, not spread evenly: the same questions fail in
+every configuration, and the weakest slice is statutes that changed after the
+judgment was written.
+
+### 10.1 Statute retrieval: most questions return nothing usable
+
+Of 462 questions, **352 (76.2%)** have no relevant result in the top 10, and
+only 110 (23.8%) reach full recall@10.
+
+| Slice | Questions | No relevant result in top 10 | Share |
+|---|---|---|---|
+| Applicable | 282 | 213 | 75.5% |
+| Superseded since judgment | 145 | 118 | 81.4% |
+| History unknown | 35 | 21 | 60.0% |
+
+**Reading:** the system is weakest exactly where the law has moved on. That is
+also where a wrong answer is most dangerous, because a lawyer shown a repealed
+section may rely on it.
+
+### 10.2 Small question sets flattered the baseline
+
+The BM25 baseline scored recall@10 of 0.590 on 10 questions. Retrieval on 462
+questions scores 0.238. The 10-question figure was not wrong, it was
+unrepresentative: a difference of more than two times, produced by sample size
+alone. Any decision taken on a 10-question result should be taken again.
+
+### 10.3 A hard core of similar-case queries
+
+Across all nine similar-case runs, four queries (`scr-03`, `scr-05`, `scr-15`,
+`scr-16`) fail in **every** configuration, and three more fail in eight of
+nine. No ranking feature moved them.
+
+| Queries | Failed in |
+|---|---|
+| scr-03, scr-05, scr-15, scr-16 | 9 of 9 runs |
+| scr-04, scr-19, scr-20 | 8 of 9 runs |
+| scr-02, scr-09 | 5 of 9 runs |
+| 8 other queries | 1 or 2 runs each |
+
+**Reading:** a stable failing core that re-ranking never touches usually means
+the right case is missing from the corpus, or the query needs reasoning the
+index cannot express. More ranking work is unlikely to pay; the next experiment
+should check whether the answer is in the corpus at all.
+
+### 10.4 Two features made the results worse
+
+Lexical IDF weighting dropped accuracy from 0.70 to 0.30, and combining it with
+verified-only edges dropped it to 0.25. Catchword edges and statute links were
+the only features that stayed near the baseline. This negative result is worth
+recording: the intuitive improvement was the harmful one.
+
+### 10.5 The grader itself is unstable
+
+The baseline was graded 0.70 in one run and 0.50 in a repeat of the same
+configuration. The corpus fingerprint also changed between the two, so the
+experiment cannot separate grader variance from corpus change. Either way, a
+20-point swing on an unchanged pipeline is larger than most of the differences
+the variants are trying to measure, so no ranking of these variants is safe.
+
+### 10.6 Where the headnote extractor gives up
+
+182 cases needed the LLM-bounded fallback because the rule-based extractor
+abstained. The reasons name the shapes it cannot parse:
+
+| Abstain reason | Cases |
+|---|---|
+| Rule text too short | 63 |
+| Catchword block too long | 59 |
+| Catchwords are not a topic list | 39 |
+| No catchword terminator | 18 |
+| Rule is itself a catchword list | 2 |
+| Rule has too few words | 1 |
+
+All 175 graded outputs remain unverified, so none may feed an approved output.
+
+### 10.7 Document reading: the error is in the experiment, not the model
+
+The dominant failure is environmental, not statistical: five of six pipelines
+never ran. The credential error is a configuration fix, and the licence
+question needs a decision rather than research. Until both are cleared, the
+project has no evidence for its most lawyer-visible claim, that it can read a
+scanned deed accurately.
+
+The one signal available is script-dependent confidence: the overall mean is
+0.904, but the Sinhala-dominant identity-card pages read at 0.818. Sinhala is
+21.7% of all characters in the corpus, so a weakness there is not a corner
+case.
+
+### 10.8 What to do next
+
+1. Fix the Gemini credentials and re-run A, B and D, so a field-accuracy number
+   exists at all.
+2. Settle the OCR engine licence question, which blocks runs C, E and F.
+3. Label a second and third matter, so field accuracy does not rest on one
+   bundle.
+4. Check corpus coverage for the seven persistently failing similar-case
+   queries before tuning ranking again.
+5. Replace LLM grading with a small human-verified relevance set, or report
+   both and treat the LLM figure as indicative only.
+6. Re-run the BM25 baseline on the 462-question set, so baseline and variant
+   are comparable.
+7. Report retrieval by difficulty tier, as the project's own research summary
+   recommends: an aggregate score hides that keyword-explicit questions succeed
+   while reasoning-heavy ones fail.
+
+## 11. Test deliverables
 
 - 59 commits on `platform/praveen`, each following the Conventional Commits
   format (listed in Appendix A);
@@ -414,7 +631,7 @@ has an owner and a date.
 - the coverage baseline and re-measurement recorded in the plan's §A1;
 - this report.
 
-## 10. Reusable test assets
+## 12. Reusable test assets
 
 | Asset | Location | Reuse |
 |---|---|---|
@@ -426,7 +643,7 @@ has an owner and a date.
 | Fetch recorder for API clients | `frontend/src/test/fetch-recorder.ts` | Any frontend API module |
 | Render helper with the real translations | `frontend/src/test/render.tsx` | Any component test |
 
-## 11. Lessons learned
+## 13. Lessons learned
 
 1. **Measure before adding tests.** The first finding was that CI ran a small
    part of the existing tests. Making CI honest (stage 1) came before writing
@@ -447,7 +664,7 @@ has an owner and a date.
 7. **Keep a human in the loop for legal content.** Tests may check the
    structure of legal text, but never write or change it.
 
-## 12. Approvals
+## 14. Approvals
 
 | Role | Name | Decision | Date |
 |---|---|---|---|
@@ -455,7 +672,7 @@ has an owner and a date.
 | Test or team lead | | | |
 | Product owner | | | |
 
-## 13. Mapping to IEEE 829 (Test Summary Report)
+## 15. Mapping to IEEE 829 (Test Summary Report)
 
 | IEEE 829 section | Where it is in this report |
 |---|---|
@@ -466,7 +683,7 @@ has an owner and a date.
 | Summary of results | Section 4 and 6.1 |
 | Evaluation | Sections 6.2, 6.3 and 8 |
 | Summary of activities | Sections 2.2, 2.5 and Appendix A |
-| Approvals | Section 12 |
+| Approvals | Section 14 |
 
 ## Appendix A. Commit log
 
