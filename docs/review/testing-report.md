@@ -245,17 +245,13 @@ could not show up there.
 
 ## 5. Factors that blocked progress
 
-1. **No Clerk test keys.** The API-bound screens need a real sign-in provider to
-   render. Without test keys, the browser journeys for approval, export, matter
-   isolation, error recovery and upload cannot run, and the browser suite cannot
-   run in CI.
-2. **Human-gated legal wording.** The form templates have not been verified by
+1. **Human-gated legal wording.** The form templates have not been verified by
    the legal team, so the full workflow cannot reach an approved export. This is
    intended behaviour and must not be worked around by a test.
-3. **Open team decisions.** Four decisions in the plan (A6.1 to A6.4) and several
+2. **Open team decisions.** Four decisions in the plan (A6.1 to A6.4) and several
    policy questions found during testing (section 6.2) need an owner's answer
    before the related tests can be finalised.
-4. **Pre-existing browser failures.** The suite holds 9 spec files; the
+3. **Pre-existing browser failures.** The suite holds 9 spec files; the
    configuration runs 8 of them, and `screen-review` stays skipped unless a
    review date is supplied. A single-worker run on 2026-09-20 gave **4 passed,
    9 failed, 2 skipped**, with the failures in 6 older spec files and all 3 new
@@ -277,7 +273,7 @@ could not show up there.
    failure means a defect rather than contention. And **a dev server is the
    wrong target** for the two sweeping specs: they should run against a
    production build, which is what the plan's CI job specifies.
-5. **Tooling on Windows.** The async test loop needed a selector event loop for
+4. **Tooling on Windows.** The async test loop needed a selector event loop for
    the PostgreSQL driver, and `pnpm`/`uv` were not on the default path. Both
    were solved without changing production code.
 
