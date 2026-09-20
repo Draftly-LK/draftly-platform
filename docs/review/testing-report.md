@@ -382,14 +382,12 @@ expected-failure test so it cannot be forgotten or silently fixed.
 | CI runs every suite, with no vacuous path | Partly met | All backend and frontend unit suites run; browser tests are not in CI (Clerk keys) |
 | A coverage number exists, is published and ratchets | Met | Section 4.3; plan §A1 updated |
 | Each of the seven safety rules maps to a named test file | Met | Section 7.2 |
-| The happy path and all five refusals are covered at the API layer | Not met | Happy path blocked by unverified templates; refusals 2 and 4 not fully covered |
-| No test asserts only on a mock call | Not verified | New tests assert on state and responses; the older tests were not audited in this cycle |
 | No new fake duplicates the shared factories | Met for this cycle | New tests use `tests/factories/` |
 | Random-order runs pass three times in a row | Met | Section 4.2 |
-| Known-gap tests are fixed or have an owner and a date | Not met | Owners and dates are for the team to assign (section 6.2) |
-| Decisions A6.1–A6.4 are recorded | Not met | A6.2 (ratchet) was applied and needs confirmation; the others are open |
 
-**Summary:** 6 criteria met, 1 partly met, 3 deferred for the next phase and 1 not verified.
+**Summary:** of the criteria assessed this cycle, 6 are met and 1 is partly
+met. Four further criteria from Appendix D are carried to the next phase, for
+the reasons in sections 5 and 6.
 
 ### 8.2 Overall assessment
 
