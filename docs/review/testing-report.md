@@ -20,6 +20,10 @@ the defects found and fixed, and the risks that remain. It gives the reader
 enough evidence to judge whether the testing met its objectives, and states
 plainly where it did not.
 
+It covers three things: the software testing of the platform (sections 2 to
+8), the evaluation of the data-science components (section 9), and an error
+analysis of those components (section 10).
+
 ### 1.2 The system under test
 
 Draftly is a legal-drafting platform for Sri Lankan notaries. A lawyer opens a
@@ -58,7 +62,9 @@ Out of scope for this cycle:
 - penetration testing and automated vulnerability scanning;
 - user acceptance testing with practising lawyers;
 - tests that call paid external services (AI extraction, OCR, cloud storage).
-  These are marked `live` and excluded from routine runs;
+  These are marked `live` and excluded from routine runs. The data-science
+  components behind them are evaluated separately, in the research repository;
+  sections 9 and 10 report those results and analyse their errors;
 - verifying the legal wording of form templates. That is a human task owned by
   the legal team, and no test may author or alter it.
 
@@ -680,8 +686,8 @@ case.
 | Summary | Sections 1 and 8.2 |
 | Variances | Section 3 |
 | Comprehensive assessment | Sections 2.4, 4.3 and 8 |
-| Summary of results | Section 4 and 6.1 |
-| Evaluation | Sections 6.2, 6.3 and 8 |
+| Summary of results | Sections 4, 6.1 and 9 |
+| Evaluation | Sections 6.2, 6.3, 8 and 10 |
 | Summary of activities | Sections 2.2, 2.5 and Appendix A |
 | Approvals | Section 14 |
 
