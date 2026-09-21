@@ -449,8 +449,9 @@ cmd_backup() {
   install -d -m 700 "$BACKUP_DIR" 2>/dev/null || die "cannot write $BACKUP_DIR (run: sudo deploy/vps.sh setup)"
   for vol in draftly_pilot-requests draftly_source-files; do
     docker volume inspect "$vol" >/dev/null 2>&1 || continue
-    docker run --rm -v "$vol:/data:ro" -v "$BACKUP_DIR:/out" alpine \
-      tar -czf "/out/${vol#draftly_}-$stamp.tar.gz" -C /data .
+    # As the calling user, umask 077: the archives hold email addresses.
+    docker run --rm --user "$(id -u):$(id -g)" -v "$vol:/data:ro" -v "$BACKUP_DIR:/out" alpine \
+      sh -c 'umask 077 && tar -czf "/out/$1" -C /data .' _ "${vol#draftly_}-$stamp.tar.gz"
     echo "backed up $vol -> $BACKUP_DIR/${vol#draftly_}-$stamp.tar.gz"
   done
   # Keep the newest $BACKUP_KEEP archives of each volume.
