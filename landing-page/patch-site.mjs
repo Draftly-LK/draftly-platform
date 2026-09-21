@@ -107,6 +107,10 @@ const bootFile = find(chunks, '116-');
 const boot = fs.readFileSync(bootFile, 'utf8').replace('i.default.hydrateRoot(R,r,{...N,formState:j})', 'i.default.createRoot(R,N).render(r)');
 fs.writeFileSync(bootFile, boot);
 
+// Nav links are full page loads in this saved deployment, so the nav intro
+// replayed on every page. After the first page in a tab, skip to its finished
+// state. React resets <html> attributes when it mounts but keeps head styles.
+const navIntroScript = "try{if(sessionStorage.getItem('draftly-nav-intro')){const s=document.createElement('style');s.textContent='.fixed.top-0.left-0.right-0 *{animation-delay:0s!important;animation-duration:0s!important}';document.head.appendChild(s)}else sessionStorage.setItem('draftly-nav-intro','seen')}catch{}";
 // Synchronize the existing metadata in the serialized React stream as well.
 for (const relative of ['index.html', 'lab/index.html']) {
   const file = path.join(host, relative);
@@ -142,6 +146,9 @@ for (const relative of ['index.html', 'lab/index.html']) {
   $('title').text(field(section('Page metadata'), 'Title'));
   $('script[src="/draftly-fixes.js"]').remove();
   $('body').append('<script src="/draftly-fixes.js" defer></script>');
+  // Runs in <head> so it applies before the nav's first paint.
+  $('#draftly-nav-intro').remove();
+  $('head').append(`<script id="draftly-nav-intro">${navIntroScript}</script>`);
   fs.writeFileSync(file, $.html());
 }
 fs.copyFileSync(path.join(root, 'draftly-fixes.js'), path.join(host, 'draftly-fixes.js'));
@@ -149,6 +156,9 @@ fs.copyFileSync(path.join(root, 'draftly-favicon.svg'), path.join(host, 'draftly
 const cssFile = find(path.join(chunks, '../css'), '7d572');
 const css = fs.readFileSync(cssFile, 'utf8');
 if (!css.includes('/* Draftly keyboard focus */')) fs.appendFileSync(cssFile, '\n/* Draftly keyboard focus */\na:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #26747a!important;outline-offset:3px!important}\n');
+// The open mobile menu disables pointer events outside itself, which left the
+// visible Draftly logo above it unable to take a tap.
+if (!css.includes('/* Draftly nav logo */')) fs.appendFileSync(cssFile, '\n/* Draftly nav logo */\n.fixed.top-0.left-0.right-0 nav a[href="/"]{pointer-events:auto}\n');
 // This existing shared chunk registers all four legal-page chunk IDs.
 const legalChunk = find(path.join(chunks, 'app/(app)/terms'), 'page-');
 for (const route of ['dpa', 'security', 'service-description']) {

@@ -100,6 +100,28 @@ test('research links, footer routes, and beta CTA reach their destinations', asy
   await expect(page).toHaveURL(/127\.0\.0\.1:4310/);
 });
 
+test('nav intro plays once per tab and the mobile logo works with the menu open', async ({ page }) => {
+  const navOpacities = () => page.locator('div.fixed nav a').filter({ visible: true }).evaluateAll((elements) => elements.map((element) => Number(getComputedStyle(element).opacity)));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await expect(page.locator('main h1')).toBeVisible();
+  await page.getByRole('link', { name: 'RESEARCH', exact: true }).filter({ visible: true }).first().click();
+  await expect(page).toHaveURL(/\/lab$/);
+  await expect(page.locator('h1')).toContainText('Sri Lankan legal material');
+  // The first link's intro delay is 1.48 s; a replayed intro would still hide it.
+  await page.waitForTimeout(700);
+  const opacities = await navOpacities();
+  expect(opacities.length).toBeGreaterThan(0);
+  expect(opacities.every((opacity) => opacity === 1)).toBeTruthy();
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  // The open menu hides the rest of the page from assistive tech, so locate the logo by href.
+  await page.locator('div.fixed nav a[href="/"]').filter({ visible: true }).click();
+  await expect(page).toHaveURL(/:\d+\/$/);
+  await expect(page.locator('main h1')).toContainText('review-ready matter');
+});
+
 test('pilot validation, submitting, server error, network error and durable success', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'REQUEST A PILOT', exact: true }).click();

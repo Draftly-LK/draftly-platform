@@ -1,3 +1,6 @@
 .delete-guide-button,.delete-rating-button,.edit-guide-button,.update-rating-button,[data-action=delete-guide],[data-action=delete-rating],[data-action=edit-guide],[data-action=update-rating],form[method=DELETE],form[method=PUT]{display:none!important}
 /* Draftly keyboard focus */
 a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #26747a!important;outline-offset:3px!important}
+
+/* Draftly nav logo */
+.fixed.top-0.left-0.right-0 nav a[href="/"]{pointer-events:auto}
