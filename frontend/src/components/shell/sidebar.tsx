@@ -6,6 +6,7 @@ import {
   FileStack,
   Home,
   Library,
+  SearchCheck,
   Menu,
   Plus,
   RotateCcw,
@@ -37,6 +38,7 @@ export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
     { href: "/matters", label: t("matters"), icon: FileStack },
     { href: "/workflows", label: t("workflows"), icon: Workflow },
     { href: "/library", label: t("library"), icon: Library },
+    { href: "/research", label: t("research"), icon: SearchCheck },
     { href: "/history", label: t("history"), icon: Clock3 },
   ];
   return (

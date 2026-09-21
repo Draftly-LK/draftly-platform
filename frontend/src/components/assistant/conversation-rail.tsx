@@ -15,8 +15,6 @@ import { useState } from "react";
 export interface ResearchConversation {
   id: string;
   title: string;
-  /** Seeded demonstration thread rather than a real past conversation. */
-  seeded: boolean;
 }
 
 export function ConversationRail({
@@ -30,7 +28,7 @@ export function ConversationRail({
   onSelect: (id: string) => void;
   onCreate: () => void;
 }) {
-  const t = useTranslations("assistant");
+  const t = useTranslations("research");
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
   const visible =
@@ -56,6 +54,8 @@ export function ConversationRail({
         <span className="border-border-strong bg-surface flex min-h-10 items-center gap-2 rounded border px-3">
           <Search className="text-muted-ink size-4" strokeWidth={1.5} />
           <input
+            id="research-conversation-search"
+            name="researchConversationSearch"
             className="min-w-0 flex-1 bg-transparent text-sm outline-none"
             placeholder={t("searchConversations")}
             value={query}
@@ -81,11 +81,6 @@ export function ConversationRail({
               }`}
             >
               <span className="block truncate">{item.title}</span>
-              {item.seeded && (
-                <span className="text-muted-ink mt-0.5 block text-xs font-normal">
-                  {t("conversationSeeded")}
-                </span>
-              )}
             </button>
           ))
         )}

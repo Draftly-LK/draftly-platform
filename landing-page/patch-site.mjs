@@ -67,10 +67,39 @@ page = page.replace(/"(?:[^"\\]|\\.)*"/g, (token) => {
   return typeof value === 'string' && value.startsWith('Security at SAMMY Labs') ? JSON.stringify(field(section('Trust and review'), 'Trust link')) : token;
 });
 fs.writeFileSync(pageFile, page);
+
+// Keep the existing animated Lady Justice treatment, but replace the copied
+// foreign-regulation source text that it types with Draftly's own safe demo
+// operations. The surrounding animation code is deliberately untouched.
+const heroFile = find(chunks, '697-');
+let hero = fs.readFileSync(heroFile, 'utf8');
+const heroOperations = [
+  'draftly.review({ source: "deed", page: 3, status: "needs_review" })',
+  'draftly.compare({ deed: "prior", plan: "survey", field: "boundary" })',
+  'draftly.trace({ instrument: "transfer", source: "registry_record" })',
+  'draftly.retrieve({ jurisdiction: "Sri_Lanka", sources: ["statute", "case_law"] })',
+  'draftly.verify({ fact: "property_extent", reviewer: "lawyer" })',
+  'draftly.prepare({ output: "title_report", approval: "required" })',
+].join('');
+const heroPattern = /,u='(?:[^'\\]|\\.)*',s=\[/;
+if (heroPattern.test(hero)) {
+  hero = hero.replace(heroPattern, `,u=${JSON.stringify(heroOperations)},s=[`);
+} else if (!hero.includes('draftly.review({ source:')) {
+  throw new Error('Could not locate the Lady Justice animation source string.');
+}
+fs.writeFileSync(heroFile, hero);
 const layoutFile = find(path.join(chunks, 'app'), 'layout-');
 const layout = fs.readFileSync(layoutFile, 'utf8')
   .replace('href:"/#get-started",onClick:()=>t(!1)', 'href:"/app",onClick:()=>t(!1)')
-  .replace('href:"/app",onClick:()=>t(!1)', 'href:"/app",prefetch:false,onClick:()=>t(!1)');
+  .replace('href:"/app",onClick:()=>t(!1)', 'href:"/app",prefetch:false,onClick:()=>t(!1)')
+  .replace(
+    '(0,a.jsx)(o.default,{src:"/logo_raw.svg",alt:"Draftly",width:90,height:14,className:"w-auto h-[14px] transition-[filter] duration-300 ".concat(l?"brightness-0 invert":"brightness-0")})',
+    '(0,a.jsx)("span",{className:"text-[16px] font-semibold tracking-[0.12em] transition-colors duration-300 ".concat(l?"text-white/85":"text-[#141314]/85"),style:j,children:"Draftly"})',
+  )
+  .replace(
+    '(0,a.jsx)(o.default,{src:"/logo_raw.svg",alt:"Draftly",width:90,height:12,className:"w-auto h-[12px] transition-[filter] duration-300 ".concat(l?"brightness-0 invert":"brightness-0")})',
+    '(0,a.jsx)("span",{className:"text-[14px] font-semibold tracking-[0.12em] transition-colors duration-300 ".concat(l?"text-white/85":"text-[#141314]/85"),style:j,children:"Draftly"})',
+  );
 fs.writeFileSync(layoutFile, layout);
 // A browser-saved deployment cannot hydrate its already rendered DOM reliably.
 // Use Next's supported client-root rendering path for this standalone mirror.
@@ -111,8 +140,12 @@ for (const relative of ['index.html', 'lab/index.html']) {
   }
   pushes.forEach((push, index) => $(push.element).text(`self.__next_f.push(${JSON.stringify([1, index === 0 ? result : ''])})`));
   $('title').text(field(section('Page metadata'), 'Title'));
+  $('script[src="/draftly-fixes.js"]').remove();
+  $('body').append('<script src="/draftly-fixes.js" defer></script>');
   fs.writeFileSync(file, $.html());
 }
+fs.copyFileSync(path.join(root, 'draftly-fixes.js'), path.join(host, 'draftly-fixes.js'));
+fs.copyFileSync(path.join(root, 'draftly-favicon.svg'), path.join(host, 'draftly-favicon.svg'));
 const cssFile = find(path.join(chunks, '../css'), '7d572');
 const css = fs.readFileSync(cssFile, 'utf8');
 if (!css.includes('/* Draftly keyboard focus */')) fs.appendFileSync(cssFile, '\n/* Draftly keyboard focus */\na:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #26747a!important;outline-offset:3px!important}\n');

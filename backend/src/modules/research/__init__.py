@@ -1,0 +1,1 @@
+"""Global grounded-research workspace."""

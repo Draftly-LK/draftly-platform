@@ -75,6 +75,7 @@ def register_routers(app: FastAPI) -> None:
     from src.modules.notification.api.router import router as notification_router
     from src.modules.obligations.api.router import router as obligations_router
     from src.modules.party.api.router import router as party_router
+    from src.modules.research.api.router import router as research_router
     from src.modules.task.api.router import router as checklist_router
     from src.modules.verification.api.router import router as verification_router
 
@@ -91,6 +92,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(billing_router, prefix="/api/v1")
     app.include_router(billing_admin_router, prefix="/api/v1")
     app.include_router(party_router, prefix="/api/v1")
+    app.include_router(research_router, prefix="/api/v1")
     app.include_router(notification_router, prefix="/api/v1")
     app.include_router(obligations_router, prefix="/api/v1")
     app.include_router(notarial_register_router, prefix="/api/v1")
