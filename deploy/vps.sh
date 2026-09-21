@@ -125,8 +125,8 @@ research_url_default() {
   local origin
   origin="$(git -C "$REPO_DIR" remote get-url origin 2>/dev/null || true)"
   case "$origin" in
-    *draftly-platform*) printf '%s' "${origin/draftly-platform/draftly}" ;;
-    *) printf '%s' "https://github.com/HimathX/draftly.git" ;;
+    *draftly-platform*) printf '%s' "${origin/draftly-platform/draftly-research}" ;;
+    *) printf '%s' "https://github.com/Draftly-LK/draftly-research.git" ;;
   esac
 }
 
@@ -297,7 +297,7 @@ fetch_research() {
     say "fetching retrieval inputs from the research repo ($ref, sparse)"
     rm -rf "$RESEARCH_DIR"
     git clone --quiet --filter=blob:none --no-checkout --depth 1 --branch "$ref" "$url" "$RESEARCH_DIR" \
-      || die "could not clone $url. It is private: clone this repo with credentials that can also read it, or set RESEARCH_REPO_URL in deploy/.env (e.g. https://<token>@github.com/HimathX/draftly.git)."
+      || die "could not clone $url. It is private: clone this repo with credentials that can also read it, or set RESEARCH_REPO_URL in deploy/.env (e.g. https://<token>@github.com/Draftly-LK/draftly-research.git)."
     # shellcheck disable=SC2046  # one pattern per line, none contain spaces
     git -C "$RESEARCH_DIR" sparse-checkout set --no-cone $(research_paths)
     git -C "$RESEARCH_DIR" checkout --quiet "$ref"

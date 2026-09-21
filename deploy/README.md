@@ -46,7 +46,7 @@ and retrieval images are built on the server, so 2 GB of swap is plenty.
 On a fresh Ubuntu or Debian VPS (1 GB RAM, about 5 GB free disk):
 
 ```bash
-git clone https://github.com/HimathX/draftly-platform.git
+git clone https://github.com/Draftly-LK/draftly-platform.git
 cd draftly-platform
 sudo deploy/vps.sh setup     # Docker, 2 GB swap, ufw rules; log out and back in afterwards
 deploy/vps.sh init           # writes deploy/.env with generated secrets
@@ -85,7 +85,7 @@ The research repository is private. `deploy` clones it into `deploy/.research`
 (git-ignored) as a shallow, sparse checkout of only the files the retrieval
 image copies (the allowlist in `retrieval/Dockerfile.dockerignore`, about 1 GB),
 using the same GitHub access this clone used. If that fails, set
-`RESEARCH_REPO_URL=https://<token>@github.com/HimathX/draftly.git` in
+`RESEARCH_REPO_URL=https://<token>@github.com/Draftly-LK/draftly-research.git` in
 `deploy/.env` with a read-only fine-grained token.
 
 ### 2. Vercel
@@ -136,7 +136,7 @@ bundled Postgres is used unless you paste Neon URLs.
 The retrieval engine stays internal (no route in Caddy), as before.
 
 ```bash
-git clone https://github.com/HimathX/draftly-platform.git
+git clone https://github.com/Draftly-LK/draftly-platform.git
 cd draftly-platform
 sudo deploy/vps.sh setup                 # once; log out and back in afterwards
 WEB_ON_VPS=1 deploy/vps.sh init          # writes deploy/.env; sets LANDING_DOMAIN
