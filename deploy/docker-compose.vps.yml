@@ -11,7 +11,13 @@
 #   retrieval  statute and case-law search; internal, plus 127.0.0.1:8001 for an SSH tunnel
 #   db         bundled Postgres 16 (profile `localdb`), when DATABASE_URL points at it
 #
-# docker-compose.yml is the single-origin variant (frontend behind the same Caddy).
+# With WEB_ON_VPS=1 (profile `web`) the frontend and the landing page run here
+# too and Caddy serves both, so nothing is hosted on Vercel:
+#
+#   frontend   Next.js standalone server, same origin as the API (DOMAIN)
+#   landing    marketing site + pilot-request intake (LANDING_DOMAIN)
+#
+# docker-compose.yml is the single-origin variant for prebuilt images and Neon.
 
 name: draftly
 
@@ -60,13 +66,43 @@ services:
       - "443:443/udp"
     environment:
       DOMAIN: ${DOMAIN:?set DOMAIN}
+      # Only read by Caddyfile.full.
+      LANDING_DOMAIN: ${LANDING_DOMAIN:-landing.invalid}
     volumes:
-      - ./Caddyfile.api:/etc/caddy/Caddyfile:ro
+      - ${CADDYFILE:-./Caddyfile.api}:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
       - backend
     mem_limit: 64m
+    logging: *logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?set FRONTEND_IMAGE}
+    profiles: ["web"]
+    restart: unless-stopped
+    environment:
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      MULTILINGUAL_LANGUAGE_SUPPORT: ${MULTILINGUAL_LANGUAGE_SUPPORT:-true}
+      NODE_OPTIONS: --max-old-space-size=384
+    expose:
+      - "3000"
+    mem_limit: 512m
+    logging: *logging
+
+  landing:
+    image: ${LANDING_IMAGE:-draftly-landing:vps}
+    profiles: ["web"]
+    restart: unless-stopped
+    environment:
+      # /app on the landing page redirects to the application.
+      DRAFTLY_APP_URL: https://${DOMAIN}/
+    volumes:
+      - pilot-requests:/data/pilot-requests
+    expose:
+      - "4173"
+    read_only: true
+    mem_limit: 128m
     logging: *logging
 
   migrate:
@@ -164,3 +200,4 @@ volumes:
   caddy-config:
   source-files:
   pg-data:
+  pilot-requests:

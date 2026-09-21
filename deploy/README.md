@@ -121,6 +121,84 @@ If the Vercel URL changes, update `FRONTEND_ORIGIN` (and
 `CLERK_AUTHORIZED_PARTY` if you set it by hand) in `deploy/.env` and run
 `deploy/vps.sh deploy` again.
 
+## Everything on one VPS (frontend, landing page, backend, retrieval)
+
+`WEB_ON_VPS=1` moves the frontend off Vercel and adds the landing page, all
+built on the server from this repository. Sized for 4 vCPU / 8 GB RAM: the
+Next.js build peaks at a few GB, which is fine there but not on a 1 GB box. A
+bundled Postgres is used unless you paste Neon URLs.
+
+| Hostname | Served by |
+| --- | --- |
+| `DOMAIN` | `/api/*` and `/health/*` to the backend, everything else to the Next.js frontend. One origin, so no CORS. |
+| `LANDING_DOMAIN` | The landing page and its pilot-request form. `/app` on it redirects to `https://DOMAIN/`. |
+
+The retrieval engine stays internal (no route in Caddy), as before.
+
+```bash
+git clone https://github.com/HimathX/draftly-platform.git
+cd draftly-platform
+sudo deploy/vps.sh setup                 # once; log out and back in afterwards
+WEB_ON_VPS=1 deploy/vps.sh init          # writes deploy/.env; sets LANDING_DOMAIN
+nano deploy/.env                         # Clerk keys, optionally GEMINI_API_KEY
+deploy/vps.sh deploy                     # research inputs, build 4 images, start, check
+```
+
+Both hostnames must resolve to the server before the first `deploy`. Without a
+domain, `init` uses `<ip-with-dashes>.sslip.io` for the app and
+`landing.<ip-with-dashes>.sslip.io` for the landing page. For a real domain,
+create two A records and put them in `DOMAIN` and `LANDING_DOMAIN`. Changing
+`DOMAIN` or the Clerk publishable key means rebuilding the frontend
+(`deploy/vps.sh deploy frontend`), because `NEXT_PUBLIC_*` values are inlined at
+build time.
+
+In the Clerk dashboard, add `https://<DOMAIN>` as an allowed origin. The
+backend accepts tokens only from that origin (`CLERK_AUTHORIZED_PARTY`,
+derived from `DOMAIN`).
+
+The landing page keeps the pilot-request emails in the `pilot-requests` Docker
+volume (`/data/pilot-requests` in the container). That volume is not served
+anywhere. Read it with:
+
+```bash
+docker run --rm -v draftly_pilot-requests:/d alpine sh -c 'cat /d/*.json'
+```
+
+Back it up if you care about those leads; `deploy/vps.sh down` keeps it.
+
+### Continuous delivery
+
+`.github/workflows/deploy.yml` deploys to the VPS after CI passes on `main`,
+and can be run by hand from the Actions tab. It logs in over SSH, fast-forwards
+the server's clone to `origin/main` and runs `deploy/vps.sh deploy`. The job
+fails if the build, a migration or a health check fails.
+
+One-time setup:
+
+1. On the server, create the clone once (the steps above) as the user that will
+   deploy. That user must be in the `docker` group, which is root-equivalent, so
+   use a dedicated user and a key that only does this.
+2. On your machine: `ssh-keygen -t ed25519 -f draftly-deploy -N ''`. Append
+   `draftly-deploy.pub` to that user's `~/.ssh/authorized_keys`.
+3. Get the server's host key: `ssh-keyscan -t ed25519 <server-ip>`.
+4. In GitHub, Settings, Secrets and variables, Actions, add these secrets:
+
+| Secret | Value |
+| --- | --- |
+| `VPS_HOST` | server IP or hostname |
+| `VPS_USER` | the deploy user |
+| `VPS_SSH_KEY` | contents of the private key `draftly-deploy` |
+| `VPS_KNOWN_HOSTS` | the `ssh-keyscan` line from step 3 |
+| `VPS_PORT` | optional; only if SSH is not on 22 |
+
+If the clone is not in `~/draftly-platform`, set the repository variable
+`VPS_REPO_DIR` to its path relative to the home directory. Delete the private
+key from your machine once it is stored in GitHub.
+
+The server needs read access to the private research repository for the
+retrieval image (see above): the same credentials as the clone, or
+`RESEARCH_REPO_URL` with a read-only token in `deploy/.env`.
+
 ### Retrieval engine
 
 The retrieval API is not public. The backend reaches it at

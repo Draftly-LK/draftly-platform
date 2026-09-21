@@ -1,0 +1,57 @@
+name: Deploy
+
+# Continuous delivery to the VPS (deploy/vps.sh, WEB_ON_VPS=1: landing page,
+# frontend, backend, worker and retrieval). It runs only after CI has passed on
+# main, or by hand from the Actions tab. See deploy/README.md, "Continuous
+# delivery".
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time, and never cancel one halfway through a build or migration.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # A manual run is always allowed; an automatic one needs a green CI on main.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # Clone location on the server, relative to the deploy user's home.
+      REPO_DIR: ${{ vars.VPS_REPO_DIR || 'draftly-platform' }}
+    steps:
+      - name: Set up SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pinned host key: never trust whatever answers on first connect.
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # The server pulls main itself, then runs the freshly pulled script (so a
+      # change to vps.sh is used by the deploy that ships it). Build, migrate,
+      # start and the health checks all happen in `vps.sh deploy`, which exits
+      # non-zero, and so fails this job, if any of them fail.
+      - name: Deploy
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "$VPS_USER@$VPS_HOST" \
+            "set -euo pipefail; cd \"\$HOME/$REPO_DIR\" && git fetch --quiet origin main && git checkout --quiet main && git merge --ff-only origin/main && deploy/vps.sh deploy"

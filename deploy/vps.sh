@@ -13,6 +13,9 @@
 # Stack: docker-compose.vps.yml (Caddy for the API domain, migrate, backend,
 # worker, retrieval, optional bundled Postgres). Meant for a temporary demo on
 # synthetic data. See README.md, "Vercel + VPS".
+#
+# WEB_ON_VPS=1 in deploy/.env also runs the frontend and the landing page here,
+# so nothing is hosted on Vercel. See README.md, "Everything on one VPS".
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,11 +51,14 @@ default_env() { [ -n "$(env_value "$1")" ] || set_env "$1" "$2"; }
 fernet_key() { openssl rand -base64 32 | tr '+/' '-_' | tr -d '\n'; }
 
 # ── Docker compose with the VPS overlay and the right profiles ───────────────
+web_on_vps() { [ "$(env_value WEB_ON_VPS)" = "1" ]; }
+
 uses_local_db() { case "$(env_value DATABASE_URL)" in *@db:5432/*) return 0 ;; *) return 1 ;; esac; }
 
 compose() {
   local profiles=()
   uses_local_db && profiles+=(--profile localdb)
+  web_on_vps && profiles+=(--profile web)
   docker compose --project-name draftly --env-file "$ENV_FILE" \
     -f "$DEPLOY_DIR/docker-compose.vps.yml" ${profiles[@]+"${profiles[@]}"} "$@"
 }
@@ -160,6 +166,9 @@ cmd_init() {
   set_env FRONTEND_IMAGE draftly-frontend:vps
   set_env BACKEND_IMAGE draftly-backend:vps
   set_env RETRIEVAL_IMAGE draftly-retrieval:vps
+  set_env LANDING_IMAGE draftly-landing:vps
+  # 1 = frontend and landing page run on this server too (no Vercel).
+  default_env WEB_ON_VPS "${WEB_ON_VPS:-0}"
   default_env EXTRACTION_PROVIDER stub
   default_env PARTY_IDENTIFIER_KEY "$(fernet_key)"
   default_env PARTY_BLIND_INDEX_KEY "$(openssl rand -hex 32)"
@@ -174,6 +183,23 @@ cmd_init() {
     set_env DATABASE_URL "postgresql+psycopg://draftly:$pw@db:5432/draftly"
     set_env DATABASE_URL_DIRECT "postgresql+psycopg://draftly:$pw@db:5432/draftly"
     echo "No DATABASE_URL given: using the bundled Postgres container."
+  fi
+
+  if web_on_vps; then
+    # sslip.io resolves any prefix, so the landing page gets its own hostname
+    # (and certificate) without another domain. Use a real one if you have it.
+    [ -n "$(env_value LANDING_DOMAIN)" ] || set_env LANDING_DOMAIN "landing.$(env_value DOMAIN)"
+    default_env FRONTEND_ORIGIN "https://$(env_value DOMAIN)"
+    echo
+    echo "deploy/.env is ready except for the values only you have. Edit it and set:"
+    echo "  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY  (pk_... from your Clerk instance)"
+    echo "  CLERK_SECRET_KEY                   (sk_... from the same instance)"
+    echo "  GEMINI_API_KEY                     (optional: retrieval /answer and Gemini extraction)"
+    echo "Add https://$(env_value DOMAIN) to the allowed origins in the Clerk dashboard."
+    echo "App:          https://$(env_value DOMAIN)"
+    echo "Landing page: https://$(env_value LANDING_DOMAIN)"
+    echo "Next: deploy/vps.sh deploy"
+    return
   fi
 
   echo
@@ -210,6 +236,14 @@ check_config() {
     [ -n "$issuer" ] && set_env CLERK_ISSUER "$issuer"
   fi
   local origin
+  if web_on_vps; then
+    # One origin: the app and the API share DOMAIN, so nothing is cross-origin.
+    set_env CADDYFILE ./Caddyfile.full
+    set_env FRONTEND_ORIGIN "https://$(env_value DOMAIN)"
+    [ -n "$(env_value LANDING_DOMAIN)" ] || set_env LANDING_DOMAIN "landing.$(env_value DOMAIN)"
+  else
+    set_env CADDYFILE ./Caddyfile.api
+  fi
   origin="$(env_value FRONTEND_ORIGIN)"
   case "$origin" in
     "") ;;
@@ -225,6 +259,12 @@ check_config() {
     [ -n "$(env_value "$key")" ] || missing+=("$key")
   done
   uses_local_db && { [ -n "$(env_value POSTGRES_PASSWORD)" ] || missing+=(POSTGRES_PASSWORD); }
+  if web_on_vps; then
+    # Inlined into the frontend bundle at build time.
+    for key in LANDING_DOMAIN NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY; do
+      [ -n "$(env_value "$key")" ] || missing+=("$key")
+    done
+  fi
   # Without Clerk, "local" would fall back to the stub identity, which accepts
   # any bearer token. That must never be reachable from the internet.
   [ ${#missing[@]} -eq 0 ] || die "set these in deploy/.env first: ${missing[*]}"
@@ -280,11 +320,16 @@ native_platform() {
 
 build_images() {
   local targets=("$@") target
-  [ ${#targets[@]} -gt 0 ] || targets=(backend retrieval)
+  if [ ${#targets[@]} -eq 0 ]; then
+    targets=(backend retrieval)
+    web_on_vps && targets+=(frontend landing)
+  fi
   for target in "${targets[@]}"; do
     case "$target" in
       backend | retrieval) ;;
-      *) die "unknown image '$target' (use: backend retrieval; the frontend is built by Vercel)" ;;
+      frontend | landing)
+        web_on_vps || die "'$target' is only built here when WEB_ON_VPS=1 (otherwise Vercel builds the frontend)" ;;
+      *) die "unknown image '$target' (use: backend retrieval frontend landing)" ;;
     esac
   done
   say "building ${targets[*]}"
@@ -305,10 +350,20 @@ verify() {
   retrieval="$(curl -fsS --max-time 20 http://127.0.0.1:8001/health || true)"
   if [ -n "$retrieval" ]; then echo "retrieval /health: $(printf '%s' "$retrieval" | cut -c1-120)..."; else echo "retrieval /health: FAILED"; ok=0; fi
   origin="$(env_value FRONTEND_ORIGIN)"
+  if web_on_vps; then
+    # Same origin, so there is no CORS to check; check each site instead.
+    local landing code
+    landing="$(env_value LANDING_DOMAIN)"
+    code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 30 --resolve "$domain:443:127.0.0.1" "https://$domain/" || true)"
+    case "$code" in 2* | 3*) echo "frontend  https://$domain/: HTTP $code" ;; *) echo "frontend  https://$domain/: FAILED (HTTP ${code:-none})"; ok=0 ;; esac
+    code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 30 --resolve "$landing:443:127.0.0.1" "https://$landing/" || true)"
+    case "$code" in 2*) echo "landing   https://$landing/: HTTP $code" ;; *) echo "landing   https://$landing/: FAILED (HTTP ${code:-none})"; ok=0 ;; esac
+  else
   cors="$(curl -sk -o /dev/null -D - --max-time 20 --resolve "$domain:443:127.0.0.1" -X OPTIONS \
     -H "Origin: $origin" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: authorization" \
     "https://$domain/api/v1/me" | tr -d '\r' | awk 'tolower($0) ~ /^access-control-allow-origin:/ { sub(/^[^:]*: */, ""); print }' || true)"
   if [ "$cors" = "$origin" ]; then echo "CORS      $origin: allowed"; else echo "CORS      $origin: NOT allowed"; ok=0; fi
+  fi
 
   if curl -fsS -o /dev/null --max-time 20 "https://$domain/health/live" 2>/dev/null; then
     echo "certificate: valid for $domain"
@@ -321,8 +376,13 @@ verify() {
     return 1
   fi
   echo
-  echo "API is up: https://$domain"
-  echo "In Vercel set NEXT_PUBLIC_API_BASE_URL=https://$domain and open $origin"
+  if web_on_vps; then
+    echo "App is up:    https://$domain"
+    echo "Landing page: https://$(env_value LANDING_DOMAIN)"
+  else
+    echo "API is up: https://$domain"
+    echo "In Vercel set NEXT_PUBLIC_API_BASE_URL=https://$domain and open $origin"
+  fi
   echo "Retrieval (not public): ssh -L 8001:127.0.0.1:8001 <you>@<server>, then http://127.0.0.1:8001/health"
 }
 

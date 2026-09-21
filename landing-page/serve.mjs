@@ -14,7 +14,13 @@ const mainHostRoot = path.join(mirrorRoot, 'www.sammylabs.com');
 const port = Number(process.argv[3] ?? process.env.PORT ?? 4173);
 const appUrl = new URL(process.env.DRAFTLY_APP_URL ?? 'http://127.0.0.1:4310/');
 if (!['http:', 'https:'].includes(appUrl.protocol) || appUrl.username || appUrl.password) throw new Error('DRAFTLY_APP_URL must be an HTTP(S) application URL without credentials.');
-const handlePilot = createPilotHandler(process.env.PILOT_REQUESTS_DIR ?? path.join(projectDirectory, '.local', 'pilot-requests'));
+// Behind a reverse proxy (Caddy) every socket peer is the proxy, so the rate
+// limit has to key on the client address it forwards. Off unless asked for.
+const handlePilot = createPilotHandler(process.env.PILOT_REQUESTS_DIR ?? path.join(projectDirectory, '.local', 'pilot-requests'), {
+  trustProxy: process.env.TRUST_PROXY === '1',
+});
+// Loopback for local previews; the container sets HOST=0.0.0.0.
+const host = process.env.HOST ?? '127.0.0.1';
 const hostDirectories = new Set([
   'api.fontshare.com',
   'cdn.fontshare.com',
@@ -89,6 +95,6 @@ createServer((request, response) => {
     'cache-control': 'no-store',
   });
   createReadStream(filename).pipe(response);
-}).listen(port, '127.0.0.1', () => {
-  console.log(`SAMMY Labs mirror: http://127.0.0.1:${port}/`);
+}).listen(port, host, () => {
+  console.log(`SAMMY Labs mirror: http://${host}:${port}/`);
 });
