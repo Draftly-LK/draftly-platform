@@ -20,6 +20,60 @@
         "title": "AccountStatusRead",
         "type": "object"
       },
+      "ActionRead": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "recorded": {
+            "title": "Recorded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "recorded"
+        ],
+        "title": "ActionRead",
+        "type": "object"
+      },
+      "ActionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "added-to-matter",
+              "saved-to-library",
+              "check-created",
+              "authority-review-requested"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "answerId": {
+            "title": "Answerid",
+            "type": "string"
+          },
+          "matterId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matterid"
+          }
+        },
+        "required": [
+          "answerId",
+          "action"
+        ],
+        "title": "ActionRequest",
+        "type": "object"
+      },
       "AddProtocolRequest": {
         "properties": {
           "copy_kind": {
@@ -602,6 +656,54 @@
           "coordinateSpace"
         ],
         "title": "BoundingBoxRead",
+        "type": "object"
+      },
+      "BranchRead": {
+        "properties": {
+          "conversationId": {
+            "title": "Conversationid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "rootMessageId": {
+            "title": "Rootmessageid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "conversationId",
+          "rootMessageId",
+          "createdAt"
+        ],
+        "title": "BranchRead",
+        "type": "object"
+      },
+      "BranchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          }
+        },
+        "title": "BranchRequest",
         "type": "object"
       },
       "CancelObligationRequest": {
@@ -1295,6 +1397,61 @@
         "title": "ConfirmSubtypeRequest",
         "type": "object"
       },
+      "ConversationListRead": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ConversationListRead",
+        "type": "object"
+      },
+      "ConversationRead": {
+        "properties": {
+          "activeBranchId": {
+            "title": "Activebranchid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScopeRead"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "scope",
+          "activeBranchId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "ConversationRead",
+        "type": "object"
+      },
       "CreateAttestationRequest": {
         "properties": {
           "approved_instrument_fixture": {
@@ -1440,6 +1597,31 @@
           "party_summary_ref"
         ],
         "title": "CreateAttestationRequest",
+        "type": "object"
+      },
+      "CreateConversationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/ScopeInput"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "scope"
+        ],
+        "title": "CreateConversationRequest",
         "type": "object"
       },
       "CreateMatterRequest": {
@@ -3465,53 +3647,6 @@
         "title": "IssueGatesRead",
         "type": "object"
       },
-      "JobRead": {
-        "description": "The job envelope from ``api-conventions.md`` §6.\n\n``dead_letter`` is included: a turn that exhausts its attempts is a visible\nstate, not a log line.",
-        "properties": {
-          "failureClass": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Failureclass"
-          },
-          "jobId": {
-            "title": "Jobid",
-            "type": "string"
-          },
-          "pollAfterMs": {
-            "default": 1500,
-            "title": "Pollafterms",
-            "type": "integer"
-          },
-          "state": {
-            "enum": [
-              "queued",
-              "running",
-              "succeeded",
-              "failed",
-              "dead_letter"
-            ],
-            "title": "State",
-            "type": "string"
-          },
-          "toolCallCount": {
-            "default": 0,
-            "title": "Toolcallcount",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "jobId",
-          "state"
-        ],
-        "title": "JobRead",
-        "type": "object"
-      },
       "LawyerConfirmationRead": {
         "properties": {
           "confirmed_at": {
@@ -4040,85 +4175,42 @@
         "title": "MergePartiesRequest",
         "type": "object"
       },
-      "MessageListRead": {
+      "MessageCitationRead": {
         "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/MessageRead"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "page": {
-            "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__PageInfo"
-          }
-        },
-        "required": [
-          "items",
-          "page"
-        ],
-        "title": "MessageListRead",
-        "type": "object"
-      },
-      "MessageRead": {
-        "description": "One transcript row, read from Neon.",
-        "properties": {
-          "content": {
-            "title": "Content",
-            "type": "string"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "title": "Createdat",
+          "authorityId": {
+            "title": "Authorityid",
             "type": "string"
           },
           "id": {
             "title": "Id",
             "type": "string"
           },
-          "jobId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Jobid"
+          "page": {
+            "title": "Page",
+            "type": "integer"
           },
-          "pendingActionId": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Pendingactionid"
-          },
-          "role": {
-            "enum": [
-              "user",
-              "assistant"
-            ],
-            "title": "Role",
+          "passage": {
+            "title": "Passage",
             "type": "string"
           },
-          "sequence": {
-            "title": "Sequence",
-            "type": "integer"
+          "sourceId": {
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
           }
         },
         "required": [
           "id",
-          "sequence",
-          "role",
-          "content",
-          "createdAt"
+          "sourceId",
+          "authorityId",
+          "passage",
+          "page",
+          "verified"
         ],
-        "title": "MessageRead",
+        "title": "MessageCitationRead",
         "type": "object"
       },
       "MonthlyReturnPeriodRead": {
@@ -6752,6 +6844,79 @@
         "title": "SaveAnswerRequest",
         "type": "object"
       },
+      "ScopeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "targetId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetid"
+          },
+          "type": {
+            "enum": [
+              "library",
+              "matter",
+              "step",
+              "document"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ScopeInput",
+        "type": "object"
+      },
+      "ScopeRead": {
+        "properties": {
+          "matterId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matterid"
+          },
+          "targetId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetid"
+          },
+          "type": {
+            "enum": [
+              "library",
+              "matter",
+              "step",
+              "document"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ScopeRead",
+        "type": "object"
+      },
       "ScreeningMatchDetailRequest": {
         "properties": {
           "listEntryRef": {
@@ -6872,21 +7037,96 @@
         "title": "ScreeningResultReadSchema",
         "type": "object"
       },
-      "SendMessageRequest": {
-        "additionalProperties": false,
-        "description": "Requires ``Idempotency-Key`` (``api-conventions.md`` §4).",
+      "SearchPassageRead": {
         "properties": {
-          "content": {
-            "maxLength": 10000,
-            "minLength": 1,
-            "title": "Content",
+          "authorityId": {
+            "title": "Authorityid",
             "type": "string"
+          },
+          "corpusVersion": {
+            "title": "Corpusversion",
+            "type": "string"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "sourceId": {
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
           }
         },
         "required": [
-          "content"
+          "sourceId",
+          "authorityId",
+          "title",
+          "reference",
+          "text",
+          "page",
+          "corpusVersion",
+          "verified"
         ],
-        "title": "SendMessageRequest",
+        "title": "SearchPassageRead",
+        "type": "object"
+      },
+      "SearchRead": {
+        "properties": {
+          "degradedChannels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Degradedchannels",
+            "type": "array"
+          },
+          "passages": {
+            "items": {
+              "$ref": "#/components/schemas/SearchPassageRead"
+            },
+            "title": "Passages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passages",
+          "degradedChannels"
+        ],
+        "title": "SearchRead",
+        "type": "object"
+      },
+      "SearchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScopeInput"
+          }
+        },
+        "required": [
+          "query",
+          "scope"
+        ],
+        "title": "SearchRequest",
         "type": "object"
       },
       "SessionRead": {
@@ -7831,6 +8071,134 @@
         "title": "PageInfo",
         "type": "object"
       },
+      "src__modules__matter_agent__api__schemas__JobRead": {
+        "description": "The job envelope from ``api-conventions.md`` §6.\n\n``dead_letter`` is included: a turn that exhausts its attempts is a visible\nstate, not a log line.",
+        "properties": {
+          "failureClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failureclass"
+          },
+          "jobId": {
+            "title": "Jobid",
+            "type": "string"
+          },
+          "pollAfterMs": {
+            "default": 1500,
+            "title": "Pollafterms",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "dead_letter"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "toolCallCount": {
+            "default": 0,
+            "title": "Toolcallcount",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "jobId",
+          "state"
+        ],
+        "title": "JobRead",
+        "type": "object"
+      },
+      "src__modules__matter_agent__api__schemas__MessageListRead": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__MessageRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__PageInfo"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "MessageListRead",
+        "type": "object"
+      },
+      "src__modules__matter_agent__api__schemas__MessageRead": {
+        "description": "One transcript row, read from Neon.",
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "jobId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jobid"
+          },
+          "pendingActionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pendingactionid"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "role",
+          "content",
+          "createdAt"
+        ],
+        "title": "MessageRead",
+        "type": "object"
+      },
       "src__modules__matter_agent__api__schemas__PageInfo": {
         "properties": {
           "hasMore": {
@@ -7858,6 +8226,191 @@
           "limit"
         ],
         "title": "PageInfo",
+        "type": "object"
+      },
+      "src__modules__matter_agent__api__schemas__SendMessageRequest": {
+        "additionalProperties": false,
+        "description": "Requires ``Idempotency-Key`` (``api-conventions.md`` §4).",
+        "properties": {
+          "content": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "SendMessageRequest",
+        "type": "object"
+      },
+      "src__modules__research__api__schemas__JobRead": {
+        "properties": {
+          "failureClass": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failureclass"
+          },
+          "jobId": {
+            "title": "Jobid",
+            "type": "string"
+          },
+          "pollAfterMs": {
+            "default": 1500,
+            "title": "Pollafterms",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "state"
+        ],
+        "title": "JobRead",
+        "type": "object"
+      },
+      "src__modules__research__api__schemas__MessageListRead": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/src__modules__research__api__schemas__MessageRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MessageListRead",
+        "type": "object"
+      },
+      "src__modules__research__api__schemas__MessageRead": {
+        "properties": {
+          "answerId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answerid"
+          },
+          "branchId": {
+            "title": "Branchid",
+            "type": "string"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/MessageCitationRead"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "conversationId": {
+            "title": "Conversationid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "editedFromId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Editedfromid"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "parentMessageId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parentmessageid"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "assistant",
+              "tool",
+              "system"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "conversationId",
+          "branchId",
+          "role",
+          "content",
+          "createdAt"
+        ],
+        "title": "MessageRead",
+        "type": "object"
+      },
+      "src__modules__research__api__schemas__SendMessageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Content",
+            "type": "string"
+          },
+          "parentMessageId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parentmessageid"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "SendMessageRequest",
         "type": "object"
       },
       "src__modules__task__api__schemas__ChecklistItemRead": {
@@ -8311,7 +8864,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobRead"
+                  "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__JobRead"
                 }
               }
             },
@@ -10213,7 +10766,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MessageListRead"
+                  "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__MessageListRead"
                 }
               }
             },
@@ -10274,7 +10827,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SendMessageRequest"
+                "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__SendMessageRequest"
               }
             }
           },
@@ -10285,7 +10838,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobRead"
+                  "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__JobRead"
                 }
               }
             },
@@ -13902,6 +14455,498 @@
         "summary": "Certify Period",
         "tags": [
           "notarial-register"
+        ]
+      }
+    },
+    "/api/v1/research/actions": {
+      "post": {
+        "operationId": "record_action_api_v1_research_actions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Record Action",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/conversations": {
+      "get": {
+        "operationId": "conversations_api_v1_research_conversations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationListRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Conversations",
+        "tags": [
+          "research"
+        ]
+      },
+      "post": {
+        "operationId": "create_conversation_api_v1_research_conversations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Conversation",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/conversations/{conversation_id}/messages": {
+      "get": {
+        "operationId": "messages_api_v1_research_conversations__conversation_id__messages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__research__api__schemas__MessageListRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Messages",
+        "tags": [
+          "research"
+        ]
+      },
+      "post": {
+        "operationId": "submit_message_api_v1_research_conversations__conversation_id__messages_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/src__modules__research__api__schemas__SendMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__research__api__schemas__JobRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Message",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/jobs/{job_id}": {
+      "get": {
+        "operationId": "read_job_api_v1_research_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__research__api__schemas__JobRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Job",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/jobs/{job_id}/events": {
+      "get": {
+        "operationId": "job_events_api_v1_research_jobs__job_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Job Events",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/messages/{message_id}/branch": {
+      "post": {
+        "operationId": "branch_message_api_v1_research_messages__message_id__branch_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "title": "Message Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BranchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BranchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Branch Message",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/search": {
+      "post": {
+        "operationId": "raw_search_api_v1_research_search_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Raw Search",
+        "tags": [
+          "research"
         ]
       }
     },
