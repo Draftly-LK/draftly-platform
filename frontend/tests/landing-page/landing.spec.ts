@@ -3,7 +3,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 
-const evidence = path.resolve(process.cwd(), '../docs/review/landing-page/2026-09-18');
+const evidence = path.resolve(process.cwd(), '../docs/review/landing-page/2026-09-21');
 const email = 'draftly-pilot-test@example.test';
 
 for (const viewport of [{ width: 375, height: 812 }, { width: 768, height: 1024 }, { width: 1440, height: 900 }]) {
@@ -16,6 +16,9 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 768, height: 1024 
     page.on('response', (response) => { if (response.status() >= 400) failed.push(`${response.status()} ${response.url()}`); });
     await page.goto('/');
     await expect(page.locator('main h1')).toContainText('review-ready matter');
+    const navbarWordmark = page.getByRole('link', { name: 'Draftly', exact: true }).first().locator('span');
+    await expect(navbarWordmark).toBeVisible();
+    expect(await navbarWordmark.evaluate((element) => getComputedStyle(element).fontFamily)).toContain('Darker Grotesque');
     await expect(page.getByText('WHAT DRAFTLY DOES', { exact: true })).toBeVisible();
     await expect(page.getByText('WHAT DRAFTLY DOESz', { exact: true })).toHaveCount(0);
     await page.waitForTimeout(1800);

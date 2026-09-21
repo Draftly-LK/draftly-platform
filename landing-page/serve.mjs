@@ -2,7 +2,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createPilotHandler } from './pilot-api.mjs';
+import { createFilesystemPilotStore, createGcsPilotStore, createPilotHandler } from './pilot-api.mjs';
 
 const projectDirectory = path.dirname(fileURLToPath(import.meta.url));
 const mirrorName = process.argv[2] ?? 'site-mirror';
@@ -14,12 +14,32 @@ const mainHostRoot = path.join(mirrorRoot, 'www.sammylabs.com');
 const port = Number(process.argv[3] ?? process.env.PORT ?? 4173);
 const appUrl = new URL(process.env.DRAFTLY_APP_URL ?? 'http://127.0.0.1:4310/');
 if (!['http:', 'https:'].includes(appUrl.protocol) || appUrl.username || appUrl.password) throw new Error('DRAFTLY_APP_URL must be an HTTP(S) application URL without credentials.');
-const handlePilot = createPilotHandler(process.env.PILOT_REQUESTS_DIR ?? path.join(projectDirectory, '.local', 'pilot-requests'));
+const pilotStore = process.env.PILOT_GCS_BUCKET
+  ? createGcsPilotStore(process.env.PILOT_GCS_BUCKET)
+  : createFilesystemPilotStore(process.env.PILOT_REQUESTS_DIR ?? path.join(projectDirectory, '.local', 'pilot-requests'));
+const handlePilot = createPilotHandler(pilotStore);
 const hostDirectories = new Set([
   'api.fontshare.com',
   'cdn.fontshare.com',
   'fonts.googleapis.com',
   'fonts.gstatic.com',
+]);
+const unavailableRoutes = new Set([
+  'ascii-letter',
+  'ascii-magnifying-glass',
+  'ascii-phone',
+  'ascii-policies',
+  'ascii-radar',
+  'careers',
+  'dpa',
+  'lady-justice-v5',
+  'lady-justice-v6',
+  'privacy-policy',
+  'regulators',
+  'security',
+  'service-description',
+  'subprocessors',
+  'terms',
 ]);
 /** @type {Map<string, string>} */
 const mimeTypes = new Map([
@@ -65,6 +85,10 @@ createServer((request, response) => {
     response.writeHead(302, { location: appUrl.href, 'cache-control': 'no-store' }).end(); return;
   }
   const firstSegment = decodedPath.split('/').filter(Boolean)[0];
+  if (unavailableRoutes.has(firstSegment)) {
+    response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('Not found'); return;
+  }
+  if (decodedPath === '/favicon.ico') decodedPath = '/draftly-favicon.svg';
   const root = hostDirectories.has(firstSegment) ? mirrorRoot : mainHostRoot;
   let filename = safePath(root, decodedPath);
 
@@ -89,6 +113,6 @@ createServer((request, response) => {
     'cache-control': 'no-store',
   });
   createReadStream(filename).pipe(response);
-}).listen(port, '127.0.0.1', () => {
-  console.log(`SAMMY Labs mirror: http://127.0.0.1:${port}/`);
+}).listen(port, process.env.HOST ?? '0.0.0.0', () => {
+  console.log(`Draftly landing page listening on port ${port}.`);
 });
