@@ -161,7 +161,7 @@ Run on the server as the `deploy` user, from `~/draftly-platform`:
 | Backup volumes now | `deploy/vps.sh backup` |
 | Stop everything (data kept) | `deploy/vps.sh down` |
 | Read pilot requests | `docker run --rm -v draftly_pilot-requests:/d alpine sh -c 'cat /d/*.json'` |
-| Give an account access (a trial plan) | `deploy/vps.sh grant-trial --user usr_... --days N` (see below) |
+| Give an account a plan (only when limits are enforced) | `deploy/vps.sh grant-trial --user usr_... --days N` (see below) |
 | Reach retrieval | `ssh -L 8001:127.0.0.1:8001 deploy@13.140.183.52`, then `curl http://127.0.0.1:8001/health` |
 
 A rollback restores the previous images only. Alembic migrations are
@@ -175,19 +175,26 @@ The database is on Neon; use its point-in-time restore for that.
 
 ## Accounts, plans and gated features
 
-A new sign-in creates an active account with **no subscription**, and every
-gated feature answers `403 feature_denied` (`no_subscription`) until a plan is
-granted: legal research (`research.enabled`), drafting, export and document
-processing. The research screen says so ("not enabled for your account yet")
-instead of showing a generic failure.
+Features are gated by plan: legal research, drafting, export and document
+processing, plus quotas such as active matters and pages per month. With
+`ENFORCE_PLAN_LIMITS=true` (the code default) a new account has no plan and every
+gated call answers `403 feature_denied` (`no_subscription`) until a platform
+administrator grants one.
 
-Plans are granted by Draftly staff (the platform administrator), never
-automatically. To grant one from the server:
+**Current setting on this server: `ENFORCE_PLAN_LIMITS=false`.** Every account
+gets every feature and no quota applies, plan or no plan, so pilot users can use
+the whole product immediately. The backend logs
+`startup.plan_limits_disabled` at boot as a reminder. Unknown feature keys are
+still refused, and usage is still metered where an account has a subscription.
+Before charging anyone, set it back to `true` in `deploy/.env`, run
+`deploy/vps.sh deploy backend`, and grant plans as below.
+
+To grant a plan (only needed while enforcement is on):
 
 1. Put the staff user id(s) in `PLATFORM_ADMIN_USER_IDS` in `deploy/.env` (a
    comma-separated list of `usr_...` ids) and run `deploy/vps.sh deploy backend`.
    Empty means no one can grant.
-2. Find the account's user id. Failed calls name it in the backend log:
+2. Find the account's user id. Denied calls name it in the backend log:
    `deploy/vps.sh logs backend | grep feature_denied`.
 3. Run `deploy/vps.sh grant-trial --user usr_... --days 30`. The trial length is
    required because it is a billing decision, not a default. It uses the

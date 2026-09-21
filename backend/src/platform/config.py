@@ -188,6 +188,10 @@ class Settings(BaseSettings):
     payhere_merchant_secret: str = ""
     payhere_checkout_base_url: str = "https://payhere.lk"
     billing_grace_period_days: int = 14
+    # False opens every feature and lifts every quota for every account, whatever
+    # its plan (or lack of one). Meant for a pilot before plans exist; the safe
+    # default enforces plans.
+    enforce_plan_limits: bool = True
     billing_webhook_max_body_bytes: int = 65536
     platform_admin_user_ids: str = ""
     api_cursor_signing_key: str = ""

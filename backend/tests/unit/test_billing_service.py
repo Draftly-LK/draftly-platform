@@ -12,6 +12,7 @@ from src.modules.auth.domain.errors import CapabilityDeniedError
 from src.modules.auth.domain.models import Role
 from src.modules.billing.application.billing_service import BillingService
 from src.modules.billing.domain.errors import (
+    FeatureDeniedError,
     QuotaExceededError,
 )
 from src.modules.billing.domain.models import (
@@ -505,6 +506,7 @@ def make_service(
     subs: dict[str, Subscription] | None = None,
     usage: FakeUsageRepo | None = None,
     clock: FakeClock | None = None,
+    enforce_plan_limits: bool = True,
 ) -> BillingService:
     plan = _plan()
     entitlements = {"plan_solo_v1": _solo_entitlements()}
@@ -521,6 +523,7 @@ def make_service(
         event_port=FakeEventPort(),
         clock=clock or FakeClock(),
         grace_period_days=14,
+        enforce_plan_limits=enforce_plan_limits,
     )
 
 
@@ -552,6 +555,61 @@ class TestRequireFeature:
         decision = await svc.require_feature("usr_a", "document_processing.enabled")
         assert not decision.allowed
         assert decision.reason == "restricted_mode"
+
+
+class TestPlanLimitsSwitchedOff:
+    """ENFORCE_PLAN_LIMITS=false: everyone gets everything, whatever their plan."""
+
+    @pytest.mark.asyncio
+    async def test_enforcing_is_the_default_and_denies_an_account_with_no_plan(self):
+        svc = make_service(subs={"usr_a": _subscription()})
+        decision = await svc.require_feature("usr_nobody", "research.enabled")
+        assert not decision.allowed
+        assert decision.reason == "no_subscription"
+
+    @pytest.mark.asyncio
+    async def test_an_account_with_no_subscription_gets_every_feature(self):
+        svc = make_service(enforce_plan_limits=False)
+        for feature in (
+            "research.enabled",
+            "drafting.enabled",
+            "export.enabled",
+            "document_processing.enabled",
+        ):
+            decision = await svc.require_feature("usr_nobody", feature)
+            assert decision.allowed and decision.limit_value is None
+        assert (await svc.require_feature_or_raise("usr_nobody", "research.enabled")).allowed
+
+    @pytest.mark.asyncio
+    async def test_a_restricted_subscription_is_not_a_barrier(self):
+        restricted = _subscription(status=SubscriptionStatus.RESTRICTED)
+        svc = make_service(subs={"usr_a": restricted}, enforce_plan_limits=False)
+        assert (await svc.require_feature("usr_a", "research.enabled")).allowed
+
+    @pytest.mark.asyncio
+    async def test_unknown_feature_keys_still_fail_closed(self):
+        svc = make_service(enforce_plan_limits=False)
+        decision = await svc.require_feature("usr_a", "not.a.real.feature")
+        assert not decision.allowed
+        assert decision.reason == "unknown_feature_key"
+
+    @pytest.mark.asyncio
+    async def test_no_quota_applies_and_an_unsubscribed_account_can_reserve(self):
+        svc = make_service(enforce_plan_limits=False)
+        reservation = await svc.reserve_usage(
+            "usr_nobody", "document_pages.monthly", 10_000_000, "op-1"
+        )
+        assert reservation.id.startswith("usg_unmetered_")
+        consumed = await svc.consume_usage("usr_nobody", reservation.id, 10_000_000)
+        assert (consumed.metric, consumed.quantity) == ("document_pages.monthly", 0)
+        released = await svc.release_usage("usr_nobody", reservation.id)
+        assert released.quantity == 0
+
+    @pytest.mark.asyncio
+    async def test_enforcing_still_refuses_an_unsubscribed_reservation(self):
+        svc = make_service(enforce_plan_limits=True)
+        with pytest.raises(FeatureDeniedError):
+            await svc.reserve_usage("usr_nobody", "document_pages.monthly", 1, "op-2")
 
 
 class TestUsageIdempotency:

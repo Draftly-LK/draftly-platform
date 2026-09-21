@@ -176,6 +176,7 @@ def build_billing_service(session: AsyncSession) -> BillingService:
         event_port=SqlOutboxEventPort(session),
         clock=BillingClock(),
         grace_period_days=settings.billing_grace_period_days,
+        enforce_plan_limits=settings.enforce_plan_limits,
     )
 
 

@@ -96,6 +96,11 @@ _PROVIDER_STATUS_MAP: dict[str, SubscriptionStatus] = {
 }
 
 
+# Reservation ids for usage taken while plan limits are off and the account has
+# no subscription. They are never written to the ledger.
+UNMETERED_PREFIX = "usg_unmetered_"
+
+
 class BillingService:
     def __init__(
         self,
@@ -111,7 +116,12 @@ class BillingService:
         event_port: EventPort,
         clock: ClockPort,
         grace_period_days: int,
+        enforce_plan_limits: bool = True,
     ) -> None:
+        # False = every account gets every known feature and no quota applies
+        # (ENFORCE_PLAN_LIMITS=false). Usage is still metered where a
+        # subscription exists. Plan administration and checkout are unaffected.
+        self._enforce_plan_limits = enforce_plan_limits
         self._plans = plan_repo
         self._subscriptions = subscription_repo
         self._usage = usage_repo
@@ -503,6 +513,10 @@ class BillingService:
                 allowed=False, feature_key=feature_key, reason="unknown_feature_key"
             )
 
+        if not self._enforce_plan_limits:
+            # Unknown keys were refused above, so a typo still fails closed.
+            return EntitlementDecision(allowed=True, feature_key=feature_key)
+
         sub = await self._subscriptions.get_by_user_id(user_id)
         if sub is None:
             return EntitlementDecision(
@@ -560,6 +574,15 @@ class BillingService:
 
         sub = await self._subscriptions.get_by_user_id(user_id)
         if sub is None:
+            if not self._enforce_plan_limits:
+                # No plan means no billing period to meter against.
+                return Reservation(
+                    id=f"{UNMETERED_PREFIX}{metric}:{operation_id}",
+                    user_id=user_id,
+                    metric=metric,
+                    quantity=quantity,
+                    operation_id=operation_id,
+                )
             raise FeatureDeniedError("no_subscription", feature_key=metric)
 
         decision = await self.require_feature(user_id, metric)
@@ -593,6 +616,8 @@ class BillingService:
     ) -> UsageRead:
         if actual_quantity < 0:
             raise FeatureDeniedError("Actual quantity cannot be negative.", feature_key="usage")
+        if reservation_id.startswith(UNMETERED_PREFIX):
+            return self._unmetered_usage(reservation_id)
 
         entry = await self._load_own_ledger_entry(user_id, reservation_id)
         if entry.state == UsageLedgerState.CONSUMED:
@@ -615,6 +640,8 @@ class BillingService:
         return await self._usage_read_for(updated)
 
     async def release_usage(self, user_id: str, reservation_id: str) -> UsageRead:
+        if reservation_id.startswith(UNMETERED_PREFIX):
+            return self._unmetered_usage(reservation_id)
         entry = await self._load_own_ledger_entry(user_id, reservation_id)
         if entry.state == UsageLedgerState.RELEASED:
             return await self._usage_read_for(entry)
@@ -622,6 +649,12 @@ class BillingService:
             raise FeatureDeniedError("Cannot release consumed usage.", feature_key=entry.metric)
         updated = await self._usage.release(reservation_id, user_id)
         return await self._usage_read_for(updated)
+
+    def _unmetered_usage(self, reservation_id: str) -> UsageRead:
+        """Nothing was recorded for a reservation made without a subscription."""
+        metric = reservation_id.removeprefix(UNMETERED_PREFIX).split(":", 1)[0]
+        now = self._clock.now()
+        return UsageRead(metric=metric, quantity=0, period_start=now, period_end=now)
 
     async def _load_own_ledger_entry(self, user_id: str, entry_id: str) -> UsageLedgerEntry:
         entry = await self._usage.get_ledger_entry(entry_id, user_id)
