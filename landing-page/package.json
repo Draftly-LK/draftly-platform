@@ -7,7 +7,10 @@
   "scripts": {
     "scrape": "node scrape.mjs",
     "scrape:rendered": "node scrape-rendered.mjs",
-    "serve": "node serve.mjs"
+    "serve": "node serve.mjs",
+    "patch": "node patch-site.mjs",
+    "lint": "node ../frontend/node_modules/eslint/bin/eslint.js .",
+    "typecheck": "node ../frontend/node_modules/typescript/bin/tsc -p tsconfig.json"
   },
   "dependencies": {
     "website-scraper": "^5.3.1",

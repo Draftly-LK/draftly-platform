@@ -2,6 +2,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createPilotHandler } from './pilot-api.mjs';
 
 const projectDirectory = path.dirname(fileURLToPath(import.meta.url));
 const mirrorName = process.argv[2] ?? 'site-mirror';
@@ -11,12 +12,16 @@ if (!/^[a-zA-Z0-9_-]+$/.test(mirrorName)) {
 const mirrorRoot = path.join(projectDirectory, mirrorName);
 const mainHostRoot = path.join(mirrorRoot, 'www.sammylabs.com');
 const port = Number(process.argv[3] ?? process.env.PORT ?? 4173);
+const appUrl = new URL(process.env.DRAFTLY_APP_URL ?? 'http://127.0.0.1:4310/');
+if (!['http:', 'https:'].includes(appUrl.protocol) || appUrl.username || appUrl.password) throw new Error('DRAFTLY_APP_URL must be an HTTP(S) application URL without credentials.');
+const handlePilot = createPilotHandler(process.env.PILOT_REQUESTS_DIR ?? path.join(projectDirectory, '.local', 'pilot-requests'));
 const hostDirectories = new Set([
   'api.fontshare.com',
   'cdn.fontshare.com',
   'fonts.googleapis.com',
   'fonts.gstatic.com',
 ]);
+/** @type {Map<string, string>} */
 const mimeTypes = new Map([
   ['.css', 'text/css; charset=utf-8'],
   ['.html', 'text/html; charset=utf-8'],
@@ -29,13 +34,15 @@ const mimeTypes = new Map([
   ['.woff2', 'font/woff2'],
 ]);
 
+/** @param {string} root @param {string} pathname */
 const safePath = (root, pathname) => {
   const resolved = path.resolve(root, `.${pathname}`);
   return resolved === root || resolved.startsWith(`${root}${path.sep}`) ? resolved : null;
 };
 
+/** @param {string} filename @param {URLSearchParams} searchParams */
 const withScraperQuerySuffix = (filename, searchParams) => {
-  const query = searchParams.toString();
+  const query = searchParams.size === 1 && [...searchParams.values()][0] === '' ? [...searchParams.keys()][0] : searchParams.toString();
   if (!query) return filename;
   const extension = path.extname(filename);
   const stem = extension ? filename.slice(0, -extension.length) : filename;
@@ -43,8 +50,20 @@ const withScraperQuerySuffix = (filename, searchParams) => {
 };
 
 createServer((request, response) => {
-  const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host}`);
-  const decodedPath = decodeURIComponent(requestUrl.pathname);
+  let requestUrl;
+  let decodedPath;
+  try {
+    requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
+    decodedPath = decodeURIComponent(requestUrl.pathname);
+  } catch {
+    response.writeHead(400).end('Bad request'); return;
+  }
+  if (decodedPath === '/api/pilot-requests') {
+    void handlePilot(request, response).catch(() => response.writeHead(500).end()); return;
+  }
+  if (decodedPath === '/app') {
+    response.writeHead(302, { location: appUrl.href, 'cache-control': 'no-store' }).end(); return;
+  }
   const firstSegment = decodedPath.split('/').filter(Boolean)[0];
   const root = hostDirectories.has(firstSegment) ? mirrorRoot : mainHostRoot;
   let filename = safePath(root, decodedPath);

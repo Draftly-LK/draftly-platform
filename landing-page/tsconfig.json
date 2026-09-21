@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "ES2022", "module": "NodeNext", "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"], "strict": true, "noEmit": true,
+    "allowJs": true, "checkJs": true, "skipLibCheck": true,
+    "typeRoots": ["../frontend/node_modules/@types"],
+    "paths": { "react": ["../frontend/node_modules/@types/react"] }
+  },
+  "include": ["pilot-form.ts", "pilot-api.mjs", "serve.mjs"]
+}
