@@ -303,9 +303,6 @@ research_paths() {
   sed -n 's/^!\(.*\)$/\/\1/p' "$DEPLOY_DIR/retrieval/Dockerfile.dockerignore"
 }
 
-# Comma-separated, repo-relative allowlist for `git lfs pull --include`.
-research_lfs_include() { research_paths | sed 's#^/##' | paste -sd, -; }
-
 fetch_research() {
   command -v git-lfs >/dev/null \
     || die "git-lfs is required: the research corpus keeps its judgment files in Git LFS (run: sudo deploy/vps.sh setup)"
@@ -329,13 +326,19 @@ fetch_research() {
     git -C "$RESEARCH_DIR" fetch --quiet --filter=blob:none --depth 1 origin "$ref"
     git -C "$RESEARCH_DIR" reset --quiet --hard FETCH_HEAD
   fi
-  # The sparse checkout above only downloads LFS pointer files. Fetch the real
-  # content for the allowlisted paths only; the repo's other LFS objects are
-  # large and private and the retrieval image does not use them.
+  # A checkout made before git-lfs was installed leaves LFS pointer files. Delete
+  # each one and let git check it out again: the LFS smudge filter then downloads
+  # just that object. (`git lfs pull` is not used: on this partial clone it scans
+  # the whole tree and fetches blobs one by one, which takes tens of minutes.)
   git -C "$RESEARCH_DIR" lfs install --local >/dev/null
-  git -C "$RESEARCH_DIR" lfs pull --include="$(research_lfs_include)" \
-    || die "git lfs pull failed for the research repo (does the deploy key have read access to LFS objects?)"
-  local pointer
+  local pointer rel
+  while IFS= read -r pointer; do
+    rel="${pointer#"$RESEARCH_DIR"/}"
+    say "downloading LFS file $rel"
+    rm -f "$pointer"
+    git -C "$RESEARCH_DIR" checkout -- "$rel" \
+      || die "could not download $rel from Git LFS (does the deploy key have read access to LFS objects?)"
+  done < <(grep -rlm1 --exclude-dir=.git '^version https://git-lfs.github.com/spec/v1' "$RESEARCH_DIR" 2>/dev/null || true)
   pointer="$(grep -rlm1 --exclude-dir=.git '^version https://git-lfs.github.com/spec/v1' "$RESEARCH_DIR" 2>/dev/null | head -n 1 || true)"
   [ -z "$pointer" ] || die "$pointer is still a Git LFS pointer; the retrieval index cannot be built from it"
   echo "research repo at $(git -C "$RESEARCH_DIR" rev-parse --short HEAD)"
