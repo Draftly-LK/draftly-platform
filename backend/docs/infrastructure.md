@@ -280,6 +280,26 @@ Plan §10 requires this before lawyer testing, and it was not written down.
 - `data/raw/` in the research repository never reaches this backend, its
   fixtures, its logs, or its screenshots.
 
+## Container deployment
+
+Each runnable piece has a Dockerfile: `backend/Dockerfile` (API, migrations and
+the worker runner share one image), `frontend/Dockerfile`, and
+`deploy/retrieval/Dockerfile`, which takes the research repository as a
+build-time input. `deploy/` holds everything else needed to host: the compose
+stack for a single small VPS, `build.sh` and `ship.sh`. In that stack Caddy terminates TLS and serves the
+frontend and the API from one origin, the database stays on Neon, and images are
+built off the host. `deploy/README.md` is the runbook.
+
+The retrieval engine runs as its own HTTP service on the internal compose
+network, which keeps to the boundary rule above: the platform reaches it through
+an interface and never imports research paths. Its image ships a prebuilt index
+and runs with `DRAFTLY_INDEX_FROZEN=1`, so it serves that index without the
+source corpus present. The index in that image is built from the research
+checkout, not yet from a signed corpus release manifest.
+
+This stack is for V0 (synthetic and approved pilot data). It does not change the
+Production V1 gates in the environments table.
+
 ## Summary
 
 | Concern | V0 | V1 production |

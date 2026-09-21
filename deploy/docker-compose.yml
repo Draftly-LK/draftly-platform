@@ -1,0 +1,119 @@
+# Draftly production stack for a small (1 GB RAM) VPS.
+#
+# Runs prebuilt images only; never build on the VPS (see README.md).
+# Postgres is managed (Neon), so there is no database service here.
+#
+#   docker compose --env-file .env up -d
+#   docker compose --env-file .env --profile worker up -d   # also run the outbox worker
+
+name: draftly
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-backend: &backend
+  image: ${BACKEND_IMAGE:?set BACKEND_IMAGE}
+  environment: &backend-env
+    ENVIRONMENT: ${ENVIRONMENT:?set ENVIRONMENT}
+    DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+    DATABASE_URL_DIRECT: ${DATABASE_URL_DIRECT:?set DATABASE_URL_DIRECT}
+    CLERK_ISSUER: ${CLERK_ISSUER:-}
+    CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+    CLERK_AUDIENCE: ${CLERK_AUDIENCE:-}
+    CLERK_AUTHORIZED_PARTY: ${CLERK_AUTHORIZED_PARTY:-}
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    EXTRACTION_PROVIDER: ${EXTRACTION_PROVIDER:-stub}
+    PROVIDER_DATA_APPROVAL: ${PROVIDER_DATA_APPROVAL:-false}
+    PARTY_IDENTIFIER_KEY: ${PARTY_IDENTIFIER_KEY:-}
+    PARTY_BLIND_INDEX_KEY: ${PARTY_BLIND_INDEX_KEY:-}
+    API_CURSOR_SIGNING_KEY: ${API_CURSOR_SIGNING_KEY:-}
+    # Not read by the backend yet (modules/research is empty); reserved for the retrieval client.
+    RETRIEVAL_BASE_URL: http://retrieval:8000
+  logging: *logging
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
+      - backend
+    mem_limit: 64m
+    logging: *logging
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?set FRONTEND_IMAGE}
+    restart: unless-stopped
+    environment:
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      MULTILINGUAL_LANGUAGE_SUPPORT: ${MULTILINGUAL_LANGUAGE_SUPPORT:-true}
+      NODE_OPTIONS: --max-old-space-size=192
+    expose:
+      - "3000"
+    mem_limit: 256m
+    logging: *logging
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    mem_limit: 256m
+
+  backend:
+    <<: *backend
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - source-files:/app/.data
+    expose:
+      - "8000"
+    mem_limit: 384m
+
+  worker:
+    <<: *backend
+    profiles: ["worker"]
+    command: ["python", "-m", "src.workers.runner"]
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+    mem_limit: 192m
+
+  # Internal only: no `ports`, and Caddy has no route to it. It has no auth and
+  # /answer spends Gemini credits, so it must not be reachable from the internet.
+  retrieval:
+    image: ${RETRIEVAL_IMAGE:?set RETRIEVAL_IMAGE}
+    restart: unless-stopped
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    expose:
+      - "8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 320m
+    logging: *logging
+
+volumes:
+  caddy-data:
+  caddy-config:
+  source-files:

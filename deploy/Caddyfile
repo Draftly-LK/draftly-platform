@@ -1,0 +1,14 @@
+# One origin for the whole app, so the browser never makes a cross-origin API
+# call and the backend's CORS allowlist is not involved.
+{$DOMAIN} {
+	encode zstd gzip
+
+	@backend path /api/* /health/*
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
