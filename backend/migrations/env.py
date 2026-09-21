@@ -32,6 +32,7 @@ from src.modules.notarial_register.infrastructure import orm as notarial_orm  # 
 from src.modules.notification.infrastructure import orm as notification_orm  # noqa: E402, F401
 from src.modules.obligations.infrastructure import orm as obligations_orm  # noqa: E402, F401
 from src.modules.party.infrastructure import orm as party_orm  # noqa: E402, F401
+from src.modules.research.infrastructure import orm as research_orm  # noqa: E402, F401
 from src.modules.task.infrastructure import orm as task_orm  # noqa: E402, F401
 from src.modules.verification.infrastructure import orm as verification_orm  # noqa: E402, F401
 from src.platform.config import get_settings  # noqa: E402
