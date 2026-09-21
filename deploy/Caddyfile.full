@@ -3,8 +3,24 @@
 # The app is one origin, so the browser never makes a cross-origin API call.
 # Caddy sets X-Forwarded-For itself from the real client address; the landing
 # page's rate limit relies on that (TRUST_PROXY=1).
-{$DOMAIN} {
+(hardening) {
 	encode zstd gzip
+	log {
+		output stdout
+		format json
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+{$DOMAIN} {
+	import hardening
 
 	@backend path /api/* /health/*
 	handle @backend {
@@ -18,6 +34,6 @@
 
 # Marketing site and pilot-request form.
 {$LANDING_DOMAIN} {
-	encode zstd gzip
+	import hardening
 	reverse_proxy landing:4173
 }

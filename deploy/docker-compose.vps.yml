@@ -1,8 +1,9 @@
-# API-only stack for a small (1 GB RAM) VPS, used by deploy/vps.sh.
+# Single-VPS stack (sized for 4 vCPU / 8 GB RAM), used by deploy/vps.sh.
 #
-# The frontend is hosted on Vercel and calls this server cross-origin, so there
-# is no frontend service here and Caddy only serves the API. Images are built
-# on the server by vps.sh (backend and retrieval only; neither needs much RAM).
+# Production layout is WEB_ON_VPS=1: the landing page, the app and the API all
+# run here behind one Caddy. Without it only the API is served and the frontend
+# is expected on Vercel (cross-origin). Images are built on the server by
+# vps.sh; the running stack idles well under 2 GB.
 #
 #   caddy      HTTPS for DOMAIN; /api/* and /health/* to the backend, nothing else
 #   migrate    alembic upgrade head, once per start
@@ -33,14 +34,19 @@ x-backend: &backend
     ENVIRONMENT: ${ENVIRONMENT:?set ENVIRONMENT}
     DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
     DATABASE_URL_DIRECT: ${DATABASE_URL_DIRECT:?set DATABASE_URL_DIRECT}
-    # The Vercel origin: the only browser origin allowed to call this API.
+    # The app's own origin (or the Vercel origin): the only browser origin
+    # allowed to call this API.
     ALLOWED_ORIGINS: ${FRONTEND_ORIGIN:?set FRONTEND_ORIGIN}
     CLERK_ISSUER: ${CLERK_ISSUER:?set CLERK_ISSUER}
     CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set CLERK_SECRET_KEY}
     CLERK_AUDIENCE: ${CLERK_AUDIENCE:-}
     CLERK_AUTHORIZED_PARTY: ${CLERK_AUTHORIZED_PARTY:?set CLERK_AUTHORIZED_PARTY}
     USE_STUB_IDENTITY: "false"
+    CLERK_LEEWAY_SECONDS: ${CLERK_LEEWAY_SECONDS:-30}
     GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    RESEARCH_MODEL: ${RESEARCH_MODEL:-gemini-2.5-flash}
+    GEMINI_CLASSIFY_MODEL: ${GEMINI_CLASSIFY_MODEL:-gemini-2.5-flash-lite}
+    GEMINI_EXTRACT_MODEL: ${GEMINI_EXTRACT_MODEL:-gemini-2.5-flash-lite}
     EXTRACTION_PROVIDER: ${EXTRACTION_PROVIDER:-stub}
     PROVIDER_DATA_APPROVAL: ${PROVIDER_DATA_APPROVAL:-false}
     MATTER_AGENT_ENABLED: ${MATTER_AGENT_ENABLED:-false}
@@ -48,7 +54,8 @@ x-backend: &backend
     PARTY_IDENTIFIER_KEY: ${PARTY_IDENTIFIER_KEY:?set PARTY_IDENTIFIER_KEY}
     PARTY_BLIND_INDEX_KEY: ${PARTY_BLIND_INDEX_KEY:?set PARTY_BLIND_INDEX_KEY}
     API_CURSOR_SIGNING_KEY: ${API_CURSOR_SIGNING_KEY:?set API_CURSOR_SIGNING_KEY}
-    # Not read by the backend yet (modules/research is empty); reserved for the retrieval client.
+    # Reserved for the retrieval client; the research API currently answers from
+    # the statute corpus bundled in the backend image.
     RETRIEVAL_BASE_URL: http://retrieval:8000
   depends_on: &after-db
     db:
@@ -74,7 +81,7 @@ services:
       - caddy-config:/config
     depends_on:
       - backend
-    mem_limit: 64m
+    mem_limit: 128m
     logging: *logging
 
   frontend:
@@ -84,10 +91,10 @@ services:
     environment:
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
       MULTILINGUAL_LANGUAGE_SUPPORT: ${MULTILINGUAL_LANGUAGE_SUPPORT:-true}
-      NODE_OPTIONS: --max-old-space-size=384
+      NODE_OPTIONS: --max-old-space-size=768
     expose:
       - "3000"
-    mem_limit: 512m
+    mem_limit: 1g
     logging: *logging
 
   landing:
@@ -102,7 +109,7 @@ services:
     expose:
       - "4173"
     read_only: true
-    mem_limit: 128m
+    mem_limit: 256m
     logging: *logging
 
   migrate:
@@ -111,7 +118,7 @@ services:
     restart: "no"
     healthcheck:
       disable: true
-    mem_limit: 256m
+    mem_limit: 512m
 
   backend:
     <<: *backend
@@ -124,7 +131,7 @@ services:
       - source-files:/app/.data
     expose:
       - "8000"
-    mem_limit: 384m
+    mem_limit: 1g
 
   worker:
     <<: *backend
@@ -143,7 +150,7 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
-    mem_limit: 192m
+    mem_limit: 512m
 
   # No auth, and /answer spends Gemini credits: never on the internet. The
   # loopback port is for an SSH tunnel from your machine only.
@@ -159,7 +166,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    mem_limit: 320m
+    mem_limit: 1g
     logging: *logging
 
   db:
@@ -170,7 +177,7 @@ services:
       POSTGRES_USER: draftly
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       POSTGRES_DB: draftly
-    # Sized for a 1 GB machine shared with the other services.
+    # Modest settings: shared with the other services on the same machine.
     command:
       - postgres
       - -c
@@ -192,7 +199,7 @@ services:
       - pg-data:/var/lib/postgresql/data
     expose:
       - "5432"
-    mem_limit: 192m
+    mem_limit: 512m
     logging: *logging
 
 volumes:

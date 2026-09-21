@@ -1,0 +1,5 @@
+# Server-side state written by vps.sh; never committed.
+.research/
+.rollback
+.rollback.*
+dist/
