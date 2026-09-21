@@ -1,0 +1,375 @@
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.modules.document.infrastructure.orm import SourceFileRow
+from src.modules.matter.infrastructure.orm import MatterRow
+from src.modules.research.domain.models import ComposedClaim, Scope, ScopeType
+from src.modules.research.infrastructure.orm import (
+    ResearchAnswerRow,
+    ResearchBranchRow,
+    ResearchCitationRow,
+    ResearchClaimRow,
+    ResearchConversationRow,
+    ResearchJobRow,
+    ResearchMessageRow,
+    ResearchStreamEventRow,
+)
+from src.modules.research.ports import GroundedAnswerComposerPort, LegalRetrievalPort
+from src.modules.task.infrastructure.orm import ChecklistItemRow
+from src.platform.errors import NotFoundError
+from src.platform.request_context import RequestContext
+
+CORPUS_VERSION = "statutes-bm25-v1:8a7f096671b28cf0"
+
+
+def _id(prefix: str) -> str:
+    return f"{prefix}_{uuid.uuid4().hex}"
+
+
+class ResearchService:
+    """Owns PostgreSQL history and fail-closed grounded answer orchestration."""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        retrieval: LegalRetrievalPort,
+        composer: GroundedAnswerComposerPort | None = None,
+    ) -> None:
+        self.db = session
+        self.retrieval = retrieval
+        self.composer = composer
+
+    async def resolve_scope(
+        self, ctx: RequestContext, scope_type: str, target_id: str | None
+    ) -> Scope:
+        kind = ScopeType(scope_type)
+        if kind is ScopeType.LIBRARY:
+            if target_id is not None:
+                raise NotFoundError()
+            return Scope(kind)
+        if not target_id:
+            raise NotFoundError()
+        matter_id: str | None = None
+        if kind is ScopeType.MATTER:
+            matter_id = (
+                await self.db.execute(
+                    select(MatterRow.id).where(
+                        MatterRow.id == target_id, MatterRow.user_id == ctx.actor_id
+                    )
+                )
+            ).scalar_one_or_none()
+        elif kind is ScopeType.STEP:
+            matter_id = (
+                await self.db.execute(
+                    select(ChecklistItemRow.matter_id).where(
+                        ChecklistItemRow.id == target_id, ChecklistItemRow.user_id == ctx.actor_id
+                    )
+                )
+            ).scalar_one_or_none()
+        else:
+            matter_id = (
+                await self.db.execute(
+                    select(SourceFileRow.matter_id).where(
+                        SourceFileRow.id == target_id, SourceFileRow.user_id == ctx.actor_id
+                    )
+                )
+            ).scalar_one_or_none()
+        if matter_id is None:
+            raise NotFoundError()
+        return Scope(kind, target_id, str(matter_id))
+
+    async def create_conversation(
+        self, ctx: RequestContext, scope: Scope, title: str | None
+    ) -> ResearchConversationRow:
+        conversation_id, branch_id = _id("rconv"), _id("rbranch")
+        row = ResearchConversationRow(
+            id=conversation_id,
+            user_id=ctx.actor_id,
+            matter_id=scope.matter_id,
+            scope_type=scope.type.value,
+            scope_target_id=scope.target_id,
+            title=(title or "New research").strip() or "New research",
+            active_branch_id=branch_id,
+        )
+        self.db.add(row)
+        # Flush the parent first. SQLAlchemy has no ORM relationship here to infer
+        # insert ordering from, and PostgreSQL enforces the branch FK immediately.
+        await self.db.flush()
+        self.db.add(
+            ResearchBranchRow(
+                id=branch_id,
+                conversation_id=conversation_id,
+                user_id=ctx.actor_id,
+                matter_id=scope.matter_id,
+                root_message_id=None,
+                created_by=ctx.actor_id,
+            )
+        )
+        await self.db.flush()
+        return row
+
+    async def list_conversations(
+        self, ctx: RequestContext, query: str | None
+    ) -> list[ResearchConversationRow]:
+        stmt = select(ResearchConversationRow).where(
+            ResearchConversationRow.user_id == ctx.actor_id,
+            ResearchConversationRow.archived_at.is_(None),
+        )
+        if query:
+            term = f"%{query.strip()}%"
+            stmt = stmt.where(
+                or_(
+                    ResearchConversationRow.title.ilike(term),
+                    ResearchConversationRow.id.in_(
+                        select(ResearchMessageRow.conversation_id).where(
+                            ResearchMessageRow.user_id == ctx.actor_id,
+                            ResearchMessageRow.content.ilike(term),
+                        )
+                    ),
+                )
+            )
+        return list(
+            (
+                await self.db.execute(stmt.order_by(ResearchConversationRow.updated_at.desc()))
+            ).scalars()
+        )
+
+    async def conversation(
+        self, ctx: RequestContext, conversation_id: str
+    ) -> ResearchConversationRow:
+        row = (
+            await self.db.execute(
+                select(ResearchConversationRow).where(
+                    ResearchConversationRow.id == conversation_id,
+                    ResearchConversationRow.user_id == ctx.actor_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            raise NotFoundError()
+        return row
+
+    async def list_messages(
+        self, ctx: RequestContext, conversation_id: str
+    ) -> list[ResearchMessageRow]:
+        await self.conversation(ctx, conversation_id)
+        stmt = (
+            select(ResearchMessageRow)
+            .where(
+                ResearchMessageRow.conversation_id == conversation_id,
+                ResearchMessageRow.user_id == ctx.actor_id,
+            )
+            .order_by(ResearchMessageRow.sequence)
+        )
+        return list((await self.db.execute(stmt)).scalars())
+
+    async def submit(
+        self,
+        ctx: RequestContext,
+        conversation_id: str,
+        content: str,
+        parent_message_id: str | None,
+        job_id: str | None = None,
+    ) -> ResearchJobRow:
+        conversation = await self.conversation(ctx, conversation_id)
+        if parent_message_id:
+            parent = (
+                await self.db.execute(
+                    select(ResearchMessageRow.id).where(
+                        ResearchMessageRow.id == parent_message_id,
+                        ResearchMessageRow.conversation_id == conversation_id,
+                        ResearchMessageRow.user_id == ctx.actor_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if parent is None:
+                raise NotFoundError()
+        user_message_id, job_id = _id("rmsg"), job_id or _id("rjob")
+        last_sequence = (
+            await self.db.execute(
+                select(func.max(ResearchMessageRow.sequence)).where(
+                    ResearchMessageRow.conversation_id == conversation_id
+                )
+            )
+        ).scalar_one_or_none() or 0
+        user_message = ResearchMessageRow(
+            id=user_message_id,
+            conversation_id=conversation_id,
+            branch_id=conversation.active_branch_id,
+            user_id=ctx.actor_id,
+            matter_id=conversation.matter_id,
+            sequence=last_sequence + 1,
+            parent_message_id=parent_message_id,
+            role="user",
+            content=content,
+        )
+        job = ResearchJobRow(
+            id=job_id,
+            conversation_id=conversation_id,
+            user_message_id=user_message_id,
+            user_id=ctx.actor_id,
+            matter_id=conversation.matter_id,
+            state="queued",
+            corpus_version=CORPUS_VERSION,
+        )
+        self.db.add_all([user_message, job])
+        await self.db.flush()
+        scope = Scope(
+            ScopeType(conversation.scope_type), conversation.scope_target_id, conversation.matter_id
+        )
+        result = await self.retrieval.search(content, scope, CORPUS_VERSION)
+        answer_id, assistant_id = _id("rans"), _id("rmsg")
+        composed: tuple[ComposedClaim, ...] = ()
+        if result.passages and self.composer is not None:
+            try:
+                composed = await self.composer.compose(content, result.passages)
+            except Exception:  # provider failure must degrade to a grounded abstention
+                composed = ()
+        reason = None
+        if not composed:
+            reason = (
+                "research.insufficient.corpusUnavailable"
+                if not result.passages
+                else "research.insufficient.noSupportedClaims"
+            )
+        answer = ResearchAnswerRow(
+            id=answer_id,
+            user_id=ctx.actor_id,
+            matter_id=conversation.matter_id,
+            conversation_id=conversation_id,
+            message_id=assistant_id,
+            kind="grounded" if composed else "insufficient-authority",
+            question=content,
+            corpus_version=CORPUS_VERSION,
+            reason_key=reason,
+            suggested_action_key="research.insufficient.refineOrRequestReview",
+        )
+        assistant = ResearchMessageRow(
+            id=assistant_id,
+            conversation_id=conversation_id,
+            branch_id=conversation.active_branch_id,
+            user_id=ctx.actor_id,
+            matter_id=conversation.matter_id,
+            sequence=last_sequence + 2,
+            parent_message_id=user_message_id,
+            role="assistant",
+            content="\n\n".join(claim.text for claim in composed) if composed else str(reason),
+            answer_id=answer_id,
+        )
+        now = datetime.now(UTC)
+        job.state, job.finished_at = "succeeded", now
+        self.db.add_all([answer, assistant])
+        await self.db.flush()
+        passages = {passage.authority_id.upper(): passage for passage in result.passages}
+        for position, claim in enumerate(composed, start=1):
+            claim_row = ResearchClaimRow(
+                id=_id("rclaim"),
+                answer_id=answer_id,
+                user_id=ctx.actor_id,
+                matter_id=conversation.matter_id,
+                position=position,
+                text=claim.text,
+            )
+            self.db.add(claim_row)
+            await self.db.flush()
+            for citation_id in claim.citation_ids:
+                passage = passages.get(citation_id.upper())
+                if passage is None:
+                    continue
+                self.db.add(
+                    ResearchCitationRow(
+                        id=_id("rcite"),
+                        claim_id=claim_row.id,
+                        user_id=ctx.actor_id,
+                        matter_id=conversation.matter_id,
+                        source_id=passage.source_id,
+                        authority_id=passage.authority_id,
+                        corpus_version=passage.corpus_version,
+                        passage=passage.text,
+                        page=passage.page,
+                        verified=passage.verified,
+                    )
+                )
+        event_type = "grounded-answer" if composed else "abstention"
+        self.db.add_all(
+            [
+                ResearchStreamEventRow(
+                    id=_id("revt"),
+                    job_id=job_id,
+                    user_id=ctx.actor_id,
+                    sequence=1,
+                    event_type=event_type,
+                    data={
+                        "answerId": answer_id,
+                        "reasonKey": reason,
+                        "degradedChannels": result.degraded_channels,
+                    },
+                ),
+                ResearchStreamEventRow(
+                    id=_id("revt"),
+                    job_id=job_id,
+                    user_id=ctx.actor_id,
+                    sequence=2,
+                    event_type="complete",
+                    data={"jobId": job_id, "state": "succeeded"},
+                ),
+            ]
+        )
+        await self.db.flush()
+        return job
+
+    async def job(self, ctx: RequestContext, job_id: str) -> ResearchJobRow:
+        row = (
+            await self.db.execute(
+                select(ResearchJobRow).where(
+                    ResearchJobRow.id == job_id, ResearchJobRow.user_id == ctx.actor_id
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            raise NotFoundError()
+        return row
+
+    async def events(
+        self, ctx: RequestContext, job_id: str, after: int
+    ) -> list[ResearchStreamEventRow]:
+        await self.job(ctx, job_id)
+        stmt = (
+            select(ResearchStreamEventRow)
+            .where(
+                ResearchStreamEventRow.job_id == job_id,
+                ResearchStreamEventRow.user_id == ctx.actor_id,
+                ResearchStreamEventRow.sequence > after,
+            )
+            .order_by(ResearchStreamEventRow.sequence)
+        )
+        return list((await self.db.execute(stmt)).scalars())
+
+    async def branch(self, ctx: RequestContext, message_id: str) -> ResearchBranchRow:
+        message = (
+            await self.db.execute(
+                select(ResearchMessageRow).where(
+                    ResearchMessageRow.id == message_id, ResearchMessageRow.user_id == ctx.actor_id
+                )
+            )
+        ).scalar_one_or_none()
+        if message is None:
+            raise NotFoundError()
+        conversation = await self.conversation(ctx, message.conversation_id)
+        branch = ResearchBranchRow(
+            id=_id("rbranch"),
+            conversation_id=message.conversation_id,
+            user_id=ctx.actor_id,
+            matter_id=conversation.matter_id,
+            root_message_id=message.id,
+            created_by=ctx.actor_id,
+        )
+        self.db.add(branch)
+        conversation.active_branch_id = branch.id
+        await self.db.flush()
+        return branch
