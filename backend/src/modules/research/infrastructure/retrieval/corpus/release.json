@@ -1,0 +1,11 @@
+{
+  "name": "statutes-bm25-v1",
+  "sourceRepository": "draftly-research",
+  "sourceRevision": "e4080ed29bc45f4c4bd2835eb6e672b9cc72a7a3e",
+  "corpusFingerprint": "8a7f096671b28cf0ff5fcf90b5dd1c1300f343e8ec401c73cd8f9538abccd765",
+  "sqliteSha256": "4b8b18da1f8fab34095274374b30bca97bcf3d7c5088e09bcfa64977bf88c4aa",
+  "statutes": 57,
+  "amendments": 18,
+  "caseLawIncluded": false,
+  "verificationState": "unverified"
+}

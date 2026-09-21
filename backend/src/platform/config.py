@@ -7,11 +7,38 @@ defaults to a production value (per infrastructure.md §Configuration).
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _backend_env = Path(__file__).resolve().parents[2] / ".env"  # backend/.env
+
+
+def parse_allowed_origins(value: str) -> tuple[str, ...]:
+    """Parse exact HTTP(S) CORS origins and reject unsafe wildcard values."""
+    origins: list[str] = []
+    for candidate in (item.strip() for item in value.split(",")):
+        if not candidate:
+            continue
+        parsed = urlsplit(candidate)
+        if (
+            candidate == "*"
+            or parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(f"ALLOWED_ORIGINS contains an invalid origin: {candidate!r}")
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        if origin not in origins:
+            origins.append(origin)
+    if not origins:
+        raise ValueError("ALLOWED_ORIGINS must contain at least one exact HTTP(S) origin")
+    return tuple(origins)
 
 
 class Settings(BaseSettings):
@@ -89,6 +116,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_classify_model: str = "gemini-2.5-flash-lite"
     gemini_extract_model: str = "gemini-2.5-flash-lite"
+    research_model: str = "gemini-2.5-flash"
 
     # ── Matter agent (matter-agent-service.md §Configuration) ───────────────
     # Off by default. While false the agent refuses every route, so a partial
@@ -147,6 +175,7 @@ class Settings(BaseSettings):
 
     # ── App behaviour ───────────────────────────────────────────────────────
     environment: str = "local"
+    allowed_origins: str = "http://localhost:3000,http://localhost:4310"
     step_up_max_age_seconds: int = 600
     use_stub_identity: bool = False
 
@@ -182,6 +211,11 @@ class Settings(BaseSettings):
     @property
     def is_non_production(self) -> bool:
         return self.environment in {"local", "test", "ci", "preview", "demo"}
+
+    @property
+    def cors_origins(self) -> tuple[str, ...]:
+        """Exact browser origins accepted by the API's credentialed CORS policy."""
+        return parse_allowed_origins(self.allowed_origins)
 
     @property
     def payhere_configured(self) -> bool:
