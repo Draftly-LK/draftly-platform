@@ -174,36 +174,42 @@ services:
     logging: *logging
 
   db:
-    image: postgres:16-alpine
+    # Same major version as the Neon database this replaced (18), so a dump moves
+    # across unchanged. Not published: only the backend, worker and migrate reach
+    # it, over the compose network. Data lives in the pg-data volume.
+    image: postgres:18-alpine
     profiles: ["localdb"]
     restart: unless-stopped
     environment:
       POSTGRES_USER: draftly
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       POSTGRES_DB: draftly
-    # Modest settings: shared with the other services on the same machine.
+    # Sized for the 8 GB host shared with the other services.
     command:
       - postgres
       - -c
-      - shared_buffers=32MB
+      - shared_buffers=512MB
       - -c
-      - effective_cache_size=128MB
+      - effective_cache_size=3GB
       - -c
-      - work_mem=2MB
+      - work_mem=8MB
       - -c
-      - maintenance_work_mem=16MB
+      - maintenance_work_mem=128MB
       - -c
-      - max_connections=40
+      - max_connections=100
+    shm_size: 256m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U draftly -d draftly"]
       interval: 5s
       timeout: 5s
       retries: 30
     volumes:
-      - pg-data:/var/lib/postgresql/data
+      # PostgreSQL 18 images keep PGDATA under /var/lib/postgresql/18/, so the
+      # volume must be mounted one level up (not at .../data).
+      - pg-data:/var/lib/postgresql
     expose:
       - "5432"
-    mem_limit: 512m
+    mem_limit: 2g
     logging: *logging
 
 volumes:

@@ -442,8 +442,8 @@ cmd_rollback() {
 }
 
 # ── backup ────────────────────────────────────────────────────────────────────
-# Postgres lives on Neon (its own point-in-time restore). This covers what stays
-# on the server: pilot-request emails and uploaded source files.
+# Archives what lives on the server: pilot-request emails, uploaded source files
+# and, when DATABASE_URL points at the bundled Postgres, the database itself.
 # ── grant-trial ───────────────────────────────────────────────────────────────
 # Gated features (research, drafting, export, document processing) are denied to
 # an account with no subscription. This runs the billing service's own
@@ -465,11 +465,20 @@ cmd_backup() {
       sh -c 'umask 077 && tar -czf "/out/$1" -C /data .' _ "${vol#draftly_}-$stamp.tar.gz"
     echo "backed up $vol -> $BACKUP_DIR/${vol#draftly_}-$stamp.tar.gz"
   done
+  # The local PostgreSQL (when DATABASE_URL points at it): a custom-format dump,
+  # restorable with pg_restore. Mode 600, like the volume archives.
+  if uses_local_db && compose ps --status running --services 2>/dev/null | grep -qx db; then
+    ( umask 077; compose exec -T db pg_dump -U draftly -Fc draftly > "$BACKUP_DIR/database-$stamp.dump" ) \
+      || die "pg_dump failed"
+    echo "backed up database -> $BACKUP_DIR/database-$stamp.dump"
+  fi
   # Keep the newest $BACKUP_KEEP archives of each volume.
   for vol in pilot-requests source-files; do
     # shellcheck disable=SC2012  # names are ours: <vol>-<timestamp>.tar.gz
     ls -1t "$BACKUP_DIR/$vol"-*.tar.gz 2>/dev/null | tail -n +$((BACKUP_KEEP + 1)) | xargs -r rm -f
   done
+  # shellcheck disable=SC2012
+  ls -1t "$BACKUP_DIR"/database-*.dump 2>/dev/null | tail -n +$((BACKUP_KEEP + 1)) | xargs -r rm -f
 }
 
 verify() {
