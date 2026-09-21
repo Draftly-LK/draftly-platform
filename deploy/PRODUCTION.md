@@ -17,7 +17,7 @@ client material on it.
 | API (FastAPI) and outbox worker | Containers `backend`, `worker`, `migrate` | `https://app.draftly.adlahiru.com/api/*` and `/health/*` |
 | Retrieval engine | Container `retrieval`, internal only | `127.0.0.1:8001` on the VPS (SSH tunnel) |
 | TLS and routing | Container `caddy` (Let's Encrypt certificates, renewed automatically) | ports 80 and 443 |
-| Database | Neon PostgreSQL (managed, off the VPS) | pooled URL for the app, direct URL for migrations |
+| Database | PostgreSQL 18 in container `db` on the VPS (volume `draftly_pg-data`) | internal only: `db:5432` on the compose network, never published |
 | Sign-in | Clerk (development instance `popular-lark-48`) | Clerk dashboard |
 | Source, CI and CD | GitHub `Draftly-LK/draftly-platform` | Actions tab |
 
@@ -52,8 +52,8 @@ Ubuntu 24.04, 4 vCPU, 8 GB RAM, 2 GB swap, public address `13.140.183.52`.
 | GitHub access for the server | `/home/deploy/.ssh/`: `github_deploy` (platform repo) and `draftly_research_deploy` (research repo, read-only), selected through `~/.ssh/config` |
 | CI login | `/home/deploy/.ssh/authorized_keys`, one key pinned to a forced command |
 | Forced-command script (root-owned copy of `deploy/ci-deploy.sh`) | `/usr/local/bin/draftly-ci-deploy` |
-| Persistent data | Docker volumes `draftly_pilot-requests`, `draftly_source-files`, `draftly_caddy-data` (certificates) |
-| Nightly backups (03:15) | `/var/backups/draftly`, last 14 kept, from `/etc/cron.d/draftly-backup` |
+| Persistent data | Docker volumes `draftly_pg-data` (the database), `draftly_pilot-requests`, `draftly_source-files`, `draftly_caddy-data` (certificates) |
+| Nightly backups (03:15) | `/var/backups/draftly`: database dump (`database-*.dump`) and volume archives, last 14 of each, from `/etc/cron.d/draftly-backup`. `neon-final-*.dump` is the last copy taken from Neon before the move |
 | Deploy logs | `/var/log/draftly/` and `deploy/vps.sh logs` |
 
 Hardening in place: `ufw` denies everything inbound except 22, 80 and 443;
@@ -107,7 +107,7 @@ here. Repository Settings, then:
 
    Read the two files on the server yourself (`cat`), paste them into GitHub,
    then delete them: `shred -u /root/draftly-github-actions-key`. Application
-   secrets (Clerk, Neon, Gemini) are **not** stored in GitHub; they stay in
+   secrets (Clerk, database, Gemini) are **not** stored in GitHub; they stay in
    `deploy/.env` on the server.
 2. **Environments.** Create `production`. Optionally add required reviewers so
    each deploy needs an approval click.
@@ -124,7 +124,7 @@ here. Repository Settings, then:
 | Secret | Lives in | Rotate at |
 | --- | --- | --- |
 | `CLERK_SECRET_KEY`, publishable key | `deploy/.env` | Clerk dashboard, API keys |
-| `DATABASE_URL`, `DATABASE_URL_DIRECT` | `deploy/.env` | Neon console, reset the role password |
+| `POSTGRES_PASSWORD`, `DATABASE_URL`, `DATABASE_URL_DIRECT` | `deploy/.env` (generated on the server) | `ALTER USER draftly PASSWORD '...'` in the `db` container, then update all three lines and redeploy |
 | `GEMINI_API_KEY` | `deploy/.env` | Google AI Studio |
 | `PARTY_IDENTIFIER_KEY`, `PARTY_BLIND_INDEX_KEY`, `API_CURSOR_SIGNING_KEY` | `deploy/.env` (generated on the server) | **Do not rotate casually.** The first two encrypt and index stored party identifiers; changing them makes existing rows unreadable. Back them up in your password manager |
 | CI SSH key | GitHub secret `VPS_SSH_KEY` and `authorized_keys` | Generate a new pair, replace both |
@@ -135,8 +135,10 @@ After changing anything in `deploy/.env`, apply it with
 `deploy/vps.sh deploy frontend` because `NEXT_PUBLIC_*` values are compiled in).
 
 The Neon URLs, Clerk secret and Gemini key were shared in a chat while setting
-this up. Treat them as exposed and rotate them, then update `deploy/.env` and
-redeploy. The Cloudflare R2 keys and the GCP service-account file in the local
+this up. Treat them as exposed: rotate the Clerk and Gemini keys, update
+`deploy/.env` and redeploy. The Neon database is no longer used, so delete that
+project (or reset its password) once you are happy with the move, then remove
+the `LEGACY_NEON_*` lines from `deploy/.env`. The Cloudflare R2 keys and the GCP service-account file in the local
 `.env` files are not used by this deployment: the current backend no longer
 reads `OBJECT_STORAGE_*`, and Document AI is off in demo mode.
 
@@ -171,7 +173,24 @@ release later).
 
 Restore a volume backup with
 `docker run --rm -v draftly_pilot-requests:/d -v /var/backups/draftly:/b alpine tar -xzf /b/<file>.tar.gz -C /d`.
-The database is on Neon; use its point-in-time restore for that.
+
+Restore the database from a dump (this replaces its contents, so stop the API
+first):
+
+```bash
+cd ~/draftly-platform/deploy
+docker compose --project-name draftly --env-file .env -f docker-compose.vps.yml --profile web stop backend worker
+docker exec -i draftly-db-1 pg_restore -U draftly -d draftly --clean --if-exists --no-owner --no-acl \
+  < /var/backups/draftly/database-<timestamp>.dump
+cd .. && deploy/vps.sh deploy backend
+```
+
+The backups sit on the same server as the database, so copy them somewhere
+else too (another machine, or object storage). A disk failure would take both.
+
+To go back to Neon, put the two `LEGACY_NEON_DATABASE_URL*` values back into
+`DATABASE_URL` and `DATABASE_URL_DIRECT` and run `deploy/vps.sh deploy backend`.
+Anything written since the move exists only in the local database.
 
 ## Accounts, plans and gated features
 
@@ -226,21 +245,20 @@ not case data, and are still shown.
   non-synthetic documents reach a provider, but `EXTRACTION_PROVIDER` is still
   `stub`, so no document is sent to a provider yet. Record provider region,
   retention and training terms before switching extraction to Gemini.
-- **Slow API: server in France, database in Singapore.** The VPS is in
-  Lauterbourg (FR) and the Neon database is in `ap-southeast-1`, about 250 ms
-  per round trip, and each request makes several sequential queries. Most calls
-  take 1.5 to 5 seconds. Create the Neon project in `eu-central-1` (Frankfurt),
-  put its two URLs in `deploy/.env`, and redeploy; Alembic recreates the schema.
-  That is also the moment to stop sharing the development database.
+- **Database on the same server.** The database moved from Neon (Singapore)
+  to PostgreSQL on this VPS on 2026-09-21, which took API calls from 1.5 to 5
+  seconds down to tens of milliseconds. The trade-off is that the server and its
+  disk are now one failure domain: keep off-server copies of
+  `/var/backups/draftly`.
 - **Demo mode.** The backend runs with `ENVIRONMENT=local` because outside
   `local`, `test` and `ci` it demands approved production providers: GCS
   evidence storage with `DRAFTLY_STORAGE_REAL_DATA_APPROVED`, an approved
   extraction provider and the real matter-access adapter. Those are open
   decisions in `backend/backend-implementation-plan-v0.md` for the team to
   approve; this deployment does not choose them. Use synthetic data only.
-- **Database.** The Neon database used here is the same one used for local
-  development. Create a separate Neon branch or project for production before
-  real use, then change the two URLs in `deploy/.env`.
+- **Not shared with development.** The local database holds a copy of what
+  was in the old shared development database at the time of the move (73
+  tables, 937 rows). Remove any test accounts you do not want before real use.
 - **One API worker process.** Demo-mode adapters keep state in memory, so the
   API runs a single uvicorn worker. Scale up only after production adapters
   replace them.
