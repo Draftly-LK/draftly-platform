@@ -1,2 +1,4 @@
 # Build directory of the Playwright workspace dev server (playwright.config.ts).
 .next-e2e/
+.vercel
+.env*.local

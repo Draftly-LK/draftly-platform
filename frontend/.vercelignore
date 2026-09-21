@@ -1,0 +1,15 @@
+# Keeps `vercel deploy` from frontend/ to the source Vercel builds from. The
+# CLI does not read .gitignore, and by default it would upload .env (secrets).
+# Environment values live in the Vercel project settings instead.
+.env
+.env.*
+!.env.example
+
+node_modules
+.next
+.next-e2e
+out
+coverage
+playwright-report
+test-results
+*.tsbuildinfo

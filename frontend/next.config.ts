@@ -11,5 +11,8 @@ export default withNextIntl({
   // The Playwright workspace server runs beside the normal dev server and needs
   // its own build directory (see playwright.config.ts). Unset everywhere else.
   distDir: process.env.NEXT_DIST_DIR || ".next",
-  outputFileTracingRoot: path.join(process.cwd(), ".."),
+  // The repo root, which the Docker image's /repo/frontend layout relies on.
+  // Not on Vercel: `vercel deploy` from frontend/ uploads only this folder, so
+  // the parent does not exist there and tracing looks for .next one level up.
+  ...(process.env.VERCEL ? {} : { outputFileTracingRoot: path.join(process.cwd(), "..") }),
 });
