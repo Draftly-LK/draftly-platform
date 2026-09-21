@@ -9,6 +9,7 @@ export * from "./matter";
 export * from "./obligation";
 export * from "./party";
 export * from "./question";
+export * from "./research";
 export * from "./rta";
 export * from "./user";
 export * from "./workflow";

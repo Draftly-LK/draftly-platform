@@ -14,23 +14,53 @@ See [docs/plan.md](docs/plan.md) for the M2 static UI implementation plan.
 
 - Node.js `>=22.16.0 <23` and pnpm `>=10.23.0 <11` (pinned via Corepack)
 - Python 3.12 and [uv](https://docs.astral.sh/uv/)
-- Env files (no repo-root `.env`):
-  - Backend: `cp backend/.env.example backend/.env`
-  - Frontend: `cp frontend/.env.example frontend/.env`
+
+## Local development (Windows PowerShell)
+
+Run the backend and frontend in two separate PowerShell terminals. There is no
+repo-root `.env`; each application has its own environment file.
+
+### First-time environment setup
+
+From the repository root:
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+Copy-Item frontend\.env.example frontend\.env
+```
+
+Add valid `DATABASE_URL` and `DATABASE_URL_DIRECT` values to `backend/.env`.
+For local development without Clerk authentication, also set:
+
+```dotenv
+# backend/.env
+USE_STUB_IDENTITY=true
+
+# frontend/.env
+AUTH_BYPASS=true
+```
+
+Keep the frontend API URL set to the local backend:
+
+```dotenv
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
+```
 
 ## Frontend
 
-From the **repo root**:
+In the frontend PowerShell terminal, from the repository root:
 
-```bash
+```powershell
 corepack enable
 pnpm --dir frontend install
 pnpm --dir frontend dev --port 4310
 ```
 
-Or from inside `frontend/`:
+On later runs, only the development-server command is needed. Alternatively,
+run the commands from inside `frontend/`:
 
-```bash
+```powershell
+cd frontend
 pnpm install
 pnpm dev --port 4310
 ```
@@ -72,11 +102,19 @@ In [dashboard.clerk.com](https://dashboard.clerk.com) for this app:
 
 ## Backend
 
-```bash
+In the backend PowerShell terminal, from the repository root:
+
+```powershell
 cd backend
-# cp .env.example .env   # once, then fill secrets
 uv sync
 uv run alembic upgrade head
+uv run uvicorn src.main:app --reload --port 8000
+```
+
+On later runs, start the backend with:
+
+```powershell
+cd backend
 uv run uvicorn src.main:app --reload --port 8000
 ```
 

@@ -1,3 +1,5 @@
-import { AssistantScreen } from "@/components/assistant/assistant-screen";
-export default function AssistantPage() { return <AssistantScreen />; }
+import { redirect } from "next/navigation";
 
+export default function AssistantPage() {
+  redirect("/research");
+}
