@@ -1,0 +1,194 @@
+# Draftly production hosting
+
+Everything about the live deployment at `draftly.adlahiru.com`: where each
+piece lives, how a change reaches production, and how to operate it. The
+mechanics of the scripts are in [README.md](README.md); this file is the map.
+
+This deployment runs in **demo mode on synthetic data**. See
+[Known limitations](#known-limitations-and-approval-gates) before putting real
+client material on it.
+
+## What runs where
+
+| Piece | Where | Address |
+| --- | --- | --- |
+| Landing page and pilot-request form | Docker container `landing` on the VPS | <https://draftly.adlahiru.com> |
+| Application (Next.js) | Container `frontend` on the VPS | <https://app.draftly.adlahiru.com> |
+| API (FastAPI) and outbox worker | Containers `backend`, `worker`, `migrate` | `https://app.draftly.adlahiru.com/api/*` and `/health/*` |
+| Retrieval engine | Container `retrieval`, internal only | `127.0.0.1:8001` on the VPS (SSH tunnel) |
+| TLS and routing | Container `caddy` (Let's Encrypt certificates, renewed automatically) | ports 80 and 443 |
+| Database | Neon PostgreSQL (managed, off the VPS) | pooled URL for the app, direct URL for migrations |
+| Sign-in | Clerk (development instance `popular-lark-48`) | Clerk dashboard |
+| Source, CI and CD | GitHub `Draftly-LK/draftly-platform` | Actions tab |
+
+The app and the API share one origin (`app.draftly.adlahiru.com`), so the
+browser makes no cross-origin calls. The retrieval engine has no login and is
+never routed by Caddy; do not add a `ports:` entry for it.
+
+## DNS
+
+Records live at the registrar (Porkbun). Only the two below concern Draftly;
+leave every other record (the apex `adlahiru.com` GitHub Pages addresses, `www`,
+MX, SPF, Google verification, `_acme-challenge`) alone.
+
+| Type | Host | Value | Serves |
+| --- | --- | --- | --- |
+| A | `draftly.adlahiru.com` | `13.140.183.52` | landing page |
+| A | `app.draftly.adlahiru.com` | `13.140.183.52` | application and API |
+
+Caddy needs both names to resolve to the server before it can obtain a
+certificate for them. If `app.` was added after the first deploy, run
+`docker restart draftly-caddy-1` on the server to retry immediately.
+
+## The server
+
+Ubuntu 24.04, 4 vCPU, 8 GB RAM, 2 GB swap, public address `13.140.183.52`.
+
+| What | Where |
+| --- | --- |
+| Repository clone (what production runs) | `/home/deploy/draftly-platform`, owned by the `deploy` user |
+| All runtime secrets | `/home/deploy/draftly-platform/deploy/.env` (mode 600, git-ignored) |
+| Research inputs for retrieval | `/home/deploy/draftly-platform/deploy/.research` (sparse clone, git-ignored) |
+| GitHub access for the server | `/home/deploy/.ssh/`: `github_deploy` (platform repo) and `draftly_research_deploy` (research repo, read-only), selected through `~/.ssh/config` |
+| CI login | `/home/deploy/.ssh/authorized_keys`, one key pinned to a forced command |
+| Forced-command script (root-owned copy of `deploy/ci-deploy.sh`) | `/usr/local/bin/draftly-ci-deploy` |
+| Persistent data | Docker volumes `draftly_pilot-requests`, `draftly_source-files`, `draftly_caddy-data` (certificates) |
+| Nightly backups (03:15) | `/var/backups/draftly`, last 14 kept, from `/etc/cron.d/draftly-backup` |
+| Deploy logs | `/var/log/draftly/` and `deploy/vps.sh logs` |
+
+Hardening in place: `ufw` denies everything inbound except 22, 80 and 443;
+`fail2ban` guards SSH; unattended security updates are on; containers run as
+non-root users with memory limits; Caddy sends HSTS and the usual security
+headers. `deploy/vps.sh setup` reproduces all of it on a fresh machine.
+
+Not changed, because it could lock you out: SSH still accepts passwords and
+root login. Once you log in with a key, set `PasswordAuthentication no` and
+`PermitRootLogin prohibit-password` in `/etc/ssh/sshd_config.d/`.
+
+## Branches and how a change reaches production
+
+```text
+dev/<name>/<topic>  --PR-->  main  --PR-->  prod  --push triggers-->  CI -> deploy -> smoke test
+```
+
+- `main` is the integration branch. Nothing is committed or pushed to it
+  directly; changes arrive by pull request.
+- `prod` is the **deployment branch**. Every push to `prod` runs
+  `.github/workflows/deploy.yml`. Promote by opening a pull request from `main`
+  into `prod` (or a hotfix branch into `prod`).
+- Deploy sequence on each push to `prod`:
+  1. `ci.yml` runs (frontend typecheck, lint, tests, build; backend lock, ruff,
+     mypy, pytest; landing tests; Docker image builds; compose, Caddyfile and
+     shell script validation; markdown lint). A red CI stops the deploy.
+  2. The workflow SSHes to the server as `deploy`. The key can only run
+     `deploy/ci-deploy.sh`, which fast-forwards the clone to the exact commit
+     that passed CI and runs `deploy/vps.sh deploy`.
+  3. `vps.sh deploy` refreshes the research inputs, builds the four images on
+     the server, runs Alembic migrations, starts the stack and health-checks it.
+     If any step fails, the previous images are put back automatically.
+  4. The workflow smoke-tests the public URLs. If that fails, it rolls back.
+- Manual runs: Actions, Deploy, "Run workflow" on branch `prod`, then choose
+  `deploy` (redeploy the tip of `prod`) or `rollback`.
+
+## One-time GitHub setup
+
+These live in GitHub, not in the repository, so they cannot be scripted from
+here. Repository Settings, then:
+
+1. **Secrets and variables, Actions, secrets.** Add:
+
+   | Secret | Value |
+   | --- | --- |
+   | `VPS_HOST` | `13.140.183.52` |
+   | `VPS_USER` | `deploy` |
+   | `VPS_SSH_KEY` | private key from `/root/draftly-github-actions-key` on the server |
+   | `VPS_KNOWN_HOSTS` | the line in `/root/draftly-vps-known-hosts` on the server |
+   | `VPS_PORT` | optional; only if SSH is not on 22 |
+
+   Read the two files on the server yourself (`cat`), paste them into GitHub,
+   then delete them: `shred -u /root/draftly-github-actions-key`. Application
+   secrets (Clerk, Neon, Gemini) are **not** stored in GitHub; they stay in
+   `deploy/.env` on the server.
+2. **Environments.** Create `production`. Optionally add required reviewers so
+   each deploy needs an approval click.
+3. **Branch protection** (Settings, Branches) for both `main` and `prod`:
+   require a pull request, require the status checks `verify`, `backend`,
+   `landing`, `images (backend)`, `images (frontend)`, `images (landing-page)`
+   and `deploy-config`, and block force pushes. GitHub protection is not
+   reliable on this private organisation repository, so agents also follow the
+   no-direct-push rule in `CLAUDE.md`.
+4. **Variables** (optional): `APP_URL` and `LANDING_URL` if the hostnames change.
+
+## Secrets: what exists and where
+
+| Secret | Lives in | Rotate at |
+| --- | --- | --- |
+| `CLERK_SECRET_KEY`, publishable key | `deploy/.env` | Clerk dashboard, API keys |
+| `DATABASE_URL`, `DATABASE_URL_DIRECT` | `deploy/.env` | Neon console, reset the role password |
+| `GEMINI_API_KEY` | `deploy/.env` | Google AI Studio |
+| `PARTY_IDENTIFIER_KEY`, `PARTY_BLIND_INDEX_KEY`, `API_CURSOR_SIGNING_KEY` | `deploy/.env` (generated on the server) | **Do not rotate casually.** The first two encrypt and index stored party identifiers; changing them makes existing rows unreadable. Back them up in your password manager |
+| CI SSH key | GitHub secret `VPS_SSH_KEY` and `authorized_keys` | Generate a new pair, replace both |
+| Research repo deploy key | `/home/deploy/.ssh/draftly_research_deploy`, GitHub repo Deploy keys | Replace both |
+
+After changing anything in `deploy/.env`, apply it with
+`deploy/vps.sh deploy` (a change to `DOMAIN` or the Clerk publishable key needs
+`deploy/vps.sh deploy frontend` because `NEXT_PUBLIC_*` values are compiled in).
+
+The Neon URLs, Clerk secret and Gemini key were shared in a chat while setting
+this up. Treat them as exposed and rotate them, then update `deploy/.env` and
+redeploy. The Cloudflare R2 keys and the GCP service-account file in the local
+`.env` files are not used by this deployment: the current backend no longer
+reads `OBJECT_STORAGE_*`, and Document AI is off in demo mode.
+
+## Clerk settings
+
+In the Clerk dashboard for the development instance, allow
+`https://app.draftly.adlahiru.com` as an origin. The backend accepts session
+tokens only from that origin (`CLERK_AUTHORIZED_PARTY`). Moving to a Clerk
+production instance needs DNS records on the domain and new keys in
+`deploy/.env`, then `deploy/vps.sh deploy frontend`.
+
+## Operating it
+
+Run on the server as the `deploy` user, from `~/draftly-platform`:
+
+| Task | Command |
+| --- | --- |
+| Health, memory, containers | `deploy/vps.sh status` |
+| Follow logs (all, or one service) | `deploy/vps.sh logs` / `deploy/vps.sh logs backend` |
+| Redeploy after a manual edit | `deploy/vps.sh deploy` |
+| Roll back to the previous release | `deploy/vps.sh rollback` (or the workflow's `rollback`) |
+| Backup volumes now | `deploy/vps.sh backup` |
+| Stop everything (data kept) | `deploy/vps.sh down` |
+| Read pilot requests | `docker run --rm -v draftly_pilot-requests:/d alpine sh -c 'cat /d/*.json'` |
+| Reach retrieval | `ssh -L 8001:127.0.0.1:8001 deploy@13.140.183.52`, then `curl http://127.0.0.1:8001/health` |
+
+A rollback restores the previous images only. Alembic migrations are
+forward-only and are not reverted, so write migrations that the previous
+release can still run against (add columns before using them, drop them a
+release later).
+
+Restore a volume backup with
+`docker run --rm -v draftly_pilot-requests:/d -v /var/backups/draftly:/b alpine tar -xzf /b/<file>.tar.gz -C /d`.
+The database is on Neon; use its point-in-time restore for that.
+
+## Known limitations and approval gates
+
+- **Demo mode.** The backend runs with `ENVIRONMENT=local` because outside
+  `local`, `test` and `ci` it demands approved production providers: GCS
+  evidence storage with `DRAFTLY_STORAGE_REAL_DATA_APPROVED`, an approved
+  extraction provider and the real matter-access adapter. Those are open
+  decisions in `backend/backend-implementation-plan-v0.md` for the team to
+  approve; this deployment does not choose them. Use synthetic data only.
+- **Database.** The Neon database used here is the same one used for local
+  development. Create a separate Neon branch or project for production before
+  real use, then change the two URLs in `deploy/.env`.
+- **One API worker process.** Demo-mode adapters keep state in memory, so the
+  API runs a single uvicorn worker. Scale up only after production adapters
+  replace them.
+- **Retrieval is not yet called by the backend.** The research API answers from
+  the statute corpus bundled in the backend image. The retrieval container is
+  deployed and healthy for the day the backend client is written.
+- **Single server.** One VPS is a single point of failure. Restoring from
+  nothing takes `vps.sh setup`, `init`, a filled `deploy/.env` and
+  `vps.sh deploy`.

@@ -76,7 +76,7 @@ cmd_setup() {
   if command -v apt-get >/dev/null; then
     apt-get update -qq
     DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl git openssl \
-      fail2ban unattended-upgrades ufw >/dev/null
+      fail2ban unattended-upgrades ufw git-lfs >/dev/null
     systemctl enable --now fail2ban >/dev/null 2>&1 || true
     printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' \
       > /etc/apt/apt.conf.d/20auto-upgrades
@@ -303,7 +303,12 @@ research_paths() {
   sed -n 's/^!\(.*\)$/\/\1/p' "$DEPLOY_DIR/retrieval/Dockerfile.dockerignore"
 }
 
+# Comma-separated, repo-relative allowlist for `git lfs pull --include`.
+research_lfs_include() { research_paths | sed 's#^/##' | paste -sd, -; }
+
 fetch_research() {
+  command -v git-lfs >/dev/null \
+    || die "git-lfs is required: the research corpus keeps its judgment files in Git LFS (run: sudo deploy/vps.sh setup)"
   local url ref
   url="$(env_value RESEARCH_REPO_URL)"
   url="${url:-$(research_url_default)}"
@@ -324,6 +329,15 @@ fetch_research() {
     git -C "$RESEARCH_DIR" fetch --quiet --filter=blob:none --depth 1 origin "$ref"
     git -C "$RESEARCH_DIR" reset --quiet --hard FETCH_HEAD
   fi
+  # The sparse checkout above only downloads LFS pointer files. Fetch the real
+  # content for the allowlisted paths only; the repo's other LFS objects are
+  # large and private and the retrieval image does not use them.
+  git -C "$RESEARCH_DIR" lfs install --local >/dev/null
+  git -C "$RESEARCH_DIR" lfs pull --include="$(research_lfs_include)" \
+    || die "git lfs pull failed for the research repo (does the deploy key have read access to LFS objects?)"
+  local pointer
+  pointer="$(grep -rlm1 --exclude-dir=.git '^version https://git-lfs.github.com/spec/v1' "$RESEARCH_DIR" 2>/dev/null | head -n 1 || true)"
+  [ -z "$pointer" ] || die "$pointer is still a Git LFS pointer; the retrieval index cannot be built from it"
   echo "research repo at $(git -C "$RESEARCH_DIR" rev-parse --short HEAD)"
 }
 

@@ -1,6 +1,8 @@
 # Deploying Draftly with Docker
 
-This folder runs the whole application on one small VPS (sized for 1 GB RAM):
+This folder runs the whole application on one VPS. The live production setup
+(hostnames, secrets, CI/CD, backups) is documented in
+[PRODUCTION.md](PRODUCTION.md). The table below describes the services:
 
 | Service | Image built from | Notes |
 | --- | --- | --- |
@@ -168,36 +170,31 @@ Back it up if you care about those leads; `deploy/vps.sh down` keeps it.
 
 ### Continuous delivery
 
-`.github/workflows/deploy.yml` deploys to the VPS after CI passes on `main`,
-and can be run by hand from the Actions tab. It logs in over SSH, fast-forwards
-the server's clone to `origin/main` and runs `deploy/vps.sh deploy`. The job
-fails if the build, a migration or a health check fails.
+`.github/workflows/deploy.yml` deploys to the VPS on every push to the `prod`
+branch, after the same CI checks that guard pull requests. It logs in over SSH
+with a key that can run only `deploy/ci-deploy.sh`, which fast-forwards the
+server's clone to the commit that passed CI and runs `deploy/vps.sh deploy`.
+A failed build, migration or health check restores the previous images, and a
+failed public smoke test afterwards triggers a rollback. It can also be run by
+hand from the Actions tab (`deploy` or `rollback`).
 
-One-time setup:
+The production setup, including every secret and where it lives, is described
+in [PRODUCTION.md](PRODUCTION.md). In short, the one-time steps are:
 
-1. On the server, create the clone once (the steps above) as the user that will
-   deploy. That user must be in the `docker` group, which is root-equivalent, so
-   use a dedicated user and a key that only does this.
-2. On your machine: `ssh-keygen -t ed25519 -f draftly-deploy -N ''`. Append
-   `draftly-deploy.pub` to that user's `~/.ssh/authorized_keys`.
-3. Get the server's host key: `ssh-keyscan -t ed25519 <server-ip>`.
-4. In GitHub, Settings, Secrets and variables, Actions, add these secrets:
+1. On the server, create the clone as a dedicated `deploy` user in the
+   `docker` group (steps above).
+2. Install the forced-command script as root:
+   `sudo install -m 755 deploy/ci-deploy.sh /usr/local/bin/draftly-ci-deploy`.
+3. Generate a key pair for GitHub Actions and pin it in
+   `~deploy/.ssh/authorized_keys` as
+   `restrict,command="/usr/local/bin/draftly-ci-deploy" ssh-ed25519 AAAA...`.
+4. In GitHub, Settings, Secrets and variables, Actions, add `VPS_HOST`,
+   `VPS_USER`, `VPS_SSH_KEY` (the private key), `VPS_KNOWN_HOSTS` (from
+   `ssh-keyscan -t ed25519 <server-ip>`) and optionally `VPS_PORT`.
 
-| Secret | Value |
-| --- | --- |
-| `VPS_HOST` | server IP or hostname |
-| `VPS_USER` | the deploy user |
-| `VPS_SSH_KEY` | contents of the private key `draftly-deploy` |
-| `VPS_KNOWN_HOSTS` | the `ssh-keyscan` line from step 3 |
-| `VPS_PORT` | optional; only if SSH is not on 22 |
-
-If the clone is not in `~/draftly-platform`, set the repository variable
-`VPS_REPO_DIR` to its path relative to the home directory. Delete the private
-key from your machine once it is stored in GitHub.
-
-The server needs read access to the private research repository for the
-retrieval image (see above): the same credentials as the clone, or
-`RESEARCH_REPO_URL` with a read-only token in `deploy/.env`.
+If the clone is not in `~/draftly-platform`, set `DRAFTLY_REPO_DIR` for the
+forced command in `authorized_keys`. The server needs read access to the
+private research repository for the retrieval image (see above).
 
 ### Retrieval engine
 
@@ -226,7 +223,10 @@ deploy/vps.sh logs backend     # follow one service's logs
 deploy/vps.sh down             # stop (data volumes are kept)
 ```
 
-## Rules for a 1 GB VPS
+## Rules for a small VPS (images built elsewhere)
+
+These apply to the `build.sh` and `ship.sh` path on a machine with about 1 GB
+of RAM. The production host has 8 GB and builds on the server (`vps.sh`).
 
 - **Do not build on the VPS.** `next build` and the index build need more memory
   than the machine has. Build on a dev machine and ship the images.
@@ -322,9 +322,11 @@ migrations are not reversed automatically.
   needs GCS storage with `DRAFTLY_STORAGE_REAL_DATA_APPROVED`, an approved
   extraction provider and the real matter-access adapter. Until then the API
   starts, but those features fail on first use. This is a backend decision, not
-  a Docker one. The Vercel + VPS path runs `local` for that reason.
-- **The backend does not call the retrieval service yet.** `modules/research` is
-  empty. The stack passes `RETRIEVAL_BASE_URL=http://retrieval:8000` to the
-  backend for when that client is written.
+  a Docker one. The `vps.sh` path runs `local` for that reason.
+- **The backend does not call the retrieval service yet.** The research API
+  answers from the statute corpus bundled in the backend image
+  (`modules/research/infrastructure/retrieval/corpus`). The stack passes
+  `RETRIEVAL_BASE_URL=http://retrieval:8000` to the backend for when a client
+  for this service is written.
 - **The retrieval service has no authentication.** It is deliberately not
   published and Caddy has no route to it. Do not add a `ports:` entry to it.
