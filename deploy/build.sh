@@ -5,7 +5,11 @@
 #   deploy/build.sh frontend        # rebuild one or more: frontend backend retrieval
 #
 # Reads deploy/.env. Output: deploy/dist/draftly-images.tar.gz (git-ignored),
-# which ship.sh copies to the server. Never build on a 1 GB server.
+# which ship.sh copies to the server.
+#
+# vps.sh also calls this on the server itself with PACK=0 (keep the images in
+# the local Docker, no tarball), PLATFORM set to the server's own platform and
+# RETRIEVAL_CONTEXT pointing at its sparse research checkout.
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,8 +25,9 @@ PLATFORM="${PLATFORM:-linux/amd64}"
 FRONTEND_IMAGE="$(require FRONTEND_IMAGE)"
 BACKEND_IMAGE="$(require BACKEND_IMAGE)"
 RETRIEVAL_IMAGE="$(require RETRIEVAL_IMAGE)"
-RETRIEVAL_CONTEXT="$(env_value RETRIEVAL_CONTEXT)"
+RETRIEVAL_CONTEXT="${RETRIEVAL_CONTEXT:-$(env_value RETRIEVAL_CONTEXT)}"
 RETRIEVAL_CONTEXT="${RETRIEVAL_CONTEXT:-$REPO_DIR/../draftly}"
+PACK="${PACK:-1}"
 
 targets=("$@")
 [ ${#targets[@]} -gt 0 ] || targets=(backend retrieval frontend)
@@ -57,6 +62,8 @@ for target in "${targets[@]}"; do
     *) echo "Unknown target '$target' (use: frontend backend retrieval)" >&2; exit 1 ;;
   esac
 done
+
+[ "$PACK" = "1" ] || exit 0
 
 for image in "$FRONTEND_IMAGE" "$BACKEND_IMAGE" "$RETRIEVAL_IMAGE"; do
   docker image inspect "$image" >/dev/null 2>&1 || {

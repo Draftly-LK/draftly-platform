@@ -26,5 +26,8 @@ inputs/
 # Packed images from deploy/build.sh
 deploy/dist/
 
+# Sparse research checkout that deploy/vps.sh builds the retrieval image from
+deploy/.research/
+
 # Python bytecode
 __pycache__/

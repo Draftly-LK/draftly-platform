@@ -9,9 +9,12 @@
 #   docker build -f deploy/retrieval/Dockerfile \
 #     --build-context deploy=deploy/retrieval -t draftly-retrieval ../draftly
 #
-# The builder stage indexes the corpus; the runtime stage carries only the code,
-# the finished indexes and the small CSVs read per request, and runs with
-# DRAFTLY_INDEX_FROZEN=1 so it never re-hashes or rebuilds the corpus.
+# The builder stage indexes the corpus and records its fingerprints; the runtime
+# stage carries only the code, the finished indexes and the small files read per
+# request. It starts through serve_frozen.py, which serves the recorded
+# fingerprints instead of re-hashing a corpus that is not in the image (the
+# research repo's own DRAFTLY_INDEX_FROZEN mode, also set, is not on its main
+# branch yet).
 #
 # Dense (embedding) channel is opt-in because it spends Gemini credits: add
 #   --build-arg WITH_EMBEDDINGS=1 --secret id=gemini_api_key,env=GEMINI_API_KEY
@@ -57,21 +60,27 @@ RUN --mount=type=secret,id=gemini_api_key,required=false \
     fi; \
     python -m draftly.retrieval build $flags; \
     python -m draftly.case_retrieval build $flags; \
-    rm -f data/processed/retrieval-indexes/*/build.lock
+    rm -f data/processed/retrieval-indexes/*/build.lock; \
+    python -c 'import json; \
+from draftly.retrieval.corpus import corpus_fingerprint as s, load_statute_documents as d; \
+from draftly.case_retrieval.corpus import corpus_fingerprint as c, load_conveyancing_case_rows as r; \
+json.dump({"statutes": s(d()), "cases": c(r())}, open("data/processed/retrieval-indexes/frozen-fingerprints.json", "w"))'
 
 
 FROM base AS runtime
 RUN useradd --system --uid 10001 --no-create-home draftly
 COPY --from=builder /app/data/processed/retrieval-indexes data/processed/retrieval-indexes
-# Read per request by /topics, /sources, /case-statute-links and the case graph.
+# Read per request by /topics, /sources, /search, /similar-cases and the case graph.
 COPY data/processed/documents.csv data/processed/source-registry.csv \
-     data/processed/topics.csv data/processed/topic-sources.csv data/processed/
+     data/processed/topics.csv data/processed/topic-sources.csv \
+     data/processed/cases.jsonl data/processed/
 COPY scripts/case-law-statute-linking/output/resolved_links.csv \
      scripts/case-law-statute-linking/output/statute_index.csv \
      scripts/case-law-statute-linking/output/
+COPY --from=deploy serve_frozen.py ./
 ENV DRAFTLY_INDEX_FROZEN=1
 USER draftly
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
-CMD ["uvicorn", "draftly.retrieval.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "serve_frozen:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

@@ -285,16 +285,28 @@ Plan §10 requires this before lawyer testing, and it was not written down.
 Each runnable piece has a Dockerfile: `backend/Dockerfile` (API, migrations and
 the worker runner share one image), `frontend/Dockerfile`, and
 `deploy/retrieval/Dockerfile`, which takes the research repository as a
-build-time input. `deploy/` holds everything else needed to host: the compose
-stack for a single small VPS, `build.sh` and `ship.sh`. In that stack Caddy terminates TLS and serves the
-frontend and the API from one origin, the database stays on Neon, and images are
-built off the host. `deploy/README.md` is the runbook.
+build-time input. `deploy/` holds two ways to host, and `deploy/README.md` is
+the runbook for both:
+
+- **Single origin** (`docker-compose.yml`, `build.sh`, `ship.sh`): Caddy
+  terminates TLS and serves the frontend and the API from one origin, the
+  database stays on Neon, and images are built off the host.
+- **Vercel + VPS** (`docker-compose.vps.yml`, `vps.sh`): the frontend on
+  Vercel; the API, worker, retrieval and an optional bundled Postgres on the
+  VPS, built there. The browser calls the API cross-origin, so the backend's
+  CORS allowlist is the local dev origins plus `ALLOWED_ORIGINS` (exact
+  origins, no wildcards). This path runs `ENVIRONMENT=local` with real Clerk
+  sign-in, because the local-only adapters (disk evidence store, stub
+  extraction, stub matter access) are what the app has today; it is for
+  synthetic data only.
 
 The retrieval engine runs as its own HTTP service on the internal compose
 network, which keeps to the boundary rule above: the platform reaches it through
 an interface and never imports research paths. Its image ships a prebuilt index
-and runs with `DRAFTLY_INDEX_FROZEN=1`, so it serves that index without the
-source corpus present. The index in that image is built from the research
+and serves it without the source corpus present: the build records the corpus
+fingerprints, and `deploy/retrieval/serve_frozen.py` serves those instead of
+re-hashing, until the research repo's `DRAFTLY_INDEX_FROZEN` mode is on its
+main branch. The index in that image is built from the research
 checkout, not yet from a signed corpus release manifest.
 
 This stack is for V0 (synthetic and approved pilot data). It does not change the

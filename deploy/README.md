@@ -11,8 +11,142 @@ This folder runs the whole application on one small VPS (sized for 1 GB RAM):
 | `worker` | same image as `backend` | Outbox worker. Off by default; enable with `--profile worker`. |
 | `retrieval` | `deploy/retrieval/Dockerfile` (code and corpus from the research repo) | Statute and case-law search. Internal network only. |
 
-Postgres is not in the stack. Use the managed Neon database: the pooled URL in
-`DATABASE_URL` and the direct URL in `DATABASE_URL_DIRECT`.
+Postgres is not in the base stack. Use the managed Neon database: the pooled URL
+in `DATABASE_URL` and the direct URL in `DATABASE_URL_DIRECT`. The Vercel + VPS
+path below can run a bundled Postgres instead.
+
+There are two ways to host it:
+
+- **Vercel + VPS** (`vps.sh`): the Next.js frontend on Vercel, everything
+  else on the VPS, built there from a clone of this repository. Meant for a
+  temporary demo on synthetic data. Described in the next section.
+- **Everything on the VPS, images built elsewhere** (`docker-compose.yml`,
+  `build.sh`, `ship.sh`): one origin behind one Caddy. The rest of this README
+  after the next section describes it.
+
+## Vercel + VPS (temporary demo)
+
+| Where | What |
+| --- | --- |
+| Vercel | Next.js frontend (`frontend/`) |
+| VPS | `docker-compose.vps.yml`: Caddy (API domain only), migrations, backend, outbox worker, retrieval, and a bundled Postgres unless you use Neon |
+
+The browser loads the site from Vercel and calls the API on the VPS
+cross-origin. The backend allows exactly one browser origin, `FRONTEND_ORIGIN`
+(passed to it as `ALLOWED_ORIGINS`), and Clerk accepts tokens only from that
+origin (`CLERK_AUTHORIZED_PARTY`). Use one fixed Vercel URL, such as the
+production `*.vercel.app` address or your own domain. Per-commit preview URLs
+change every time and will be refused.
+
+Measured idle use of the VPS stack: about 240 MB in total. Only the backend
+and retrieval images are built on the server, so 2 GB of swap is plenty.
+
+### 1. VPS
+
+On a fresh Ubuntu or Debian VPS (1 GB RAM, about 5 GB free disk):
+
+```bash
+git clone https://github.com/HimathX/draftly-platform.git
+cd draftly-platform
+sudo deploy/vps.sh setup     # Docker, 2 GB swap, ufw rules; log out and back in afterwards
+deploy/vps.sh init           # writes deploy/.env with generated secrets
+nano deploy/.env             # FRONTEND_ORIGIN, Clerk keys, optionally GEMINI_API_KEY
+deploy/vps.sh deploy         # fetch retrieval inputs, build, start, check
+```
+
+What `init` sets up, all editable in `deploy/.env`:
+
+- `DOMAIN` is the API's hostname. It defaults to `<ip-with-dashes>.sslip.io`,
+  which resolves to the server's IP, so Caddy gets a real certificate without
+  a domain. Put your own (sub)domain there if you have one.
+- With no `DATABASE_URL`, a bundled Postgres 16 container (profile `localdb`)
+  keeps the data in the `pg-data` volume. Paste Neon URLs instead to use Neon.
+- `ENVIRONMENT=local`. The backend only starts its local adapters (disk
+  evidence store, stub extraction, stub matter access for parties) in
+  `local`, `test` or `ci`; with `production` those parts of the app fail.
+  So this deployment is for synthetic data only. Sign-in is still real:
+  the stack refuses to start without Clerk settings, and never enables the
+  stub identity.
+- Party encryption, blind-index and cursor keys are generated.
+
+You fill in:
+
+- `FRONTEND_ORIGIN`: the Vercel URL, for example
+  `https://draftly-demo.vercel.app` (no trailing slash, no path).
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` from a Clerk
+  **development** instance (`pk_test_…`, `sk_test_…`). A production Clerk
+  instance needs DNS records on a domain you own. `CLERK_ISSUER` is worked out
+  from the publishable key and `CLERK_AUTHORIZED_PARTY` from `FRONTEND_ORIGIN`.
+
+`deploy` finishes by checking the API's readiness, the retrieval engine, and
+that a CORS preflight from `FRONTEND_ORIGIN` is allowed.
+
+The research repository is private. `deploy` clones it into `deploy/.research`
+(git-ignored) as a shallow, sparse checkout of only the files the retrieval
+image copies (the allowlist in `retrieval/Dockerfile.dockerignore`, about 1 GB),
+using the same GitHub access this clone used. If that fails, set
+`RESEARCH_REPO_URL=https://<token>@github.com/HimathX/draftly.git` in
+`deploy/.env` with a read-only fine-grained token.
+
+### 2. Vercel
+
+Import the repository in Vercel, then in the project settings:
+
+| Setting | Value |
+| --- | --- |
+| Root Directory | `frontend` |
+| Framework Preset | Next.js |
+| Install / build command | defaults (pnpm is picked up from the lockfile) |
+| Node.js version | 22.x |
+
+Environment variables (Production):
+
+| Name | Value |
+| --- | --- |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://<DOMAIN from deploy/.env>` (bare origin, no `/api/v1`) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | same `pk_test_…` as on the VPS |
+| `CLERK_SECRET_KEY` | same `sk_test_…` as on the VPS |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
+| `NEXT_PUBLIC_CLERK_AFTER_SIGN_OUT_URL` | `/sign-in` |
+| `NEXT_PUBLIC_USE_MOCK_PIPELINE` | `false` |
+| `MULTILINGUAL_LANGUAGE_SUPPORT` | `true` |
+
+Do not set `AUTH_BYPASS`. `NEXT_PUBLIC_*` values are baked in at build time, so
+redeploy on Vercel after changing them. `frontend/vercel.json` turns off
+deploys on every Git push, so deploy with `vercel --prod` from `frontend/` or
+with "Redeploy" in the dashboard.
+
+If the Vercel URL changes, update `FRONTEND_ORIGIN` (and
+`CLERK_AUTHORIZED_PARTY` if you set it by hand) in `deploy/.env` and run
+`deploy/vps.sh deploy` again.
+
+### Retrieval engine
+
+The retrieval API is not public. The backend reaches it at
+`http://retrieval:8000`; you reach it through an SSH tunnel:
+
+```bash
+ssh -L 8001:127.0.0.1:8001 user@server
+curl 'http://127.0.0.1:8001/search?q=prescription'
+curl 'http://127.0.0.1:8001/similar-cases?q=deed+of+gift+revocation'
+```
+
+The image serves indexes built at image build time. It starts through
+`retrieval/serve_frozen.py`, which uses the corpus fingerprints recorded
+during the build instead of re-hashing a corpus the image does not contain.
+That stands in for the research repo's `DRAFTLY_INDEX_FROZEN` mode, which is
+not on its main branch yet.
+
+### Day to day
+
+```bash
+deploy/vps.sh update           # git pull + research update + rebuild + restart
+deploy/vps.sh deploy backend   # rebuild one image (backend or retrieval) and restart
+deploy/vps.sh status           # containers, memory, health checks
+deploy/vps.sh logs backend     # follow one service's logs
+deploy/vps.sh down             # stop (data volumes are kept)
+```
 
 ## Rules for a 1 GB VPS
 
@@ -103,11 +237,14 @@ migrations are not reversed automatically.
 
 ## Known limitations
 
-- **Document upload with `ENVIRONMENT=production`.** The backend refuses
-  filesystem source-file storage outside `local`, `test` and `ci`
-  (`backend/src/bootstrap.py`), and no object-storage adapter exists yet. With
-  `ENVIRONMENT=production` the API starts and serves, but document ingestion
-  raises on first use. This is a backend decision, not a Docker one.
+- **`ENVIRONMENT=production` needs approved providers.** The backend refuses
+  filesystem source-file storage, stub extraction and the stub matter-access
+  adapter behind parties outside `local`, `test` and `ci`
+  (`backend/src/bootstrap.py`, `modules/party/infrastructure/`). Production
+  needs GCS storage with `DRAFTLY_STORAGE_REAL_DATA_APPROVED`, an approved
+  extraction provider and the real matter-access adapter. Until then the API
+  starts, but those features fail on first use. This is a backend decision, not
+  a Docker one. The Vercel + VPS path runs `local` for that reason.
 - **The backend does not call the retrieval service yet.** `modules/research` is
   empty. The stack passes `RETRIEVAL_BASE_URL=http://retrieval:8000` to the
   backend for when that client is written.
