@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { obligations } from "@/lib/mocks";
+import { demoOnly, obligations as obligationFixtures } from "@/lib/mocks";
 import { CommonWorkflows } from "@/components/home/common-workflows";
 import { RecentMatters } from "@/components/home/recent-matters";
 import { AppShell } from "@/components/shell/app-shell";
@@ -16,6 +16,8 @@ import { PageHeader } from "@/components/shell/page-header";
 export async function HomeScreen() {
   const t = await getTranslations("home");
   const to = await getTranslations("obligations");
+  // Fixture deadlines are demo-only; with the API configured there are none to show.
+  const obligations = demoOnly(obligationFixtures);
   const format = await getFormatter();
   const actions = [
     {
@@ -92,40 +94,42 @@ export async function HomeScreen() {
           </div>
         </section>
         <CommonWorkflows />
-        <section aria-labelledby="obligations-title" className="py-8">
-          <h2 id="obligations-title" className="text-2xl font-semibold">
-            {t("obligationsTitle")}
-          </h2>
-          <div className="divide-border border-border mt-3 divide-y border-y">
-            {obligations.map((obligation) => (
-              <div
-                key={obligation.id}
-                className="flex min-h-14 items-center gap-3 px-2"
-              >
-                <CalendarClock
-                  className="text-muted-ink size-4"
-                  strokeWidth={1.5}
-                />
-                <span className="min-w-0 flex-1 font-medium">
-                  {to(
-                    obligation.labelKey.split(".").at(-1) as
-                      | "monthlyList"
-                      | "licenseRenewal"
-                      | "lawyerReview",
-                  )}
-                </span>
-                <span className="text-muted-ink text-sm tabular-nums">
-                  {t("due", {
-                    date: format.dateTime(
-                      new Date(`${obligation.dueDate}T00:00:00Z`),
-                      { day: "numeric", month: "short", year: "numeric" },
-                    ),
-                  })}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+        {obligations.length > 0 && (
+          <section aria-labelledby="obligations-title" className="py-8">
+            <h2 id="obligations-title" className="text-2xl font-semibold">
+              {t("obligationsTitle")}
+            </h2>
+            <div className="divide-border border-border mt-3 divide-y border-y">
+              {obligations.map((obligation) => (
+                <div
+                  key={obligation.id}
+                  className="flex min-h-14 items-center gap-3 px-2"
+                >
+                  <CalendarClock
+                    className="text-muted-ink size-4"
+                    strokeWidth={1.5}
+                  />
+                  <span className="min-w-0 flex-1 font-medium">
+                    {to(
+                      obligation.labelKey.split(".").at(-1) as
+                        | "monthlyList"
+                        | "licenseRenewal"
+                        | "lawyerReview",
+                    )}
+                  </span>
+                  <span className="text-muted-ink text-sm tabular-nums">
+                    {t("due", {
+                      date: format.dateTime(
+                        new Date(`${obligation.dueDate}T00:00:00Z`),
+                        { day: "numeric", month: "short", year: "numeric" },
+                      ),
+                    })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </AppShell>
   );

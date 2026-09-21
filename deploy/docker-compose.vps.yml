@@ -43,6 +43,8 @@ x-backend: &backend
     CLERK_AUTHORIZED_PARTY: ${CLERK_AUTHORIZED_PARTY:?set CLERK_AUTHORIZED_PARTY}
     USE_STUB_IDENTITY: "false"
     CLERK_LEEWAY_SECONDS: ${CLERK_LEEWAY_SECONDS:-30}
+    # Draftly staff who may grant trials (comma-separated user ids). Empty = nobody.
+    PLATFORM_ADMIN_USER_IDS: ${PLATFORM_ADMIN_USER_IDS:-}
     GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     RESEARCH_MODEL: ${RESEARCH_MODEL:-gemini-2.5-flash}
     GEMINI_CLASSIFY_MODEL: ${GEMINI_CLASSIFY_MODEL:-gemini-2.5-flash-lite}

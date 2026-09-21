@@ -8,7 +8,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { createResearchConversation, branchResearchMessage, listResearchConversations, listResearchMessages, sendResearchMessage } from "@/lib/api/research";
-import { isApiEnabled } from "@/lib/api/client";
+import { ApiError, isApiEnabled } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { AssistantScope, ResearchConversation, ResearchMessage } from "@/types";
 
@@ -24,6 +24,13 @@ export function ResearchScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const apiEnabled = isApiEnabled();
+  // A 403 `feature_denied` is not a failure of the feature: the account has no
+  // plan that includes research. Say so instead of a generic error.
+  const explain = useCallback(
+    (failure: unknown, fallback: string) =>
+      failure instanceof ApiError && failure.code === "feature_denied" ? t("notEnabled") : fallback,
+    [t],
+  );
 
   const loadConversations = useCallback(async () => {
     if (!apiEnabled) return;
@@ -31,14 +38,14 @@ export function ResearchScreen() {
       const rows = await listResearchConversations(getToken);
       setConversations(rows);
       setSelectedId((current) => current ?? rows[0]?.id);
-    } catch { setError(t("loadFailed")); }
-  }, [apiEnabled, getToken, t]);
+    } catch (failure) { setError(explain(failure, t("loadFailed"))); }
+  }, [apiEnabled, explain, getToken, t]);
 
   useEffect(() => { void loadConversations(); }, [loadConversations]);
   useEffect(() => {
     if (!selectedId) { setMessages([]); return; }
-    void listResearchMessages(getToken, selectedId).then(setMessages).catch(() => setError(t("loadFailed")));
-  }, [getToken, selectedId, t]);
+    void listResearchMessages(getToken, selectedId).then(setMessages).catch((failure: unknown) => setError(explain(failure, t("loadFailed"))));
+  }, [explain, getToken, selectedId, t]);
 
   async function createConversation() {
     if (!apiEnabled) { setError(t("apiUnavailable")); return; }
@@ -47,7 +54,7 @@ export function ResearchScreen() {
       const created = await createResearchConversation(getToken, LIBRARY_SCOPE);
       setConversations((rows) => [created, ...rows]);
       setSelectedId(created.id); setMessages([]);
-    } catch { setError(t("createFailed")); } finally { setBusy(false); }
+    } catch (failure) { setError(explain(failure, t("createFailed"))); } finally { setBusy(false); }
   }
 
   async function submit() {
@@ -65,13 +72,13 @@ export function ResearchScreen() {
       setQuestion("");
       setMessages(await listResearchMessages(getToken, conversationId));
       await loadConversations();
-    } catch { setError(t("sendFailed")); } finally { setBusy(false); }
+    } catch (failure) { setError(explain(failure, t("sendFailed"))); } finally { setBusy(false); }
   }
 
   async function branch(messageId: string) {
     setBusy(true);
     try { await branchResearchMessage(getToken, messageId); }
-    catch { setError(t("branchFailed")); }
+    catch (failure) { setError(explain(failure, t("branchFailed"))); }
     finally { setBusy(false); }
   }
 

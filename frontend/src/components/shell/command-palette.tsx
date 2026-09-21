@@ -6,12 +6,23 @@ import { FileText, Home, Library, Search, Sparkles, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { documents, facts, matters } from "@/lib/mocks";
+import {
+  demoOnly,
+  documents as documentFixtures,
+  facts as factFixtures,
+  matters as matterFixtures,
+} from "@/lib/mocks";
 import { IconButton } from "@/components/ui/icon-button";
 
-const libraryItems = ["SYN-RTA-REF-01", "SYN-GAZ-02"];
+const libraryFixtures = ["SYN-RTA-REF-01", "SYN-GAZ-02"];
 
 export function CommandPalette({ compact = false }: { compact?: boolean }) {
+  // Fixture matters/documents/facts are demo-only; with the API configured the
+  // palette lists no records (it still offers navigation and the library).
+  const matters = demoOnly(matterFixtures);
+  const documents = demoOnly(documentFixtures);
+  const facts = demoOnly(factFixtures);
+  const libraryItems = demoOnly(libraryFixtures);
   const t = useTranslations("shell");
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -82,60 +93,64 @@ export function CommandPalette({ compact = false }: { compact?: boolean }) {
                   {t("openAssistant")}
                 </CommandItem>
               </Command.Group>
-              <Command.Group
-                heading={t("matters")}
-                className="text-muted-ink text-xs"
-              >
-                {matters.map((matter) => (
-                  <CommandItem
-                    key={matter.id}
-                    icon={<FileText />}
-                    onSelect={() => navigate(`/matters/${matter.id}`)}
-                  >
-                    {matter.reference}
-                  </CommandItem>
-                ))}
-              </Command.Group>
-              <Command.Group
-                heading={t("search")}
-                className="text-muted-ink text-xs"
-              >
-                {documents.map((document) => (
-                  <CommandItem
-                    key={document.id}
-                    icon={<FileText />}
-                    onSelect={() =>
-                      navigate(
-                        `/matters/${document.matterId}/documents?document=${document.id}`,
-                      )
-                    }
-                  >
-                    {document.fileName}
-                  </CommandItem>
-                ))}
-                {facts.map((fact) => (
-                  <CommandItem
-                    key={fact.id}
-                    icon={<Search />}
-                    onSelect={() =>
-                      navigate(
-                        `/matters/${fact.matterId}/facts?fact=${fact.id}`,
-                      )
-                    }
-                  >
-                    {String(fact.value ?? fact.key)}
-                  </CommandItem>
-                ))}
-                {libraryItems.map((item) => (
-                  <CommandItem
-                    key={item}
-                    icon={<Library />}
-                    onSelect={() => navigate(`/library?q=${item}`)}
-                  >
-                    {item}
-                  </CommandItem>
-                ))}
-              </Command.Group>
+              {matters.length > 0 && (
+                <Command.Group
+                  heading={t("matters")}
+                  className="text-muted-ink text-xs"
+                >
+                  {matters.map((matter) => (
+                    <CommandItem
+                      key={matter.id}
+                      icon={<FileText />}
+                      onSelect={() => navigate(`/matters/${matter.id}`)}
+                    >
+                      {matter.reference}
+                    </CommandItem>
+                  ))}
+                </Command.Group>
+              )}
+              {documents.length + facts.length + libraryItems.length > 0 && (
+                <Command.Group
+                  heading={t("search")}
+                  className="text-muted-ink text-xs"
+                >
+                  {documents.map((document) => (
+                    <CommandItem
+                      key={document.id}
+                      icon={<FileText />}
+                      onSelect={() =>
+                        navigate(
+                          `/matters/${document.matterId}/documents?document=${document.id}`,
+                        )
+                      }
+                    >
+                      {document.fileName}
+                    </CommandItem>
+                  ))}
+                  {facts.map((fact) => (
+                    <CommandItem
+                      key={fact.id}
+                      icon={<Search />}
+                      onSelect={() =>
+                        navigate(
+                          `/matters/${fact.matterId}/facts?fact=${fact.id}`,
+                        )
+                      }
+                    >
+                      {String(fact.value ?? fact.key)}
+                    </CommandItem>
+                  ))}
+                  {libraryItems.map((item) => (
+                    <CommandItem
+                      key={item}
+                      icon={<Library />}
+                      onSelect={() => navigate(`/library?q=${item}`)}
+                    >
+                      {item}
+                    </CommandItem>
+                  ))}
+                </Command.Group>
+              )}
             </Command.List>
           </Command>
         </Dialog.Content>

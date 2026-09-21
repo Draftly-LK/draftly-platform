@@ -563,7 +563,8 @@
     "loadFailed": "Research history could not be loaded.",
     "createFailed": "The conversation could not be created.",
     "sendFailed": "The question could not be submitted. Your text remains in the composer.",
-    "branchFailed": "The branch could not be created."
+    "branchFailed": "The branch could not be created.",
+    "notEnabled": "Legal research is not enabled for your account yet. Ask your Draftly administrator to activate your plan, then try again."
   },
   "assistant": {
     "title": "Matter assistant",

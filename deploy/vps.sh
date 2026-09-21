@@ -7,6 +7,7 @@
 #   deploy/vps.sh update        # git pull, then deploy
 #   deploy/vps.sh rollback      # put the previous images back
 #   deploy/vps.sh backup        # archive the app's Docker volumes to /var/backups/draftly
+#   deploy/vps.sh grant-trial --user usr_... --days N   # give an account a plan (unlocks research etc.)
 #   deploy/vps.sh status        # containers, memory, health
 #   deploy/vps.sh logs [svc]    # follow logs (all services, or one)
 #   deploy/vps.sh down          # stop the stack (volumes are kept)
@@ -443,6 +444,16 @@ cmd_rollback() {
 # ── backup ────────────────────────────────────────────────────────────────────
 # Postgres lives on Neon (its own point-in-time restore). This covers what stays
 # on the server: pilot-request emails and uploaded source files.
+# ── grant-trial ───────────────────────────────────────────────────────────────
+# Gated features (research, drafting, export, document processing) are denied to
+# an account with no subscription. This runs the billing service's own
+# grant_trial inside the backend container: see backend/src/cli/grant_trial.py.
+# The acting admin must be listed in PLATFORM_ADMIN_USER_IDS in deploy/.env.
+cmd_grant_trial() {
+  [ $# -gt 0 ] || die "usage: deploy/vps.sh grant-trial --user usr_... --days N [--plan plan_trial_v1] [--admin usr_...]"
+  compose exec -T backend python -m src.cli.grant_trial "$@"
+}
+
 cmd_backup() {
   local stamp vol
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -550,6 +561,7 @@ case "${1:-}" in
   update) shift; cmd_update "$@" ;;
   rollback) cmd_rollback ;;
   backup) cmd_backup ;;
+  grant-trial) shift; cmd_grant_trial "$@" ;;
   status) cmd_status ;;
   logs) shift; compose logs -f --tail 200 "$@" ;;
   down) compose down ;;
