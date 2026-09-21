@@ -218,6 +218,20 @@ not case data, and are still shown.
 
 ## Known limitations and approval gates
 
+- **Gemini approval (`PROVIDER_DATA_APPROVAL=true`).** The owner approved
+  sending typed research questions and statute text to Google's Gemini API on
+  2026-09-21, so `deploy/.env` sets this flag and legal research produces
+  grounded answers. Without it the research composer is not built and every
+  question returns "insufficient authority". The flag is also the gate that lets
+  non-synthetic documents reach a provider, but `EXTRACTION_PROVIDER` is still
+  `stub`, so no document is sent to a provider yet. Record provider region,
+  retention and training terms before switching extraction to Gemini.
+- **Slow API: server in France, database in Singapore.** The VPS is in
+  Lauterbourg (FR) and the Neon database is in `ap-southeast-1`, about 250 ms
+  per round trip, and each request makes several sequential queries. Most calls
+  take 1.5 to 5 seconds. Create the Neon project in `eu-central-1` (Frankfurt),
+  put its two URLs in `deploy/.env`, and redeploy; Alembic recreates the schema.
+  That is also the moment to stop sharing the development database.
 - **Demo mode.** The backend runs with `ENVIRONMENT=local` because outside
   `local`, `test` and `ci` it demands approved production providers: GCS
   evidence storage with `DRAFTLY_STORAGE_REAL_DATA_APPROVED`, an approved
