@@ -74,10 +74,10 @@ def create_app() -> FastAPI:
     )
 
     # ── CORS ────────────────────────────────────────────────────────────────
-    # In production, set ALLOWED_ORIGINS to the frontend domain.
+    # A frontend on another origin (e.g. Vercel) is added through ALLOWED_ORIGINS.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://localhost:4310"],
+        allow_origins=settings.cors_allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

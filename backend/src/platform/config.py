@@ -146,6 +146,10 @@ class Settings(BaseSettings):
     max_source_file_pages: int = 300
 
     # ── App behaviour ───────────────────────────────────────────────────────
+    # Browser origins allowed to call the API cross-origin, comma-separated,
+    # in addition to the local dev servers (e.g. a frontend hosted on Vercel).
+    # Exact origins only (scheme://host[:port]); no wildcards.
+    allowed_origins: str = ""
     environment: str = "local"
     step_up_max_age_seconds: int = 600
     use_stub_identity: bool = False
@@ -204,6 +208,16 @@ class Settings(BaseSettings):
     @property
     def clerk_configured(self) -> bool:
         return bool(self.clerk_issuer and self.clerk_secret_key)
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        """Local dev origins plus `ALLOWED_ORIGINS`, trailing slashes dropped."""
+        origins = ["http://localhost:3000", "http://localhost:4310"]
+        for entry in self.allowed_origins.split(","):
+            origin = entry.strip().rstrip("/")
+            if origin and origin not in origins:
+                origins.append(origin)
+        return origins
 
     @property
     def clerk_authorized_parties(self) -> frozenset[str]:
