@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from src.modules.auth.domain.models import Role
 from src.modules.auth.domain.policies import is_capability_granted
@@ -48,5 +49,17 @@ def assert_state_transition(current: AttestationState, allowed: set[AttestationS
         )
 
 
+#: notarial-register-service.md records attestedAt in Asia/Colombo.
+REGISTER_TIMEZONE = ZoneInfo("Asia/Colombo")
+
+
 def register_year_for(attested_at: datetime) -> int:
-    return attested_at.year
+    """The Colombo calendar year of the attestation, which picks its register.
+
+    Serials run per notary and register year, so a UTC instant late on
+    31 December, already 1 January in Colombo, belongs to the new year's
+    register. A naive datetime is taken as Colombo time already.
+    """
+    if attested_at.tzinfo is None:
+        return attested_at.year
+    return attested_at.astimezone(REGISTER_TIMEZONE).year
