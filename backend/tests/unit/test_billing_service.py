@@ -12,6 +12,7 @@ from src.modules.auth.domain.errors import CapabilityDeniedError
 from src.modules.auth.domain.models import Role
 from src.modules.billing.application.billing_service import BillingService
 from src.modules.billing.domain.errors import (
+    ConcurrencyError,
     FeatureDeniedError,
     QuotaExceededError,
 )
@@ -610,6 +611,99 @@ class TestPlanLimitsSwitchedOff:
         svc = make_service(enforce_plan_limits=True)
         with pytest.raises(FeatureDeniedError):
             await svc.reserve_usage("usr_nobody", "document_pages.monthly", 1, "op-2")
+
+
+class RacingSubscriptionRepo(FakeSubscriptionRepo):
+    """create() raises ConcurrencyError once: two first requests for the same
+    brand-new account racing to start its trial."""
+
+    def __init__(self, subs: dict[str, Subscription] | None = None) -> None:
+        super().__init__(subs or {})
+        self._raise_once = True
+
+    async def create(self, subscription: Subscription) -> Subscription:
+        if self._raise_once:
+            self._raise_once = False
+            # Stand in for the other request's row, which is what a real
+            # unique-index violation means: it already committed.
+            self._by_user[subscription.user_id] = subscription
+            raise ConcurrencyError()
+        return await super().create(subscription)
+
+
+def _trial_service(
+    *,
+    subs: dict[str, Subscription] | None = None,
+    users: FakeUserReadPort | None = None,
+    signup_trial_days: int = 30,
+    sub_repo: FakeSubscriptionRepo | None = None,
+) -> tuple[BillingService, FakeAudit, FakeEventPort]:
+    plan = _plan("plan_trial_v1")  # must match DEFAULT_TRIAL_PLAN_VERSION_ID
+    audit, events = FakeAudit(), FakeEventPort()
+    svc = BillingService(
+        plan_repo=FakePlanRepo([plan], {"plan_trial_v1": []}),
+        subscription_repo=sub_repo or FakeSubscriptionRepo(subs or {}),
+        usage_repo=FakeUsageRepo(),
+        webhook_repo=FakeWebhookRepo(),
+        billing_provider=StubBillingAdapter(),
+        user_read_port=users or FakeUserReadPort(),
+        platform_admin_port=DenyPlatformAdminPort(),
+        audit_port=audit,
+        event_port=events,
+        clock=FakeClock(),
+        grace_period_days=14,
+        signup_trial_days=signup_trial_days,
+    )
+    return svc, audit, events
+
+
+class TestSignupTrial:
+    """ensure_trial: what POST /me/provision grants, with no admin step."""
+
+    @pytest.mark.asyncio
+    async def test_an_active_account_with_no_plan_gets_a_trial(self):
+        svc, audit, events = _trial_service()
+        sub = await svc.ensure_trial("usr_a")
+        assert sub is not None
+        assert (sub.plan_version_id, sub.status) == ("plan_trial_v1", SubscriptionStatus.TRIALING)
+        assert sub.trial_ends_at == _NOW + timedelta(days=30)
+        assert [e.action for e in audit.events] == ["billing.subscription.trial_self_started"]
+        assert [e.event_name for e in events.events] == ["billing.plan-changed"]
+
+    @pytest.mark.asyncio
+    async def test_a_returning_user_with_a_subscription_is_untouched(self):
+        existing = _subscription(status=SubscriptionStatus.ACTIVE)
+        svc, audit, _ = _trial_service(subs={"usr_a": existing})
+        sub = await svc.ensure_trial("usr_a")
+        assert sub is existing
+        assert audit.events == []
+
+    @pytest.mark.asyncio
+    async def test_an_account_that_is_not_active_is_a_silent_no_op(self):
+        svc, audit, _ = _trial_service(users=FakeUserReadPort(active_users=frozenset()))
+        assert await svc.ensure_trial("usr_ghost") is None
+        assert audit.events == []
+
+    @pytest.mark.asyncio
+    async def test_a_missing_trial_plan_is_a_silent_no_op(self):
+        svc, audit, _ = _trial_service()
+        svc._plans = FakePlanRepo([], {})  # no plan_trial_v1 seeded
+        assert await svc.ensure_trial("usr_a") is None
+        assert audit.events == []
+
+    @pytest.mark.asyncio
+    async def test_signup_trial_days_zero_turns_auto_granting_off(self):
+        svc, audit, _ = _trial_service(signup_trial_days=0)
+        assert await svc.ensure_trial("usr_a") is None
+        assert audit.events == []
+
+    @pytest.mark.asyncio
+    async def test_a_losing_race_returns_the_winner_subscription_instead_of_raising(self):
+        svc, audit, _ = _trial_service(sub_repo=RacingSubscriptionRepo())
+        sub = await svc.ensure_trial("usr_a")
+        assert sub is not None and sub.plan_version_id == "plan_trial_v1"
+        # The loser records no audit event of its own; only the winner's write did.
+        assert audit.events == []
 
 
 class TestUsageIdempotency:

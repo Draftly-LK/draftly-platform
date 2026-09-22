@@ -163,7 +163,7 @@ Run on the server as the `deploy` user, from `~/draftly-platform`:
 | Backup volumes now | `deploy/vps.sh backup` |
 | Stop everything (data kept) | `deploy/vps.sh down` |
 | Read pilot requests | `docker run --rm -v draftly_pilot-requests:/d alpine sh -c 'cat /d/*.json'` |
-| Give an account a plan (only when limits are enforced) | `deploy/vps.sh grant-trial --user usr_... --days N` (see below) |
+| Give an account a plan by hand (a trial starts on its own at sign-in) | `deploy/vps.sh grant-trial --user usr_... --days N` (see below) |
 | Reach retrieval | `ssh -L 8001:127.0.0.1:8001 deploy@13.140.183.52`, then `curl http://127.0.0.1:8001/health` |
 
 A rollback restores the previous images only. Alembic migrations are
@@ -195,20 +195,29 @@ Anything written since the move exists only in the local database.
 ## Accounts, plans and gated features
 
 Features are gated by plan: legal research, drafting, export and document
-processing, plus quotas such as active matters and pages per month. With
-`ENFORCE_PLAN_LIMITS=true` (the code default) a new account has no plan and every
-gated call answers `403 feature_denied` (`no_subscription`) until a platform
-administrator grants one.
+processing, plus quotas such as active matters and pages per month.
+`ENFORCE_PLAN_LIMITS=true` (the code default, and this server's setting) means
+a gated call is checked against the account's plan.
 
-**Current setting on this server: `ENFORCE_PLAN_LIMITS=false`.** Every account
-gets every feature and no quota applies, plan or no plan, so pilot users can use
-the whole product immediately. The backend logs
-`startup.plan_limits_disabled` at boot as a reminder. Unknown feature keys are
-still refused, and usage is still metered where an account has a subscription.
-Before charging anyone, set it back to `true` in `deploy/.env`, run
-`deploy/vps.sh deploy backend`, and grant plans as below.
+**How an account gets a plan: an automatic trial, not an admin step.**
+`POST /me/provision` — called on every sign-in — grants an active account a
+30-day trial (`SIGNUP_TRIAL_DAYS`, seeded plan `plan_trial_v1`) the first time
+it has no subscription yet (`BillingService.ensure_trial`). This is what fixed
+"asking a legal question shows an error" for pilot accounts created earlier:
+their next sign-in grants the trial with no admin step. It is idempotent — an
+account with a subscription already (trial, paid, or restricted) is untouched
+— and a race between two first requests for the same brand-new account is
+resolved by a unique database index (`ux_subscriptions_user_id`), not a lost
+update. Set `SIGNUP_TRIAL_DAYS=0` to turn auto-granting off.
 
-To grant a plan (only needed while enforcement is on):
+`ENFORCE_PLAN_LIMITS=false` is a break-glass switch (every account gets every
+feature, no quota, whatever its plan or lack of one) for an emergency where the
+trial plan itself is misconfigured. It is off on this server and should stay
+off — the trial above is the intended way in. The backend logs
+`startup.plan_limits_disabled` at boot as a reminder if it is ever turned on.
+
+To grant a plan by hand instead (a longer trial, a different plan, or an
+account you want on a plan without waiting for its next sign-in):
 
 1. Put the staff user id(s) in `PLATFORM_ADMIN_USER_IDS` in `deploy/.env` (a
    comma-separated list of `usr_...` ids) and run `deploy/vps.sh deploy backend`.
@@ -222,8 +231,9 @@ To grant a plan (only needed while enforcement is on):
 The tool calls the billing service's own `grant_trial`, so the admin check, the
 "account must be active" and "no existing subscription" rules and the audit
 event (`billing.subscription.trial_granted`, with the admin as actor) all
-apply. The same operation is available over HTTP as
-`POST /api/v1/admin/subscriptions/{userId}/grant-trial`.
+apply — the same rules `ensure_trial` follows for the automatic case, recorded
+instead as `billing.subscription.trial_self_started`. The manual grant is also
+available over HTTP as `POST /api/v1/admin/subscriptions/{userId}/grant-trial`.
 
 ## No demo data
 

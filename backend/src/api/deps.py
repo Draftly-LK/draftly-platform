@@ -177,6 +177,7 @@ def build_billing_service(session: AsyncSession) -> BillingService:
         clock=BillingClock(),
         grace_period_days=settings.billing_grace_period_days,
         enforce_plan_limits=settings.enforce_plan_limits,
+        signup_trial_days=settings.signup_trial_days,
     )
 
 

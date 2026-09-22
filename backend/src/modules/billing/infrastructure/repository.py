@@ -212,7 +212,12 @@ class SqlSubscriptionRepository:
             version=subscription.version,
         )
         self._session.add(row)
-        await self._session.flush()
+        try:
+            await self._session.flush()
+        except IntegrityError:
+            # ux_subscriptions_user_id (billing_0002): concurrent first-ever
+            # requests for the same account both trying to start its trial.
+            raise ConcurrencyError("This account already has a subscription.")
         return subscription
 
     async def update(self, subscription: Subscription, expected_version: int) -> Subscription:

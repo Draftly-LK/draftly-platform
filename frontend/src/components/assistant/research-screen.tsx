@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch, LoaderCircle, RotateCcw, Send, ShieldAlert, Square } from "lucide-react";
+import { GitBranch, LoaderCircle, RotateCcw, Search, Send, ShieldAlert, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { ConversationRail } from "./conversation-rail";
@@ -100,8 +100,11 @@ export function ResearchScreen() {
               const insufficient = message.content.startsWith("research.insufficient.");
               const grounded = message.role === "assistant" && !insufficient;
               return (
-                <article key={message.id} className={`rounded border p-4 ${message.role === "user" ? "border-border-strong bg-surface ml-auto max-w-[85%]" : insufficient ? "border-red bg-red-bg border-l-2" : "border-teal bg-teal-bg border-l-2"}`}>
-                  <div className={`${message.role === "assistant" ? "text-ink" : "text-muted-ink"} mb-1 text-xs font-semibold uppercase`}>{message.role === "user" ? t("you") : t("answer")}</div>
+                <article key={message.id} className={`rounded border p-4 ${message.role === "user" ? "border-border-strong bg-surface ml-auto max-w-[85%]" : insufficient ? "border-border-strong bg-surface border-l-2" : "border-teal bg-teal-bg border-l-2"}`}>
+                  <div className={`${message.role === "assistant" ? "text-ink" : "text-muted-ink"} mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase`}>
+                    {insufficient && <Search className="size-3.5" strokeWidth={1.5} />}
+                    {message.role === "user" ? t("you") : insufficient ? t("noMatch") : t("answer")}
+                  </div>
                   <p className="whitespace-pre-line leading-7">{insufficient ? t("insufficientAuthority") : message.content}</p>
                   {message.role === "user" && <Button className="mt-3" onClick={() => void branch(message.id)}><GitBranch className="size-4" />{t("branch")}</Button>}
                   {insufficient && <p className="text-ink mt-2 text-sm">{t("insufficientAction")}</p>}

@@ -24,12 +24,16 @@ from collections.abc import Sequence
 
 from src.api.deps import build_billing_service
 from src.modules.auth.domain.models import Role
+from src.modules.billing.application.billing_service import DEFAULT_TRIAL_PLAN_VERSION_ID
 from src.platform.config import get_settings
 from src.platform.db.session import get_session_maker
 from src.platform.db.unit_of_work import UnitOfWork
 from src.platform.request_context import RequestContext
 
-DEFAULT_TRIAL_PLAN = "plan_trial_v1"
+# Same plan ensure_trial grants automatically on signup (see PRODUCTION.md,
+# "Accounts, plans and gated features") — this tool exists for the accounts
+# that predate auto-granting, or that need a different plan or length.
+DEFAULT_TRIAL_PLAN = DEFAULT_TRIAL_PLAN_VERSION_ID
 
 
 def configured_admins(raw: str) -> list[str]:

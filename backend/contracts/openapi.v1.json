@@ -12753,7 +12753,7 @@
     },
     "/api/v1/me/provision": {
       "post": {
-        "description": "Link a verified identity to a Draftly account on first login.\n\nDeliberately outside ``get_request_context``: a brand-new subject has no\nUserIdentity yet, so building the normal context would reject it and leave\nthe account unreachable. This route validates the token itself, provisions\nthe user and identity, and commits through the UnitOfWork. It is idempotent\n— an already-linked identity returns the existing user.",
+        "description": "Link a verified identity to a Draftly account on first login.\n\nDeliberately outside ``get_request_context``: a brand-new subject has no\nUserIdentity yet, so building the normal context would reject it and leave\nthe account unreachable. This route validates the token itself, provisions\nthe user and identity, and commits through the UnitOfWork. It is idempotent\n— an already-linked identity returns the existing user.\n\nAlso starts the account's trial (BillingService.ensure_trial) if it does\nnot have a subscription yet, so a new or a pre-existing account gets a\nworking plan the next time it signs in, with no admin step. A returning\nuser with a subscription already is untouched.",
         "operationId": "provision_me_api_v1_me_provision_post",
         "responses": {
           "200": {

@@ -46,7 +46,11 @@ x-backend: &backend
     # Draftly staff who may grant trials (comma-separated user ids). Empty = nobody.
     PLATFORM_ADMIN_USER_IDS: ${PLATFORM_ADMIN_USER_IDS:-}
     # false = every account gets every feature and no quota applies, plan or not.
+    # Break-glass only — see SIGNUP_TRIAL_DAYS for the intended way in.
     ENFORCE_PLAN_LIMITS: ${ENFORCE_PLAN_LIMITS:-true}
+    # Trial length (days) granted automatically to an active account with no
+    # plan yet, on first sign-in. 0 turns auto-granting off.
+    SIGNUP_TRIAL_DAYS: ${SIGNUP_TRIAL_DAYS:-30}
     GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     RESEARCH_MODEL: ${RESEARCH_MODEL:-gemini-2.5-flash}
     GEMINI_CLASSIFY_MODEL: ${GEMINI_CLASSIFY_MODEL:-gemini-2.5-flash-lite}

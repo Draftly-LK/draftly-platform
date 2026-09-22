@@ -548,6 +548,7 @@
     "emptyThread": "Start a conversation to research the approved legal corpus.",
     "you": "You",
     "answer": "Research answer",
+    "noMatch": "No matching statute",
     "branch": "Branch from here",
     "composerLabel": "Ask a legal research question",
     "composerPlaceholder": "Ask about a statute or amendment…",
