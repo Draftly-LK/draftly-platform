@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { inventoryRoutes } from "./routes";
 
 const expectedTokens = {
-  "--canvas": "#f4f3ef",
+  "--canvas": "#f4f6f8",
   "--surface": "#ffffff",
   "--ink": "#1b211d",
   "--muted-ink": "#667068",
@@ -120,7 +120,7 @@ test("every route conforms to the Draftly visual system", async ({
       };
     }, expectedTokens);
 
-    expect(probe.canvas, route).toBe("rgb(244, 243, 239)");
+    expect(probe.canvas, route).toBe("rgb(244, 246, 248)");
     expect(probe.overflow, route).toBeLessThanOrEqual(0);
     expect(["0px", "normal"], route).toContain(probe.letterSpacing);
     expect(probe.bodyFont, route).toContain("IBM Plex Sans");

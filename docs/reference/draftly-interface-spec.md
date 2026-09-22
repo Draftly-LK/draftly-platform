@@ -386,7 +386,7 @@ SaaS dashboard.
 
 | Token | Suggested value | Use |
 | --- | --- | --- |
-| Canvas | `#F4F3EF` | App background |
+| Canvas | `#F4F6F8` | App background |
 | Surface | `#FFFFFF` | Main work surfaces |
 | Ink | `#1B211D` | Primary text and strong actions |
 | Muted ink | `#667068` | Metadata and secondary labels |
