@@ -2,6 +2,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cacheControlFor } from './cache-policy.mjs';
 import { createFilesystemPilotStore, createGcsPilotStore, createPilotHandler } from './pilot-api.mjs';
 
 const projectDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -112,7 +113,7 @@ createServer((request, response) => {
 
   response.writeHead(200, {
     'content-type': mimeTypes.get(path.extname(filename).toLowerCase()) ?? 'application/octet-stream',
-    'cache-control': 'no-store',
+    'cache-control': cacheControlFor(filename),
   });
   createReadStream(filename).pipe(response);
 }).listen(port, process.env.HOST ?? '0.0.0.0', () => {

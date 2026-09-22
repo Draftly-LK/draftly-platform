@@ -1,5 +1,6 @@
 # Draftly landing page: the saved site plus the pilot-request intake route.
-# serve.mjs and pilot-api.mjs use only Node built-ins, so there is nothing to install.
+# serve.mjs, pilot-api.mjs and cache-policy.mjs use only Node built-ins, so
+# there is nothing to install.
 #
 #   docker build -t draftly-landing landing-page
 FROM node:22.16.0-alpine
@@ -9,7 +10,7 @@ ENV NODE_ENV=production \
     TRUST_PROXY=1 \
     PILOT_REQUESTS_DIR=/data/pilot-requests
 WORKDIR /app
-COPY --chown=node:node serve.mjs pilot-api.mjs ./
+COPY --chown=node:node serve.mjs pilot-api.mjs cache-policy.mjs ./
 COPY --chown=node:node site-mirror ./site-mirror
 # The intake directory holds email addresses: private, writable, never under /app.
 RUN mkdir -p /data/pilot-requests && chown -R node:node /data
