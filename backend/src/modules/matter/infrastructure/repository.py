@@ -8,10 +8,7 @@ service that might forget it.
 
 from __future__ import annotations
 
-import base64
-import json
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
@@ -43,6 +40,7 @@ from src.modules.matter.infrastructure.orm import (
 )
 from src.platform import ids
 from src.platform.errors import ConflictError
+from src.platform.pagination import Cursor, decode_cursor, encode_cursor
 
 
 def _to_matter(row: MatterRow) -> Matter:
@@ -104,17 +102,14 @@ def _apply(row: MatterRow, matter: Matter) -> None:
     row.automation_exclusion_reason_keys = list(matter.automation_exclusion_reason_keys)
 
 
-def _encode_cursor(created_at: datetime, matter_id: str) -> str:
-    payload = json.dumps({"t": created_at.isoformat(), "id": matter_id})
-    return base64.urlsafe_b64encode(payload.encode()).decode()
+def _encode_cursor(created_at: datetime, record_id: str) -> str:
+    return encode_cursor(Cursor(created_at=created_at, id=record_id))
 
 
 def _decode_cursor(cursor: str) -> tuple[datetime, str] | None:
-    try:
-        payload: dict[str, Any] = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-        return datetime.fromisoformat(payload["t"]), str(payload["id"])
-    except (ValueError, KeyError):
-        return None
+    """The keyset position, or InvalidCursorError (400) for a forged or bad cursor."""
+    decoded = decode_cursor(cursor)
+    return (decoded.created_at, decoded.id) if decoded is not None else None
 
 
 class SqlMatterRepository:
