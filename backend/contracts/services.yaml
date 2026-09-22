@@ -236,7 +236,7 @@
 - name: content_governance_service
   doc: docs/services/content-governance-service.md
   level: L0
-  phase: 5
+  phase: "5, 7"
   matter_scoped: false
   routes_prefix: /api/v1
   capabilities: [content.author, content.approve, content.retire]

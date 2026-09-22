@@ -46,8 +46,12 @@ from src.modules.content_governance.contracts import (
     templates_for_subtype,
     v0_check_ids,
 )
+from tests.factories.fact import fact_tier
 
-from .fakes import CLEAN_TRANSFER, fact_tier, issue_from
+from .fakes import (
+    CLEAN_TRANSFER,
+    issue_from,
+)
 
 _EVALUATED_AT = datetime(2026, 8, 17, 9, 0, tzinfo=UTC)
 

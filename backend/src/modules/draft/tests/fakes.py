@@ -15,21 +15,20 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
-from src.modules.auth.ports import AuditEventInput
 from src.modules.check.contracts import IssueGateSummary
 from src.modules.content_governance.contracts import FactStatus
 from src.modules.draft.domain.errors import GeneratedFormStaleError
 from src.modules.draft.domain.models import FactCandidate, GeneratedForm, GeneratedFormField
-from src.modules.verification.contracts import ConfirmedFactValue, FactTierSummary
+from src.modules.verification.contracts import FactTierSummary
+from tests.factories.constants import MATTER_A, USER_A
+from tests.factories.fact import fact_tier as _fact_tier
 
-USER_ID = "usr_synthetic"
-MATTER_ID = "mat_synthetic"
+USER_ID = USER_A
+MATTER_ID = MATTER_A
 TRANSFER_SUBTYPE_ID = "lk.rta.instrument.transfer_sale"
 FORM_08_TEMPLATE_ID = "rta.reg.2022.form.08"
 TIRE_31_TEMPLATE_ID = "rta.ops.tire.31"
 
-#: Fixed so a hash assertion does not depend on the day the suite runs.
-NOW = datetime(2026, 8, 17, 9, 0, tzinfo=UTC)
 
 #: Every fact type Gazette Form 8 binds, except the attestation date — §9.3
 #: never pre-certifies the attestation act, so confirming one would not populate
@@ -58,33 +57,6 @@ CONFIRMED_TRANSFER: dict[str, Any] = {
     "rta.instrument.notary_name": "Synthetic Notary Three",
     "rta.instrument.notary_code": "SYN-NOT-0003",
 }
-
-
-def fact_tier(
-    values: dict[str, Any],
-    *,
-    conflicted: tuple[str, ...] = (),
-    unconfirmed_critical: tuple[str, ...] = (),
-    has_search_evidence: bool = True,
-    version: int = 1,
-    fact_id_suffix: str = "a",
-) -> FactTierSummary:
-    """One confirmed fact per entry, each with its own evidence reference."""
-    return FactTierSummary(
-        confirmed={
-            fact_type_id: ConfirmedFactValue(
-                fact_id=f"fact_{index}_{fact_id_suffix}",
-                fact_type_id=fact_type_id,
-                value=value,
-                version=version,
-                evidence_reference_ids=(f"ev_{index}_{fact_id_suffix}",),
-            )
-            for index, (fact_type_id, value) in enumerate(sorted(values.items()))
-        },
-        unconfirmed_critical_fact_type_ids=unconfirmed_critical,
-        conflicted_fact_type_ids=conflicted,
-        has_current_search_evidence=has_search_evidence,
-    )
 
 
 def candidate(
@@ -218,14 +190,7 @@ class FakeChecklistBlockers:
         return self.requirement_ids
 
 
-class FakeAudit:
-    """Implements ``AuditPort``. Records the events for assertion."""
-
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
-
-    def actions(self) -> list[str]:
-        return [event.action for event in self.events]
+def fact_tier(values: dict[str, Any], **overrides: Any) -> FactTierSummary:
+    """The shared tier, with this module's per-fact id suffix defaulted on."""
+    overrides.setdefault("fact_id_suffix", "a")
+    return _fact_tier(values, **overrides)

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from src.modules.auth.ports import AuditEventInput
 from src.modules.matter_agent.application.actions import CHECKLIST_DECISION
 from src.modules.matter_agent.application.agent_service import AgentJob
 from src.modules.matter_agent.domain.models import (
@@ -29,17 +28,6 @@ from src.modules.matter_agent.ports import (
 )
 from src.platform import ids
 from src.platform.pagination import Cursor
-
-
-class FakeAudit:
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
-
-    def actions(self) -> list[str]:
-        return [event.action for event in self.events]
 
 
 class FakeSessionRepo:

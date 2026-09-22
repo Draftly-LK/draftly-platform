@@ -47,6 +47,7 @@ from src.modules.content_governance.contracts import (
 )
 from src.modules.draft.contracts import FormSnapshot
 from src.modules.verification.contracts import FactTierSummary
+from tests.factories.audit import FakeAudit
 
 from .fakes import (
     CORRELATION,
@@ -57,7 +58,6 @@ from .fakes import (
     NOW,
     USER_ID,
     FakeApprovalRepository,
-    FakeAudit,
     FakeChecklistBlockers,
     FakeExportRepository,
     FakeFactReader,

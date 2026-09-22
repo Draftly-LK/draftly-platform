@@ -39,16 +39,11 @@ from src.modules.document.domain.ingestion import (
     ProcessingRun,
     SourceFile,
 )
+from tests.factories.document import synthetic_pdf
 
 USER = "usr_1"
 MATTER = "mat_1"
 TITLE_CLASS = "rta.doc.title_certificate"
-
-
-def synthetic_pdf(pages: int = 2) -> bytes:
-    """A structurally minimal PDF. Synthetic — no client content whatsoever."""
-    body = b"".join(b"/Type /Page \n" for _ in range(pages))
-    return b"%PDF-1.7\n" + body + b"%%EOF\n"
 
 
 # ── Fakes ────────────────────────────────────────────────────────────────────

@@ -16,9 +16,13 @@ from src.modules.matter_agent.application.tool_executor import (
 from src.modules.matter_agent.domain.models import ToolCallOutcome
 from src.modules.matter_agent.domain.permission import DenialReason
 from src.modules.matter_agent.ports import ProposedToolCall, ToolResult
-from src.modules.matter_agent.tests.fakes import FakeAudit, FakeToolCallRepo, RecordingTool
+from src.modules.matter_agent.tests.fakes import (
+    FakeToolCallRepo,
+    RecordingTool,
+)
 from src.platform.errors import DomainRuleError
 from src.platform.request_context import RequestContext
+from tests.factories.audit import FakeAudit
 
 APPROVER = CAPABILITY_MAP[Role.APPROVER]
 

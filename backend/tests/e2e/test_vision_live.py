@@ -8,10 +8,13 @@ import os
 import pytest
 from PIL import Image, ImageDraw
 
-pytestmark = pytest.mark.skipif(
-    not (os.environ.get("RUN_LIVE_TESTS") == "1" and os.environ.get("RUN_VISION_LIVE") == "1"),
-    reason="requires RUN_LIVE_TESTS=1 and RUN_VISION_LIVE=1",
-)
+pytestmark = [
+    pytest.mark.live,
+    pytest.mark.skipif(
+        not (os.environ.get("RUN_LIVE_TESTS") == "1" and os.environ.get("RUN_VISION_LIVE") == "1"),
+        reason="requires RUN_LIVE_TESTS=1 and RUN_VISION_LIVE=1",
+    ),
+]
 
 
 async def test_live_document_text_detection() -> None:

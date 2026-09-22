@@ -4,11 +4,11 @@ Encryption at rest is verified for `identifierValue`, and a dump of the party
 tables contains no plaintext identifier.
 
 The dump is taken from the rows the SQL repositories actually persist, captured
-through a recording session, rather than from a live Postgres instance: there is
-no database-backed test harness in this repository yet. It exercises the real
-`SqlPartyRepository` and `SqlIdentityEvidenceRepository` write paths and the
-real ORM column set, so a repository that started writing a plaintext column
-would fail here. See docs/services/party-service.md §11 for the remaining gap.
+through a recording session. It exercises the real `SqlPartyRepository` and
+`SqlIdentityEvidenceRepository` write paths and the real ORM column set, so a
+repository that started writing a plaintext column would fail here. The same
+guarantee against a live Postgres dump is in
+tests/db/test_party_privacy_at_rest.py.
 """
 
 from __future__ import annotations
@@ -57,12 +57,12 @@ from src.platform.privacy import (
     assert_no_private_content,
     find_private_content,
 )
-from tests.fixtures.party_fakes import ACTOR_A
-from tests.fixtures.party_synthetic import (
+from tests.factories.party import (
     SYNTHETIC_NIC,
     SYNTHETIC_NIC_OLD_FORMAT,
     SYNTHETIC_PASSPORT,
 )
+from tests.fixtures.party_fakes import ACTOR_A
 
 PARTY_TABLES = (
     PartyRow,
