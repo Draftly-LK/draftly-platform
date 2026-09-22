@@ -1,0 +1,31 @@
+# Test-only overlay for ../docker-compose.yml: a throwaway Postgres instead of
+# Neon, high host ports, and the retrieval API published on loopback so the
+# suite can call it. Production never publishes that port (test_stack.py
+# asserts this against the base file).
+services:
+  testdb:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: draftly
+      POSTGRES_PASSWORD: draftly
+      POSTGRES_DB: draftly
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U draftly"]
+      interval: 2s
+      retries: 30
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  migrate:
+    depends_on:
+      testdb:
+        condition: service_healthy
+
+  caddy:
+    ports: !override
+      - "127.0.0.1:18080:80"
+      - "127.0.0.1:18443:443"
+
+  retrieval:
+    ports:
+      - "127.0.0.1:18001:8000"
