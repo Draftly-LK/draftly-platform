@@ -25,7 +25,7 @@ class LoggingEventAdapter:
         self.published.append(event)
         log.info(
             "domain_event_published",
-            event=event.name,
+            event_name=event.name,
             aggregate_type=event.aggregate_type,
             aggregate_id=event.aggregate_id,
             correlation_id=event.correlation_id,
