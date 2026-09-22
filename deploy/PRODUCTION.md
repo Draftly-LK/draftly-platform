@@ -207,7 +207,7 @@ it has no subscription yet (`BillingService.ensure_trial`). This is what fixed
 their next sign-in grants the trial with no admin step. It is idempotent — an
 account with a subscription already (trial, paid, or restricted) is untouched
 — and a race between two first requests for the same brand-new account is
-resolved by a unique database index (`ux_subscriptions_user_id`), not a lost
+resolved by the database's own `uq_subscription_user` constraint, not a lost
 update. Set `SIGNUP_TRIAL_DAYS=0` to turn auto-granting off.
 
 `ENFORCE_PLAN_LIMITS=false` is a break-glass switch (every account gets every
