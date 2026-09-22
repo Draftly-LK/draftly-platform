@@ -46,6 +46,9 @@ data.L3.secondaryHref = '/lab';
 data.sE.columns[0].links[0].target = 'use-cases';
 data.sE.columns[1].links[1].href = '/lab';
 data.sE.columns[1].links[2].href = '/#get-started';
+// serve.mjs does not publish the legal pages. Drop their footer column so Next
+// never renders or prefetches the unavailable routes.
+data.sE.columns = data.sE.columns.filter((column) => column.title !== 'Legal');
 data.sE.copyrightLines = data.sE.copyrightLines.map((line) => line.replaceAll('\u00c2\u00a9', '\u00a9'));
 const getters = Object.keys(data).map((key) => `${JSON.stringify(key)}:()=>copy[${JSON.stringify(key)}]`).join(',');
 const updatedFactory = `(e,t,a)=>{const copy=${JSON.stringify(data)};a.d(t,{${getters}})}`;
