@@ -41,11 +41,19 @@ background worker, the intake routing that decides which legal form gets used,
 and the auto-promotion rules that decide whether a machine guess can become a
 fact without a lawyer looking at it.
 
-**No coverage percentage exists for this repo.** `pytest-cov` is not installed;
-`@vitest/coverage-v8` is not installed. Any percentage quoted before F5 is
-closed is invented. What can be said is that of 275 non-`__init__` Python
-modules under `backend/src/`, roughly half are imported by no test at all. That
-is a triage signal, not a metric.
+**Coverage baseline (F5, measured 2026-09-18).** This is Step 1 of §11.3:
+recorded, not gated.
+
+| Stack | Lines | Branches | Measured with |
+|---|---|---|---|
+| Backend `src/` | **77%** (13802 / 17905) | **51%** (1466 / 2876) | `uv run pytest -m "not live" --cov`, real Postgres on |
+| Frontend `src/` | **2.4%** (292 / 12419) | not meaningful yet | `pnpm test:coverage` |
+
+The frontend branch figure is left out on purpose: v8 counts branches only in
+files a test loads, so it reads 72% while almost no component is loaded. Lines
+is the honest frontend number, and it is low because F10 and F15 are open.
+Backend combined line-and-branch coverage is 73%. CI prints both numbers on
+every run.
 
 ### A2. What we are protecting
 
@@ -165,7 +173,7 @@ suite exists but covers one module rather than the system.
 | Workflow happy path | Browser only | API-layer walk | **Yes** |
 | Workflow 5 refusals | Partial | API-layer, all five | **Yes** |
 | CI actually runs it all | **No** (F6, F7, F11) | Three edits to `ci.yml` | **Yes** |
-| Coverage measurable | **No** (F5) | Two dev dependencies | **Yes** |
+| Coverage measurable | **Yes** — baseline in §A1 (F5) | Per-path thresholds, §11.3 Step 2 | No |
 
 ### A5. Timeline
 
@@ -677,12 +685,21 @@ Priority: `audit` (C2), `matter`, `task`, `verification`, `check`, `draft`,
 - migrations run against `DATABASE_URL_DIRECT`, not the pooled URL —
   `DEPLOYMENT_PLAN.md` §7.3 depends on this and nothing asserts it.
 
-The chain is currently 20 revisions, all additive: no `alter_column`, no
-`drop_column`, no raw `op.execute`. Add
-`test_no_destructive_ddl_in_upgrade_path`, a static scan of
-`migrations/versions/*.py`. `DEPLOYMENT_PLAN.md` §7.2 requires one release of
-backward compatibility; this test is what makes that enforceable rather than
-aspirational.
+The chain is not all additive, as an earlier version of this section said:
+`notification_0002_outbox_inbox.py` and `party_0002_tenant_key.py` backfill
+with `op.execute`, tighten columns to `NOT NULL` and replace a unique key.
+`test_no_new_upgrade_step_drops_or_alters_a_column` scans every other
+`migrations/versions/*.py` and names those two as exemptions that predate the
+check; whether each was safe under `DEPLOYMENT_PLAN.md` §7.2's one release of
+backward compatibility is for the team to confirm.
+
+Built in `tests/db/test_migrations.py`, which also found that
+`migrations/env.py` did not import the matter-agent models or
+`api_idempotency_keys`, so autogenerate would have proposed dropping eight
+tables. That is fixed and guarded. The autogenerate diff is not empty: 14
+entries of model-versus-migration drift (agent foreign keys, one JSON/JSONB
+type, five indexes) are listed in `KNOWN_DRIFT`, so new drift fails at once
+and a strict xfail tracks the rest until each is fixed.
 
 #### 5.4 Privacy at rest — Rule 3
 
@@ -1076,18 +1093,29 @@ library adds a dependency for little gain. What to enforce:
 
 #### 10.4 Seed data — F17
 
-Add `backend/scripts/seed_demo.py`:
+Built as `backend/scripts/seed_synthetic_matter.py`, the name
+`backend-implementation-plan-v0.md` §4 already reserves:
 
 ```bash
-uv run python -m scripts.seed_demo --profile smoke     # 1 matter, 2 parties, 1 doc
-uv run python -m scripts.seed_demo --profile full      # the Appendix B roster
-uv run python -m scripts.seed_demo --reset             # truncate then seed
+uv run python scripts/seed_synthetic_matter.py   # smoke: 1 lawyer, 1 matter, 2 parties, 1 doc
 ```
 
-Requirements: refuses to run when `ENVIRONMENT=production`; builds from
-`tests/factories/` so seed and test data cannot drift; idempotent via fixed ids
-and upsert; emits the same audit events the real paths would, so a seeded matter
-is indistinguishable from a walked-through one.
+What it does: runs only where a fake identity is already allowed (`local`,
+`test`, `ci`); builds from `tests/factories/` so seed and test data cannot
+drift; writes through the real services, so a seeded matter carries the audit
+trail a walked-through one does. `tests/db/test_seed_synthetic_matter.py`
+covers all of it against real Postgres.
+
+Three changes from the original plan, each forced by a rule that outranks it:
+
+- **Idempotent by natural key, not fixed ids.** The real services mint their
+  own ids, so fixed ids would mean bypassing them. A matter is unique per owner
+  and reference instead; a second run finds it and changes nothing.
+- **No `--reset`.** It would have to delete audit rows, and the audit log is
+  append-only. Reset by dropping the local database.
+- **No `full` profile yet.** It needs the Appendix B roster, which is a human
+  gate. The frontend-id parity in §10.5 waits on it too, and cannot use fixed
+  ids for the reason above.
 
 This unblocks three things at once: E2E against a real backend, the Playwright
 `globalSetup`, and manual supervisor demos.
@@ -1096,7 +1124,7 @@ This unblocks three things at once: E2E against a real backend, the Playwright
 
 `frontend/src/lib/mocks/fixtures.ts` is 1514 lines of deterministic seed data
 and is already the right shape. Two additions: a parity test asserting its ids
-match `seed_demo.py`'s, so an E2E spec can run against either the mock store or
+match the seeded backend's, so an E2E spec can run against either the mock store or
 a seeded backend; and typed builders (`makeMatter(overrides)`) rather than
 exported literals, for the completeness reason in §10.3.
 
@@ -1137,7 +1165,7 @@ than environment-dependent.
 the job env. The `integration` marker then stops being a silent skip.
 
 Two smaller items: pin the third-party actions to immutable SHAs (`ci.yml`'s own
-comment asks for this and `pr-agent.yml` already does it), and move the inline
+comment asks for this), and move the inline
 `python3` service-registry heredoc into `tests/conformance/` so it runs locally
 too (§4.3).
 
@@ -1198,9 +1226,8 @@ raised whenever it is beaten. Coverage may never fall; it need not jump.
 
 **What the threshold does not measure.** A 95%-covered `policies.py` whose tests
 only assert `is not None` is worse than a 70%-covered one with real assertions.
-Coverage is a floor, not a goal, and §12 exists because it can be gamed. The
-PR-agent rubric (`.agents/skills/draftly-code-review/SKILL.md`) should treat a
-coverage-only justification as insufficient.
+Coverage is a floor, not a goal, and §12 exists because it can be gamed. Reviewers
+should treat a coverage-only justification as insufficient.
 
 #### 11.4 Job layout
 
@@ -1424,7 +1451,7 @@ green; none is a single test, and none mixes two areas.
 | # | Commit | Contents | Approx. tests |
 |---|---|---|---|
 | 1 | `ci(test): run every suite and measure coverage` | F5, F6, F7, F3, F18, F22 — `ci.yml` runs `pnpm check` and `pytest -m "not live"`; Postgres service; `live` marker; `pytest-cov` + `@vitest/coverage-v8` with a recorded baseline; Playwright `global-setup.ts`, retries, reporters, route inventory; the `e2e`/`neon`/`live` jobs from §11.4 | 0 new — but **+43 backend files, 13 vitest files and 8 specs start running** |
-| 2 | `test(fixtures): add factories, the DB fixture and seed_demo` | F16, F17, §5.1–§5.2, §10.2, §10.4 — the `tests/factories/` tree, migrate four `fakes.py`, the rollback `db_session` fixture, `scripts/seed_demo.py` | ~6 new, ~30 refactored |
+| 2 | `test(fixtures): add factories, the DB fixture and the seed script` | F16, F17, §5.1–§5.2, §10.2, §10.4 — the `tests/factories/` tree, migrate four `fakes.py`, the rollback `db_session` fixture, `scripts/seed_synthetic_matter.py` | ~6 new, ~30 refactored |
 | 3 | `test(auth): cover the token path, capabilities and tenancy` | F1, §8.1–§8.5 — the real `HTTPBearer` → Clerk path incl. 401s, capability and step-up HTTP, the parameterised tenancy sweep, `middleware.test.ts`. Rules 1 and 4 | ~45 |
 | 4 | `test(worker): cover the outbox, the runner and its handlers` | F2, F4, §6.1–§6.5 — outbox policies, `claim_batch`/`reap_leases` on real Postgres, `process_message`'s two-session rollback path, notification and agent handlers, the §6.5 `xfail`s, the per-type lease defect, plus cursor signing, ETags and correlation ids. Rule 6 | ~110 |
 | 5 | `test(db): cover repositories, the audit chain and migrations` | F14, §5.3–§5.4 — twelve repositories against the §2 baseline, the per-user hash chain incl. concurrency and tamper detection, `alembic` up/down/single-head/no-destructive-DDL, privacy dump test on real Postgres. Rules 2 and 3 | ~65 |
