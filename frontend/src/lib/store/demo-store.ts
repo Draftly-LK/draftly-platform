@@ -737,22 +737,26 @@ export const useDemoStore = create<DemoState>()(
         })),
       // TODO(api): POST /api/matters/{matterId}/drafts/{draftId}/exports
       exportDraft: (draftId, format) =>
-        set((state) => ({
-          drafts: state.drafts.map((draft) =>
-            draft.id === draftId
-              ? { ...draft, approvalState: "exported" }
-              : draft,
-          ),
-          auditEvents: appendEvent(state, {
-            matterId:
-              state.drafts.find((draft) => draft.id === draftId)?.matterId ??
-              DEMO_MATTER_ID,
-            action: `draft.exported-${format}`,
-            targetType: "draft",
-            targetId: draftId,
-            after: { format },
-          }),
-        })),
+        set((state) => {
+          const target = state.drafts.find((draft) => draft.id === draftId);
+          // Appendix A refusal 3: only an approved draft is exported. Anything
+          // else is refused outright, and nothing is recorded.
+          if (target?.approvalState !== "approved") return {};
+          return {
+            drafts: state.drafts.map((draft) =>
+              draft.id === draftId
+                ? { ...draft, approvalState: "exported" }
+                : draft,
+            ),
+            auditEvents: appendEvent(state, {
+              matterId: target.matterId,
+              action: `draft.exported-${format}`,
+              targetType: "draft",
+              targetId: draftId,
+              after: { format },
+            }),
+          };
+        }),
       // TODO(api): POST /api/assistant/actions
       recordAssistantAction: (answerId, action, matterId = DEMO_MATTER_ID) =>
         set((state) => ({
