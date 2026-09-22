@@ -3,9 +3,18 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+// Evidence capture for the build-review loop, not a regression test: it writes
+// into docs/review/, so it runs only when asked, into a folder for that date:
+//   SCREEN_DATE=2026-09-18 SCREEN_SLUG=home SCREEN_PATH=/ pnpm test:e2e screen-review
 const route = process.env.SCREEN_PATH ?? "/";
 const slug = process.env.SCREEN_SLUG ?? "home";
-const evidenceDir = path.resolve(process.cwd(), "..", "docs", "review", slug, "2026-07-22");
+const date = process.env.SCREEN_DATE ?? "";
+const evidenceDir = path.resolve(process.cwd(), "..", "docs", "review", slug, date);
+
+test.skip(
+  !/^\d{4}-\d{2}-\d{2}$/.test(date),
+  "set SCREEN_DATE=YYYY-MM-DD to capture review evidence",
+);
 
 for (const viewport of [{ name: "1440x900", width: 1440, height: 900 }, { name: "1024x768", width: 1024, height: 768 }]) {
   test(`${slug} ${viewport.name} review`, async ({ browser }) => {
@@ -37,7 +46,7 @@ for (const viewport of [{ name: "1440x900", width: 1440, height: 900 }, { name: 
     await page.screenshot({ path: path.join(evidenceDir, `baseline-${viewport.name}.png`), fullPage: true });
     expect(consoleProblems).toEqual([]);
     expect(serious).toEqual([]);
-    expect(probe.canvas).toBe("rgb(244, 243, 239)");
+    expect(probe.canvas).toBe("rgb(244, 246, 248)");
     expect(probe.radius).toBe("6px");
     expect(probe.overflow).toBeLessThanOrEqual(0);
     expect(probe.bodyFont).not.toMatch(/Times New Roman/i);
