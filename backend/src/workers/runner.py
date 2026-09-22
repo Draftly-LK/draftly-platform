@@ -23,7 +23,27 @@ log = structlog.get_logger(__name__)
 
 DEFAULT_BATCH = 10
 DEFAULT_POLL_SECONDS = 1.0
-DEFAULT_LEASE_SECONDS = 120
+
+#: jobs-and-workers.md §3: a claim's lease defaults to 300 s ...
+DEFAULT_LEASE_SECONDS = 300
+
+#: ... and §5 sets it per job type. A job still inside its lease is never
+#: reaped, so it cannot run twice; a crash costs at most one lease.
+JOB_LEASE_SECONDS: dict[str, int] = {
+    "document.process": 900,
+    "document.rebuild-derivatives": 900,
+    "research.compose-answer": 300,
+    "export.render": 600,
+    "report.render": 600,
+    "notification.deliver": 120,
+    "voice.finalise": 300,
+    "memory.ingest": 60,
+    "agent.run-turn": 180,
+    "memory.initialize": 600,
+    "memory.sync": 120,
+    "memory.rebuild": 900,
+    "corpus.rebuild-index": 3600,
+}
 
 
 async def process_message(
@@ -70,7 +90,7 @@ async def run_once(
     session_maker = get_session_maker()
     async with session_maker() as session:
         outbox = SqlOutboxRepository(session)
-        await outbox.reap_leases(lease_seconds=DEFAULT_LEASE_SECONDS)
+        await outbox.reap_leases(lease_seconds=DEFAULT_LEASE_SECONDS, overrides=JOB_LEASE_SECONDS)
         claimed = list(await outbox.claim_batch(worker_id=worker_id, batch=batch))
         await session.commit()
 

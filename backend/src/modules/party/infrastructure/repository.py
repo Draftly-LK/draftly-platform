@@ -526,6 +526,9 @@ class SqlIdentityEvidenceRepository:
         )
         self._session.add(row)
         if match_detail is not None:
+            # The detail's foreign key points at this result, and there is no ORM
+            # relationship to order the inserts, so the result must reach Postgres first.
+            await self._session.flush()
             self._session.add(
                 ScreeningMatchDetailRow(
                     screening_result_id=result.id,

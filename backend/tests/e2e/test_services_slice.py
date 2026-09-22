@@ -30,8 +30,8 @@ from src.modules.obligations.domain.models import (
 )
 from src.modules.party.ports import CreatePartyInput, RecordIdentityEvidenceInput
 from src.platform.request_context import RequestContext
+from tests.factories.party import SYNTHETIC_NIC, SYNTHETIC_PARTY_A
 from tests.fixtures.party_fakes import build_service as make_party_service
-from tests.fixtures.party_synthetic import SYNTHETIC_NIC, SYNTHETIC_PARTY_A
 from tests.unit.test_billing_service import (
     DenyPlatformAdminPort,
     FakeAudit,

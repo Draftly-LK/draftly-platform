@@ -49,6 +49,13 @@ from src.modules.party.ports import (
 )
 from src.platform.errors import CapabilityDeniedError
 from src.platform.pagination import InvalidLimitError
+from tests.factories.party import (
+    SYNTHETIC_DOCUMENT_ID,
+    SYNTHETIC_DOCUMENT_VERSION_ID,
+    SYNTHETIC_EVIDENCE_SPAN,
+    SYNTHETIC_NIC,
+    SYNTHETIC_PARTY_A,
+)
 from tests.fixtures.party_fakes import (
     ACTOR_A,
     ACTOR_B,
@@ -60,13 +67,6 @@ from tests.fixtures.party_fakes import (
     build_service,
     ctx,
     synthetic_party,
-)
-from tests.fixtures.party_synthetic import (
-    SYNTHETIC_DOCUMENT_ID,
-    SYNTHETIC_DOCUMENT_VERSION_ID,
-    SYNTHETIC_EVIDENCE_SPAN,
-    SYNTHETIC_NIC,
-    SYNTHETIC_PARTY_A,
 )
 
 

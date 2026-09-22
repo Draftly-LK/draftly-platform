@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.audit.infrastructure.orm import AuditEventRow
@@ -19,7 +19,19 @@ class SqlAuditRepository:
         self._session = session
 
     async def get_last_hash(self, user_id: str) -> str:
-        """Return the hash of the most recent event in this user's audit chain."""
+        """Return the hash of the most recent event in this user's audit chain.
+
+        On Postgres, first take this user's chain lock for the rest of the
+        transaction. Without it, two transactions recording for one user both
+        read the same last hash and the chain forks into two branches. The
+        lock is per user, so one account's volume never serialises another's
+        (audit-service.md §3.3).
+        """
+        bind = self._session.bind
+        if bind is not None and bind.dialect.name == "postgresql":
+            await self._session.execute(
+                select(func.pg_advisory_xact_lock(func.hashtextextended(f"audit:{user_id}", 0)))
+            )
         stmt = (
             select(AuditEventRow.hash)
             .where(AuditEventRow.user_id == user_id)

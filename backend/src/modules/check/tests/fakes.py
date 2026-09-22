@@ -14,7 +14,6 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Any
 
-from src.modules.auth.ports import AuditEventInput
 from src.modules.check.domain.errors import LegalIssueStaleError
 from src.modules.check.domain.models import CheckResult, LegalIssue
 from src.modules.check.domain.runners import CheckEvaluation
@@ -24,7 +23,7 @@ from src.modules.content_governance.contracts import (
     IssueSeverity,
     IssueState,
 )
-from src.modules.verification.contracts import ConfirmedFactValue, FactTierSummary
+from src.modules.verification.contracts import FactTierSummary
 
 #: A fully evidenced whole-parcel transfer between two invented natural persons,
 #: on which every implemented check either passes or does not apply.
@@ -67,31 +66,6 @@ CLEAN_TRANSFER: dict[str, Any] = {
     "rta.local.assessment_register_name": "Synthetic Seller One",
     "rta.local.local_authority_id": "lk.lg.synthetic",
 }
-
-
-def fact_tier(
-    values: dict[str, Any],
-    *,
-    has_search_evidence: bool = True,
-    conflicted: tuple[str, ...] = (),
-    version: int = 1,
-    evidence_suffix: str = "a",
-) -> FactTierSummary:
-    """One confirmed fact per entry, each with its own evidence reference."""
-    return FactTierSummary(
-        confirmed={
-            fact_type_id: ConfirmedFactValue(
-                fact_id=f"fact_{index}",
-                fact_type_id=fact_type_id,
-                value=value,
-                version=version,
-                evidence_reference_ids=(f"ev_{index}_{evidence_suffix}",),
-            )
-            for index, (fact_type_id, value) in enumerate(sorted(values.items()))
-        },
-        conflicted_fact_type_ids=conflicted,
-        has_current_search_evidence=has_search_evidence,
-    )
 
 
 def issue_from(evaluation: CheckEvaluation, *, issue_id: str = "iss_synthetic") -> LegalIssue:
@@ -190,16 +164,3 @@ class FakeFactReader:
 
     async def summarise(self, user_id: str, matter_id: str) -> FactTierSummary:
         return self.summary
-
-
-class FakeAudit:
-    """Implements ``AuditPort``. Records the events for assertion."""
-
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
-
-    def actions(self) -> list[str]:
-        return [event.action for event in self.events]

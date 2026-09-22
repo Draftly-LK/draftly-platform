@@ -18,9 +18,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      # Third-party action. Pin to an immutable commit SHA the way
-      # .github/workflows/pr-agent.yml pins PR-Agent — see docs/CODE_REVIEWER.md
-      # maintenance notes.
+      # Third-party actions should be pinned to immutable commit SHAs.
       - uses: pnpm/action-setup@v4
         with:
           version: 10.23.0
@@ -30,17 +28,28 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --dir frontend install --frozen-lockfile
-      - run: pnpm --dir frontend typecheck
-      - run: pnpm --dir frontend lint
-      - run: pnpm --dir frontend build
-      - run: pnpm check:markdown
+      # The root script is the single list of frontend gates: typecheck, lint,
+      # vitest, build, markdown. Calling it here keeps CI from drifting again.
+      - run: pnpm check
 
   # Turns itself on when the backend project lands. Until backend/pyproject.toml
-  # exists this job succeeds without running anything, so nobody has to remember
-  # to wire the backend gates that CODE_REVIEW_CONTEXT.md already promises.
+  # exists this job succeeds without running anything.
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Real Postgres for the tests that SQLite cannot stand in for: the outbox,
+    # JSON columns, unique constraints and transaction semantics.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: draftly_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -63,61 +72,17 @@ jobs:
       - name: Backend gates
         if: steps.probe.outputs.present == 'true'
         working-directory: backend
+        env:
+          # Points the real-database suite at the service above. REQUIRE turns
+          # an unreachable database into a failure instead of a quiet skip.
+          DRAFTLY_E2E_DATABASE_URL: postgresql+psycopg://test:test@localhost:5432/draftly_test
+          DRAFTLY_E2E_REQUIRE_DATABASE: "1"
         run: |
           set -euo pipefail
           uv lock --check
           uv run ruff check .
           uv run ruff format --check .
           uv run mypy src
-          uv run pytest tests/unit tests/contract tests/conformance
-
-      # The conformance suite is parameterised over backend/contracts/services.yaml
-      # (backend/docs/service-definition-of-done.md §4, §9). This check keeps the
-      # registry parseable and in step with the service catalogue even before any
-      # Python exists.
-      - name: Validate the service registry
-        if: hashFiles('backend/contracts/services.yaml') != ''
-        run: |
-          set -euo pipefail
-          python3 -m pip install --quiet pyyaml
-          python3 - <<'PY'
-          import pathlib, sys, yaml
-
-          # Paths inside the registry are relative to backend/, which is where a
-          # developer runs pytest from.
-          root = pathlib.Path("backend")
-          reg = yaml.safe_load((root / "contracts/services.yaml").read_text())
-          published, consumed, problems = {}, {}, []
-
-          for svc in reg:
-              for key in ("name", "doc", "level", "phase"):
-                  if key not in svc:
-                      problems.append(f"{svc.get('name', '?')}: missing '{key}'")
-              if not (root / svc["doc"]).is_file():
-                  problems.append(f"{svc['name']}: doc not found at {svc['doc']}")
-              for event in svc.get("publishes") or []:
-                  published.setdefault(event, []).append(svc["name"])
-              for event in svc.get("consumes") or []:
-                  consumed.setdefault(event, []).append(svc["name"])
-
-          for event, consumers in sorted(consumed.items()):
-              if event not in published:
-                  problems.append(
-                      f"{event}: consumed by {', '.join(consumers)} with no publisher"
-                  )
-          for event, publishers in sorted(published.items()):
-              if len(publishers) > 1:
-                  problems.append(f"{event}: published by {', '.join(publishers)}")
-
-          registry = (root / "docs/events.md").read_text()
-          for event in sorted(set(published) | set(consumed)):
-              if f"`{event}`" not in registry:
-                  problems.append(f"{event}: absent from backend/docs/events.md")
-
-          if problems:
-              print("Service registry problems:")
-              for problem in problems:
-                  print(f"  - {problem}")
-              sys.exit(1)
-          print(f"Registry OK: {len(reg)} services, {len(published)} events.")
-          PY
+          # Every suite under testpaths, including the co-located module tests.
+          # Only paid live-provider probes are left out.
+          uv run pytest -m "not live" --cov --cov-report=term:skip-covered

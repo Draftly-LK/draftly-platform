@@ -11,7 +11,32 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  // tsconfig says `jsx: "preserve"` because Next compiles JSX itself; here
+  // esbuild must, with the same automatic runtime (no `import React`).
+  esbuild: { jsx: "automatic" },
   test: {
     include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    // On in CI so `pnpm check` reports the number without a second test run;
+    // locally, `pnpm test:coverage`. Thresholds ratchet (docs/TESTING_PLAN.md
+    // §11.3): each floor sits one point under the number last measured, and is
+    // raised when the suite beats it. Coverage may never fall.
+    coverage: {
+      enabled: process.env.CI === "true",
+      provider: "v8",
+      reporter: ["text-summary", "lcov"],
+      all: true,
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/**/*.d.ts", "src/test/**"],
+      // Measured 2026-09-19: overall lines 27.0, branches 85.8, functions 76.9;
+      // lib lines 93.3, branches 91.3, functions 92.2; components lines 3.1.
+      thresholds: {
+        lines: 26,
+        statements: 26,
+        branches: 84,
+        functions: 75,
+        "src/lib/**": { lines: 92, statements: 92, branches: 90, functions: 91 },
+        "src/components/**": { lines: 2, statements: 2 },
+      },
+    },
   },
 });

@@ -18,10 +18,13 @@ import os
 
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    not (os.environ.get("RUN_LIVE_TESTS") == "1" and os.environ.get("GEMINI_API_KEY")),
-    reason="live Gemini smoke runs only with RUN_LIVE_TESTS=1 and GEMINI_API_KEY set",
-)
+pytestmark = [
+    pytest.mark.live,
+    pytest.mark.skipif(
+        not (os.environ.get("RUN_LIVE_TESTS") == "1" and os.environ.get("GEMINI_API_KEY")),
+        reason="live Gemini smoke runs only with RUN_LIVE_TESTS=1 and GEMINI_API_KEY set",
+    ),
+]
 
 
 def _synthetic_form8_png() -> bytes:

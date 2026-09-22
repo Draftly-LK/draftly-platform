@@ -130,6 +130,10 @@ class SubscriptionRepository(Protocol):
 
 
 class UsageRepository(Protocol):
+    async def lock_usage(self, user_id: str) -> None:
+        """Serialise this user's quota changes until the transaction ends."""
+        ...
+
     async def get_aggregates_for_user(self, user_id: str) -> list[UsageAggregate]: ...
 
     async def get_aggregate(

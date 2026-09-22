@@ -12,7 +12,7 @@ office, day book reference, or matter appears anywhere in this module.
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import UTC, date, datetime
+from datetime import date
 from typing import Any
 
 from src.modules.approval.domain.declarations import (
@@ -22,7 +22,6 @@ from src.modules.approval.domain.declarations import (
 )
 from src.modules.approval.domain.models import Approval, FormExport, RegistrationEvent
 from src.modules.approval.domain.policies import approval_snapshot_hash, confirmed_fact_hash
-from src.modules.auth.ports import AuditEventInput
 from src.modules.check.contracts import IssueGateSummary
 from src.modules.content_governance.contracts import (
     ApprovalTargetType,
@@ -37,17 +36,16 @@ from src.modules.content_governance.contracts import (
 from src.modules.draft.contracts import BoundFact, FormSnapshot
 from src.modules.matter.contracts import MatterAccessSummary
 from src.modules.verification.contracts import ConfirmedFactValue, FactTierSummary
+from tests.factories.constants import MATTER_A, NOW, USER_A
 
-USER_ID = "usr_synthetic"
-MATTER_ID = "mat_synthetic"
+USER_ID = USER_A
+MATTER_ID = MATTER_A
 FORM_ID = "frm_synthetic"
-LAWYER_ID = "usr_synthetic"
+LAWYER_ID = USER_A
 CORRELATION = "corr_synthetic"
 TRANSFER_SUBTYPE_ID = "lk.rta.instrument.transfer_sale"
 FORM_08_TEMPLATE_ID = "rta.reg.2022.form.08"
 
-#: Fixed so a hash assertion does not depend on the day the suite runs.
-NOW = datetime(2026, 8, 17, 9, 0, tzinfo=UTC)
 TODAY = NOW.date()
 
 FORM_08: FormTemplateDefinition = require_template(FORM_08_TEMPLATE_ID)
@@ -385,19 +383,6 @@ class FakeMatterCommands:
         self, *, user_id: str, matter_id: str, state: MatterState, reason: str
     ) -> None:
         self.states.append(state)
-
-
-class FakeAudit:
-    """Implements ``AuditPort``. Records the events for assertion."""
-
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
-
-    def actions(self) -> list[str]:
-        return [event.action for event in self.events]
 
 
 def registration_event(

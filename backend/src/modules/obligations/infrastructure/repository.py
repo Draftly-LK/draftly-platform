@@ -134,6 +134,9 @@ class SqlObligationRepository:
             version=obligation.version,
         )
         self._session.add(row)
+        # The confirmation's foreign key points at this row, and there is no ORM
+        # relationship to order the inserts, so the obligation must reach Postgres first.
+        await self._session.flush()
         conf = LawyerConfirmationRow(
             obligation_id=obligation.id,
             organisation_id=obligation.organisation_id,

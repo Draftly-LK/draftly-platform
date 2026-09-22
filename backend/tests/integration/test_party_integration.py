@@ -29,6 +29,14 @@ from src.modules.party.ports import (
     RecordIdentityEvidenceInput,
     RecordScreeningInput,
 )
+from tests.factories.party import (
+    SYNTHETIC_DOCUMENT_ID,
+    SYNTHETIC_DOCUMENT_VERSION_ID,
+    SYNTHETIC_EVIDENCE_SPAN,
+    SYNTHETIC_NIC,
+    SYNTHETIC_PARTY_A,
+    SYNTHETIC_PARTY_B,
+)
 from tests.fixtures.party_fakes import (
     ACTOR_A,
     FakeAudit,
@@ -37,14 +45,6 @@ from tests.fixtures.party_fakes import (
     FakePartyRepo,
     build_service,
     ctx,
-)
-from tests.fixtures.party_synthetic import (
-    SYNTHETIC_DOCUMENT_ID,
-    SYNTHETIC_DOCUMENT_VERSION_ID,
-    SYNTHETIC_EVIDENCE_SPAN,
-    SYNTHETIC_NIC,
-    SYNTHETIC_PARTY_A,
-    SYNTHETIC_PARTY_B,
 )
 
 
