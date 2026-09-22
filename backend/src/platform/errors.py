@@ -97,6 +97,28 @@ class StepUpRequiredError(DraftlyError):
     message = "This action requires recent re-authentication."
 
 
+class ServiceMisconfiguredError(DraftlyError, RuntimeError):
+    """A fail-closed deployment guard refused to build a dependency (503).
+
+    The response carries only the generic class message. ``reason`` names the
+    setting or environment at fault and is for the server log alone, so a
+    misconfigured deployment never describes its own internals to a caller.
+    Still a ``RuntimeError``: outside a request (worker start-up, scripts) the
+    guard keeps failing the way it always has.
+    """
+
+    code = "service_misconfigured"
+    http_status = 503
+    message = "The service is temporarily unavailable. Please try again later."
+
+    def __init__(self, reason: str) -> None:
+        super().__init__()
+        self.reason = reason
+
+    def __str__(self) -> str:
+        return self.reason
+
+
 # ── Response helpers ─────────────────────────────────────────────────────────
 
 
@@ -126,6 +148,14 @@ async def draftly_exception_handler(
     exc: DraftlyError,
 ) -> JSONResponse:
     correlation_id = getattr(request.state, "correlation_id", "")
+    if isinstance(exc, ServiceMisconfiguredError):
+        structlog.get_logger().error(
+            "service_misconfigured",
+            path=request.url.path,
+            reason=exc.reason,
+            correlation_id=correlation_id,
+        )
+        return make_error_response(exc, correlation_id=correlation_id)
     structlog.get_logger().warning(
         "draftly_error",
         path=request.url.path,

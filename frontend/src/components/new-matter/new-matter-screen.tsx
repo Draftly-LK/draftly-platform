@@ -40,7 +40,6 @@ import {
   Wrench,
 } from "lucide-react";
 import Image from "next/image";
-import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -202,7 +201,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
    *  are authored in the rule pack, so they resolve from the message root. */
   const tRoot = useTranslations();
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
   const createDemoMatter = useDemoStore((state) => state.createMatter);
   const addDocument = useDemoStore((state) => state.addDocument);
   const markProcessingNotConfigured = useDemoStore(
@@ -493,12 +491,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
           <div aria-hidden="true" className="bg-scrim absolute inset-0" />
           <div className="relative z-[1] flex min-h-[calc(100vh-64px)] flex-col">
             <div className="flex flex-1 items-center px-6 py-10 sm:px-12 lg:px-20">
-              <motion.div
-                initial={reduceMotion ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.25 }}
-                className="max-w-xl"
-              >
+              {/* A CSS fade, not a JS one: the server cannot know the visitor's
+                  motion preference, so branching on it in render made the
+                  server and client markup disagree (hydration error). The
+                  reduced-motion rule in globals.css switches this off. */}
+              <div className="animate-fade-in max-w-xl">
                 <div className="text-soft-green text-sm font-semibold uppercase">
                   {t("entryEyebrow")}
                 </div>
@@ -508,7 +505,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                 <p className="text-on-dark-muted mt-4 max-w-lg text-lg leading-8">
                   {t("entryBody")}
                 </p>
-              </motion.div>
+              </div>
             </div>
             <div className="border-border-on-dark bg-panel-dark border-t px-6 py-5 backdrop-blur-sm sm:px-12 lg:px-20">
               <div className="flex flex-wrap items-end gap-4">

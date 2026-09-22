@@ -39,6 +39,10 @@ export default {
         ring: "var(--ring)"
       },
       borderRadius: { DEFAULT: "6px", dialog: "8px" },
+      keyframes: {
+        "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } }
+      },
+      animation: { "fade-in": "fade-in 250ms ease-out both" },
       boxShadow: {
         popover: "var(--shadow-popover)",
         dialog: "var(--shadow-dialog)",

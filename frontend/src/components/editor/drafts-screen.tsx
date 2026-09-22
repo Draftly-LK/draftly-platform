@@ -16,6 +16,15 @@ import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 
+// Demo drafts carry the kebab-case `DraftApprovalState`; the message keys are
+// camelCase, so "in-review" has to be mapped rather than used as the key.
+const DEMO_STATE_KEYS = {
+  working: "working",
+  "in-review": "inReview",
+  approved: "approved",
+  exported: "exported",
+} as const;
+
 /** Map form states to icon + text badges (never color alone). */
 const FORM_STATE_ICONS: Record<GeneratedFormState, typeof FilePlus2> = {
   GENERATED_DRAFT: FilePlus2,
@@ -170,7 +179,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                       </td>
                       <td className="px-4">
                         <span className="border-border-strong inline-flex rounded-full border px-2 py-1 text-xs font-semibold">
-                          {t(`${draft.approvalState}`)}
+                          {t(DEMO_STATE_KEYS[draft.approvalState])}
                         </span>
                       </td>
                       <td className="px-4">

@@ -109,8 +109,7 @@ def subscription_allows_feature(status: SubscriptionStatus, feature_key: str) ->
     """Restricted mode blocks new paid consumption but preserves read/billing access."""
     if status != SubscriptionStatus.RESTRICTED:
         return True
-    entitlement = FEATURE_TO_ENTITLEMENT.get(feature_key, feature_key)
-    return entitlement not in RESTRICTED_BLOCKED_FEATURES
+    return not restricted_mode_blocks(feature_key)
 
 
 def should_enter_grace(from_status: SubscriptionStatus) -> bool:
@@ -128,6 +127,10 @@ def restricted_mode_blocks(feature_key: str) -> bool:
     approved exports are not feature-gated at all, so they never reach here
     (billing-service.md §10).
     """
+    # The blocked set names product gates ("matter.create") as well as
+    # entitlement keys, so the gate is matched as given before it is translated.
+    if feature_key in RESTRICTED_BLOCKED_FEATURES:
+        return True
     entitlement = FEATURE_TO_ENTITLEMENT.get(feature_key, feature_key)
     return entitlement in RESTRICTED_BLOCKED_FEATURES
 
