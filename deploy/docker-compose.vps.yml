@@ -62,8 +62,9 @@ x-backend: &backend
     PARTY_IDENTIFIER_KEY: ${PARTY_IDENTIFIER_KEY:?set PARTY_IDENTIFIER_KEY}
     PARTY_BLIND_INDEX_KEY: ${PARTY_BLIND_INDEX_KEY:?set PARTY_BLIND_INDEX_KEY}
     API_CURSOR_SIGNING_KEY: ${API_CURSOR_SIGNING_KEY:?set API_CURSOR_SIGNING_KEY}
-    # Reserved for the retrieval client; the research API currently answers from
-    # the statute corpus bundled in the backend image.
+    # research/infrastructure/retrieval/http_adapter.py: search goes to the
+    # retrieval container's own, independently-updated index instead of the
+    # corpus bundled into this image at build time.
     RETRIEVAL_BASE_URL: http://retrieval:8000
   depends_on: &after-db
     db:

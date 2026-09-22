@@ -117,6 +117,12 @@ class Settings(BaseSettings):
     gemini_classify_model: str = "gemini-2.5-flash-lite"
     gemini_extract_model: str = "gemini-2.5-flash-lite"
     research_model: str = "gemini-2.5-flash"
+    # Internal address of the retrieval engine container (never a public URL —
+    # it has no auth). Empty (the default) keeps the bundled, build-time-pinned
+    # corpus that shipped before this client existed; set it to use the engine's
+    # own, independently-updated index instead. See research/infrastructure/
+    # retrieval/http_adapter.py.
+    retrieval_base_url: str = ""
 
     # ── Matter agent (matter-agent-service.md §Configuration) ───────────────
     # Off by default. While false the agent refuses every route, so a partial

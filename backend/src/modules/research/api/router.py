@@ -40,8 +40,10 @@ from src.modules.research.infrastructure.orm import (
 )
 from src.modules.research.infrastructure.retrieval import (
     GroundedStatuteComposer,
+    HttpStatuteRetrievalAdapter,
     StatuteRetrievalAdapter,
 )
+from src.modules.research.ports import LegalRetrievalPort
 from src.platform.config import get_settings
 from src.platform.db.idempotency import (
     IdempotencyKeyRequiredError,
@@ -79,7 +81,12 @@ def get_service(session: AsyncSession = Depends(get_db)) -> ResearchService:
             api_key=settings.gemini_api_key,
             model=settings.research_model,
         )
-    return ResearchService(session, StatuteRetrievalAdapter(), composer)
+    retrieval: LegalRetrievalPort = (
+        HttpStatuteRetrievalAdapter(base_url=settings.retrieval_base_url)
+        if settings.retrieval_base_url
+        else StatuteRetrievalAdapter()
+    )
+    return ResearchService(session, retrieval, composer)
 
 
 def _conversation(row: ResearchConversationRow) -> ConversationRead:

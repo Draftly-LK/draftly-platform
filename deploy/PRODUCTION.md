@@ -272,9 +272,18 @@ not case data, and are still shown.
 - **One API worker process.** Demo-mode adapters keep state in memory, so the
   API runs a single uvicorn worker. Scale up only after production adapters
   replace them.
-- **Retrieval is not yet called by the backend.** The research API answers from
-  the statute corpus bundled in the backend image. The retrieval container is
-  deployed and healthy for the day the backend client is written.
+- **Retrieval quality is unchanged, only its source.** The research API now
+  calls the retrieval container (`RETRIEVAL_BASE_URL`,
+  `HttpStatuteRetrievalAdapter`) instead of the corpus bundled into the
+  backend image, so the two stop drifting apart. This is not the same as the
+  fuller "three-channel hybrid" engine described in the research repo's
+  design docs: the deployed index is BM25-lexical only
+  (`RETRIEVAL_WITH_EMBEDDINGS=0`), the same technique the old bundled corpus
+  used, so a question that missed a matching statute before can still miss it
+  now. Set `RETRIEVAL_WITH_EMBEDDINGS=1` and rebuild the retrieval image to
+  add the dense channel (spends Gemini credits at build time). If the
+  retrieval container is unreachable, search degrades to no passages —
+  answers become "insufficient authority," not an error.
 - **Single server.** One VPS is a single point of failure. Restoring from
   nothing takes `vps.sh setup`, `init`, a filled `deploy/.env` and
   `vps.sh deploy`.
