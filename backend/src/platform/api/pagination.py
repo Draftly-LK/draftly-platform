@@ -73,7 +73,11 @@ def encode_cursor(payload: dict[str, Any]) -> str:
 def decode_cursor(cursor: str) -> dict[str, Any]:
     try:
         raw = base64.urlsafe_b64decode(cursor.encode("ascii"))
-        body, signature = raw.rsplit(b".", 1)
+        # The signature is binary and may itself contain a ``.`` byte. Split
+        # by its fixed width instead of searching within untrusted bytes.
+        if len(raw) < 18 or raw[-17] != ord("."):
+            raise ValueError("invalid cursor framing")
+        body, signature = raw[:-17], raw[-16:]
     except Exception:
         raise InvalidCursorError()
     expected = hmac.new(_signing_key(), body, sha256).digest()[:16]

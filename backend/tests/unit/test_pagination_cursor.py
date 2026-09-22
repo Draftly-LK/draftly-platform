@@ -41,6 +41,16 @@ def test_api_cursor_round_trips() -> None:
     assert api.decode_cursor(api.encode_cursor(payload)) == payload
 
 
+def test_api_cursor_round_trips_when_binary_signature_contains_a_period() -> None:
+    # This payload's HMAC contains 0x2e with the fixture key. The decoder must
+    # use the signature's fixed width rather than treating binary data as text.
+    payload = {"after": "pln_154"}
+    raw = base64.urlsafe_b64decode(api.encode_cursor(payload))
+
+    assert b"." in raw[-16:]
+    assert api.decode_cursor(api.encode_cursor(payload)) == payload
+
+
 def test_api_cursor_from_a_rotated_key_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     cursor = api.encode_cursor({"after": "pln_synthetic_0042"})
     _use_signing_key(monkeypatch, "synthetic-cursor-key-two")
@@ -51,7 +61,7 @@ def test_api_cursor_from_a_rotated_key_is_rejected(monkeypatch: pytest.MonkeyPat
 
 def test_api_cursor_with_an_edited_body_is_rejected() -> None:
     raw = base64.urlsafe_b64decode(api.encode_cursor({"after": "pln_a"}))
-    body, signature = raw.rsplit(b".", 1)
+    body, signature = raw[:-17], raw[-16:]
     edited = body.replace(b"pln_a", b"pln_b")
 
     with pytest.raises(api.InvalidCursorError):

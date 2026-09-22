@@ -1,0 +1,28 @@
+# Applies to the research-repo build context. Allowlist: that repo is several GB
+# and holds private material (data/raw, credentials, proj-docs). Only what the
+# Dockerfile COPYs gets sent.
+*
+
+!src/draftly/__init__.py
+!src/draftly/retrieval
+!src/draftly/case_retrieval
+
+!data/processed/documents.csv
+!data/processed/source-registry.csv
+!data/processed/topics.csv
+!data/processed/topic-sources.csv
+!data/processed/cases.jsonl
+!data/processed/docs/statutes
+!data/processed/docs/amendments
+!data/processed/docs/case-law
+!data/processed/legal-case-index/case_topic_links.csv
+!data/commonlii/parsed/LKCA/judgments.jsonl
+!data/commonlii/parsed/LKSC/judgments.jsonl
+
+!scripts/case-law-statute-linking/output/resolved_links.csv
+!scripts/case-law-statute-linking/output/statute_index.csv
+!scripts/case-law-information-extraction/output/rules_high_confidence.csv
+
+**/__pycache__
+**/*.pyc
+**/.DS_Store

@@ -1,0 +1,16 @@
+# API-only site for the Vercel + VPS split (docker-compose.vps.yml). The
+# frontend lives on Vercel; the backend's CORS allowlist (ALLOWED_ORIGINS)
+# decides which browser origin may call this API.
+{$DOMAIN} {
+	encode zstd gzip
+
+	@backend path /api/* /health/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	# Nothing else is served here (no /docs, no retrieval).
+	handle {
+		respond "Not found" 404
+	}
+}
