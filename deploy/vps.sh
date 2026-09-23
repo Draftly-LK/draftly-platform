@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-# Run the Draftly API side on the VPS, from a clone of this repository. The
-# Next.js frontend is hosted on Vercel and calls this server cross-origin.
+# Run Draftly on one VPS, from a clone of this repository.
 #
-#   sudo deploy/vps.sh setup    # once: Docker, swap, firewall
+#   sudo deploy/vps.sh setup    # once: Docker, swap, firewall, fail2ban, auto-updates, backup cron
 #   deploy/vps.sh init          # once: write deploy/.env with generated secrets
-#   deploy/vps.sh deploy        # fetch retrieval inputs, build backend + retrieval, start, check
+#   deploy/vps.sh deploy        # fetch retrieval inputs, build, start, check (rolls back on failure)
 #   deploy/vps.sh update        # git pull, then deploy
+#   deploy/vps.sh rollback      # put the previous images back
+#   deploy/vps.sh backup        # archive the app's Docker volumes to /var/backups/draftly
+#   deploy/vps.sh grant-trial --user usr_... --days N   # give an account a plan (unlocks research etc.)
 #   deploy/vps.sh status        # containers, memory, health
 #   deploy/vps.sh logs [svc]    # follow logs (all services, or one)
 #   deploy/vps.sh down          # stop the stack (volumes are kept)
 #
-# Stack: docker-compose.vps.yml (Caddy for the API domain, migrate, backend,
-# worker, retrieval, optional bundled Postgres). Meant for a temporary demo on
-# synthetic data. See README.md, "Vercel + VPS".
+# Stack: docker-compose.vps.yml (Caddy, migrate, backend, worker, retrieval,
+# optional bundled Postgres). Runs on synthetic data: see README.md,
+# "Known limitations".
+#
+# WEB_ON_VPS=1 in deploy/.env also runs the frontend and the landing page here,
+# so nothing is hosted on Vercel. See README.md, "Everything on one VPS".
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,6 +25,9 @@ REPO_DIR="$(dirname "$DEPLOY_DIR")"
 ENV_FILE="$DEPLOY_DIR/.env"
 RESEARCH_DIR="$DEPLOY_DIR/.research"
 SWAP_TARGET_MB=2048
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/draftly}"
+BACKUP_KEEP=14
+SNAPSHOT_FILE="$DEPLOY_DIR/.rollback"
 
 say() { printf '\n==> %s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
@@ -48,11 +56,14 @@ default_env() { [ -n "$(env_value "$1")" ] || set_env "$1" "$2"; }
 fernet_key() { openssl rand -base64 32 | tr '+/' '-_' | tr -d '\n'; }
 
 # ── Docker compose with the VPS overlay and the right profiles ───────────────
+web_on_vps() { [ "$(env_value WEB_ON_VPS)" = "1" ]; }
+
 uses_local_db() { case "$(env_value DATABASE_URL)" in *@db:5432/*) return 0 ;; *) return 1 ;; esac; }
 
 compose() {
   local profiles=()
   uses_local_db && profiles+=(--profile localdb)
+  web_on_vps && profiles+=(--profile web)
   docker compose --project-name draftly --env-file "$ENV_FILE" \
     -f "$DEPLOY_DIR/docker-compose.vps.yml" ${profiles[@]+"${profiles[@]}"} "$@"
 }
@@ -65,7 +76,11 @@ cmd_setup() {
   say "installing base packages"
   if command -v apt-get >/dev/null; then
     apt-get update -qq
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl git openssl >/dev/null
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates curl git openssl \
+      fail2ban unattended-upgrades ufw git-lfs >/dev/null
+    systemctl enable --now fail2ban >/dev/null 2>&1 || true
+    printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' \
+      > /etc/apt/apt.conf.d/20auto-upgrades
   else
     warn "not a Debian/Ubuntu system; make sure curl, git and openssl are installed"
   fi
@@ -100,17 +115,26 @@ cmd_setup() {
   sysctl -q vm.swappiness=10
   echo 'vm.swappiness=10' > /etc/sysctl.d/99-draftly-swap.conf
 
-  if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
-    say "opening 22, 80 and 443 in ufw"
+  if command -v ufw >/dev/null; then
+    say "firewall: deny incoming except 22, 80 and 443 (ufw)"
+    ufw default deny incoming >/dev/null
+    ufw default allow outgoing >/dev/null
     ufw allow 22/tcp >/dev/null
     ufw allow 80/tcp >/dev/null
     ufw allow 443/tcp >/dev/null
     ufw allow 443/udp >/dev/null
+    ufw --force enable >/dev/null
   fi
+
+  say "nightly volume backup (03:15) into $BACKUP_DIR"
+  install -d -m 700 -o "$user" -g "$user" "$BACKUP_DIR"
+  printf '15 3 * * * %s %s backup >> %s/backup.log 2>&1\n' "$user" "$DEPLOY_DIR/vps.sh" "$BACKUP_DIR" \
+    > /etc/cron.d/draftly-backup
+  chmod 644 /etc/cron.d/draftly-backup
 
   free -h
   echo
-  echo "Setup done. Also open 80/tcp, 443/tcp and 443/udp in your provider's firewall."
+  echo "Setup done. If your provider has its own firewall, also open 80/tcp, 443/tcp and 443/udp."
   echo "Next: deploy/vps.sh init"
 }
 
@@ -119,8 +143,8 @@ research_url_default() {
   local origin
   origin="$(git -C "$REPO_DIR" remote get-url origin 2>/dev/null || true)"
   case "$origin" in
-    *draftly-platform*) printf '%s' "${origin/draftly-platform/draftly}" ;;
-    *) printf '%s' "https://github.com/HimathX/draftly.git" ;;
+    *draftly-platform*) printf '%s' "${origin/draftly-platform/draftly-research}" ;;
+    *) printf '%s' "https://github.com/Draftly-LK/draftly-research.git" ;;
   esac
 }
 
@@ -160,6 +184,9 @@ cmd_init() {
   set_env FRONTEND_IMAGE draftly-frontend:vps
   set_env BACKEND_IMAGE draftly-backend:vps
   set_env RETRIEVAL_IMAGE draftly-retrieval:vps
+  set_env LANDING_IMAGE draftly-landing:vps
+  # 1 = frontend and landing page run on this server too (no Vercel).
+  default_env WEB_ON_VPS "${WEB_ON_VPS:-0}"
   default_env EXTRACTION_PROVIDER stub
   default_env PARTY_IDENTIFIER_KEY "$(fernet_key)"
   default_env PARTY_BLIND_INDEX_KEY "$(openssl rand -hex 32)"
@@ -174,6 +201,23 @@ cmd_init() {
     set_env DATABASE_URL "postgresql+psycopg://draftly:$pw@db:5432/draftly"
     set_env DATABASE_URL_DIRECT "postgresql+psycopg://draftly:$pw@db:5432/draftly"
     echo "No DATABASE_URL given: using the bundled Postgres container."
+  fi
+
+  if web_on_vps; then
+    # sslip.io resolves any prefix, so the landing page gets its own hostname
+    # (and certificate) without another domain. Use a real one if you have it.
+    [ -n "$(env_value LANDING_DOMAIN)" ] || set_env LANDING_DOMAIN "landing.$(env_value DOMAIN)"
+    default_env FRONTEND_ORIGIN "https://$(env_value DOMAIN)"
+    echo
+    echo "deploy/.env is ready except for the values only you have. Edit it and set:"
+    echo "  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY  (pk_... from your Clerk instance)"
+    echo "  CLERK_SECRET_KEY                   (sk_... from the same instance)"
+    echo "  GEMINI_API_KEY                     (optional: retrieval /answer and Gemini extraction)"
+    echo "Add https://$(env_value DOMAIN) to the allowed origins in the Clerk dashboard."
+    echo "App:          https://$(env_value DOMAIN)"
+    echo "Landing page: https://$(env_value LANDING_DOMAIN)"
+    echo "Next: deploy/vps.sh deploy"
+    return
   fi
 
   echo
@@ -210,6 +254,14 @@ check_config() {
     [ -n "$issuer" ] && set_env CLERK_ISSUER "$issuer"
   fi
   local origin
+  if web_on_vps; then
+    # One origin: the app and the API share DOMAIN, so nothing is cross-origin.
+    set_env CADDYFILE ./Caddyfile.full
+    set_env FRONTEND_ORIGIN "https://$(env_value DOMAIN)"
+    [ -n "$(env_value LANDING_DOMAIN)" ] || set_env LANDING_DOMAIN "landing.$(env_value DOMAIN)"
+  else
+    set_env CADDYFILE ./Caddyfile.api
+  fi
   origin="$(env_value FRONTEND_ORIGIN)"
   case "$origin" in
     "") ;;
@@ -225,6 +277,12 @@ check_config() {
     [ -n "$(env_value "$key")" ] || missing+=("$key")
   done
   uses_local_db && { [ -n "$(env_value POSTGRES_PASSWORD)" ] || missing+=(POSTGRES_PASSWORD); }
+  if web_on_vps; then
+    # Inlined into the frontend bundle at build time.
+    for key in LANDING_DOMAIN NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY; do
+      [ -n "$(env_value "$key")" ] || missing+=("$key")
+    done
+  fi
   # Without Clerk, "local" would fall back to the stub identity, which accepts
   # any bearer token. That must never be reachable from the internet.
   [ ${#missing[@]} -eq 0 ] || die "set these in deploy/.env first: ${missing[*]}"
@@ -247,6 +305,8 @@ research_paths() {
 }
 
 fetch_research() {
+  command -v git-lfs >/dev/null \
+    || die "git-lfs is required: the research corpus keeps its judgment files in Git LFS (run: sudo deploy/vps.sh setup)"
   local url ref
   url="$(env_value RESEARCH_REPO_URL)"
   url="${url:-$(research_url_default)}"
@@ -257,7 +317,7 @@ fetch_research() {
     say "fetching retrieval inputs from the research repo ($ref, sparse)"
     rm -rf "$RESEARCH_DIR"
     git clone --quiet --filter=blob:none --no-checkout --depth 1 --branch "$ref" "$url" "$RESEARCH_DIR" \
-      || die "could not clone the private research repository. Configure a read-only SSH deploy key or Git credential helper; credentials must not be embedded in RESEARCH_REPO_URL."
+      || die "could not clone $url. It is private: clone this repo with credentials that can also read it, or set RESEARCH_REPO_URL in deploy/.env (e.g. https://<token>@github.com/Draftly-LK/draftly-research.git)."
     # shellcheck disable=SC2046  # one pattern per line, none contain spaces
     git -C "$RESEARCH_DIR" sparse-checkout set --no-cone $(research_paths)
     git -C "$RESEARCH_DIR" checkout --quiet "$ref"
@@ -267,6 +327,21 @@ fetch_research() {
     git -C "$RESEARCH_DIR" fetch --quiet --filter=blob:none --depth 1 origin "$ref"
     git -C "$RESEARCH_DIR" reset --quiet --hard FETCH_HEAD
   fi
+  # A checkout made before git-lfs was installed leaves LFS pointer files. Delete
+  # each one and let git check it out again: the LFS smudge filter then downloads
+  # just that object. (`git lfs pull` is not used: on this partial clone it scans
+  # the whole tree and fetches blobs one by one, which takes tens of minutes.)
+  git -C "$RESEARCH_DIR" lfs install --local >/dev/null
+  local pointer rel
+  while IFS= read -r pointer; do
+    rel="${pointer#"$RESEARCH_DIR"/}"
+    say "downloading LFS file $rel"
+    rm -f "$pointer"
+    git -C "$RESEARCH_DIR" checkout -- "$rel" \
+      || die "could not download $rel from Git LFS (does the deploy key have read access to LFS objects?)"
+  done < <(grep -rlm1 --exclude-dir=.git '^version https://git-lfs.github.com/spec/v1' "$RESEARCH_DIR" 2>/dev/null || true)
+  pointer="$(grep -rlm1 --exclude-dir=.git '^version https://git-lfs.github.com/spec/v1' "$RESEARCH_DIR" 2>/dev/null | head -n 1 || true)"
+  [ -z "$pointer" ] || die "$pointer is still a Git LFS pointer; the retrieval index cannot be built from it"
   echo "research repo at $(git -C "$RESEARCH_DIR" rev-parse --short HEAD)"
 }
 
@@ -280,17 +355,130 @@ native_platform() {
 
 build_images() {
   local targets=("$@") target
-  [ ${#targets[@]} -gt 0 ] || targets=(backend retrieval)
+  if [ ${#targets[@]} -eq 0 ]; then
+    targets=(backend retrieval)
+    web_on_vps && targets+=(frontend landing)
+  fi
   for target in "${targets[@]}"; do
     case "$target" in
       backend | retrieval) ;;
-      *) die "unknown image '$target' (use: backend retrieval; the frontend is built by Vercel)" ;;
+      frontend | landing)
+        web_on_vps || die "'$target' is only built here when WEB_ON_VPS=1 (otherwise Vercel builds the frontend)" ;;
+      *) die "unknown image '$target' (use: backend retrieval frontend landing)" ;;
     esac
   done
   say "building ${targets[*]}"
+  # `|| return 1`: cmd_deploy calls this in an `||` list, where set -e is off.
   PACK=0 PLATFORM="$(native_platform)" RETRIEVAL_CONTEXT="$RESEARCH_DIR" \
-    "$DEPLOY_DIR/build.sh" "${targets[@]}"
+    "$DEPLOY_DIR/build.sh" "${targets[@]}" || return 1
+  # The :previous tags (see snapshot_images) keep the last release's layers alive.
   docker image prune -f >/dev/null
+  docker builder prune -f --filter until=168h >/dev/null 2>&1 || true
+}
+
+# ── rollback ──────────────────────────────────────────────────────────────────
+# Before a build, remember which image each tag points at and pin it as
+# <name>:previous. A failed deploy puts those images back automatically; the
+# `rollback` command does the same for a release that turned out to be bad.
+# Database migrations are forward-only and are NOT reverted (see README.md).
+image_names() {
+  local var name
+  for var in BACKEND_IMAGE RETRIEVAL_IMAGE FRONTEND_IMAGE LANDING_IMAGE; do
+    name="$(env_value "$var")"
+    [ -n "$name" ] && echo "$name"
+  done
+  return 0
+}
+
+snapshot_images() {
+  local name id tmp
+  tmp="$(mktemp)"
+  while IFS= read -r name; do
+    id="$(docker image inspect --format '{{.Id}}' "$name" 2>/dev/null || true)"
+    [ -n "$id" ] || continue
+    docker tag "$id" "${name%%:*}:previous"
+    printf '%s=%s\n' "$name" "$id" >> "$tmp"
+  done < <(image_names)
+  mv "$tmp" "$SNAPSHOT_FILE"
+}
+
+restart_stack() {
+  compose up -d --remove-orphans --no-build --wait --wait-timeout 300
+}
+
+# Re-point every tag at the image recorded before this deploy started.
+restore_snapshot() {
+  local name id restored=0
+  [ -s "$SNAPSHOT_FILE" ] || { warn "no previous release recorded (first deploy?); nothing to roll back to"; return 1; }
+  while IFS='=' read -r name id; do
+    [ -n "$name" ] && [ -n "$id" ] || continue
+    docker tag "$id" "$name" && restored=1
+  done < "$SNAPSHOT_FILE"
+  [ "$restored" -eq 1 ]
+}
+
+rollback_after_failure() {
+  warn "deploy failed: restoring the previous release"
+  if restore_snapshot && restart_stack; then
+    warn "rolled back; the previous release is running again"
+  else
+    warn "automatic rollback did not succeed; inspect with: deploy/vps.sh status"
+  fi
+}
+
+cmd_rollback() {
+  [ -f "$ENV_FILE" ] || die "missing deploy/.env"
+  local name prev found=0
+  while IFS= read -r name; do
+    prev="${name%%:*}:previous"
+    docker image inspect "$prev" >/dev/null 2>&1 || continue
+    docker tag "$prev" "$name"
+    found=1
+  done < <(image_names)
+  [ "$found" -eq 1 ] || die "no :previous images on this server; nothing to roll back to"
+  say "restarting on the previous images"
+  restart_stack || die "the previous release did not become healthy; see: deploy/vps.sh logs"
+  verify || exit 1
+}
+
+# ── backup ────────────────────────────────────────────────────────────────────
+# Archives what lives on the server: pilot-request emails, uploaded source files
+# and, when DATABASE_URL points at the bundled Postgres, the database itself.
+# ── grant-trial ───────────────────────────────────────────────────────────────
+# Gated features (research, drafting, export, document processing) are denied to
+# an account with no subscription. This runs the billing service's own
+# grant_trial inside the backend container: see backend/src/cli/grant_trial.py.
+# The acting admin must be listed in PLATFORM_ADMIN_USER_IDS in deploy/.env.
+cmd_grant_trial() {
+  [ $# -gt 0 ] || die "usage: deploy/vps.sh grant-trial --user usr_... --days N [--plan plan_trial_v1] [--admin usr_...]"
+  compose exec -T backend python -m src.cli.grant_trial "$@"
+}
+
+cmd_backup() {
+  local stamp vol
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  install -d -m 700 "$BACKUP_DIR" 2>/dev/null || die "cannot write $BACKUP_DIR (run: sudo deploy/vps.sh setup)"
+  for vol in draftly_pilot-requests draftly_source-files; do
+    docker volume inspect "$vol" >/dev/null 2>&1 || continue
+    # As the calling user, umask 077: the archives hold email addresses.
+    docker run --rm --user "$(id -u):$(id -g)" -v "$vol:/data:ro" -v "$BACKUP_DIR:/out" alpine \
+      sh -c 'umask 077 && tar -czf "/out/$1" -C /data .' _ "${vol#draftly_}-$stamp.tar.gz"
+    echo "backed up $vol -> $BACKUP_DIR/${vol#draftly_}-$stamp.tar.gz"
+  done
+  # The local PostgreSQL (when DATABASE_URL points at it): a custom-format dump,
+  # restorable with pg_restore. Mode 600, like the volume archives.
+  if uses_local_db && compose ps --status running --services 2>/dev/null | grep -qx db; then
+    ( umask 077; compose exec -T db pg_dump -U draftly -Fc draftly > "$BACKUP_DIR/database-$stamp.dump" ) \
+      || die "pg_dump failed"
+    echo "backed up database -> $BACKUP_DIR/database-$stamp.dump"
+  fi
+  # Keep the newest $BACKUP_KEEP archives of each volume.
+  for vol in pilot-requests source-files; do
+    # shellcheck disable=SC2012  # names are ours: <vol>-<timestamp>.tar.gz
+    ls -1t "$BACKUP_DIR/$vol"-*.tar.gz 2>/dev/null | tail -n +$((BACKUP_KEEP + 1)) | xargs -r rm -f
+  done
+  # shellcheck disable=SC2012
+  ls -1t "$BACKUP_DIR"/database-*.dump 2>/dev/null | tail -n +$((BACKUP_KEEP + 1)) | xargs -r rm -f
 }
 
 verify() {
@@ -305,10 +493,20 @@ verify() {
   retrieval="$(curl -fsS --max-time 20 http://127.0.0.1:8001/health || true)"
   if [ -n "$retrieval" ]; then echo "retrieval /health: $(printf '%s' "$retrieval" | cut -c1-120)..."; else echo "retrieval /health: FAILED"; ok=0; fi
   origin="$(env_value FRONTEND_ORIGIN)"
+  if web_on_vps; then
+    # Same origin, so there is no CORS to check; check each site instead.
+    local landing code
+    landing="$(env_value LANDING_DOMAIN)"
+    code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 30 --resolve "$domain:443:127.0.0.1" "https://$domain/" || true)"
+    case "$code" in 2* | 3*) echo "frontend  https://$domain/: HTTP $code" ;; *) echo "frontend  https://$domain/: FAILED (HTTP ${code:-none})"; ok=0 ;; esac
+    code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 30 --resolve "$landing:443:127.0.0.1" "https://$landing/" || true)"
+    case "$code" in 2*) echo "landing   https://$landing/: HTTP $code" ;; *) echo "landing   https://$landing/: FAILED (HTTP ${code:-none})"; ok=0 ;; esac
+  else
   cors="$(curl -sk -o /dev/null -D - --max-time 20 --resolve "$domain:443:127.0.0.1" -X OPTIONS \
     -H "Origin: $origin" -H "Access-Control-Request-Method: GET" -H "Access-Control-Request-Headers: authorization" \
     "https://$domain/api/v1/me" | tr -d '\r' | awk 'tolower($0) ~ /^access-control-allow-origin:/ { sub(/^[^:]*: */, ""); print }' || true)"
   if [ "$cors" = "$origin" ]; then echo "CORS      $origin: allowed"; else echo "CORS      $origin: NOT allowed"; ok=0; fi
+  fi
 
   if curl -fsS -o /dev/null --max-time 20 "https://$domain/health/live" 2>/dev/null; then
     echo "certificate: valid for $domain"
@@ -321,19 +519,33 @@ verify() {
     return 1
   fi
   echo
-  echo "API is up: https://$domain"
-  echo "In Vercel set NEXT_PUBLIC_API_BASE_URL=https://$domain and open $origin"
+  if web_on_vps; then
+    echo "App is up:    https://$domain"
+    echo "Landing page: https://$(env_value LANDING_DOMAIN)"
+  else
+    echo "API is up: https://$domain"
+    echo "In Vercel set NEXT_PUBLIC_API_BASE_URL=https://$domain and open $origin"
+  fi
   echo "Retrieval (not public): ssh -L 8001:127.0.0.1:8001 <you>@<server>, then http://127.0.0.1:8001/health"
 }
 
 cmd_deploy() {
   check_config
   fetch_research
-  build_images "$@"
+  snapshot_images
+  # The running containers keep their old images until `up`, so a failed build
+  # leaves the site untouched; just put the tags back for the next attempt.
+  build_images "$@" || { restore_snapshot || true; die "image build failed; the running stack was not touched"; }
   say "starting the stack (migrations run first)"
-  compose up -d --remove-orphans --wait --wait-timeout 300 \
-    || { compose ps -a; die "the stack did not become healthy; see: deploy/vps.sh logs"; }
-  verify || exit 1
+  if ! compose up -d --remove-orphans --wait --wait-timeout 300; then
+    compose ps -a
+    rollback_after_failure
+    die "the stack did not become healthy; see: deploy/vps.sh logs"
+  fi
+  if ! verify; then
+    rollback_after_failure
+    exit 1
+  fi
 }
 
 cmd_update() {
@@ -356,6 +568,9 @@ case "${1:-}" in
   init) cmd_init ;;
   deploy) shift; cmd_deploy "$@" ;;
   update) shift; cmd_update "$@" ;;
+  rollback) cmd_rollback ;;
+  backup) cmd_backup ;;
+  grant-trial) shift; cmd_grant_trial "$@" ;;
   status) cmd_status ;;
   logs) shift; compose logs -f --tail 200 "$@" ;;
   down) compose down ;;

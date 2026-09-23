@@ -14,6 +14,13 @@ and the relevant plans under `backend/docs/services/`.
 - **No Harvey assets:** never commit Harvey screenshots, logos, wording, or
   other proprietary assets. This repo stays private for M2.
 - **Do not modify `../draftly-research`** from sessions working in this repo.
+- **Never commit or push directly to `main`.** GitHub branch protection is not
+  reliable for this repo (it is a private repo owned by the `Draftly-LK`
+  organization), so this rule is enforced by agents. Work on a feature branch
+  (`dev/<name>/<topic>`), push that branch, and open a pull request into `main`.
+  If the current branch is `main`, create a branch first. Never run
+  `git push origin main`, `git push --force` to `main`, or merge into `main`
+  locally. A human merges the pull request.
 - **Legal wording is human-owned:** never author or alter prescribed statutory
   text, form templates' legal copy, or approval/waiver language. Verify
   structure only; escalate wording to the team.
@@ -73,8 +80,8 @@ and the relevant plans under `backend/docs/services/`.
 ## Design system (enforced, not advisory)
 
 - Tokens exactly as specced in `docs/plan.md` §Design system — including the
-  derived tokens (`amber-text #8A5510`, `border-strong #AEB7AE`,
-  `selected-bg #EEF2EE`, teal `:focus-visible` ring). No zinc/slate grays.
+  derived tokens (`amber-text #784405`, `border-strong #A7B3C2`,
+  `selected-bg #EAF0F7`, teal `:focus-visible` ring). No zinc/slate grays.
 - Radius 6 px (8 px dialogs). 40–44 px table rows. No card shadows in the
   workspace. Icons 16 px/1.5-stroke in tables, 20 px toolbar, 24 px empty
   states.

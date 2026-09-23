@@ -17,14 +17,7 @@ import pytest
 E2E_DIR = Path(__file__).resolve().parent
 DEPLOY_DIR = E2E_DIR.parent
 PROJECT = "draftly-e2e"
-BASE_COMPOSE = [
-    "docker",
-    "compose",
-    "--env-file",
-    str(E2E_DIR / "e2e.env"),
-    "-f",
-    str(DEPLOY_DIR / "docker-compose.yml"),
-]
+BASE_COMPOSE = ["docker", "compose", "--env-file", str(E2E_DIR / "e2e.env"), "-f", str(DEPLOY_DIR / "docker-compose.yml")]
 COMPOSE = [*BASE_COMPOSE, "-p", PROJECT, "-f", str(E2E_DIR / "docker-compose.e2e.yml")]
 
 SITE = "https://localhost:18443"
@@ -53,26 +46,17 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 _OPENER = urllib.request.build_opener(_NoRedirect, urllib.request.HTTPSHandler(context=_INSECURE))
 
 
-def fetch(
-    url: str, *, method: str = "GET", headers: dict[str, str] | None = None, timeout: float = 30
-) -> Response:
+def fetch(url: str, *, method: str = "GET", headers: dict[str, str] | None = None, timeout: float = 30) -> Response:
     request = urllib.request.Request(url, method=method, headers=headers or {})
     try:
         with _OPENER.open(request, timeout=timeout) as reply:
-            return Response(
-                reply.status, {k.lower(): v for k, v in reply.headers.items()}, reply.read()
-            )
+            return Response(reply.status, {k.lower(): v for k, v in reply.headers.items()}, reply.read())
     except urllib.error.HTTPError as error:
         return Response(error.code, {k.lower(): v for k, v in error.headers.items()}, error.read())
 
 
 def compose(*args: str, base_only: bool = False) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [*(BASE_COMPOSE if base_only else COMPOSE), *args],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    return subprocess.run([*(BASE_COMPOSE if base_only else COMPOSE), *args], capture_output=True, text=True, check=False)
 
 
 def _wait_until(check, *, timeout: float, what: str) -> None:
@@ -97,14 +81,8 @@ def stack():
         compose("down", "-v")
         pytest.fail(f"docker compose up failed:\n{up.stderr[-3000:]}")
     try:
-        _wait_until(
-            lambda: fetch(f"{SITE}/health/ready").status == 200,
-            timeout=120,
-            what="backend via Caddy",
-        )
-        _wait_until(
-            lambda: fetch(f"{RETRIEVAL}/health").status == 200, timeout=120, what="retrieval"
-        )
+        _wait_until(lambda: fetch(f"{SITE}/health/ready").status == 200, timeout=120, what="backend via Caddy")
+        _wait_until(lambda: fetch(f"{RETRIEVAL}/health").status == 200, timeout=120, what="retrieval")
         yield
     finally:
         if os.environ.get("E2E_KEEP_STACK") != "1":

@@ -117,6 +117,12 @@ class Settings(BaseSettings):
     gemini_classify_model: str = "gemini-2.5-flash-lite"
     gemini_extract_model: str = "gemini-2.5-flash-lite"
     research_model: str = "gemini-2.5-flash"
+    # Internal address of the retrieval engine container (never a public URL —
+    # it has no auth). Empty (the default) keeps the bundled, build-time-pinned
+    # corpus that shipped before this client existed; set it to use the engine's
+    # own, independently-updated index instead. See research/infrastructure/
+    # retrieval/http_adapter.py.
+    retrieval_base_url: str = ""
 
     # ── Matter agent (matter-agent-service.md §Configuration) ───────────────
     # Off by default. While false the agent refuses every route, so a partial
@@ -188,6 +194,15 @@ class Settings(BaseSettings):
     payhere_merchant_secret: str = ""
     payhere_checkout_base_url: str = "https://payhere.lk"
     billing_grace_period_days: int = 14
+    # False opens every feature and lifts every quota for every account, whatever
+    # its plan (or lack of one). A break-glass switch, not the intended way to
+    # give access — see signup_trial_days. The safe default enforces plans.
+    enforce_plan_limits: bool = True
+    # Trial length (days) BillingService.ensure_trial grants automatically to
+    # an active account with no plan yet, on POST /me/provision. 0 turns
+    # auto-granting off; an account then needs an explicit admin grant or a
+    # paid checkout.
+    signup_trial_days: int = 30
     billing_webhook_max_body_bytes: int = 65536
     platform_admin_user_ids: str = ""
     api_cursor_signing_key: str = ""

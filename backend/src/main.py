@@ -58,6 +58,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         build_source_file_storage()
         log.info("startup.storage_ready", bucket=settings.gcs_bucket)
     log.info("startup", environment=settings.environment)
+    if not settings.enforce_plan_limits:
+        log.warning(
+            "startup.plan_limits_disabled",
+            detail="ENFORCE_PLAN_LIMITS=false: every account has every feature, no quotas apply",
+        )
     yield
     log.info("shutdown")
 

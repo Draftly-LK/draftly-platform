@@ -7,6 +7,7 @@ import {
   checks,
   DEMO_MATTER_ID,
   DEMO_USER_ID,
+  demoOnly,
   documents,
   drafts,
   facts,
@@ -14,6 +15,7 @@ import {
   templates,
   workflows,
 } from "@/lib/mocks";
+import { isApiEnabled } from "@/lib/api/client";
 import { EDITABLE_PROFILE_FIELDS, type ProfileFieldPatch } from "@/lib/profile/profile-fields";
 import { migrateLegacyMatterType } from "@/lib/rta/taxonomy";
 import { buildTemplateDocument } from "@/lib/templates/build-document";
@@ -48,14 +50,17 @@ const seedProfile = (): User => ({
   phone: "",
 });
 
+// Case data is fixture-seeded only in the no-backend demo. With the API
+// configured the store starts empty, so nothing fake can show. Workflow
+// definitions are catalogue content and are always present.
 const seed = () => ({
-  matters: structuredClone(matters),
-  documents: structuredClone(documents),
-  facts: structuredClone(facts),
-  checks: structuredClone(checks),
+  matters: structuredClone(demoOnly(matters)),
+  documents: structuredClone(demoOnly(documents)),
+  facts: structuredClone(demoOnly(facts)),
+  checks: structuredClone(demoOnly(checks)),
   workflows: structuredClone(workflows),
-  drafts: structuredClone(drafts),
-  auditEvents: structuredClone(auditEvents),
+  drafts: structuredClone(demoOnly(drafts)),
+  auditEvents: structuredClone(demoOnly(auditEvents)),
   profile: seedProfile(),
 });
 
@@ -269,6 +274,33 @@ function migrateDemoState(persisted: unknown, version: number): DemoState {
     matters: (state.matters ?? base.matters).map(migratePersistedMatter),
     documents: (state.documents ?? base.documents).map(migratePersistedDocument),
   });
+}
+
+const DEMO_STORAGE_KEY = "draftly-m2-demo";
+
+/**
+ * The demo persists to localStorage so a reload keeps the walkthrough. With the
+ * API configured nothing is persisted, and any demo state an earlier build left
+ * in this browser is deleted rather than loaded.
+ */
+function demoStorage(): Storage {
+  if (!isApiEnabled()) return localStorage;
+  try {
+    localStorage.removeItem(DEMO_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable (private mode); there is then nothing to purge.
+  }
+  const empty = new Map<string, string>();
+  return {
+    get length() {
+      return empty.size;
+    },
+    clear: () => empty.clear(),
+    getItem: () => null,
+    key: () => null,
+    removeItem: () => undefined,
+    setItem: () => undefined,
+  } satisfies Storage;
 }
 
 export const useDemoStore = create<DemoState>()(
@@ -801,8 +833,8 @@ export const useDemoStore = create<DemoState>()(
       },
     }),
     {
-      name: "draftly-m2-demo",
-      storage: createJSONStorage(() => localStorage),
+      name: DEMO_STORAGE_KEY,
+      storage: createJSONStorage(demoStorage),
       version: 4,
       migrate: migrateDemoState,
     },

@@ -1,0 +1,106 @@
+name: Deploy
+
+# Continuous delivery to the production VPS (draftly.adlahiru.com).
+#
+#   push to prod  ->  CI (same gates as pull requests)  ->  deploy  ->  smoke test
+#
+# `prod` is the deployment branch: merging into it is the only way to ship. The
+# job logs in over SSH with a key that can run exactly one server-side script
+# (deploy/ci-deploy.sh): "deploy <sha>" or "rollback". The server builds the
+# images, runs migrations, starts the stack and health-checks it; a failed
+# deploy restores the previous release on its own (deploy/vps.sh). A failed
+# public smoke test afterwards triggers a rollback from here.
+#
+# Manual runs (Actions tab, branch prod): "deploy" redeploys the tip of prod,
+# "rollback" puts the previous release back. See deploy/README.md.
+
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to do on the server
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+
+permissions:
+  contents: read
+
+# One deploy at a time, and never cancel one halfway through a build or migration.
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: [ci]
+    # A push deploys only after CI is green. A manual run skips CI (the ci job
+    # is skipped) and is only allowed from prod.
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/prod' &&
+      (github.event_name == 'workflow_dispatch' || needs.ci.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment:
+      name: production
+      url: ${{ vars.APP_URL || 'https://app.draftly.adlahiru.com' }}
+    env:
+      APP_URL: ${{ vars.APP_URL || 'https://app.draftly.adlahiru.com' }}
+      LANDING_URL: ${{ vars.LANDING_URL || 'https://draftly.adlahiru.com' }}
+      ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'deploy' }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+    steps:
+      - name: Set up SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pinned host key: never trust whatever answers on first connect.
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # The server-side command is forced by authorized_keys, so what is sent
+      # here is only an argument to deploy/ci-deploy.sh, never a shell command.
+      - name: Deploy
+        id: deploy
+        run: |
+          if [ "$ACTION" = "rollback" ]; then request="rollback"; else request="deploy ${GITHUB_SHA}"; fi
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "$VPS_USER@$VPS_HOST" "$request"
+
+      - name: Smoke test the public site
+        id: smoke
+        run: |
+          set -euo pipefail
+          check() { # url, expected status class (2 = any 2xx)
+            local url="$1" code i
+            for i in $(seq 1 30); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url" || true)"
+              case "$code" in 2*) echo "ok   $url ($code)"; return 0 ;; esac
+              echo "wait $url ($code), attempt $i/30"; sleep 10
+            done
+            echo "FAIL $url" >&2; return 1
+          }
+          check "$APP_URL/health/ready"
+          check "$APP_URL/sign-in"
+          check "$LANDING_URL/"
+
+      # The server already rolled back if its own checks failed. This covers what
+      # only shows from outside: DNS, certificates, routing.
+      - name: Roll back after a failed smoke test
+        if: failure() && steps.deploy.outcome == 'success' && steps.smoke.outcome == 'failure'
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$VPS_PORT" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" rollback

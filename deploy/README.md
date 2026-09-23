@@ -1,6 +1,8 @@
 # Deploying Draftly with Docker
 
-This folder runs the whole application on one small VPS (sized for 1 GB RAM):
+This folder runs the whole application on one VPS. The live production setup
+(hostnames, secrets, CI/CD, backups) is documented in
+[PRODUCTION.md](PRODUCTION.md). The table below describes the services:
 
 | Service | Image built from | Notes |
 | --- | --- | --- |
@@ -46,7 +48,7 @@ and retrieval images are built on the server, so 2 GB of swap is plenty.
 On a fresh Ubuntu or Debian VPS (1 GB RAM, about 5 GB free disk):
 
 ```bash
-git clone https://github.com/HimathX/draftly-platform.git
+git clone https://github.com/Draftly-LK/draftly-platform.git
 cd draftly-platform
 sudo deploy/vps.sh setup     # Docker, 2 GB swap, ufw rules; log out and back in afterwards
 deploy/vps.sh init           # writes deploy/.env with generated secrets
@@ -85,9 +87,8 @@ The research repository is private. `deploy` clones it into `deploy/.research`
 (git-ignored) as a shallow, sparse checkout of only the files the retrieval
 image copies (the allowlist in `retrieval/Dockerfile.dockerignore`, about 1 GB),
 using the same GitHub access this clone used. If that fails, set
-`RESEARCH_REPO_URL=git@github.com:HimathX/draftly.git` in `deploy/.env`
-and configure a read-only SSH deploy key. Do not put access tokens in the URL:
-Git persists the remote in `.git/config`, and an error could expose it in logs.
+`RESEARCH_REPO_URL=https://<token>@github.com/Draftly-LK/draftly-research.git` in
+`deploy/.env` with a read-only fine-grained token.
 
 ### 2. Vercel
 
@@ -110,6 +111,7 @@ Environment variables (Production):
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
 | `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
 | `NEXT_PUBLIC_CLERK_AFTER_SIGN_OUT_URL` | `/sign-in` |
+| `NEXT_PUBLIC_USE_MOCK_PIPELINE` | `false` |
 | `MULTILINGUAL_LANGUAGE_SUPPORT` | `true` |
 
 Do not set `AUTH_BYPASS`. `NEXT_PUBLIC_*` values are baked in at build time, so
@@ -120,6 +122,79 @@ with "Redeploy" in the dashboard.
 If the Vercel URL changes, update `FRONTEND_ORIGIN` (and
 `CLERK_AUTHORIZED_PARTY` if you set it by hand) in `deploy/.env` and run
 `deploy/vps.sh deploy` again.
+
+## Everything on one VPS (frontend, landing page, backend, retrieval)
+
+`WEB_ON_VPS=1` moves the frontend off Vercel and adds the landing page, all
+built on the server from this repository. Sized for 4 vCPU / 8 GB RAM: the
+Next.js build peaks at a few GB, which is fine there but not on a 1 GB box. A
+bundled Postgres is used unless you paste Neon URLs.
+
+| Hostname | Served by |
+| --- | --- |
+| `DOMAIN` | `/api/*` and `/health/*` to the backend, everything else to the Next.js frontend. One origin, so no CORS. |
+| `LANDING_DOMAIN` | The landing page and its pilot-request form. `/app` on it redirects to `https://DOMAIN/`. |
+
+The retrieval engine stays internal (no route in Caddy), as before.
+
+```bash
+git clone https://github.com/Draftly-LK/draftly-platform.git
+cd draftly-platform
+sudo deploy/vps.sh setup                 # once; log out and back in afterwards
+WEB_ON_VPS=1 deploy/vps.sh init          # writes deploy/.env; sets LANDING_DOMAIN
+nano deploy/.env                         # Clerk keys, optionally GEMINI_API_KEY
+deploy/vps.sh deploy                     # research inputs, build 4 images, start, check
+```
+
+Both hostnames must resolve to the server before the first `deploy`. Without a
+domain, `init` uses `<ip-with-dashes>.sslip.io` for the app and
+`landing.<ip-with-dashes>.sslip.io` for the landing page. For a real domain,
+create two A records and put them in `DOMAIN` and `LANDING_DOMAIN`. Changing
+`DOMAIN` or the Clerk publishable key means rebuilding the frontend
+(`deploy/vps.sh deploy frontend`), because `NEXT_PUBLIC_*` values are inlined at
+build time.
+
+In the Clerk dashboard, add `https://<DOMAIN>` as an allowed origin. The
+backend accepts tokens only from that origin (`CLERK_AUTHORIZED_PARTY`,
+derived from `DOMAIN`).
+
+The landing page keeps the pilot-request emails in the `pilot-requests` Docker
+volume (`/data/pilot-requests` in the container). That volume is not served
+anywhere. Read it with:
+
+```bash
+docker run --rm -v draftly_pilot-requests:/d alpine sh -c 'cat /d/*.json'
+```
+
+Back it up if you care about those leads; `deploy/vps.sh down` keeps it.
+
+### Continuous delivery
+
+`.github/workflows/deploy.yml` deploys to the VPS on every push to the `prod`
+branch, after the same CI checks that guard pull requests. It logs in over SSH
+with a key that can run only `deploy/ci-deploy.sh`, which fast-forwards the
+server's clone to the commit that passed CI and runs `deploy/vps.sh deploy`.
+A failed build, migration or health check restores the previous images, and a
+failed public smoke test afterwards triggers a rollback. It can also be run by
+hand from the Actions tab (`deploy` or `rollback`).
+
+The production setup, including every secret and where it lives, is described
+in [PRODUCTION.md](PRODUCTION.md). In short, the one-time steps are:
+
+1. On the server, create the clone as a dedicated `deploy` user in the
+   `docker` group (steps above).
+2. Install the forced-command script as root:
+   `sudo install -m 755 deploy/ci-deploy.sh /usr/local/bin/draftly-ci-deploy`.
+3. Generate a key pair for GitHub Actions and pin it in
+   `~deploy/.ssh/authorized_keys` as
+   `restrict,command="/usr/local/bin/draftly-ci-deploy" ssh-ed25519 AAAA...`.
+4. In GitHub, Settings, Secrets and variables, Actions, add `VPS_HOST`,
+   `VPS_USER`, `VPS_SSH_KEY` (the private key), `VPS_KNOWN_HOSTS` (from
+   `ssh-keyscan -t ed25519 <server-ip>`) and optionally `VPS_PORT`.
+
+If the clone is not in `~/draftly-platform`, set `DRAFTLY_REPO_DIR` for the
+forced command in `authorized_keys`. The server needs read access to the
+private research repository for the retrieval image (see above).
 
 ### Retrieval engine
 
@@ -148,7 +223,10 @@ deploy/vps.sh logs backend     # follow one service's logs
 deploy/vps.sh down             # stop (data volumes are kept)
 ```
 
-## Rules for a 1 GB VPS
+## Rules for a small VPS (images built elsewhere)
+
+These apply to the `build.sh` and `ship.sh` path on a machine with about 1 GB
+of RAM. The production host has 8 GB and builds on the server (`vps.sh`).
 
 - **Do not build on the VPS.** `next build` and the index build need more memory
   than the machine has. Build on a dev machine and ship the images.
@@ -244,9 +322,11 @@ migrations are not reversed automatically.
   needs GCS storage with `DRAFTLY_STORAGE_REAL_DATA_APPROVED`, an approved
   extraction provider and the real matter-access adapter. Until then the API
   starts, but those features fail on first use. This is a backend decision, not
-  a Docker one. The Vercel + VPS path runs `local` for that reason.
-- **The backend does not call the retrieval service yet.** `modules/research` is
-  empty. The stack passes `RETRIEVAL_BASE_URL=http://retrieval:8000` to the
-  backend for when that client is written.
+  a Docker one. The `vps.sh` path runs `local` for that reason.
+- **The backend does not call the retrieval service yet.** The research API
+  answers from the statute corpus bundled in the backend image
+  (`modules/research/infrastructure/retrieval/corpus`). The stack passes
+  `RETRIEVAL_BASE_URL=http://retrieval:8000` to the backend for when a client
+  for this service is written.
 - **The retrieval service has no authentication.** It is deliberately not
   published and Caddy has no route to it. Do not add a `ports:` entry to it.

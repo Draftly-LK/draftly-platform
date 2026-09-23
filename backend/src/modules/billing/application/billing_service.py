@@ -96,6 +96,15 @@ _PROVIDER_STATUS_MAP: dict[str, SubscriptionStatus] = {
 }
 
 
+# Reservation ids for usage taken while plan limits are off and the account has
+# no subscription. They are never written to the ledger.
+UNMETERED_PREFIX = "usg_unmetered_"
+
+# Seeded by billing_0001_plans_subscriptions.py. ensure_trial grants this plan
+# automatically; grant_trial (a platform admin action) defaults to it too.
+DEFAULT_TRIAL_PLAN_VERSION_ID = "plan_trial_v1"
+
+
 class BillingService:
     def __init__(
         self,
@@ -111,7 +120,19 @@ class BillingService:
         event_port: EventPort,
         clock: ClockPort,
         grace_period_days: int,
+        enforce_plan_limits: bool = True,
+        signup_trial_days: int = 30,
     ) -> None:
+        # False = every account gets every known feature and no quota applies
+        # (ENFORCE_PLAN_LIMITS=false). Usage is still metered where a
+        # subscription exists. Plan administration and checkout are unaffected.
+        # This is a break-glass switch, not the intended steady state — see
+        # signup_trial_days below for how an account is meant to get access.
+        self._enforce_plan_limits = enforce_plan_limits
+        # Length of the trial ensure_trial grants automatically to an active
+        # account with no plan yet. 0 turns auto-granting off; an account then
+        # needs an explicit grant_trial (platform admin) or a paid checkout.
+        self._signup_trial_days = signup_trial_days
         self._plans = plan_repo
         self._subscriptions = subscription_repo
         self._usage = usage_repo
@@ -495,6 +516,83 @@ class BillingService:
         )
         return created
 
+    async def ensure_trial(self, user_id: str) -> Subscription | None:
+        """Self-serve trial: give an active account with no plan one, once.
+
+        Called after account provisioning (POST /me/provision), not by a
+        platform admin, so there is no ``platform.administer`` check — the
+        caller is granting a trial to themselves, the same way `grant_trial`
+        does for an admin-picked account. Idempotent: a returning user who
+        already has a subscription (trial, paid, or restricted) is returned
+        unchanged and nothing is written. A not-yet-active account, a missing
+        or inactive trial plan, or ``signup_trial_days`` set to 0 is a silent
+        no-op — provisioning itself must not fail because of this.
+        """
+        if self._signup_trial_days <= 0:
+            return None
+        existing = await self._subscriptions.get_by_user_id(user_id)
+        if existing is not None:
+            return existing
+        account = await self._users.get_billing_user(user_id)
+        if account is None or not account.is_active:
+            return None
+        plan = await self._plans.get(DEFAULT_TRIAL_PLAN_VERSION_ID)
+        if plan is None or plan.state != PlanState.ACTIVE:
+            log.warning(
+                "billing.signup_trial.plan_unavailable",
+                plan_version_id=DEFAULT_TRIAL_PLAN_VERSION_ID,
+            )
+            return None
+
+        now = self._clock.now()
+        trial_end = now + timedelta(days=self._signup_trial_days)
+        subscription = Subscription(
+            id=f"sub_{uuid.uuid4().hex[:16]}",
+            user_id=user_id,
+            plan_version_id=plan.id,
+            provider="internal",
+            provider_customer_id=None,
+            provider_subscription_id=None,
+            status=SubscriptionStatus.TRIALING,
+            current_period_start=now,
+            current_period_end=trial_end,
+            trial_ends_at=trial_end,
+            cancel_at_period_end=False,
+            grace_period_ends_at=None,
+            provider_state_updated_at=now,
+            created_at=now,
+            updated_at=now,
+            version=1,
+        )
+        try:
+            created = await self._subscriptions.create(subscription)
+        except ConcurrencyError:
+            # Another request for the same brand-new account won the race.
+            return await self._subscriptions.get_by_user_id(user_id)
+
+        await self._audit.record(
+            AuditEventInput(
+                user_id=user_id,
+                action="billing.subscription.trial_self_started",
+                target_type="subscription",
+                target_id=created.id,
+                actor=user_id,
+                after_ref=SubscriptionStatus.TRIALING.value,
+            )
+        )
+        await self._emit(
+            EVENT_PLAN_CHANGED,
+            subscription=created,
+            actor_id=user_id,
+            correlation_id="",
+            data={
+                "subscriptionId": created.id,
+                "beforePlanVersionId": None,
+                "afterPlanVersionId": plan.id,
+            },
+        )
+        return created
+
     # ── entitlement and quota gates ──────────────────────────────────────────
 
     async def require_feature(self, user_id: str, feature_key: str) -> EntitlementDecision:
@@ -502,6 +600,10 @@ class BillingService:
             return EntitlementDecision(
                 allowed=False, feature_key=feature_key, reason="unknown_feature_key"
             )
+
+        if not self._enforce_plan_limits:
+            # Unknown keys were refused above, so a typo still fails closed.
+            return EntitlementDecision(allowed=True, feature_key=feature_key)
 
         sub = await self._subscriptions.get_by_user_id(user_id)
         if sub is None:
@@ -545,7 +647,6 @@ class BillingService:
         if not is_known_feature_key(metric):
             raise FeatureDeniedError("Unknown usage metric.", feature_key=metric)
 
-        await self._usage.lock_usage(user_id)
         existing = await self._usage.find_ledger_by_operation(user_id, metric, operation_id)
         if existing is not None and existing.state in {
             UsageLedgerState.RESERVED,
@@ -561,6 +662,15 @@ class BillingService:
 
         sub = await self._subscriptions.get_by_user_id(user_id)
         if sub is None:
+            if not self._enforce_plan_limits:
+                # No plan means no billing period to meter against.
+                return Reservation(
+                    id=f"{UNMETERED_PREFIX}{metric}:{operation_id}",
+                    user_id=user_id,
+                    metric=metric,
+                    quantity=quantity,
+                    operation_id=operation_id,
+                )
             raise FeatureDeniedError("no_subscription", feature_key=metric)
 
         decision = await self.require_feature(user_id, metric)
@@ -594,8 +704,9 @@ class BillingService:
     ) -> UsageRead:
         if actual_quantity < 0:
             raise FeatureDeniedError("Actual quantity cannot be negative.", feature_key="usage")
+        if reservation_id.startswith(UNMETERED_PREFIX):
+            return self._unmetered_usage(reservation_id)
 
-        await self._usage.lock_usage(user_id)
         entry = await self._load_own_ledger_entry(user_id, reservation_id)
         if entry.state == UsageLedgerState.CONSUMED:
             return await self._usage_read_for(entry)
@@ -617,7 +728,8 @@ class BillingService:
         return await self._usage_read_for(updated)
 
     async def release_usage(self, user_id: str, reservation_id: str) -> UsageRead:
-        await self._usage.lock_usage(user_id)
+        if reservation_id.startswith(UNMETERED_PREFIX):
+            return self._unmetered_usage(reservation_id)
         entry = await self._load_own_ledger_entry(user_id, reservation_id)
         if entry.state == UsageLedgerState.RELEASED:
             return await self._usage_read_for(entry)
@@ -625,6 +737,12 @@ class BillingService:
             raise FeatureDeniedError("Cannot release consumed usage.", feature_key=entry.metric)
         updated = await self._usage.release(reservation_id, user_id)
         return await self._usage_read_for(updated)
+
+    def _unmetered_usage(self, reservation_id: str) -> UsageRead:
+        """Nothing was recorded for a reservation made without a subscription."""
+        metric = reservation_id.removeprefix(UNMETERED_PREFIX).split(":", 1)[0]
+        now = self._clock.now()
+        return UsageRead(metric=metric, quantity=0, period_start=now, period_end=now)
 
     async def _load_own_ledger_entry(self, user_id: str, entry_id: str) -> UsageLedgerEntry:
         entry = await self._usage.get_ledger_entry(entry_id, user_id)

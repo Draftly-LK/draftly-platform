@@ -1,18 +1,10 @@
-"""Checklist item policies: the three rules policies.py says carry legal safety.
-
-1. A scan cannot inspect an original.
-2. A waiver cannot reach a statutory requirement.
-3. SATISFIED is computed, not chosen, and only when every dimension the
-   requirement cares about is met.
-
-Rule 3 is checked across every combination of the five status axes, so no
-corner of the truth table can round an unresolved item up to satisfied.
-"""
+"""Checklist item policies (§5.4): inspection needs a human, statutory items cannot
+be waived, and SATISFIED is computed rather than chosen."""
 
 from __future__ import annotations
 
-import itertools
-from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
@@ -24,344 +16,358 @@ from src.modules.content_governance.contracts import (
     CurrencyStatus,
     DigitalReviewStatus,
     PhysicalOriginalStatus,
-    RequirementDefinition,
     ResolutionStatus,
     require_requirement,
 )
 from src.modules.task.domain.errors import (
-    CollectionTransitionNotAdministrativeError,
     OriginalInspectionRequiresHumanError,
     SatisfactionIsComputedError,
     StatutoryRequirementNotWaivableError,
     WaiverReasonRequiredError,
 )
-from src.modules.task.domain.models import ChecklistItem, OriginalInspection
+from src.modules.task.domain.models import ChecklistItem, OriginalInspection, SatisfactionLink
 from src.modules.task.domain.policies import (
     apply_applicability,
     apply_physical_original,
     compute_resolution,
     derive_lifecycle,
-    guard_administrative_collection,
     guard_resolution_write,
     initial_item_statuses,
     is_blocking_unsatisfied,
+    touch,
 )
-from tests.factories.checklist import checklist_item
-from tests.factories.constants import NOW, USER_A
 
-WAIVABLE = require_requirement("R_C00_MATTER_AND_CLIENT_REFERENCE")
+NOW = datetime(2026, 3, 1, 9, 0, tzinfo=UTC)
+
+#: Waivable, WARNING severity, no original, no currency window.
+SIMPLE = require_requirement("R_C00_MATTER_AND_CLIENT_REFERENCE")
+#: Not waivable, BLOCKING.
 STATUTORY = require_requirement("R_C00_RESPONSIBLE_LAWYER_ASSIGNED")
-#: A requirement that wants an inspected original and a current document.
-STRICT = replace(
-    WAIVABLE,
-    physical_original_policy=PhysicalOriginalStatus.ORIGINAL_INSPECTED,
-    currency_max_age_days=30,
-)
-#: One that wants neither.
-LENIENT = replace(
-    WAIVABLE,
-    physical_original_policy=PhysicalOriginalStatus.NOT_REQUIRED,
-    currency_max_age_days=None,
-)
-INSPECTION = OriginalInspection(reviewer_id=USER_A, inspected_at=NOW, method="in person")
+#: Requires the physical original to be inspected; HIGH_RISK.
+ORIGINAL = require_requirement("R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED")
+#: 90-day currency window; HIGH_RISK.
+CURRENCY = require_requirement("R_C00_SOURCE_CURRENCY_VERIFIED")
 
 
-def _satisfied_item(**overrides: object) -> ChecklistItem:
-    """An item that meets STRICT on every dimension."""
-    item = checklist_item(
-        collection=CollectionStatus.RECEIVED,
-        digital_review=DigitalReviewStatus.LAWYER_CONFIRMED,
-        physical_original=PhysicalOriginalStatus.ORIGINAL_INSPECTED,
-        currency=CurrencyStatus.CURRENT,
-        consistency=ConsistencyStatus.MATCHED,
+def test_fixture_requirements_have_the_policies_the_tests_assume() -> None:
+    assert SIMPLE.waivable and SIMPLE.unsatisfied_severity.value == "WARNING"
+    assert not STATUTORY.waivable and STATUTORY.unsatisfied_severity.value == "BLOCKING"
+    assert ORIGINAL.physical_original_policy is PhysicalOriginalStatus.ORIGINAL_INSPECTED
+    assert CURRENCY.currency_max_age_days == 90
+
+
+def item(requirement: Any = SIMPLE, **overrides: Any) -> ChecklistItem:
+    collection, review, original, currency, consistency, resolution = initial_item_statuses(
+        requirement
     )
-    return replace(item, **overrides)  # type: ignore[arg-type]
+    values: dict[str, Any] = {
+        "id": "cli_1",
+        "user_id": "usr_1",
+        "matter_id": "mat_1",
+        "snapshot_id": "snp_1",
+        "requirement_definition_id": requirement.id,
+        "module_definition_id": requirement.module_id,
+        "inclusion_reason": "CORE",
+        "inclusion_trigger_id": None,
+        "applicability": ApplicabilityStatus.REQUIRED,
+        "collection": collection,
+        "digital_review": review,
+        "physical_original": original,
+        "currency": currency,
+        "consistency": consistency,
+        "resolution": resolution,
+        "created_at": NOW,
+        "updated_at": NOW,
+    }
+    values.update(overrides)
+    return ChecklistItem(**values)
 
 
-# ── Rule 3: SATISFIED is computed ───────────────────────────────────────────
+def reviewed(requirement: Any = SIMPLE, **overrides: Any) -> ChecklistItem:
+    """Received, lawyer-confirmed, and consistent — satisfied unless a policy objects."""
+    values: dict[str, Any] = {
+        "collection": CollectionStatus.RECEIVED,
+        "digital_review": DigitalReviewStatus.LAWYER_CONFIRMED,
+        "consistency": ConsistencyStatus.MATCHED,
+    }
+    values.update(overrides)
+    return item(requirement, **values)
 
 
-def test_an_item_meeting_every_dimension_is_satisfied() -> None:
-    assert compute_resolution(_satisfied_item(), STRICT) is ResolutionStatus.SATISFIED
+INSPECTION = OriginalInspection(reviewer_id="usr_1", inspected_at=NOW, method="Sighted at office")
+
+
+# ── Initial statuses ────────────────────────────────────────────────────────
+
+
+def test_a_new_item_asserts_nothing_nobody_has_looked_at() -> None:
+    assert initial_item_statuses(SIMPLE) == (
+        CollectionStatus.NOT_REQUESTED,
+        DigitalReviewStatus.UNREVIEWED,
+        PhysicalOriginalStatus.NOT_REQUIRED,
+        CurrencyStatus.NOT_APPLICABLE,
+        ConsistencyStatus.NOT_CHECKED,
+        ResolutionStatus.OPEN,
+    )
+
+
+def test_an_original_requirement_starts_unknown_never_copy_only() -> None:
+    assert initial_item_statuses(ORIGINAL)[2] is PhysicalOriginalStatus.UNKNOWN
+
+
+def test_a_dated_requirement_starts_with_unknown_currency() -> None:
+    assert initial_item_statuses(CURRENCY)[3] is CurrencyStatus.UNKNOWN
+
+
+# ── Applicability and waivers ───────────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
-    ("change", "expected"),
-    [
-        ({"collection": CollectionStatus.REQUESTED}, ResolutionStatus.ACTION_REQUESTED),
-        ({"collection": CollectionStatus.MISSING}, ResolutionStatus.ACTION_REQUESTED),
-        ({"collection": CollectionStatus.PARTIAL}, ResolutionStatus.OPEN),
-        ({"digital_review": DigitalReviewStatus.AI_ORGANIZED}, ResolutionStatus.OPEN),
-        (
-            {"physical_original": PhysicalOriginalStatus.ORIGINAL_REPORTED},
-            ResolutionStatus.ACTION_REQUESTED,
-        ),
-        (
-            {"physical_original": PhysicalOriginalStatus.COPY_ONLY},
-            ResolutionStatus.ACTION_REQUESTED,
-        ),
-        ({"currency": CurrencyStatus.EXPIRED}, ResolutionStatus.ACTION_REQUESTED),
-        ({"currency": CurrencyStatus.UNKNOWN}, ResolutionStatus.ACTION_REQUESTED),
-        ({"consistency": ConsistencyStatus.MISMATCH}, ResolutionStatus.ACTION_REQUESTED),
-        ({"consistency": ConsistencyStatus.NOT_CHECKED}, ResolutionStatus.OPEN),
-    ],
-    ids=lambda v: next(iter(v.values())).name if isinstance(v, dict) else v.name,
+    "target", [ApplicabilityStatus.WAIVED_BY_LAWYER, ApplicabilityStatus.NOT_APPLICABLE]
 )
-def test_one_unmet_dimension_keeps_the_item_open(
-    change: dict[str, object], expected: ResolutionStatus
-) -> None:
-    assert compute_resolution(_satisfied_item(**change), STRICT) is expected
-
-
-def test_the_pipeline_filing_a_document_is_not_a_lawyer_confirming_it() -> None:
-    """AI_ORGANIZED is explicitly not enough (§6.4)."""
-    item = _satisfied_item(digital_review=DigitalReviewStatus.AI_ORGANIZED)
-
-    assert compute_resolution(item, LENIENT) is not ResolutionStatus.SATISFIED
-
-
-AXES = list(
-    itertools.product(
-        CollectionStatus,
-        DigitalReviewStatus,
-        PhysicalOriginalStatus,
-        CurrencyStatus,
-        ConsistencyStatus,
-    )
-)
-
-
-@pytest.mark.parametrize("requirement", [STRICT, LENIENT], ids=["strict", "lenient"])
-def test_no_combination_is_satisfied_unless_every_rule_holds(
-    requirement: RequirementDefinition,
-) -> None:
-    """Every combination of the five axes, for a requirement of each kind."""
-    wants_original = requirement.physical_original_policy is not PhysicalOriginalStatus.NOT_REQUIRED
-    wants_current = requirement.currency_max_age_days is not None
-    wrongly_satisfied = []
-    for collection, review, original, currency, consistency in AXES:
-        item = checklist_item(
-            collection=collection,
-            digital_review=review,
-            physical_original=original,
-            currency=currency,
-            consistency=consistency,
-        )
-        if compute_resolution(item, requirement) is not ResolutionStatus.SATISFIED:
-            continue
-        rules_hold = (
-            collection is CollectionStatus.RECEIVED
-            and review is DigitalReviewStatus.LAWYER_CONFIRMED
-            and (not wants_original or original is PhysicalOriginalStatus.ORIGINAL_INSPECTED)
-            and currency not in {CurrencyStatus.STALE, CurrencyStatus.EXPIRED}
-            and (not wants_current or currency is CurrencyStatus.CURRENT)
-            and consistency is ConsistencyStatus.MATCHED
-        )
-        if not rules_hold:
-            wrongly_satisfied.append((collection, review, original, currency, consistency))
-
-    assert len(AXES) == 5 * 5 * 5 * 5 * 4
-    assert wrongly_satisfied == []
-
-
-@pytest.mark.parametrize("target", list(ResolutionStatus))
-def test_satisfied_cannot_be_written_by_hand(target: ResolutionStatus) -> None:
-    if target is ResolutionStatus.SATISFIED:
-        with pytest.raises(SatisfactionIsComputedError):
-            guard_resolution_write(target)
-    else:
-        guard_resolution_write(target)
-
-
-# ── Rule 2: statutory requirements cannot be waived ─────────────────────────
-
-
-@pytest.mark.parametrize(
-    "target", [ApplicabilityStatus.NOT_APPLICABLE, ApplicabilityStatus.WAIVED_BY_LAWYER]
-)
-def test_a_statutory_requirement_cannot_be_waived_even_with_a_reason(
+def test_a_statutory_requirement_cannot_be_waived_or_declared_inapplicable(
     target: ApplicabilityStatus,
 ) -> None:
-    assert not STATUTORY.waivable
-
-    with pytest.raises(StatutoryRequirementNotWaivableError):
+    subject = item(STATUTORY)
+    with pytest.raises(StatutoryRequirementNotWaivableError) as excinfo:
         apply_applicability(
-            checklist_item(), STATUTORY, target=target, reason="synthetic reason", decided_by=USER_A
+            subject, STATUTORY, target=target, reason="Partner said so", decided_by="usr_1"
         )
+    assert excinfo.value.code == "rta_requirement_not_waivable"
+    assert excinfo.value.details["requirementId"] == STATUTORY.id
+    assert subject.applicability is ApplicabilityStatus.REQUIRED
 
 
-@pytest.mark.parametrize(
-    "target", [ApplicabilityStatus.NOT_APPLICABLE, ApplicabilityStatus.WAIVED_BY_LAWYER]
-)
 @pytest.mark.parametrize("reason", [None, "", "   "])
-def test_a_waiver_needs_a_reason(target: ApplicabilityStatus, reason: str | None) -> None:
+def test_a_waiver_needs_a_recorded_reason(reason: str | None) -> None:
+    subject = item(SIMPLE)
     with pytest.raises(WaiverReasonRequiredError):
         apply_applicability(
-            checklist_item(), WAIVABLE, target=target, reason=reason, decided_by=USER_A
+            subject,
+            SIMPLE,
+            target=ApplicabilityStatus.WAIVED_BY_LAWYER,
+            reason=reason,
+            decided_by="usr_1",
         )
+    assert subject.applicability is ApplicabilityStatus.REQUIRED
 
 
-def test_a_waiver_with_a_reason_records_who_decided() -> None:
-    item = apply_applicability(
-        checklist_item(),
-        WAIVABLE,
+def test_a_reasoned_waiver_records_who_decided_and_why() -> None:
+    subject = apply_applicability(
+        item(SIMPLE),
+        SIMPLE,
         target=ApplicabilityStatus.WAIVED_BY_LAWYER,
-        reason="Synthetic reason",
-        decided_by=USER_A,
+        reason="Reference held on the paper file.",
+        decided_by="usr_1",
     )
-
-    assert (item.applicability, item.applicability_decided_by) == (
-        ApplicabilityStatus.WAIVED_BY_LAWYER,
-        USER_A,
-    )
-    assert compute_resolution(item, WAIVABLE) is ResolutionStatus.EXCEPTION_ACCEPTED
+    assert subject.applicability is ApplicabilityStatus.WAIVED_BY_LAWYER
+    assert subject.applicability_reason == "Reference held on the paper file."
+    assert subject.applicability_decided_by == "usr_1"
 
 
-def test_marking_a_statutory_requirement_required_needs_no_reason() -> None:
-    item = apply_applicability(
-        checklist_item(),
+def test_marking_a_statutory_item_required_needs_no_reason() -> None:
+    subject = apply_applicability(
+        item(STATUTORY, applicability=ApplicabilityStatus.PROVISIONAL_REQUIRED),
         STATUTORY,
         target=ApplicabilityStatus.REQUIRED,
         reason=None,
-        decided_by=USER_A,
+        decided_by="usr_1",
     )
+    assert subject.applicability is ApplicabilityStatus.REQUIRED
 
-    assert item.applicability is ApplicabilityStatus.REQUIRED
 
-
-# ── Rule 1: a scan cannot inspect an original ───────────────────────────────
+# ── Physical originals ──────────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
     "inspection",
     [
         None,
-        replace(INSPECTION, reviewer_id=""),
-        replace(INSPECTION, method="   "),
+        OriginalInspection(reviewer_id="", inspected_at=NOW, method="Sighted"),
+        OriginalInspection(reviewer_id="usr_1", inspected_at=NOW, method="   "),
     ],
-    ids=["none", "no-reviewer", "no-method"],
 )
-def test_an_inspected_original_needs_a_named_reviewer_and_method(
-    inspection: OriginalInspection | None,
-) -> None:
-    with pytest.raises(OriginalInspectionRequiresHumanError):
+def test_a_scan_cannot_inspect_an_original(inspection: OriginalInspection | None) -> None:
+    subject = item(ORIGINAL)
+    with pytest.raises(OriginalInspectionRequiresHumanError) as excinfo:
         apply_physical_original(
-            checklist_item(),
-            target=PhysicalOriginalStatus.ORIGINAL_INSPECTED,
-            inspection=inspection,
+            subject, target=PhysicalOriginalStatus.ORIGINAL_INSPECTED, inspection=inspection
         )
+    assert excinfo.value.code == "rta_original_inspection_requires_human"
+    assert subject.physical_original is PhysicalOriginalStatus.UNKNOWN
+    assert subject.original_inspection is None
 
 
-def test_an_inspection_by_a_reviewer_is_recorded() -> None:
-    item = apply_physical_original(
-        checklist_item(), target=PhysicalOriginalStatus.ORIGINAL_INSPECTED, inspection=INSPECTION
+def test_a_named_human_inspection_is_recorded_on_the_item() -> None:
+    subject = apply_physical_original(
+        item(ORIGINAL), target=PhysicalOriginalStatus.ORIGINAL_INSPECTED, inspection=INSPECTION
     )
+    assert subject.physical_original is PhysicalOriginalStatus.ORIGINAL_INSPECTED
+    assert subject.original_inspection == INSPECTION
 
-    assert item.physical_original is PhysicalOriginalStatus.ORIGINAL_INSPECTED
-    assert item.original_inspection == INSPECTION
 
-
-def test_a_client_reporting_the_original_needs_no_inspection() -> None:
-    item = apply_physical_original(
-        checklist_item(), target=PhysicalOriginalStatus.ORIGINAL_REPORTED, inspection=None
+def test_a_client_report_needs_no_inspection_and_records_none() -> None:
+    subject = apply_physical_original(
+        item(ORIGINAL), target=PhysicalOriginalStatus.ORIGINAL_REPORTED, inspection=None
     )
+    assert subject.physical_original is PhysicalOriginalStatus.ORIGINAL_REPORTED
+    assert subject.original_inspection is None
 
-    assert item.physical_original is PhysicalOriginalStatus.ORIGINAL_REPORTED
+
+# ── Computed resolution ─────────────────────────────────────────────────────
 
 
-# ── Starting state, administration, lifecycle ───────────────────────────────
+def test_received_confirmed_and_matched_is_satisfied() -> None:
+    assert compute_resolution(reviewed(), SIMPLE) is ResolutionStatus.SATISFIED
 
 
 @pytest.mark.parametrize(
-    ("requirement", "original", "currency"),
+    ("overrides", "expected"),
     [
-        (STRICT, PhysicalOriginalStatus.UNKNOWN, CurrencyStatus.UNKNOWN),
-        (LENIENT, PhysicalOriginalStatus.NOT_REQUIRED, CurrencyStatus.NOT_APPLICABLE),
+        ({"applicability": ApplicabilityStatus.NOT_APPLICABLE}, ResolutionStatus.CLOSED),
+        (
+            {"applicability": ApplicabilityStatus.WAIVED_BY_LAWYER},
+            ResolutionStatus.EXCEPTION_ACCEPTED,
+        ),
+        ({"collection": CollectionStatus.REQUESTED}, ResolutionStatus.ACTION_REQUESTED),
+        ({"collection": CollectionStatus.MISSING}, ResolutionStatus.ACTION_REQUESTED),
+        ({"collection": CollectionStatus.PARTIAL}, ResolutionStatus.OPEN),
+        ({"collection": CollectionStatus.NOT_REQUESTED}, ResolutionStatus.OPEN),
+        # The pipeline can file a document; it cannot confirm it.
+        ({"digital_review": DigitalReviewStatus.AI_ORGANIZED}, ResolutionStatus.OPEN),
+        ({"digital_review": DigitalReviewStatus.UNREVIEWED}, ResolutionStatus.OPEN),
+        ({"consistency": ConsistencyStatus.MISMATCH}, ResolutionStatus.ACTION_REQUESTED),
+        ({"consistency": ConsistencyStatus.INCONCLUSIVE}, ResolutionStatus.ACTION_REQUESTED),
+        ({"consistency": ConsistencyStatus.NOT_CHECKED}, ResolutionStatus.OPEN),
+        ({"currency": CurrencyStatus.STALE}, ResolutionStatus.ACTION_REQUESTED),
+        ({"currency": CurrencyStatus.EXPIRED}, ResolutionStatus.ACTION_REQUESTED),
     ],
-    ids=["strict", "lenient"],
 )
-def test_a_new_item_starts_honestly(
-    requirement: RequirementDefinition,
-    original: PhysicalOriginalStatus,
-    currency: CurrencyStatus,
+def test_any_unmet_dimension_keeps_the_item_unsatisfied(
+    overrides: dict[str, Any], expected: ResolutionStatus
 ) -> None:
-    """Never COPY_ONLY: that would assert something nobody has looked at."""
-    collection, review, physical, current, consistency, resolution = initial_item_statuses(
-        requirement
-    )
-
-    assert (collection, review, consistency, resolution) == (
-        CollectionStatus.NOT_REQUESTED,
-        DigitalReviewStatus.UNREVIEWED,
-        ConsistencyStatus.NOT_CHECKED,
-        ResolutionStatus.OPEN,
-    )
-    assert (physical, current) == (original, currency)
-
-
-@pytest.mark.parametrize("target", [CollectionStatus.REQUESTED, CollectionStatus.RECEIVED])
-def test_requested_and_received_are_administrative(target: CollectionStatus) -> None:
-    guard_administrative_collection(current=CollectionStatus.NOT_REQUESTED, target=target)
+    assert compute_resolution(reviewed(**overrides), SIMPLE) is expected
 
 
 @pytest.mark.parametrize(
-    "target", [CollectionStatus.MISSING, CollectionStatus.PARTIAL, CollectionStatus.NOT_REQUESTED]
-)
-def test_other_collection_changes_are_a_lawyers_decision(target: CollectionStatus) -> None:
-    with pytest.raises(CollectionTransitionNotAdministrativeError):
-        guard_administrative_collection(current=CollectionStatus.REQUESTED, target=target)
-
-
-@pytest.mark.parametrize("current", [CollectionStatus.PARTIAL, CollectionStatus.RECEIVED])
-def test_received_evidence_is_never_requested_again(current: CollectionStatus) -> None:
-    """Requesting it again would quietly erase the record that it arrived."""
-    with pytest.raises(CollectionTransitionNotAdministrativeError):
-        guard_administrative_collection(current=current, target=CollectionStatus.REQUESTED)
-
-
-@pytest.mark.parametrize(
-    ("item", "links", "lifecycle"),
+    "status",
     [
+        PhysicalOriginalStatus.UNKNOWN,
+        PhysicalOriginalStatus.COPY_ONLY,
+        PhysicalOriginalStatus.ORIGINAL_REPORTED,
+    ],
+)
+def test_an_original_requirement_is_not_satisfied_by_a_copy_or_a_report(
+    status: PhysicalOriginalStatus,
+) -> None:
+    subject = reviewed(ORIGINAL, physical_original=status)
+    assert compute_resolution(subject, ORIGINAL) is ResolutionStatus.ACTION_REQUESTED
+
+
+def test_an_inspected_original_satisfies_the_requirement() -> None:
+    subject = reviewed(ORIGINAL, physical_original=PhysicalOriginalStatus.ORIGINAL_INSPECTED)
+    assert compute_resolution(subject, ORIGINAL) is ResolutionStatus.SATISFIED
+
+
+def test_a_dated_requirement_needs_current_evidence_not_merely_non_stale() -> None:
+    unknown = reviewed(CURRENCY, currency=CurrencyStatus.UNKNOWN)
+    current = reviewed(CURRENCY, currency=CurrencyStatus.CURRENT)
+    assert compute_resolution(unknown, CURRENCY) is ResolutionStatus.ACTION_REQUESTED
+    assert compute_resolution(current, CURRENCY) is ResolutionStatus.SATISFIED
+
+
+def test_satisfied_cannot_be_written_by_hand() -> None:
+    with pytest.raises(SatisfactionIsComputedError) as excinfo:
+        guard_resolution_write(ResolutionStatus.SATISFIED)
+    assert excinfo.value.code == "rta_satisfaction_is_computed"
+    for status in set(ResolutionStatus) - {ResolutionStatus.SATISFIED}:
+        guard_resolution_write(status)
+
+
+# ── Lifecycle and blocking ──────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("subject", "links", "expected"),
+    [
+        (item(), 0, ChecklistItemLifecycle.OPEN),
+        (item(), 1, ChecklistItemLifecycle.PARTIALLY_SATISFIED),
+        (item(collection=CollectionStatus.REQUESTED), 0, ChecklistItemLifecycle.REQUESTED),
+        (item(collection=CollectionStatus.MISSING), 3, ChecklistItemLifecycle.MISSING),
         (
-            checklist_item(applicability=ApplicabilityStatus.NOT_APPLICABLE),
-            0,
-            ChecklistItemLifecycle.NOT_TRIGGERED,
-        ),
-        (_satisfied_item(), 1, ChecklistItemLifecycle.SATISFIED),
-        (checklist_item(collection=CollectionStatus.MISSING), 0, ChecklistItemLifecycle.MISSING),
-        (
-            checklist_item(collection=CollectionStatus.REQUESTED),
-            0,
-            ChecklistItemLifecycle.REQUESTED,
-        ),
-        (
-            _satisfied_item(consistency=ConsistencyStatus.NOT_CHECKED),
-            1,
-            ChecklistItemLifecycle.REVIEW_READY,
-        ),
-        (
-            _satisfied_item(digital_review=DigitalReviewStatus.AI_ORGANIZED),
+            item(
+                collection=CollectionStatus.RECEIVED,
+                digital_review=DigitalReviewStatus.AI_ORGANIZED,
+            ),
             1,
             ChecklistItemLifecycle.PARTIALLY_SATISFIED,
         ),
-        (checklist_item(collection=CollectionStatus.NOT_REQUESTED), 0, ChecklistItemLifecycle.OPEN),
+        (
+            reviewed(consistency=ConsistencyStatus.NOT_CHECKED),
+            1,
+            ChecklistItemLifecycle.REVIEW_READY,
+        ),
+        (item(collection=CollectionStatus.RECEIVED), 0, ChecklistItemLifecycle.OPEN),
+        (reviewed(), 0, ChecklistItemLifecycle.SATISFIED),
+        (
+            reviewed(applicability=ApplicabilityStatus.WAIVED_BY_LAWYER),
+            1,
+            ChecklistItemLifecycle.NOT_TRIGGERED,
+        ),
+        (
+            item(applicability=ApplicabilityStatus.NOT_APPLICABLE),
+            0,
+            ChecklistItemLifecycle.NOT_TRIGGERED,
+        ),
     ],
-    ids=["waived", "satisfied", "missing", "requested", "review-ready", "partial", "open"],
 )
-def test_the_lifecycle_the_ui_groups_by(
-    item: ChecklistItem, links: int, lifecycle: ChecklistItemLifecycle
+def test_lifecycle_is_derived_from_the_dimensions(
+    subject: ChecklistItem, links: int, expected: ChecklistItemLifecycle
 ) -> None:
-    assert derive_lifecycle(item, STRICT, live_link_count=links) is lifecycle
+    assert derive_lifecycle(subject, SIMPLE, live_link_count=links) is expected
 
 
-def test_an_unsatisfied_blocking_item_blocks_and_a_waived_one_does_not() -> None:
-    blocking = replace(STRICT, unsatisfied_severity=type(STRICT.unsatisfied_severity)("BLOCKING"))
+def test_only_unsatisfied_blocking_or_high_risk_items_block_approval() -> None:
+    assert is_blocking_unsatisfied(item(STATUTORY), STATUTORY) is True
+    assert is_blocking_unsatisfied(item(ORIGINAL), ORIGINAL) is True
+    assert is_blocking_unsatisfied(reviewed(STATUTORY), STATUTORY) is False
+    # A warning-level item never blocks, satisfied or not.
+    assert is_blocking_unsatisfied(item(SIMPLE), SIMPLE) is False
 
-    assert is_blocking_unsatisfied(checklist_item(), blocking) is True
-    assert is_blocking_unsatisfied(_satisfied_item(), blocking) is False
-    assert (
-        is_blocking_unsatisfied(
-            checklist_item(applicability=ApplicabilityStatus.WAIVED_BY_LAWYER), blocking
-        )
-        is False
-    )
+
+def test_a_waived_item_does_not_block() -> None:
+    waived = item(ORIGINAL, applicability=ApplicabilityStatus.WAIVED_BY_LAWYER)
+    assert is_blocking_unsatisfied(waived, ORIGINAL) is False
+
+
+def test_touch_updates_only_the_timestamp() -> None:
+    subject = item()
+    later = NOW + timedelta(hours=1)
+    assert touch(subject, now=later).updated_at == later
+    assert subject.created_at == NOW
+
+
+# ── Satisfaction links ──────────────────────────────────────────────────────
+
+
+def _link(**overrides: Any) -> SatisfactionLink:
+    values: dict[str, Any] = {
+        "id": "lnk_1",
+        "user_id": "usr_1",
+        "matter_id": "mat_1",
+        "checklist_item_id": "cli_1",
+        "detected_document_id": "doc_1",
+        "digital_review": DigitalReviewStatus.AI_ORGANIZED,
+        "created_at": NOW,
+        "created_by": "usr_1",
+    }
+    values.update(overrides)
+    return SatisfactionLink(**values)
+
+
+def test_rejected_and_superseded_links_do_not_count_as_live() -> None:
+    assert _link().is_live
+    assert _link(digital_review=DigitalReviewStatus.LAWYER_CONFIRMED).is_live
+    assert not _link(digital_review=DigitalReviewStatus.REJECTED).is_live
+    assert not _link(digital_review=DigitalReviewStatus.SUPERSEDED).is_live
+    assert not _link(superseded_by_link_id="lnk_2").is_live

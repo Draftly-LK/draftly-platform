@@ -44,6 +44,6 @@ statute_index.index_build_lock = contextlib.nullcontext
 case_index.index_build_lock = contextlib.nullcontext
 
 # Imported last on purpose: the app must load after the patches above.
-from draftly.retrieval.api import app  # noqa: E402
+from draftly.retrieval.api import app
 
 __all__ = ["app"]

@@ -149,16 +149,16 @@ always pair color with an icon and a text label.
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `canvas` | `#F4F6F8` | App background (cool grey; team decision 2026-09-18, replacing the earlier `#F4F3EF`) |
+| `canvas` | `#F4F6F8` | App background |
 | `surface` | `#FFFFFF` | Main work surfaces |
-| `ink` | `#1B211D` | Primary text and strong actions |
-| `muted-ink` | `#667068` | Metadata and secondary labels |
-| `border` | `#D8DDD8` | Dividers, inputs, table rules |
-| `forest` | `#24533D` | Draftly accent and verified actions |
-| `soft-green` | `#E2EEE7` | Selected and verified backgrounds |
-| `teal` | `#26747A` | Sources, links, corrected facts |
-| `amber` | `#A56A16` | Warning **icons/fills only** — never text (see below) |
-| `red` | `#A4443E` | Blocking issues and destructive actions |
+| `ink` | `#172033` | Primary text and strong actions |
+| `muted-ink` | `#5F6B7A` | Metadata and secondary labels |
+| `border` | `#D7DEE7` | Dividers, inputs, table rules |
+| `forest` | `#203A5F` | Draftly accent and verified actions |
+| `soft-green` | `#E6EDF6` | Selected and verified backgrounds |
+| `teal` | `#176B75` | Sources, links, corrected facts |
+| `amber` | `#9C5B0B` | Warning **icons/fills only** — never text (see below) |
+| `red` | `#A43D45` | Blocking issues and destructive actions |
 
 No gradients, decorative blobs, or all-green screens. The interface stays
 mostly neutral; color carries status.
@@ -167,24 +167,28 @@ mostly neutral; color carries status.
 
 The 10 base tokens alone cannot express a dense review tool. WCAG contrast
 math on the exact pairs found two failures; these derived tokens fix them and
-fill the interaction-state gaps:
+fill the interaction-state gaps. **Note:** the ratios below were computed for
+the forest-green palette; the hex values here were carried over to the
+current blue palette without re-running the contrast math — re-verify before
+relying on the numeric claims.
 
 | Token | Hex | Why |
 | --- | --- | --- |
-| `amber-text` | `#8A5510` | `#A56A16` fails AA as text on white (4.49), canvas (4.05), and soft-green (3.77). All warning/conflict **text** uses this darker value; the base amber stays for icons/fills (3:1 is enough there). |
-| `border-strong` | `#AEB7AE` | `#D8DDD8` is only 1.24–1.38:1 — fails the 3:1 UI-component rule. Input outlines, focused controls, and table outer frames use this; `#D8DDD8` is for interior hairlines only. |
-| `selected-bg` | `#EEF2EE` | + 2 px `forest` left border. **Selection must not reuse `soft-green`** — that background means *verified*; one background carrying two meanings breaks "never status by color alone." |
-| `ring` | `#26747A` | Focus ring: 2 px outline + 2 px offset, **`:focus-visible` only** (no ring on mouse click, never remove outlines). Replaces shadcn's default blue ring — a top "generic shadcn" tell. |
-| `hover-bg` / `active-bg` | `#ECEBE6` / `#E4E3DD` | Neutral row/control hover and pressed states. |
-| `disabled-fg` / `disabled-bg` | `#9BA39C` / `#F0EFEB` | Inactive regimes, gated export buttons. |
-| `amber-bg` / `teal-bg` / `red-bg` | `#F5ECDD` / `#E1EDEE` / `#F3E3E2` | Status row tints for conflict / corrected / blocked, matching `soft-green` for verified. |
+| `amber-text` | `#784405` | `#9C5B0B` fails AA as text on white, canvas, and soft-green. All warning/conflict **text** uses this darker value; the base amber stays for icons/fills (3:1 is enough there). |
+| `border-strong` | `#A7B3C2` | `#D7DEE7` fails the 3:1 UI-component rule. Input outlines, focused controls, and table outer frames use this; `#D7DEE7` is for interior hairlines only. |
+| `selected-bg` | `#EAF0F7` | + 2 px `forest` left border. **Selection must not reuse `soft-green`** — that background means *verified*; one background carrying two meanings breaks "never status by color alone." |
+| `ring` | `#176B75` | Focus ring: 2 px outline + 2 px offset, **`:focus-visible` only** (no ring on mouse click, never remove outlines). Replaces shadcn's default blue ring — a top "generic shadcn" tell. |
+| `hover-bg` / `active-bg` | `#EDF1F5` / `#E2E8EF` | Neutral row/control hover and pressed states. |
+| `disabled-fg` / `disabled-bg` | `#929DAC` / `#EEF1F5` | Inactive regimes, gated export buttons. |
+| `amber-bg` / `teal-bg` / `red-bg` | `#F8EAD5` / `#E0EEF0` / `#F5E3E5` | Status row tints for conflict / corrected / blocked, matching `soft-green` for verified. |
 | `::selection` | `soft-green` | Text selection. |
 
 Also: `forest-50…900` and `teal-50…900` ramps for chips/badges; smallest
-metadata on `canvas` uses `#5C655E` (muted-ink passes on canvas by only 0.13 —
-don't run it below 12 px there). Charts (confidence, activity): categorical
-set forest → teal → amber-text → red → slate `#4A5568` + a forest sequential
-ramp, CVD-checked, series always labelled.
+metadata on `canvas` uses a darker `muted-ink` shade (muted-ink passes on
+canvas by only a narrow margin — don't run it below 12 px there). Charts
+(confidence, activity): categorical set forest → teal → amber-text → red →
+slate `#4A5568` + a forest sequential ramp, CVD-checked, series always
+labelled.
 
 ### Typography
 
@@ -227,7 +231,7 @@ ramp, CVD-checked, series always labelled.
 - **Icons (lucide):** 16 px / 1.5 stroke inline and in tables; 20 px for
   toolbar/nav; 24 px only in empty states. Default 24/2 is too heavy for
   40–44 px rows.
-- **Skeletons/loading:** neutral `#ECEBE6` blocks; shimmer becomes a static
+- **Skeletons/loading:** neutral `#EDF1F5` blocks; shimmer becomes a static
   placeholder under `prefers-reduced-motion`; document processing uses
   explicit progress states, not spinners.
 - **Dark mode: light-only for M2** (explicitly). All colors are CSS variables
@@ -257,7 +261,7 @@ The five moves, in leverage order:
 3. **Warm-paper / legal-ledger aesthetic** — surfaces sit on warm `canvas`
    (not white-on-cool-gray), hairline rules, a left rule/marginalia column,
    tabular figures, flat bordered surfaces. Never zinc/slate grays — only the
-   warm `#D8DDD8`/`#667068` neutrals.
+   `#D7DEE7`/`#5F6B7A` neutrals.
 4. **A notarial-seal motif** — a custom stamp/seal glyph for verified state
    and authority badges (court level/type). On-theme, instantly non-generic;
    supplements lucide for these signature states.
