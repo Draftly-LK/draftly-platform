@@ -43,7 +43,7 @@ test("Sinhala scaffold covers the demo path without raw keys or clipping", async
     }));
     expect(probe.overflow).toBeLessThanOrEqual(0);
     expect(probe.bodyFont).toContain("Noto Sans Sinhala");
-    expect(probe.headingFont).toContain("Noto Serif Sinhala");
+    expect(probe.headingFont).toContain("Noto Sans Sinhala");
     expect(probe.lineHeight).toBeGreaterThanOrEqual(24);
     expect(probe.text).not.toMatch(/\b(?:app|shell|facts|assistant|draft)\.[a-z]/i);
   }

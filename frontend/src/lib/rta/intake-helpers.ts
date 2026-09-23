@@ -49,9 +49,7 @@ export function inclusionText(
   const messageKey = INCLUSION_REASON_KEYS[item.inclusionReason];
   const reason =
     messageKey === undefined ? item.inclusionReason : t(messageKey);
-  return item.inclusionTriggerId === null
-    ? reason
-    : `${reason} · ${item.inclusionTriggerId}`;
+  return reason;
 }
 
 /**

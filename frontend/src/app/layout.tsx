@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
-import {
-  IBM_Plex_Sans,
-  Newsreader,
-  Noto_Sans_Sinhala,
-  Noto_Serif_Sinhala,
-} from "next/font/google";
+import { IBM_Plex_Sans, Noto_Sans_Sinhala } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
@@ -20,19 +15,9 @@ const plex = IBM_Plex_Sans({
   variable: "--font-plex",
   display: "swap",
 });
-const newsreader = Newsreader({
-  subsets: ["latin"],
-  variable: "--font-newsreader",
-  display: "swap",
-});
 const notoSansSi = Noto_Sans_Sinhala({
   subsets: ["sinhala"],
   variable: "--font-noto-sans-si",
-  display: "swap",
-});
-const notoSerifSi = Noto_Serif_Sinhala({
-  subsets: ["sinhala"],
-  variable: "--font-noto-serif-si",
   display: "swap",
 });
 
@@ -61,10 +46,7 @@ export default async function RootLayout({
   );
 
   return (
-    <html
-      lang={locale}
-      className={`${plex.variable} ${newsreader.variable} ${notoSansSi.variable} ${notoSerifSi.variable}`}
-    >
+    <html lang={locale} className={`${plex.variable} ${notoSansSi.variable}`}>
       {/* Browser extensions such as Grammarly add data attributes to body
           before React hydrates. Limit suppression to this host element so
           genuine mismatches inside the application remain visible. */}

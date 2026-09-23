@@ -7,6 +7,7 @@ import {
   ListChecks,
   LoaderCircle,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import { listIssues } from "@/lib/api/checks";
 import { ApiError, type TokenProvider } from "@/lib/api/client";
 import { getDocumentInbox } from "@/lib/api/documents";
 import { listForms } from "@/lib/api/drafts";
+import { listMatterFacts } from "@/lib/api/facts";
 import { getChecklist, getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { subtypeLabelKey } from "@/lib/rta/taxonomy";
@@ -45,6 +47,7 @@ interface DashboardData {
   /** Null means "this section could not answer", which is not the same as 0. */
   openIssues: number | null;
   forms: number | null;
+  facts: { total: number; verified: number } | null;
 }
 
 /** The next thing to do, decided from what the services actually report. */
@@ -82,7 +85,7 @@ function DashboardFlow({
     // "not known" and "none" must not render the same.
     getMatter(getToken, matterId)
       .then(async (matter) => {
-        const [checklist, inbox, openIssues, forms] = await Promise.all([
+        const [checklist, inbox, openIssues, forms, facts] = await Promise.all([
           getChecklist(getToken, matterId).catch(() => null),
           getDocumentInbox(getToken, matterId).catch(() => null),
           listIssues(getToken, matterId)
@@ -91,8 +94,18 @@ function DashboardFlow({
           listForms(getToken, matterId)
             .then((result) => result.items.length)
             .catch(() => null),
+          listMatterFacts(getToken, matterId)
+            .then((result) => ({
+              total: result.items.filter((fact) => fact.status !== "SUPERSEDED")
+                .length,
+              verified: result.items.filter((fact) =>
+                ["LAWYER_CONFIRMED", "LOCKED_FOR_FORM"].includes(fact.status),
+              ).length,
+            }))
+            .catch(() => null),
         ]);
-        if (!cancelled) setData({ matter, checklist, inbox, openIssues, forms });
+        if (!cancelled)
+          setData({ matter, checklist, inbox, openIssues, forms, facts });
       })
       .catch((cause: unknown) => {
         if (!cancelled) setError(cause instanceof ApiError ? cause.message : t("loadFailed"));
@@ -177,6 +190,7 @@ function DashboardFlow({
 
   const subtypeKey =
     matter.subtypeId === null ? null : (subtypeLabelKey(matter.subtypeId) ?? null);
+  const instrumentLabel = subtypeKey === null ? t("noSubtype") : tRoot(subtypeKey);
   const sections = [
     {
       key: "documents",
@@ -217,7 +231,7 @@ function DashboardFlow({
                 {t("instrument")}
               </div>
               <h2 className="mt-1 text-3xl font-semibold">
-                {subtypeKey === null ? t("noSubtype") : tRoot(subtypeKey)}
+                {instrumentLabel}
               </h2>
               <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
                 <div>
@@ -268,6 +282,74 @@ function DashboardFlow({
             </div>
           </div>
         </section>
+        <section className="border-border-strong bg-surface mt-6 rounded border">
+          <div className="flex items-start gap-3 border-b border-border px-5 py-4">
+            <div className="bg-selected-bg text-forest grid size-9 shrink-0 place-items-center rounded">
+              <Sparkles className="size-5" strokeWidth={1.5} aria-hidden="true" />
+            </div>
+            <div>
+              <div className="text-muted-ink text-xs font-semibold uppercase">
+                {t("agentLabel")}
+              </div>
+              <h2 className="font-heading text-xl font-semibold">
+                {t("caseSummary")}
+              </h2>
+              <p className="text-muted-ink mt-1 text-sm">
+                {t("summaryStatus", {
+                  instrument: instrumentLabel,
+                  state: t(`state.${matter.state}`),
+                })}
+              </p>
+            </div>
+          </div>
+          <dl className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryItem
+              label={t("summaryEvidence")}
+              value={
+                inbox === null
+                  ? t("summaryUnavailable")
+                  : t("summaryEvidenceValue", {
+                      total: inbox.sourceFiles.length,
+                      pending: inbox.unprocessedSourceFileIds.length,
+                    })
+              }
+            />
+            <SummaryItem
+              label={t("summaryFacts")}
+              value={
+                data.facts === null
+                  ? t("summaryUnavailable")
+                  : t("summaryFactsValue", data.facts)
+              }
+            />
+            <SummaryItem
+              label={t("summaryRequirements")}
+              value={t("summaryRequirementsValue", {
+                satisfied,
+                total: applicable.length,
+                blocking,
+                outstanding,
+              })}
+            />
+            <SummaryItem
+              label={t("summaryOutputs")}
+              value={t("summaryOutputsValue", {
+                issues: data.openIssues ?? 0,
+                forms: data.forms ?? 0,
+              })}
+            />
+          </dl>
+          <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+            <p className="text-muted-ink flex-1 text-xs">{t("summaryNotice")}</p>
+            <Link
+              href={`/matters/${matterId}/assistant`}
+              className="text-teal inline-flex min-h-10 items-center gap-2 font-medium hover:underline"
+            >
+              {t("openAssistant")}
+              <ArrowRight className="size-4" strokeWidth={1.5} />
+            </Link>
+          </div>
+        </section>
         <div className="divide-border border-border bg-surface mt-6 divide-y border-y">
           {sections.map(({ key, body, href, icon: Icon }) => (
             <Link
@@ -286,5 +368,14 @@ function DashboardFlow({
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-surface min-h-24 p-4">
+      <dt className="text-muted-ink text-xs font-semibold uppercase">{label}</dt>
+      <dd className="mt-2 text-sm leading-6">{value}</dd>
+    </div>
   );
 }
