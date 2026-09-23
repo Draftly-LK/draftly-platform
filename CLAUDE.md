@@ -85,8 +85,8 @@ and the relevant plans under `backend/docs/services/`.
 - Radius 6 px (8 px dialogs). 40–44 px table rows. No card shadows in the
   workspace. Icons 16 px/1.5-stroke in tables, 20 px toolbar, 24 px empty
   states.
-- Fonts: Newsreader + Noto Serif Sinhala (headings), IBM Plex Sans +
-  Noto Sans Sinhala (UI/body), via `next/font`. `font-optical-sizing: auto`;
+- Fonts: IBM Plex Sans + Noto Sans Sinhala (headings and UI/body), via
+  `next/font`. `font-optical-sizing: auto`;
   `"tnum"` in tables. Sinhala line-height ~1.7–1.8.
 - **Status is never color alone** — always icon + text label.
 - **Aceternity:** only on first-run/marketing surfaces, only allowlisted

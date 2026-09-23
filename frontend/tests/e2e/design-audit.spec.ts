@@ -125,8 +125,8 @@ test("every route conforms to the Draftly visual system", async ({
     expect(["0px", "normal"], route).toContain(probe.letterSpacing);
     expect(probe.bodyFont, route).toContain("IBM Plex Sans");
     expect(probe.bodyFont, route).toContain("Noto Sans Sinhala");
-    expect(probe.headingFont, route).toContain("Newsreader");
-    expect(probe.headingFont, route).toContain("Noto Serif Sinhala");
+    expect(probe.headingFont, route).toContain("IBM Plex Sans");
+    expect(probe.headingFont, route).toContain("Noto Sans Sinhala");
     expect(probe.tokens, route).toEqual(expectedTokens);
     expect(probe.radiusViolations, route).toEqual([]);
     expect(probe.gradientViolations, route).toBe(0);

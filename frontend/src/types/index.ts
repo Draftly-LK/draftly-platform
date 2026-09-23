@@ -5,6 +5,7 @@ export * from "./document";
 export * from "./draft";
 export * from "./evidence";
 export * from "./fact";
+export * from "./library";
 export * from "./matter";
 export * from "./obligation";
 export * from "./party";

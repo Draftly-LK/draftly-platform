@@ -111,7 +111,7 @@ test("English and Sinhala locale scaffolds hold across the demo path", async ({
       };
     });
     expect(probe.bodyFont, route).toContain("Noto Sans Sinhala");
-    expect(probe.headingFont, route).toContain("Noto Serif Sinhala");
+    expect(probe.headingFont, route).toContain("Noto Sans Sinhala");
     expect(probe.glyphFits, route).toBe(true);
     expect(probe.overflow, route).toBeLessThanOrEqual(0);
     expect(probe.rawKey, route).toBe(false);

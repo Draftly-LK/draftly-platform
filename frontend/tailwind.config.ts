@@ -33,7 +33,7 @@ export default {
       },
       fontFamily: {
         ui: ["var(--font-plex)", "var(--font-noto-sans-si)", "sans-serif"],
-        heading: ["var(--font-newsreader)", "var(--font-noto-serif-si)", "serif"]
+        heading: ["var(--font-plex)", "var(--font-noto-sans-si)", "sans-serif"]
       },
       outlineColor: {
         ring: "var(--ring)"
@@ -52,4 +52,3 @@ export default {
   },
   plugins: []
 } satisfies Config;
-

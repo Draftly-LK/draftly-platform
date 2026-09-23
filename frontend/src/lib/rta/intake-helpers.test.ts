@@ -50,9 +50,9 @@ describe("inclusionText", () => {
     expect(inclusionText(item("BASE", null), t)).toBe("t:inclusionBase");
   });
 
-  it("names the trigger that pulled the requirement in", () => {
+  it("keeps internal trigger ids out of user-facing copy", () => {
     expect(inclusionText(item("CONDITIONAL_MODULE", "Q10_MORTGAGE"), t)).toBe(
-      "t:inclusionConditionalModule · Q10_MORTGAGE",
+      "t:inclusionConditionalModule",
     );
   });
 

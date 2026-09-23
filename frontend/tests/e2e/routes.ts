@@ -27,5 +27,6 @@ export const inventoryRoutes = [
   "/history",
   "/library",
   "/settings",
+  "/billing",
   "/help",
 ] as const;
