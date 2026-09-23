@@ -8,25 +8,25 @@
      plan and the audit first, then this block. */
   --canvas: #f4f6f8;
   --surface: #ffffff;
-  --ink: #1b211d;
-  --muted-ink: #667068;
-  --border: #d8ddd8;
-  --border-strong: #aeb7ae;
-  --forest: #24533d;
-  --soft-green: #e2eee7;
-  --teal: #26747a;
-  --amber: #a56a16;
-  --amber-text: #8a5510;
-  --red: #a4443e;
-  --selected-bg: #eef2ee;
-  --ring: #26747a;
-  --hover-bg: #ecebe6;
-  --active-bg: #e4e3dd;
-  --disabled-fg: #9ba39c;
-  --disabled-bg: #f0efeb;
-  --amber-bg: #f5ecdd;
-  --teal-bg: #e1edee;
-  --red-bg: #f3e3e2;
+  --ink: #172033;
+  --muted-ink: #5f6b7a;
+  --border: #d7dee7;
+  --border-strong: #a7b3c2;
+  --forest: #203a5f;
+  --soft-green: #e6edf6;
+  --teal: #176b75;
+  --amber: #9c5b0b;
+  --amber-text: #784405;
+  --red: #a43d45;
+  --selected-bg: #eaf0f7;
+  --ring: #176b75;
+  --hover-bg: #edf1f5;
+  --active-bg: #e2e8ef;
+  --disabled-fg: #929dac;
+  --disabled-bg: #eef1f5;
+  --amber-bg: #f8ead5;
+  --teal-bg: #e0eef0;
+  --red-bg: #f5e3e5;
   /* On-dark surface. The first-run hero sits on a photograph, and without
      these every dark surface reaches for literal white.
      Composed from the tokens above rather than written as fixed hexes, so

@@ -15,6 +15,10 @@ test('preserves the animated landing page while applying the scoped content fixe
   await expect(page.locator('.draftly-intro-panel')).toBeVisible();
   await expect(page.locator('[data-draftly-scope]')).toContainText('Sri Lanka');
   await expect(page.getByText('GLOBAL REGULATORY COVERAGE', { exact: false })).toHaveCount(0);
+  // Known failure, left failing on purpose: the mirrored site code still draws
+  // "sammy" in the animated code sample and the use-case code samples. They
+  // re-render faster than draftly-fixes.js cleans them. Renaming them in the
+  // copied code is on hold until the team decides whether to keep this mirror.
   await expect(page.getByText(/SAMMY/i)).toHaveCount(0);
   expect(await page.locator('main span').count()).toBeGreaterThan(1_000);
   expect(await page.locator('.draftly-intro-panel').evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgb(244, 241, 233)');

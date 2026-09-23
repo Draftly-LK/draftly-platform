@@ -170,7 +170,20 @@
   fixMetadata();
   // The hero animation creates thousands of changing span nodes. A persistent
   // subtree observer would rescan that animation every frame, so use a small
-  // number of bounded passes around hydration instead.
+  // number of bounded passes around each React mount instead. React mounts the
+  // content only after its scripts finish, which can take several seconds on
+  // slower devices, and replaces any saved markup when it does. Poll cheaply for
+  // a new main or footer element and run the passes whenever one appears.
   applyFixes();
-  for (const delay of [100, 500, 1500, 3000]) setTimeout(applyFixes, delay);
+  let mounted = [];
+  let checks = 0;
+  const watch = setInterval(() => {
+    const current = [document.querySelector('main'), document.querySelector('footer')];
+    if (current.some((element, index) => element && element !== mounted[index])) {
+      mounted = current;
+      applyFixes();
+      for (const delay of [100, 500, 1500]) setTimeout(applyFixes, delay);
+    }
+    if (++checks >= 150) clearInterval(watch);
+  }, 200);
 })();
