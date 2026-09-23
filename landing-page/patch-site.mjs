@@ -148,7 +148,7 @@ fs.copyFileSync(path.join(root, 'draftly-fixes.js'), path.join(host, 'draftly-fi
 fs.copyFileSync(path.join(root, 'draftly-favicon.svg'), path.join(host, 'draftly-favicon.svg'));
 const cssFile = find(path.join(chunks, '../css'), '7d572');
 const css = fs.readFileSync(cssFile, 'utf8');
-if (!css.includes('/* Draftly keyboard focus */')) fs.appendFileSync(cssFile, '\n/* Draftly keyboard focus */\na:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #26747a!important;outline-offset:3px!important}\n');
+if (!css.includes('/* Draftly keyboard focus */')) fs.appendFileSync(cssFile, '\n/* Draftly keyboard focus */\na:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #176b75!important;outline-offset:3px!important}\n');
 // This existing shared chunk registers all four legal-page chunk IDs.
 const legalChunk = find(path.join(chunks, 'app/(app)/terms'), 'page-');
 for (const route of ['dpa', 'security', 'service-description']) {
