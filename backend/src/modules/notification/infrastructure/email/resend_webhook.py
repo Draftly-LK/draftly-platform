@@ -38,8 +38,9 @@ class ResendWebhookVerifier:
         if abs(time.time() - ts_int) > self._tolerance:
             raise WebhookVerificationError()
 
-        body_text = raw_body.decode("utf-8")
-        signed_content = f"{msg_id}.{timestamp}.{body_text}".encode()
+        # Signed over the raw bytes, and decoded only once verified: decoding
+        # first let a non-UTF-8 body raise before the signature was checked.
+        signed_content = f"{msg_id}.{timestamp}.".encode() + raw_body
         expected = hmac.new(self._secret, signed_content, hashlib.sha256).digest()
 
         for part in signature_header.split():
@@ -50,7 +51,10 @@ class ResendWebhookVerifier:
             except (ValueError, binascii.Error):
                 continue
             if hmac.compare_digest(expected, supplied):
-                payload = json.loads(body_text)
+                try:
+                    payload = json.loads(raw_body.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise WebhookVerificationError() from exc
                 if not isinstance(payload, dict):
                     raise WebhookVerificationError()
                 return payload

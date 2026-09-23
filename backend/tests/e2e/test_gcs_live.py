@@ -28,10 +28,13 @@ from src.modules.document.domain.errors import (
     SourceObjectNotFoundError,
 )
 
-pytestmark = pytest.mark.skipif(
-    not (os.environ.get("RUN_LIVE_TESTS") == "1" and os.environ.get("DRAFTLY_GCS_BUCKET")),
-    reason="live GCS smoke runs only with RUN_LIVE_TESTS=1 and DRAFTLY_GCS_BUCKET set",
-)
+pytestmark = [
+    pytest.mark.live,
+    pytest.mark.skipif(
+        not (os.environ.get("RUN_LIVE_TESTS") == "1" and os.environ.get("DRAFTLY_GCS_BUCKET")),
+        reason="live GCS smoke runs only with RUN_LIVE_TESTS=1 and DRAFTLY_GCS_BUCKET set",
+    ),
+]
 
 SYNTHETIC = b"%PDF-1.7\nsynthetic live-test material, not client evidence\n"
 

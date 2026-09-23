@@ -99,7 +99,7 @@ class PayHereBillingAdapter:
 
     def _verify_raw_signature(self, raw: bytes, provided: str) -> None:
         expected = hmac.new(self._secret, raw, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(provided.strip().lower(), expected):
+        if not _same_signature(provided, expected):
             raise InvalidWebhookError()
 
     def _verify_payload_checksum(self, payload: dict[str, Any]) -> None:
@@ -114,7 +114,7 @@ class PayHereBillingAdapter:
             separators=(",", ":"),
         ).encode("utf-8")
         expected = hmac.new(self._secret, canonical, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(provided.strip().lower(), expected):
+        if not _same_signature(provided, expected):
             raise InvalidWebhookError()
 
     def _event_id(self, payload: dict[str, Any], payload_hash: str) -> str:
@@ -130,6 +130,16 @@ class PayHereBillingAdapter:
             return event_id
         payment_id = _optional_str(payload.get("payment_id")) or "no-payment-id"
         return f"{payment_id}:{payload_hash[:32]}"
+
+
+def _same_signature(provided: str, expected: str) -> bool:
+    """Constant-time comparison that refuses, rather than raises, on odd input.
+
+    ``hmac.compare_digest`` raises TypeError for a str with non-ASCII
+    characters, which turned a forged signature into a 500. Comparing bytes
+    handles any input the caller can send.
+    """
+    return hmac.compare_digest(provided.strip().lower().encode("utf-8"), expected.encode("ascii"))
 
 
 def _optional_str(value: object) -> str | None:

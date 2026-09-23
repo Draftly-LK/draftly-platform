@@ -14,7 +14,6 @@ from src.modules.matter_agent.domain.models import JobState, MessageRole, TurnBu
 from src.modules.matter_agent.infrastructure.fake_model import FakeAgentModelAdapter
 from src.modules.matter_agent.ports import ModelTurn, ProposedToolCall, ToolResult
 from src.modules.matter_agent.tests.fakes import (
-    FakeAudit,
     FakeConversation,
     FakeMemory,
     FakeToolCallRepo,
@@ -22,6 +21,7 @@ from src.modules.matter_agent.tests.fakes import (
     make_session,
 )
 from src.platform.request_context import RequestContext
+from tests.factories.audit import FakeAudit
 
 APPROVER = CAPABILITY_MAP[Role.APPROVER]
 REVIEWER = CAPABILITY_MAP[Role.REVIEWER]

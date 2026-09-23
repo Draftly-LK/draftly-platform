@@ -33,6 +33,7 @@ from src.modules.party.infrastructure.matter_access_stub import (
     build_matter_access_adapter,
 )
 from src.platform.config import get_settings
+from src.platform.errors import ServiceMisconfiguredError
 from src.platform.messaging.dispatcher import MessageDispatcher
 from src.platform.request_context import RequestContext
 
@@ -120,7 +121,7 @@ def build_identity_adapter() -> IdentityPort:
 
     if settings.use_stub_identity:
         if not stub_allowed:
-            raise RuntimeError(
+            raise ServiceMisconfiguredError(
                 f"USE_STUB_IDENTITY is not permitted in environment "
                 f"'{settings.environment}'. The stub adapter accepts any bearer "
                 f"token as a fixed identity and is limited to "
@@ -132,7 +133,7 @@ def build_identity_adapter() -> IdentityPort:
 
     if not settings.clerk_configured:
         if not stub_allowed:
-            raise RuntimeError(
+            raise ServiceMisconfiguredError(
                 f"Clerk identity is not configured and environment "
                 f"'{settings.environment}' does not permit the stub adapter. "
                 f"Set CLERK_ISSUER, CLERK_SECRET_KEY and CLERK_AUTHORIZED_PARTY."
@@ -144,7 +145,9 @@ def build_identity_adapter() -> IdentityPort:
     from src.modules.auth.infrastructure.clerk_adapter import ClerkIdentityAdapter
 
     if not settings.clerk_authorized_parties:
-        raise RuntimeError("CLERK_AUTHORIZED_PARTY is required when Clerk identity is enabled.")
+        raise ServiceMisconfiguredError(
+            "CLERK_AUTHORIZED_PARTY is required when Clerk identity is enabled."
+        )
     return ClerkIdentityAdapter(
         issuer=settings.clerk_issuer,
         secret_key=settings.clerk_secret_key,
@@ -599,7 +602,7 @@ def _gcs_client(project: str, bucket_name: str) -> Any:
     except DefaultCredentialsError as exc:
         # Reported like every other wiring failure here — naming what to set —
         # rather than as a provider stack trace from the composition root.
-        raise RuntimeError(
+        raise ServiceMisconfiguredError(
             "SOURCE_FILE_STORAGE=gcs found no Application Default Credentials. "
             "In a deployed environment attach a workload identity; locally run "
             "'gcloud auth application-default login'."
@@ -627,7 +630,7 @@ def _assert_bucket_policy(client: Any, bucket_name: str) -> None:
     try:
         bucket = client.get_bucket(bucket_name)
     except GoogleAPIError as exc:
-        raise RuntimeError(
+        raise ServiceMisconfiguredError(
             f"DRAFTLY_GCS_BUCKET '{bucket_name}' could not be read at startup: "
             f"{type(exc).__name__}. Check the bucket exists and the runtime "
             f"identity has storage.buckets.get."
@@ -635,15 +638,17 @@ def _assert_bucket_policy(client: Any, bucket_name: str) -> None:
 
     iam = bucket.iam_configuration
     if not iam.uniform_bucket_level_access_enabled:
-        raise RuntimeError(
+        raise ServiceMisconfiguredError(
             f"Bucket '{bucket_name}' does not have uniform bucket-level access "
             f"enabled. Object ACLs are never used for client evidence."
         )
     if iam.public_access_prevention != "enforced":
-        raise RuntimeError(f"Bucket '{bucket_name}' does not enforce public access prevention.")
+        raise ServiceMisconfiguredError(
+            f"Bucket '{bucket_name}' does not enforce public access prevention."
+        )
     expected = settings.gcs_location
     if expected and (bucket.location or "").lower() != expected.lower():
-        raise RuntimeError(
+        raise ServiceMisconfiguredError(
             f"Bucket '{bucket_name}' is in '{bucket.location}', not the approved "
             f"DRAFTLY_GCS_LOCATION '{expected}'. Data residency is an approval item."
         )
@@ -662,7 +667,7 @@ def build_source_file_storage() -> SourceFileStoragePort:
 
     if settings.source_file_storage == "filesystem":
         if settings.environment not in LOCAL_ONLY_STORAGE_ENVIRONMENTS:
-            raise RuntimeError(
+            raise ServiceMisconfiguredError(
                 f"SOURCE_FILE_STORAGE=filesystem is not permitted in environment "
                 f"'{settings.environment}'. Local-disk storage of client evidence is "
                 f"limited to {sorted(LOCAL_ONLY_STORAGE_ENVIRONMENTS)}."
@@ -675,11 +680,15 @@ def build_source_file_storage() -> SourceFileStoragePort:
 
     if settings.source_file_storage == "gcs":
         if not settings.gcs_bucket:
-            raise RuntimeError("DRAFTLY_GCS_BUCKET is required when SOURCE_FILE_STORAGE=gcs.")
+            raise ServiceMisconfiguredError(
+                "DRAFTLY_GCS_BUCKET is required when SOURCE_FILE_STORAGE=gcs."
+            )
         if not settings.gcs_project_id:
-            raise RuntimeError("DRAFTLY_GCS_PROJECT_ID is required when SOURCE_FILE_STORAGE=gcs.")
+            raise ServiceMisconfiguredError(
+                "DRAFTLY_GCS_PROJECT_ID is required when SOURCE_FILE_STORAGE=gcs."
+            )
         if not settings.storage_real_data_approved:
-            raise RuntimeError(
+            raise ServiceMisconfiguredError(
                 "DRAFTLY_STORAGE_REAL_DATA_APPROVED must be true before "
                 "SOURCE_FILE_STORAGE=gcs can accept client evidence. Record the "
                 "bucket region, retention, access, and deletion terms first."
@@ -692,7 +701,7 @@ def build_source_file_storage() -> SourceFileStoragePort:
             real_data_approved=settings.storage_real_data_approved,
         )
 
-    raise RuntimeError(
+    raise ServiceMisconfiguredError(
         f"Unknown SOURCE_FILE_STORAGE '{settings.source_file_storage}'. Valid: filesystem, gcs."
     )
 
@@ -783,9 +792,9 @@ def build_v1_processing_pipeline() -> Any:
     """Wire the proposal's Vision OCR + Flash-Lite path using ADC and one model."""
     settings = get_settings()
     if settings.extraction_provider != "vision-gemini":
-        raise RuntimeError("V1 processing requires EXTRACTION_PROVIDER=vision-gemini.")
+        raise ServiceMisconfiguredError("V1 processing requires EXTRACTION_PROVIDER=vision-gemini.")
     if not settings.gemini_api_key:
-        raise RuntimeError("GEMINI_API_KEY is required for V1 document processing.")
+        raise ServiceMisconfiguredError("GEMINI_API_KEY is required for V1 document processing.")
 
     from google import genai
     from google.cloud import vision
@@ -828,7 +837,7 @@ def build_processing_service() -> DocumentProcessingService:
 
     if settings.extraction_provider == "stub":
         if settings.environment not in STUB_EXTRACTION_ENVIRONMENTS:
-            raise RuntimeError(
+            raise ServiceMisconfiguredError(
                 f"EXTRACTION_PROVIDER=stub is not permitted in environment "
                 f"'{settings.environment}'. The stub returns canned candidate "
                 f"fields and is limited to {sorted(STUB_EXTRACTION_ENVIRONMENTS)}."
@@ -846,11 +855,13 @@ def build_processing_service() -> DocumentProcessingService:
         )
 
     if settings.extraction_provider != "gemini":
-        raise RuntimeError(
+        raise ServiceMisconfiguredError(
             f"Unknown EXTRACTION_PROVIDER '{settings.extraction_provider}'. Valid: gemini, stub."
         )
     if not settings.gemini_api_key:
-        raise RuntimeError("GEMINI_API_KEY is required when EXTRACTION_PROVIDER=gemini.")
+        raise ServiceMisconfiguredError(
+            "GEMINI_API_KEY is required when EXTRACTION_PROVIDER=gemini."
+        )
 
     from google import genai
 

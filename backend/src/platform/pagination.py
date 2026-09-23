@@ -1,18 +1,17 @@
 """Cursor pagination primitives shared by every list endpoint (api-conventions.md §2).
 
 Offset pagination is not used; it double-counts under concurrent writes. A
-cursor is an opaque encoding of the sort key plus the tie-breaker id.
+cursor is an opaque, signed encoding of the sort key plus the tie-breaker id,
+signed the same way as ``platform.api.pagination`` so a client cannot write a
+cursor it was not given.
 """
 
 from __future__ import annotations
 
-import base64
-import binascii
-import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
 
+from src.platform.api import pagination as signed
 from src.platform.errors import DraftlyError
 
 MAX_PAGE_LIMIT = 100
@@ -56,24 +55,19 @@ def normalise_limit(limit: int | None) -> int:
 
 
 def encode_cursor(cursor: Cursor) -> str:
-    payload: dict[str, Any] = {
-        "createdAt": cursor.created_at.astimezone(UTC).isoformat(),
-        "id": cursor.id,
-    }
-    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+    return signed.encode_cursor(
+        {"createdAt": cursor.created_at.astimezone(UTC).isoformat(), "id": cursor.id}
+    )
 
 
 def decode_cursor(value: str | None) -> Cursor | None:
     if not value:
         return None
-    padded = value + "=" * (-len(value) % 4)
     try:
-        raw = base64.urlsafe_b64decode(padded.encode("ascii"))
-        payload = json.loads(raw)
+        payload = signed.decode_cursor(value)
         return Cursor(
             created_at=datetime.fromisoformat(payload["createdAt"]),
             id=str(payload["id"]),
         )
-    except (binascii.Error, UnicodeDecodeError, ValueError, KeyError, TypeError) as exc:
+    except (signed.InvalidCursorError, ValueError, KeyError, TypeError) as exc:
         raise InvalidCursorError() from exc

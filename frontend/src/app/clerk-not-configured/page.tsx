@@ -18,7 +18,7 @@ export default function ClerkNotConfiguredPage() {
         justifyContent: "center",
         padding: "2rem",
         fontFamily: "var(--font-plex, system-ui, sans-serif)",
-        backgroundColor: "var(--canvas, #f4f3ef)",
+        backgroundColor: "var(--canvas, #f4f6f8)",
         color: "var(--ink, #1b211d)",
         textAlign: "center",
       }}

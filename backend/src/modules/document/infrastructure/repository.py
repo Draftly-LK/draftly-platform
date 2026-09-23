@@ -10,10 +10,7 @@ state; the row and its bytes stay (§6.3).
 
 from __future__ import annotations
 
-import base64
-import json
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,6 +52,7 @@ from src.modules.document.infrastructure.orm import (
 )
 from src.modules.verification.contracts import CandidateApprovalInput
 from src.platform import ids
+from src.platform.pagination import Cursor, decode_cursor, encode_cursor
 
 
 def _to_source_file(row: SourceFileRow) -> SourceFile:
@@ -149,17 +147,14 @@ def _to_fragment(row: DocumentFragmentRow) -> DocumentFragment:
     )
 
 
-def _encode_cursor(created_at: datetime, source_file_id: str) -> str:
-    payload = json.dumps({"t": created_at.isoformat(), "id": source_file_id})
-    return base64.urlsafe_b64encode(payload.encode()).decode()
+def _encode_cursor(created_at: datetime, record_id: str) -> str:
+    return encode_cursor(Cursor(created_at=created_at, id=record_id))
 
 
 def _decode_cursor(cursor: str) -> tuple[datetime, str] | None:
-    try:
-        payload: dict[str, Any] = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-        return datetime.fromisoformat(payload["t"]), str(payload["id"])
-    except (ValueError, KeyError):
-        return None
+    """The keyset position, or InvalidCursorError (400) for a forged or bad cursor."""
+    decoded = decode_cursor(cursor)
+    return (decoded.created_at, decoded.id) if decoded is not None else None
 
 
 class SqlDocumentIngestionRepository:

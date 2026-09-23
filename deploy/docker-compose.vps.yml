@@ -1,0 +1,172 @@
+# API-only stack for a small (1 GB RAM) VPS, used by deploy/vps.sh.
+#
+# The frontend is hosted on Vercel and calls this server cross-origin, so there
+# is no frontend service here and Caddy only serves the API. Images are built
+# on the server by vps.sh (backend and retrieval only; neither needs much RAM).
+#
+#   caddy      HTTPS for DOMAIN; /api/* and /health/* to the backend, nothing else
+#   migrate    alembic upgrade head, once per start
+#   backend    FastAPI
+#   worker     outbox worker (notifications, matter-agent turns)
+#   retrieval  statute and case-law search; internal, plus 127.0.0.1:8001 for an SSH tunnel
+#   db         bundled Postgres 16 (profile `localdb`), when DATABASE_URL points at it
+#
+# docker-compose.yml is the single-origin variant (frontend behind the same Caddy).
+
+name: draftly
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-backend: &backend
+  image: ${BACKEND_IMAGE:?set BACKEND_IMAGE}
+  environment:
+    ENVIRONMENT: ${ENVIRONMENT:?set ENVIRONMENT}
+    DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+    DATABASE_URL_DIRECT: ${DATABASE_URL_DIRECT:?set DATABASE_URL_DIRECT}
+    # The Vercel origin: the only browser origin allowed to call this API.
+    ALLOWED_ORIGINS: ${FRONTEND_ORIGIN:?set FRONTEND_ORIGIN}
+    CLERK_ISSUER: ${CLERK_ISSUER:?set CLERK_ISSUER}
+    CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:?set CLERK_SECRET_KEY}
+    CLERK_AUDIENCE: ${CLERK_AUDIENCE:-}
+    CLERK_AUTHORIZED_PARTY: ${CLERK_AUTHORIZED_PARTY:?set CLERK_AUTHORIZED_PARTY}
+    USE_STUB_IDENTITY: "false"
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    EXTRACTION_PROVIDER: ${EXTRACTION_PROVIDER:-stub}
+    PROVIDER_DATA_APPROVAL: ${PROVIDER_DATA_APPROVAL:-false}
+    MATTER_AGENT_ENABLED: ${MATTER_AGENT_ENABLED:-false}
+    SOURCE_FILE_STORAGE: filesystem
+    PARTY_IDENTIFIER_KEY: ${PARTY_IDENTIFIER_KEY:?set PARTY_IDENTIFIER_KEY}
+    PARTY_BLIND_INDEX_KEY: ${PARTY_BLIND_INDEX_KEY:?set PARTY_BLIND_INDEX_KEY}
+    API_CURSOR_SIGNING_KEY: ${API_CURSOR_SIGNING_KEY:?set API_CURSOR_SIGNING_KEY}
+    # Not read by the backend yet (modules/research is empty); reserved for the retrieval client.
+    RETRIEVAL_BASE_URL: http://retrieval:8000
+  healthcheck:
+    test: ["CMD", "uv", "run", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/live', timeout=4)"]
+    interval: 30s
+    timeout: 5s
+    start_period: 20s
+    retries: 3
+  depends_on: &after-db
+    db:
+      condition: service_healthy
+      required: false
+  logging: *logging
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN}
+    volumes:
+      - ./Caddyfile.api:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+    mem_limit: 64m
+    logging: *logging
+
+  migrate:
+    <<: *backend
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    mem_limit: 256m
+
+  backend:
+    <<: *backend
+    restart: unless-stopped
+    depends_on:
+      <<: *after-db
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - source-files:/app/.data
+    expose:
+      - "8080"
+    mem_limit: 384m
+
+  worker:
+    <<: *backend
+    command: ["uv", "run", "python", "-m", "src.workers.runner"]
+    restart: unless-stopped
+    depends_on:
+      <<: *after-db
+      migrate:
+        condition: service_completed_successfully
+    # The worker serves no HTTP, so the image's /health/live check does not
+    # apply. This only says the runner process is alive, which is what
+    # `compose up --wait` needs; a crashed runner restarts the container anyway.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    mem_limit: 192m
+
+  # No auth, and /answer spends Gemini credits: never on the internet. The
+  # loopback port is for an SSH tunnel from your machine only.
+  retrieval:
+    image: ${RETRIEVAL_IMAGE:?set RETRIEVAL_IMAGE}
+    restart: unless-stopped
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    expose:
+      - "8000"
+    ports:
+      - "127.0.0.1:8001:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 320m
+    logging: *logging
+
+  db:
+    image: postgres:16-alpine
+    profiles: ["localdb"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: draftly
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_DB: draftly
+    # Sized for a 1 GB machine shared with the other services.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=32MB
+      - -c
+      - effective_cache_size=128MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=16MB
+      - -c
+      - max_connections=40
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U draftly -d draftly"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    mem_limit: 192m
+    logging: *logging
+
+volumes:
+  caddy-data:
+  caddy-config:
+  source-files:
+  pg-data:

@@ -40,7 +40,6 @@ import {
   Wrench,
 } from "lucide-react";
 import Image from "next/image";
-import { motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -58,11 +57,18 @@ import {
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { uploadSourceFile } from "@/lib/api/documents";
 import {
-  RTA_TAXONOMY,
   statutoryFamilies,
   subtypesInFamily,
   transactionFamilies,
 } from "@/lib/rta/taxonomy";
+import {
+  demandsOriginal,
+  inclusionText,
+  legacyTypeForSubtype,
+  PARTY_UNKNOWN,
+  type PartyAnswer,
+  togglePartyContext,
+} from "@/lib/rta/intake-helpers";
 import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type {
@@ -73,13 +79,10 @@ import type {
   MandatoryBasis,
   MatterFamilyId,
   ParcelKind,
-  PartyContext,
-  PhysicalOriginalStatus,
   RequirementGroup,
   RtaSubtypeDefinition,
   TriState,
 } from "@/types/rta";
-import type { MatterType } from "@/types";
 
 /* ── Closed vocabularies, in the display order questions.py lists them ────── */
 
@@ -103,13 +106,6 @@ const PARCEL_KIND_ANSWERS: readonly ParcelKind[] = [
   "UNKNOWN",
 ];
 
-/**
- * Q05 option values. `UNKNOWN` is deliberately not a `PartyContext` member —
- * it records that the screening has not been done and must never collapse into
- * `NATURAL_PERSONS_ONLY` (§4.1, §4.4).
- */
-const PARTY_UNKNOWN = "UNKNOWN" as const;
-type PartyAnswer = PartyContext | typeof PARTY_UNKNOWN;
 const PARTY_CONTEXT_ANSWERS: readonly PartyAnswer[] = [
   "NATURAL_PERSONS_ONLY",
   "COMPANY",
@@ -156,18 +152,6 @@ const BASIS_ICONS: Record<MandatoryBasis, typeof Scale> = {
   PRODUCT_SAFETY: ShieldCheck,
   LOCAL_AUTHORITY: Landmark,
   CONDITIONAL: CircleHelp,
-};
-
-/** `InclusionReason` in compiler.py. Unknown values fall back to the id. */
-const INCLUSION_REASON_KEYS: Record<string, string> = {
-  BASE: "inclusionBase",
-  REGIME: "inclusionRegime",
-  EXACT_INSTRUMENT: "inclusionExactInstrument",
-  CONDITIONAL_MODULE: "inclusionConditionalModule",
-  OFFICE_POLICY: "inclusionOfficePolicy",
-  LOCAL_AUTHORITY_POLICY: "inclusionLocalAuthorityPolicy",
-  LAWYER_ADDED: "inclusionLawyerAdded",
-  RETAINED_AFTER_REVIEW: "inclusionRetainedAfterReview",
 };
 
 /** §3.3 release tiers, as an icon + text badge — never colour alone. */
@@ -217,7 +201,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
    *  are authored in the rule pack, so they resolve from the message root. */
   const tRoot = useTranslations();
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
   const createDemoMatter = useDemoStore((state) => state.createMatter);
   const addDocument = useDemoStore((state) => state.addDocument);
   const markProcessingNotConfigured = useDemoStore(
@@ -508,12 +491,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
           <div aria-hidden="true" className="bg-scrim absolute inset-0" />
           <div className="relative z-[1] flex min-h-[calc(100vh-64px)] flex-col">
             <div className="flex flex-1 items-center px-6 py-10 sm:px-12 lg:px-20">
-              <motion.div
-                initial={reduceMotion ? false : { opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.25 }}
-                className="max-w-xl"
-              >
+              {/* A CSS fade, not a JS one: the server cannot know the visitor's
+                  motion preference, so branching on it in render made the
+                  server and client markup disagree (hydration error). The
+                  reduced-motion rule in globals.css switches this off. */}
+              <div className="animate-fade-in max-w-xl">
                 <div className="text-soft-green text-sm font-semibold uppercase">
                   {t("entryEyebrow")}
                 </div>
@@ -523,7 +505,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                 <p className="text-on-dark-muted mt-4 max-w-lg text-lg leading-8">
                   {t("entryBody")}
                 </p>
-              </motion.div>
+              </div>
             </div>
             <div className="border-border-on-dark bg-panel-dark border-t px-6 py-5 backdrop-blur-sm sm:px-12 lg:px-20">
               <div className="flex flex-wrap items-end gap-4">
@@ -1132,53 +1114,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
 /* ── Pure helpers ─────────────────────────────────────────────────────────── */
 
-/**
- * `UNKNOWN` is exclusive: it means the screening has not been done, so it
- * cannot coexist with an asserted party context, and asserting one clears it.
- * Nothing here maps `UNKNOWN` onto `NATURAL_PERSONS_ONLY`.
- */
-function togglePartyContext(
-  current: PartyAnswer[],
-  answer: PartyAnswer,
-): PartyAnswer[] {
-  if (current.includes(answer))
-    return current.filter((value) => value !== answer);
-  if (answer === PARTY_UNKNOWN) return [PARTY_UNKNOWN];
-  return [...current.filter((value) => value !== PARTY_UNKNOWN), answer];
-}
-
-function inclusionText(
-  item: ApiChecklistItem,
-  t: (key: string) => string,
-): string {
-  const messageKey = INCLUSION_REASON_KEYS[item.inclusionReason];
-  const reason =
-    messageKey === undefined ? item.inclusionReason : t(messageKey);
-  return item.inclusionTriggerId === null
-    ? reason
-    : `${reason} · ${item.inclusionTriggerId}`;
-}
-
-/**
- * Derive the deprecated M2 `MatterType` for the offline demo store, which still
- * requires it. Reverses the rule pack's own legacy map rather than guessing, and
- * falls back to `other` — the coarse label is never the authority for what the
- * instrument is (§3.6).
- */
-function legacyTypeForSubtype(subtypeId: string | null): MatterType {
-  if (subtypeId === null) return "other";
-  const match = Object.entries(RTA_TAXONOMY.legacyMatterTypeMap).find(
-    ([, mapped]) => mapped === subtypeId,
-  );
-  const legacy = match?.[0];
-  return legacy === "transfer" ||
-    legacy === "gift" ||
-    legacy === "lease" ||
-    legacy === "mortgage"
-    ? legacy
-    : "other";
-}
-
 /* ── Presentational pieces ────────────────────────────────────────────────── */
 
 function QuestionBlock({
@@ -1327,17 +1262,6 @@ function SubtypeRow({
       )}
     </button>
   );
-}
-
-/**
- * True when the requirement demands a physical original.
- *
- * `physical_original_policy` is the level the requirement demands (§5.4), so
- * only the two ORIGINAL_* levels change what the lawyer must physically
- * produce; NOT_REQUIRED, UNKNOWN and COPY_ONLY do not.
- */
-function demandsOriginal(policy: PhysicalOriginalStatus): boolean {
-  return policy === "ORIGINAL_REPORTED" || policy === "ORIGINAL_INSPECTED";
 }
 
 /**

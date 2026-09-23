@@ -15,7 +15,6 @@ from src.modules.matter_agent.domain.errors import (
 )
 from src.modules.matter_agent.domain.models import MessageRole, PendingActionState
 from src.modules.matter_agent.tests.fakes import (
-    FakeAudit,
     FakeConversation,
     FakeJobs,
     FakeMatterAccess,
@@ -25,6 +24,7 @@ from src.modules.matter_agent.tests.fakes import (
     make_pending_action,
 )
 from src.platform.request_context import RequestContext
+from tests.factories.audit import FakeAudit
 
 CTX = RequestContext(actor_id="usr-1", account_role=Role.APPROVER, correlation_id="corr-1")
 OTHER = RequestContext(actor_id="usr-2", account_role=Role.APPROVER)

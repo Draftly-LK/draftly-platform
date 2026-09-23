@@ -10,13 +10,12 @@ breaks the chain from that point.
 
 from __future__ import annotations
 
-import hashlib
-import json
 import uuid
 from datetime import UTC, datetime
 
 import structlog
 
+from src.modules.audit.domain.chain import event_hash
 from src.modules.audit.infrastructure.repository import SqlAuditRepository
 from src.modules.auth.ports import AuditEventInput
 
@@ -36,26 +35,22 @@ class AuditService:
 
         prev_hash = await self._repo.get_last_hash(event.user_id)
 
-        canonical = json.dumps(
-            {
-                "id": event_id,
-                "user": event.user_id,
-                "matter_id": event.matter_id,
-                "actor": event.actor,
-                "action": event.action,
-                "target_type": event.target_type,
-                "target_id": event.target_id,
-                "before_ref": event.before_ref,
-                "after_ref": event.after_ref,
-                "reason": event.reason,
-                "correlation_id": event.correlation_id,
-                "causation_id": event.causation_id,
-                "timestamp": now.isoformat(),
-                "prev_hash": prev_hash,
-            },
-            sort_keys=True,
+        event_hash_ = event_hash(
+            event_id=event_id,
+            user_id=event.user_id,
+            matter_id=event.matter_id,
+            actor=event.actor,
+            action=event.action,
+            target_type=event.target_type,
+            target_id=event.target_id,
+            before_ref=event.before_ref,
+            after_ref=event.after_ref,
+            reason=event.reason,
+            correlation_id=event.correlation_id,
+            causation_id=event.causation_id,
+            timestamp=now,
+            prev_hash=prev_hash,
         )
-        event_hash = hashlib.sha256(canonical.encode()).hexdigest()[:64]
 
         await self._repo.insert(
             event_id=event_id,
@@ -71,7 +66,7 @@ class AuditService:
             correlation_id=event.correlation_id,
             causation_id=event.causation_id,
             prev_hash=prev_hash,
-            hash_=event_hash,
+            hash_=event_hash_,
             timestamp=now,
         )
         log.debug(

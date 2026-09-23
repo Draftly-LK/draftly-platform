@@ -29,8 +29,14 @@ from src.modules.content_governance.contracts import (
     RtaWorkflowRole,
 )
 from src.modules.verification.contracts import FactTierSummary
+from tests.factories.audit import FakeAudit
+from tests.factories.fact import fact_tier
 
-from .fakes import CLEAN_TRANSFER, FakeAudit, FakeCheckRepository, FakeFactReader, fact_tier
+from .fakes import (
+    CLEAN_TRANSFER,
+    FakeCheckRepository,
+    FakeFactReader,
+)
 
 _USER = "usr_synthetic"
 _MATTER = "mat_synthetic"

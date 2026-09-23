@@ -72,6 +72,7 @@ from src.platform.db.idempotency import IdempotencyKeyRow
 from src.platform.db.session import Base, get_db
 from src.platform.messaging.orm import OutboxRow
 from src.platform.request_context import RequestContext
+from tests.db.postgres import database_url, skip_or_fail
 
 OWNER = "usr-e2e-owner"
 MATTER = "mat-e2e-1"
@@ -102,30 +103,6 @@ _TABLES = [
 pytestmark = pytest.mark.integration
 
 
-#: Opt-in only. ``tests/conftest.py`` pins ``DATABASE_URL`` to a dummy so no
-#: test can reach a real database by accident, and that rail stays in place:
-#: this suite runs when someone deliberately points it at a database.
-#:
-#:     DRAFTLY_E2E_DATABASE_URL="postgresql+psycopg://..." uv run pytest -m integration
-E2E_URL_VAR = "DRAFTLY_E2E_DATABASE_URL"
-
-
-def _database_url() -> str | None:
-    """The opt-in URL, normalised to the psycopg async driver.
-
-    Use the **unpooled** endpoint: Neon's pooler rejects ``search_path`` as a
-    startup parameter, and this suite isolates itself in a schema.
-    """
-    url = os.environ.get(E2E_URL_VAR, "").strip()
-    if not url:
-        return None
-    if url.startswith("postgresql+asyncpg://"):
-        pytest.skip("asyncpg is not a dependency; use the psycopg driver")
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+psycopg://", 1)
-    return url
-
-
 @pytest.fixture(autouse=True)
 def _selector_loop() -> None:
     """psycopg's async mode cannot run on the Windows proactor loop."""
@@ -135,9 +112,7 @@ def _selector_loop() -> None:
 
 @pytest.fixture
 async def pg_sessions() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
-    url = _database_url()
-    if not url:
-        pytest.skip(f"{E2E_URL_VAR} is not set; real-database E2E is opt-in")
+    url = database_url()
 
     schema = f"agent_e2e_{uuid.uuid4().hex[:10]}"
     admin = create_async_engine(url, isolation_level="AUTOCOMMIT")
@@ -146,7 +121,7 @@ async def pg_sessions() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
             await connection.execute(text(f'CREATE SCHEMA "{schema}"'))
     except Exception as exc:  # noqa: BLE001 - an unreachable database is a skip
         await admin.dispose()
-        pytest.skip(f"postgres unavailable: {type(exc).__name__}")
+        skip_or_fail(f"postgres unavailable: {type(exc).__name__}")
 
     engine = create_async_engine(
         url, connect_args={"options": f"-csearch_path={schema}"}, pool_pre_ping=True

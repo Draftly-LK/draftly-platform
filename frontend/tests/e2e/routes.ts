@@ -1,3 +1,7 @@
+// Signed-in app routes the audits sweep. Left out on purpose: the sign-in,
+// sign-up and clerk-not-configured pages (auth-flow.spec.ts covers them),
+// /onboarding (redirects to / unless Clerk and the API are configured), and
+// /kitchen-sink (waits on decision A6.3 in docs/TESTING_PLAN.md).
 export const inventoryRoutes = [
   "/",
   "/new",
@@ -10,7 +14,14 @@ export const inventoryRoutes = [
   "/matters/matter-rta-001/checks",
   "/matters/matter-rta-001/drafts",
   "/matters/matter-rta-001/drafts/draft-form8-001",
+  "/matters/matter-rta-001/drafts/draft-form8-001/approval",
   "/matters/matter-rta-001/activity",
+  "/matters/matter-rta-001/assistant",
+  "/matters/matter-rta-001/documents/doc-sale-0020/review",
+  "/matters/matter-rta-001/exports",
+  "/matters/matter-rta-001/missing-documents",
+  "/matters/matter-rta-001/processing",
+  "/profile",
   "/workflows",
   "/workflows/workflow-exam-001",
   "/history",

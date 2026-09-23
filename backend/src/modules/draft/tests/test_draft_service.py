@@ -42,16 +42,16 @@ from src.modules.draft.domain.errors import (
 )
 from src.modules.draft.domain.models import StaleReason
 from src.modules.draft.domain.policies import FieldDecisionAction
+from tests.factories.audit import FakeAudit
+from tests.factories.constants import NOW
 
 from .fakes import (
     CONFIRMED_TRANSFER,
     FORM_08_TEMPLATE_ID,
     MATTER_ID,
-    NOW,
     TIRE_31_TEMPLATE_ID,
     TRANSFER_SUBTYPE_ID,
     USER_ID,
-    FakeAudit,
     FakeCandidateReader,
     FakeChecklistBlockers,
     FakeFactReader,

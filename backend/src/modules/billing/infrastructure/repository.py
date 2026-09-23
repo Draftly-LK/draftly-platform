@@ -134,6 +134,9 @@ class SqlPlanRepository:
                 effective_to=plan.effective_to,
             )
         )
+        # The entitlements' foreign key points at this row, and there is no ORM
+        # relationship to order the inserts, so the plan must reach Postgres first.
+        await self._session.flush()
         for entitlement in entitlements:
             self._session.add(
                 PlanEntitlementRow(
@@ -254,6 +257,21 @@ class SqlSubscriptionRepository:
 class SqlUsageRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def lock_usage(self, user_id: str) -> None:
+        """Hold this user's quota lock for the rest of the transaction.
+
+        Reserve, consume and release each read state (the aggregate, the
+        ledger row) and then write from it. Without the lock, two requests
+        read the same state: both reservations fit under the limit, or both
+        releases refund one reservation. Per user, so one account never
+        waits on another.
+        """
+        bind = self._session.bind
+        if bind is not None and bind.dialect.name == "postgresql":
+            await self._session.execute(
+                select(func.pg_advisory_xact_lock(func.hashtextextended(f"usage:{user_id}", 0)))
+            )
 
     async def get_aggregates_for_user(self, user_id: str) -> list[UsageAggregate]:
         stmt = select(UsageAggregateRow).where(UsageAggregateRow.user_id == user_id)
