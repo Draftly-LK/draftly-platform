@@ -1,9 +1,21 @@
-.env*
+# Secrets and real client files never enter the image.
+.env
+.env.*
+.data
+
+.venv
 .mypy_cache
 .pytest_cache
 .ruff_cache
-.venv
-__pycache__
-.data
+**/__pycache__
+**/*.pyc
+**/.DS_Store
+
 tests
-*.log
+src/modules/*/tests
+scripts
+contracts
+docs
+*.md
+Dockerfile
+.dockerignore

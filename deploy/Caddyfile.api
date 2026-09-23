@@ -6,7 +6,7 @@
 
 	@backend path /api/* /health/*
 	handle @backend {
-		reverse_proxy backend:8080
+		reverse_proxy backend:8000
 	}
 
 	# Nothing else is served here (no /docs, no retrieval).

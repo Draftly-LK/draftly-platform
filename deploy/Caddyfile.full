@@ -1,0 +1,39 @@
+# Everything on this VPS (docker-compose.vps.yml with WEB_ON_VPS=1).
+#
+# The app is one origin, so the browser never makes a cross-origin API call.
+# Caddy sets X-Forwarded-For itself from the real client address; the landing
+# page's rate limit relies on that (TRUST_PROXY=1).
+(hardening) {
+	encode zstd gzip
+	log {
+		output stdout
+		format json
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+}
+
+{$DOMAIN} {
+	import hardening
+
+	@backend path /api/* /health/*
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
+
+# Marketing site and pilot-request form.
+{$LANDING_DOMAIN} {
+	import hardening
+	reverse_proxy landing:4173
+}

@@ -2,6 +2,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cacheControlFor } from './cache-policy.mjs';
 import { createFilesystemPilotStore, createGcsPilotStore, createPilotHandler } from './pilot-api.mjs';
 
 const projectDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -17,7 +18,9 @@ if (!['http:', 'https:'].includes(appUrl.protocol) || appUrl.username || appUrl.
 const pilotStore = process.env.PILOT_GCS_BUCKET
   ? createGcsPilotStore(process.env.PILOT_GCS_BUCKET)
   : createFilesystemPilotStore(process.env.PILOT_REQUESTS_DIR ?? path.join(projectDirectory, '.local', 'pilot-requests'));
-const handlePilot = createPilotHandler(pilotStore);
+// Behind a reverse proxy (Caddy) every socket peer is the proxy, so the rate
+// limit has to key on the client address it forwards. Off unless asked for.
+const handlePilot = createPilotHandler(pilotStore, { trustProxy: process.env.TRUST_PROXY === '1' });
 const hostDirectories = new Set([
   'api.fontshare.com',
   'cdn.fontshare.com',
@@ -110,7 +113,7 @@ createServer((request, response) => {
 
   response.writeHead(200, {
     'content-type': mimeTypes.get(path.extname(filename).toLowerCase()) ?? 'application/octet-stream',
-    'cache-control': 'no-store',
+    'cache-control': cacheControlFor(filename),
   });
   createReadStream(filename).pipe(response);
 }).listen(port, process.env.HOST ?? '0.0.0.0', () => {

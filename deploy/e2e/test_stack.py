@@ -12,6 +12,7 @@ import uuid
 from urllib.parse import quote
 
 import pytest
+
 from conftest import RETRIEVAL, SITE, compose, fetch
 
 AUTHENTICATED_GET_ROUTES = [
@@ -52,15 +53,13 @@ def _exec(service: str, *command: str) -> str:
 
 class TestStartupAndMigrations:
     def test_migrations_ran_to_completion_before_the_api_started(self):
-        state = json.loads(
-            compose("ps", "-a", "--format", "json", "migrate").stdout.splitlines()[0]
-        )
+        state = json.loads(compose("ps", "-a", "--format", "json", "migrate").stdout.splitlines()[0])
         assert state["State"] == "exited"
         assert state["ExitCode"] == 0
 
     def test_database_schema_is_at_the_single_alembic_head(self):
-        assert "(head)" in _exec("backend", "uv", "run", "alembic", "current").splitlines()[-1]
-        assert len(_exec("backend", "uv", "run", "alembic", "heads").splitlines()) == 1
+        assert "(head)" in _exec("backend", "alembic", "current").splitlines()[-1]
+        assert len(_exec("backend", "alembic", "heads").splitlines()) == 1
 
     def test_all_long_running_services_report_healthy(self):
         rows = [json.loads(line) for line in compose("ps", "--format", "json").stdout.splitlines()]
@@ -157,9 +156,7 @@ class TestRetrievalService:
         assert hits[0]["section_id"] == "SRC001:s2"
 
     def test_natural_language_search_returns_cited_sections(self):
-        hits = fetch(
-            f"{RETRIEVAL}/search?q={quote('registration of deeds affecting land')}&limit=5"
-        ).json()
+        hits = fetch(f"{RETRIEVAL}/search?q={quote('registration of deeds affecting land')}&limit=5").json()
         assert 1 <= len(hits) <= 5
         for hit in hits:
             assert hit["section_id"].startswith("SRC")
@@ -171,9 +168,7 @@ class TestRetrievalService:
         assert hits and all(hit["document_type"] == "amendment" for hit in hits)
 
     def test_similar_cases_returns_conveyancing_case_law(self):
-        result = fetch(
-            f"{RETRIEVAL}/similar-cases?q={quote('deed of gift revoked for ingratitude')}&limit=3"
-        ).json()
+        result = fetch(f"{RETRIEVAL}/similar-cases?q={quote('deed of gift revoked for ingratitude')}&limit=3").json()
         assert result["outcome"] == "similar_cases_found"
         assert 1 <= len(result["hits"]) <= 3
         assert result["corpus_fingerprint"]
@@ -185,13 +180,7 @@ class TestRetrievalService:
 
     @pytest.mark.parametrize(
         "path",
-        [
-            "/search",
-            "/search?q=",
-            "/search?q=deed&limit=0",
-            "/search?q=deed&limit=999",
-            "/similar-cases",
-        ],
+        ["/search", "/search?q=", "/search?q=deed&limit=0", "/search?q=deed&limit=999", "/similar-cases"],
     )
     def test_invalid_input_is_a_validation_error_not_a_crash(self, path):
         assert fetch(f"{RETRIEVAL}{path}").status == 422
@@ -208,7 +197,7 @@ class TestRetrievalService:
 
     def test_backend_reaches_retrieval_over_the_internal_network(self):
         script = "import urllib.request;print(urllib.request.urlopen('http://retrieval:8000/health',timeout=10).status)"
-        assert _exec("backend", "uv", "run", "python", "-c", script) == "200"
+        assert _exec("backend", "python", "-c", script) == "200"
 
 
 class TestIsolationAndHardening:
@@ -219,11 +208,7 @@ class TestIsolationAndHardening:
 
     def test_every_production_service_has_a_memory_limit_within_budget(self):
         services = _service_config(base_only=True)
-        always_on = {
-            name: int(svc["mem_limit"])
-            for name, svc in services.items()
-            if not svc.get("profiles") and name != "migrate"
-        }
+        always_on = {name: int(svc["mem_limit"]) for name, svc in services.items() if not svc.get("profiles") and name != "migrate"}
         assert set(always_on) == {"caddy", "frontend", "backend", "retrieval"}
         assert sum(always_on.values()) <= 1024 * 1024 * 1024
 
@@ -232,14 +217,12 @@ class TestIsolationAndHardening:
             assert _exec(service, "id", "-u") != "0", service
 
     def test_retrieval_filesystem_is_read_only(self):
-        result = compose(
-            "exec", "-T", "retrieval", "touch", "/app/data/processed/retrieval-indexes/probe"
-        )
+        result = compose("exec", "-T", "retrieval", "touch", "/app/data/processed/retrieval-indexes/probe")
         assert result.returncode != 0
 
     def test_no_secret_files_are_baked_into_the_images(self):
         assert _exec("backend", "sh", "-c", "ls -a /app | grep -c '^\\.env' || true") == "0"
-        assert _exec("frontend", "sh", "-c", "ls -a /app | grep -c '^\\.env$' || true") == "0"
+        assert _exec("frontend", "sh", "-c", "ls -a /app/frontend | grep -c '^\\.env$' || true") == "0"
 
     def test_running_services_stay_within_their_memory_limits(self):
         ids = compose("ps", "-q").stdout.split()
@@ -247,9 +230,7 @@ class TestIsolationAndHardening:
 
         stats = subprocess.run(
             ["docker", "stats", "--no-stream", "--format", "{{.Name}} {{.MemPerc}}", *ids],
-            capture_output=True,
-            text=True,
-            check=True,
+            capture_output=True, text=True, check=True,
         ).stdout.splitlines()
         for line in stats:
             name, percent = line.split()

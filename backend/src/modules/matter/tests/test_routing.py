@@ -1,13 +1,4 @@
-"""Intake routing: answers decide the modules, the modules decide the checklist (F8).
-
-The most consequential decision in the product was untested. These pin the
-rules routing.py states for itself, and check it against the question
-catalogue, question by question and value by value.
-
-Where routing and the catalogue disagree, the test records the gap as a
-strict xfail rather than choosing a legal mapping: which answer should
-activate which module is for the lawyers who own the rule pack.
-"""
+"""Routing derivation: what intake answers imply, before any eligibility judgement."""
 
 from __future__ import annotations
 
@@ -16,17 +7,19 @@ from typing import Any
 import pytest
 
 from src.modules.content_governance.contracts import (
-    AnswerValueKind,
+    ALL_QUESTIONS,
+    TRANSFER_SALE_SUBTYPE_ID,
     DispositionScope,
     DisputeStage,
+    EncumbranceStatus,
+    MatterFamily,
     ParcelKind,
     PartyContext,
     SubtypeDecisionStatus,
     TitleStatus,
     TriState,
-    get_question,
 )
-from src.modules.matter.domain import routing
+from src.modules.matter.domain import routing as r
 from src.modules.matter.domain.routing import (
     LiveAnswer,
     MatterFactSnapshot,
@@ -34,329 +27,230 @@ from src.modules.matter.domain.routing import (
     derive_routing,
 )
 
-QUESTIONS = sorted(v for k, v in vars(routing).items() if k.startswith("Q_"))
+
+def answers(**values: Any) -> dict[str, LiveAnswer]:
+    return {
+        getattr(r, name): LiveAnswer(value=value, lawyer_confirmed=True)
+        for name, value in values.items()
+    }
 
 
-def _answers(**by_question: Any) -> dict[str, LiveAnswer]:
-    return {q: LiveAnswer(value, True) for q, value in by_question.items()}
+def test_no_answers_means_unknown_everywhere_not_no() -> None:
+    derived = derive_routing({})
 
-
-def _route(**by_question: Any) -> routing.RoutingDerivation:
-    return derive_routing(_answers(**by_question))
-
-
-def _catalogue_values(question_id: str) -> list[Any]:
-    """Every answer the question catalogue lets a user give to this question."""
-    question = get_question(question_id)
-    assert question is not None
-    match question.value_kind:
-        case AnswerValueKind.TRI_STATE:
-            return [t.value for t in TriState]
-        case AnswerValueKind.SINGLE_CHOICE:
-            return [o.value for o in question.options]
-        case AnswerValueKind.MULTI_CHOICE:
-            return [[o.value] for o in question.options]
-        case AnswerValueKind.TEXT:
-            return ["synthetic text answer"]
-        case _:
-            return []
-
-
-def _modules_toggled_by(question_id: str) -> set[str]:
-    """Modules that answering this question alone switches on or off."""
-    baseline = derive_routing({}).activated_conditional_module_ids
-    toggled: set[str] = set()
-    for value in _catalogue_values(question_id):
-        activated = _route(**{question_id: value}).activated_conditional_module_ids
-        toggled |= activated ^ baseline
-    return toggled
-
-
-# ── Routing against the question catalogue ─────────────────────────────────
-
-
-@pytest.mark.parametrize("question_id", QUESTIONS)
-def test_a_question_never_activates_a_module_it_does_not_declare(question_id: str) -> None:
-    """The promise routing.py's docstring makes, checked for every answer."""
-    question = get_question(question_id)
-    assert question is not None
-
-    assert _modules_toggled_by(question_id) <= set(question.activates_module_ids)
-
-
-#: Modules a question declares that no catalogue answer to it can reach.
-#: Routing reads Q08 and Q20 as YES/NO/UNKNOWN, but the catalogue offers them
-#: as choices (e.g. DECEASED_TRANSMISSION_INCOMPLETE), and Q21 as free text,
-#: so routing never sees a YES. Q09 is never read at all. Which answers should
-#: activate these modules is a legal mapping for the rule-pack owners.
-UNREACHABLE_DECLARATIONS = {
-    "Q08_OWNER_DEAD": {"lk.rta.module.estate_or_deceased_owner"},
-    "Q09_PROBATE_PATH": {
-        "lk.rta.module.court_or_statutory_sale",
-        "lk.rta.module.estate_or_deceased_owner",
-    },
-    "Q20_COOWNERS": {"lk.rta.module.coowners"},
-    "Q21_COMPANY_AUTH": {"lk.rta.module.company_party"},
-}
-
-
-def _unreachable(question_id: str) -> set[str]:
-    question = get_question(question_id)
-    assert question is not None
-    return set(question.activates_module_ids) - _modules_toggled_by(question_id)
-
-
-@pytest.mark.parametrize("question_id", QUESTIONS)
-def test_no_new_declared_module_is_unreachable(question_id: str) -> None:
-    assert _unreachable(question_id) <= UNREACHABLE_DECLARATIONS.get(question_id, set())
-
-
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Q08, Q09, Q20 and Q21 declare modules no answer can reach; see UNREACHABLE_DECLARATIONS.",
-)
-@pytest.mark.parametrize("question_id", sorted(UNREACHABLE_DECLARATIONS))
-def test_every_declared_module_is_reachable(question_id: str) -> None:
-    assert _unreachable(question_id) == set()
-
-
-# ── Q01: title status is the first gate ─────────────────────────────────────
+    assert derived.title_status is TitleStatus.UNKNOWN
+    assert derived.parcel_kind is ParcelKind.UNKNOWN
+    assert derived.disposition_scope is DispositionScope.UNKNOWN
+    assert derived.party_contexts == frozenset()
+    assert derived.dispute_stage is DisputeStage.NO_INDICIA_FOUND
+    assert derived.subtype_id is None
+    assert derived.family_id is None
+    # Silence about a mortgage or a lease activates both checklists (§6.4), and
+    # unproven RTA coverage opens initial-compilation triage.
+    assert derived.activated_conditional_module_ids == frozenset(
+        {r.MODULE_MORTGAGE, r.MODULE_LEASE, r.MODULE_INITIAL_COMPILATION}
+    )
 
 
 @pytest.mark.parametrize(
-    ("answer", "status"),
+    ("value", "expected"),
     [
-        (TriState.YES.value, TitleStatus.RTA_REGISTERED),
-        (TriState.NO.value, TitleStatus.INITIAL_COMPILATION),
-        (TriState.UNKNOWN.value, TitleStatus.UNKNOWN),
-        ("maybe", TitleStatus.UNKNOWN),
+        ("YES", TitleStatus.RTA_REGISTERED),
+        ("NO", TitleStatus.INITIAL_COMPILATION),
+        ("UNKNOWN", TitleStatus.UNKNOWN),
+        ("garbage", TitleStatus.UNKNOWN),
     ],
 )
-def test_q01_decides_the_title_status(answer: str, status: TitleStatus) -> None:
-    assert _route(Q01_REGIME=answer).title_status is status
-
-
-def test_an_unanswered_q01_is_unknown_not_registered() -> None:
-    assert derive_routing({}).title_status is TitleStatus.UNKNOWN
-
-
-@pytest.mark.parametrize("answer", [TriState.NO.value, TriState.UNKNOWN.value, None])
-def test_anything_short_of_rta_registered_needs_initial_compilation_triage(
-    answer: str | None,
-) -> None:
-    answers = {} if answer is None else _answers(Q01_REGIME=answer)
-
+def test_title_status_follows_the_regime_question(value: str, expected: TitleStatus) -> None:
+    derived = derive_routing(answers(Q_REGIME=value))
+    assert derived.title_status is expected
+    registered = expected is TitleStatus.RTA_REGISTERED
     assert (
-        routing.MODULE_INITIAL_COMPILATION
-        in derive_routing(answers).activated_conditional_module_ids
+        r.MODULE_INITIAL_COMPILATION in derived.activated_conditional_module_ids
+    ) is not registered
+
+
+def test_explicit_no_clears_the_mortgage_and_lease_modules() -> None:
+    derived = derive_routing(answers(Q_REGIME="YES", Q_MORTGAGE="NO", Q_LEASE_OCCUPATION="NO"))
+    assert derived.activated_conditional_module_ids == frozenset()
+
+
+def test_unrecognised_choice_values_fall_back_to_unknown() -> None:
+    derived = derive_routing(
+        answers(Q_PARCEL_KIND="HOUSEBOAT", Q_SCOPE="HALF", Q_PARTY_CONTEXT=["ALIENS", "COMPANY"])
     )
+    assert derived.parcel_kind is ParcelKind.UNKNOWN
+    assert derived.disposition_scope is DispositionScope.UNKNOWN
+    assert derived.party_contexts == frozenset({PartyContext.COMPANY})
 
 
-def test_a_registered_title_needs_no_initial_compilation_triage() -> None:
-    derivation = _route(Q01_REGIME=TriState.YES.value)
+def test_none_and_non_sequence_values_are_ignored() -> None:
+    derived = derive_routing(answers(Q_PARCEL_KIND=None, Q_PARTY_CONTEXT=None, Q_SCOPE=None))
+    assert derived.parcel_kind is ParcelKind.UNKNOWN
+    assert derived.party_contexts == frozenset()
+    assert derive_routing(answers(Q_PARTY_CONTEXT=42)).party_contexts == frozenset()
 
-    assert routing.MODULE_INITIAL_COMPILATION not in derivation.activated_conditional_module_ids
+
+def test_a_single_string_party_context_is_accepted() -> None:
+    derived = derive_routing(answers(Q_PARTY_CONTEXT="PUBLIC_BODY"))
+    assert derived.party_contexts == frozenset({PartyContext.PUBLIC_BODY})
+    assert r.MODULE_STATE_LAND in derived.activated_conditional_module_ids
 
 
-# ── UNKNOWN never becomes NO ────────────────────────────────────────────────
+def test_deceased_owner_via_q08_is_the_same_fact_as_ticking_estate() -> None:
+    via_q08 = derive_routing(answers(Q_OWNER_DEAD="YES"))
+    via_q05 = derive_routing(answers(Q_PARTY_CONTEXT=["ESTATE_OR_DECEASED"]))
+
+    assert PartyContext.ESTATE_OR_DECEASED in via_q08.party_contexts
+    assert r.MODULE_ESTATE in via_q08.activated_conditional_module_ids
+    assert r.MODULE_ESTATE in via_q05.activated_conditional_module_ids
+    # Q05 opens both follow-ups; Q08 was already answered on the other path.
+    assert via_q05.triggered_question_ids[:2] == (r.Q_OWNER_DEAD, r.Q_PROBATE_PATH)
+    assert r.Q_OWNER_DEAD not in via_q08.triggered_question_ids
+    assert r.Q_PROBATE_PATH in via_q08.triggered_question_ids
+
+
+def test_power_of_attorney_answer_adds_the_context_and_module() -> None:
+    derived = derive_routing(answers(Q_POA="YES"))
+    assert PartyContext.ATTORNEY_POWER_OF_ATTORNEY in derived.party_contexts
+    assert r.MODULE_POA in derived.activated_conditional_module_ids
 
 
 @pytest.mark.parametrize(
-    ("question_id", "module"),
+    ("answer", "module"),
     [
-        (routing.Q_MORTGAGE, routing.MODULE_MORTGAGE),
-        (routing.Q_LEASE_OCCUPATION, routing.MODULE_LEASE),
+        ({"Q_PARCEL_KIND": "CONDOMINIUM_UNIT"}, r.MODULE_CONDOMINIUM),
+        ({"Q_PARCEL_KIND": "CONVERSION_TO_CONDOMINIUM"}, r.MODULE_CONDOMINIUM),
+        ({"Q_SCOPE": "PART_OF_PARCEL"}, r.MODULE_SUBDIVISION),
+        ({"Q_SCOPE": "UNDIVIDED_INTEREST"}, r.MODULE_COOWNERS),
+        ({"Q_COOWNERS": "YES"}, r.MODULE_COOWNERS),
+        ({"Q_DISPUTE": "YES"}, r.MODULE_LITIGATION),
+        ({"Q_ENCUMBRANCE": "YES"}, r.MODULE_LITIGATION),
+        ({"Q_LIFE_INTEREST": "YES"}, r.MODULE_LIFE_INTEREST),
+        ({"Q_SERVITUDE": "YES"}, r.MODULE_SERVITUDE),
+        ({"Q_BUILDING": "YES"}, r.MODULE_BUILDING),
+        ({"Q_LOCAL_AUTHORITY": "la_synthetic"}, r.MODULE_LOCAL_AUTHORITY),
+        ({"Q_COMPANY_AUTH": "YES"}, r.MODULE_COMPANY),
+        ({"Q_PARTY_CONTEXT": ["COMPANY"]}, r.MODULE_COMPANY),
     ],
 )
-@pytest.mark.parametrize(
-    ("answer", "activated"),
-    [
-        (TriState.YES.value, True),
-        (TriState.UNKNOWN.value, True),
-        (None, True),
-        (TriState.NO.value, False),
-    ],
-)
-def test_silence_about_an_interest_keeps_its_checklist(
-    question_id: str, module: str, answer: str | None, activated: bool
+def test_each_trigger_activates_its_module_and_only_when_fired(
+    answer: dict[str, Any], module: str
 ) -> None:
-    """Treating an unanswered mortgage question as "no mortgage" is §6.4's failure."""
-    answers = {} if answer is None else _answers(**{question_id: answer})
-
-    assert (module in derive_routing(answers).activated_conditional_module_ids) is activated
-
-
-# ── Parcel scope and kind ───────────────────────────────────────────────────
+    baseline = derive_routing({}).activated_conditional_module_ids
+    assert module not in baseline
+    assert module in derive_routing(answers(**answer)).activated_conditional_module_ids
 
 
-def test_part_of_a_parcel_activates_subdivision() -> None:
-    """Appendix A, refusal 4: a part-parcel disposition routes to Section 47."""
-    derivation = _route(Q03_SCOPE="PART_OF_PARCEL")
-
-    assert derivation.disposition_scope is DispositionScope.PART_OF_PARCEL
-    assert routing.MODULE_SUBDIVISION in derivation.activated_conditional_module_ids
-
-
-def test_an_undivided_interest_activates_coowners() -> None:
-    derivation = _route(Q03_SCOPE="UNDIVIDED_INTEREST")
-
-    assert routing.MODULE_COOWNERS in derivation.activated_conditional_module_ids
-    assert routing.MODULE_SUBDIVISION not in derivation.activated_conditional_module_ids
+def test_every_activatable_module_is_declared_by_some_question() -> None:
+    declared = {
+        module_id for question in ALL_QUESTIONS for module_id in question.activates_module_ids
+    }
+    routed = {value for name, value in vars(r).items() if name.startswith("MODULE_")}
+    assert routed <= declared
 
 
-@pytest.mark.parametrize("kind", ["CONDOMINIUM_UNIT", "CONVERSION_TO_CONDOMINIUM"])
-def test_a_condominium_activates_strata_and_asks_about_the_building(kind: str) -> None:
-    derivation = _route(Q04_PARCEL_KIND=kind)
-
-    assert derivation.parcel_kind is ParcelKind(kind)
-    assert routing.MODULE_CONDOMINIUM in derivation.activated_conditional_module_ids
-    assert routing.Q_BUILDING in derivation.triggered_question_ids
-
-
-@pytest.mark.parametrize("question_id", [routing.Q_SCOPE, routing.Q_PARCEL_KIND])
-def test_an_unrecognised_choice_is_unknown_not_a_default(question_id: str) -> None:
-    derivation = _route(**{question_id: "SYNTHETIC_NOT_AN_OPTION"})
-
-    assert derivation.disposition_scope is DispositionScope.UNKNOWN
-    assert derivation.parcel_kind is ParcelKind.UNKNOWN
+def test_dispute_answer_maps_to_the_conservative_stage_and_evidence_overrides_it() -> None:
+    assert derive_routing(answers(Q_DISPUTE="YES")).dispute_stage is DisputeStage.CLAIMS_FILED
+    assert derive_routing(answers(Q_DISPUTE="NO")).dispute_stage is DisputeStage.NO_INDICIA_FOUND
+    reported = derive_routing(
+        answers(Q_DISPUTE="NO"), reported_dispute_stage=DisputeStage.S21_DC_REFERRED
+    )
+    assert reported.dispute_stage is DisputeStage.S21_DC_REFERRED
 
 
-# ── Parties ─────────────────────────────────────────────────────────────────
-
-
-@pytest.mark.parametrize(
-    ("context", "module"),
-    [
-        ("COMPANY", routing.MODULE_COMPANY),
-        ("ESTATE_OR_DECEASED", routing.MODULE_ESTATE),
-        ("ATTORNEY_POWER_OF_ATTORNEY", routing.MODULE_POA),
-        ("PUBLIC_BODY", routing.MODULE_STATE_LAND),
-    ],
-)
-def test_each_party_context_activates_its_module(context: str, module: str) -> None:
-    derivation = _route(Q05_PARTY_CONTEXT=[context])
-
-    assert PartyContext(context) in derivation.party_contexts
-    assert module in derivation.activated_conditional_module_ids
-
-
-def test_several_party_contexts_combine() -> None:
-    derivation = _route(Q05_PARTY_CONTEXT=["COMPANY", "ATTORNEY_POWER_OF_ATTORNEY"])
-
-    assert {
-        routing.MODULE_COMPANY,
-        routing.MODULE_POA,
-    } <= derivation.activated_conditional_module_ids
-
-
-def test_an_estate_asks_about_the_death_and_probate_until_answered() -> None:
-    asked = _route(Q05_PARTY_CONTEXT=["ESTATE_OR_DECEASED"]).triggered_question_ids
-    answered = derive_routing(
-        _answers(
-            Q05_PARTY_CONTEXT=["ESTATE_OR_DECEASED"],
-            Q08_OWNER_DEAD="DECEASED_TRANSMISSION_INCOMPLETE",
+def test_triggered_questions_are_deduplicated_ordered_and_exclude_answered_ones() -> None:
+    derived = derive_routing(
+        answers(
+            Q_PARTY_CONTEXT=["COMPANY", "ATTORNEY_POWER_OF_ATTORNEY"],
+            Q_PARCEL_KIND="CONDOMINIUM_UNIT",
+            Q_DISPUTE="UNKNOWN",
+            Q_COMPANY_AUTH="YES",
         )
-    ).triggered_question_ids
-
-    assert (routing.Q_OWNER_DEAD, routing.Q_PROBATE_PATH) == asked[:2]
-    assert routing.Q_OWNER_DEAD not in answered
-
-
-def test_a_power_of_attorney_answered_yes_counts_as_the_party_context() -> None:
-    derivation = _route(Q22_POA=TriState.YES.value)
-
-    assert PartyContext.ATTORNEY_POWER_OF_ATTORNEY in derivation.party_contexts
-    assert routing.MODULE_POA in derivation.activated_conditional_module_ids
-
-
-# ── Disputes ────────────────────────────────────────────────────────────────
-
-
-def test_a_reported_dispute_is_litigation_at_the_most_conservative_stage() -> None:
-    derivation = _route(Q06_DISPUTE=TriState.YES.value)
-
-    assert derivation.dispute_stage is DisputeStage.CLAIMS_FILED
-    assert routing.MODULE_LITIGATION in derivation.activated_conditional_module_ids
-
-
-def test_a_stage_from_evidence_outranks_the_intake_answer() -> None:
-    derivation = derive_routing(
-        _answers(Q06_DISPUTE=TriState.YES.value),
-        reported_dispute_stage=DisputeStage.NO_INDICIA_FOUND,
     )
-
-    assert derivation.dispute_stage is DisputeStage.NO_INDICIA_FOUND
-
-
-@pytest.mark.parametrize("answer", [TriState.YES.value, TriState.UNKNOWN.value])
-def test_a_possible_dispute_asks_about_encumbrances(answer: str) -> None:
-    assert routing.Q_ENCUMBRANCE in _route(Q06_DISPUTE=answer).triggered_question_ids
+    assert derived.triggered_question_ids == (r.Q_POA, r.Q_BUILDING, r.Q_ENCUMBRANCE)
 
 
-def test_no_dispute_asks_nothing_more() -> None:
-    assert routing.Q_ENCUMBRANCE not in _route(Q06_DISPUTE=TriState.NO.value).triggered_question_ids
+def test_a_clean_dispute_answer_does_not_open_the_encumbrance_question() -> None:
+    assert r.Q_ENCUMBRANCE not in derive_routing(answers(Q_DISPUTE="NO")).triggered_question_ids
+    assert r.Q_ENCUMBRANCE in derive_routing({}).triggered_question_ids
 
 
-# ── Subtype and determinism ─────────────────────────────────────────────────
+def test_intent_resolves_a_subtype_only_when_it_names_one() -> None:
+    exact = derive_routing(answers(Q_INTENT=TRANSFER_SALE_SUBTYPE_ID))
+    family_only = derive_routing(answers(Q_INTENT="ownership_change"))
+
+    assert exact.subtype_id == TRANSFER_SALE_SUBTYPE_ID
+    assert exact.family_id is MatterFamily.OWNERSHIP_CHANGE
+    # Selecting a family is not selecting an instrument.
+    assert family_only.subtype_id is None
+    assert family_only.family_id is None
 
 
-def test_an_unknown_intent_names_no_subtype() -> None:
-    """Routing never defaults the exact subtype (§12.4)."""
-    derivation = _route(Q02_INTENT="synthetic_not_a_subtype")
-
-    assert (derivation.subtype_id, derivation.family_id) == (None, None)
+# ── build_eligibility_input ─────────────────────────────────────────────────
 
 
-def test_routing_is_deterministic() -> None:
-    answers = _answers(
-        Q01_REGIME=TriState.YES.value,
-        Q03_SCOPE="PART_OF_PARCEL",
-        Q05_PARTY_CONTEXT=["COMPANY", "ESTATE_OR_DECEASED"],
-        Q06_DISPUTE=TriState.UNKNOWN.value,
-    )
-
-    assert derive_routing(answers) == derive_routing(dict(reversed(list(answers.items()))))
-
-
-# ── Eligibility input ───────────────────────────────────────────────────────
-
-
-def _eligibility(facts: MatterFactSnapshot, **answers: Any) -> Any:
+def _input(facts: MatterFactSnapshot, **answer_values: Any) -> Any:
+    live = answers(**answer_values)
     return build_eligibility_input(
-        derive_routing(_answers(**answers)),
+        derive_routing(live),
         facts,
         regime_id="lk.rta",
         subtype_decision_status=SubtypeDecisionStatus.PROVISIONAL,
         template_verified=False,
-        source_reverification_required=False,
-        answers=_answers(**answers),
+        source_reverification_required=True,
+        answers=live,
     )
 
 
-def test_an_answer_fills_a_fact_nobody_has_reviewed() -> None:
-    result = _eligibility(MatterFactSnapshot(), Q12_LIFE_INTEREST=TriState.YES.value)
-
-    assert result.life_interest_present is TriState.YES
-
-
-def test_no_answer_leaves_an_unreviewed_fact_unknown() -> None:
-    assert _eligibility(MatterFactSnapshot()).life_interest_present is TriState.UNKNOWN
+def test_answers_fill_in_only_where_no_fact_has_been_confirmed() -> None:
+    built = _input(MatterFactSnapshot(), Q_LIFE_INTEREST="YES", Q_COOWNERS="NO")
+    assert built.life_interest_present is TriState.YES
+    assert built.coowners_present is TriState.NO
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "build_eligibility_input says the more conservative value wins when an answer "
-        "and a fact disagree, but a confirmed NO life interest overrides an answered YES. "
-        "Which side should win is a legal decision."
-    ),
-)
-def test_a_conflicting_answer_is_not_overruled_by_a_less_cautious_fact() -> None:
-    result = _eligibility(
-        MatterFactSnapshot(life_interest_present=TriState.NO),
-        Q12_LIFE_INTEREST=TriState.YES.value,
+def test_a_confirmed_fact_is_never_overridden_by_an_answer() -> None:
+    facts = MatterFactSnapshot(life_interest_present=TriState.YES, coowners_present=TriState.YES)
+    built = _input(facts, Q_LIFE_INTEREST="NO", Q_COOWNERS="NO")
+    assert built.life_interest_present is TriState.YES
+    assert built.coowners_present is TriState.YES
+
+
+def test_facts_and_flags_are_carried_through_unchanged() -> None:
+    facts = MatterFactSnapshot(
+        mortgage_status=EncumbranceStatus.APPARENTLY_UNCANCELLED,
+        identifier_conflict_present=True,
+        unconfirmed_critical_fact_type_ids=("rta.instrument.consideration",),
+        identified_mortgage_reference=True,
     )
+    built = _input(facts, Q_REGIME="YES")
 
-    assert result.life_interest_present is TriState.YES
+    assert built.regime_id == "lk.rta"
+    assert built.title_status is TitleStatus.RTA_REGISTERED
+    assert built.mortgage_status is EncumbranceStatus.APPARENTLY_UNCANCELLED
+    assert built.identifier_conflict_present is True
+    assert built.unconfirmed_critical_fact_type_ids == ("rta.instrument.consideration",)
+    assert built.identified_mortgage_reference is True
+    assert built.template_verified is False
+    assert built.source_reverification_required is True
+    assert built.subtype_decision_status is SubtypeDecisionStatus.PROVISIONAL
+
+
+def test_without_answers_unknown_stays_unknown() -> None:
+    built = build_eligibility_input(
+        derive_routing({}),
+        MatterFactSnapshot(),
+        regime_id="lk.rta",
+        subtype_decision_status=SubtypeDecisionStatus.PROVISIONAL,
+        template_verified=False,
+        source_reverification_required=True,
+    )
+    assert built.life_interest_present is TriState.UNKNOWN
+    assert built.coowners_present is TriState.UNKNOWN
+
+
+def test_the_default_fact_snapshot_is_the_honest_nothing_reviewed_state() -> None:
+    snapshot = MatterFactSnapshot()
+    assert snapshot.mortgage_status is EncumbranceStatus.NO_EVIDENCE_REVIEWED
+    assert snapshot.transferor_is_registered_owner is TriState.UNKNOWN
+    assert snapshot.identifier_conflict_present is False

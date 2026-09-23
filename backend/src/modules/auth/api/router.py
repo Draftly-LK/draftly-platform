@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, Header
 from src.api.deps import (
     get_auth_service,
     get_bearer_token,
+    get_billing_service,
     get_correlation_id,
     get_request_context,
 )
@@ -33,6 +34,7 @@ from src.modules.auth.api.schemas import (
 )
 from src.modules.auth.application.auth_service import AuthService
 from src.modules.auth.domain.models import Role, User
+from src.modules.billing.application.billing_service import BillingService
 from src.platform.db.session import get_uow
 from src.platform.db.unit_of_work import UnitOfWork
 from src.platform.errors import DomainRuleError
@@ -61,6 +63,7 @@ async def provision_me(
     token: str = Depends(get_bearer_token),
     correlation_id: str = Depends(get_correlation_id),
     auth_service: AuthService = Depends(get_auth_service),
+    billing: BillingService = Depends(get_billing_service),
     uow: UnitOfWork = Depends(get_uow),
 ) -> UserRead:
     """Link a verified identity to a Draftly account on first login.
@@ -70,9 +73,15 @@ async def provision_me(
     the account unreachable. This route validates the token itself, provisions
     the user and identity, and commits through the UnitOfWork. It is idempotent
     — an already-linked identity returns the existing user.
+
+    Also starts the account's trial (BillingService.ensure_trial) if it does
+    not have a subscription yet, so a new or a pre-existing account gets a
+    working plan the next time it signs in, with no admin step. A returning
+    user with a subscription already is untouched.
     """
     _ = uow  # commits on success, rolls back on failure
     user = await auth_service.provision_identity(token=token, correlation_id=correlation_id)
+    await billing.ensure_trial(user.id)
     return _to_user_read(user)
 
 

@@ -9,6 +9,9 @@
     "!frontend/test-results/**",
     "!frontend/playwright-report/**",
     "!.agents/skills/avoid-ai-writing/**",
+    // Source data for landing-page/patch-site.mjs, which decodes its literal
+    // mojibake sequences; its formatting is intentional, not documentation.
+    "!landing-page/content.md",
   ],
   "config": {
     "MD013": false,

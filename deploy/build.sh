@@ -2,7 +2,7 @@
 # Build the three Draftly images for the server and pack them into one file.
 #
 #   deploy/build.sh                 # build everything
-#   deploy/build.sh frontend        # rebuild one or more: frontend backend retrieval
+#   deploy/build.sh frontend        # rebuild one or more: frontend backend retrieval landing
 #
 # Reads deploy/.env. Output: deploy/dist/draftly-images.tar.gz (git-ignored),
 # which ship.sh copies to the server.
@@ -28,6 +28,9 @@ RETRIEVAL_IMAGE="$(require RETRIEVAL_IMAGE)"
 RETRIEVAL_CONTEXT="${RETRIEVAL_CONTEXT:-$(env_value RETRIEVAL_CONTEXT)}"
 RETRIEVAL_CONTEXT="${RETRIEVAL_CONTEXT:-$REPO_DIR/../draftly}"
 PACK="${PACK:-1}"
+# Only built when asked for (vps.sh, WEB_ON_VPS=1); it is not part of the packed set.
+LANDING_IMAGE="$(env_value LANDING_IMAGE)"
+LANDING_IMAGE="${LANDING_IMAGE:-draftly-landing:vps}"
 
 targets=("$@")
 [ ${#targets[@]} -gt 0 ] || targets=(backend retrieval frontend)
@@ -42,6 +45,7 @@ for target in "${targets[@]}"; do
       docker buildx build --platform "$PLATFORM" --load -t "$FRONTEND_IMAGE" \
         --build-arg "NEXT_PUBLIC_API_BASE_URL=https://$(require DOMAIN)" \
         --build-arg "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=$(require NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)" \
+        --build-arg "NEXT_PUBLIC_USE_MOCK_PIPELINE=$(env_value NEXT_PUBLIC_USE_MOCK_PIPELINE)" \
         "$REPO_DIR/frontend"
       ;;
     retrieval)
@@ -58,7 +62,10 @@ for target in "${targets[@]}"; do
         ${embed_args[@]+"${embed_args[@]}"} \
         "$RETRIEVAL_CONTEXT"
       ;;
-    *) echo "Unknown target '$target' (use: frontend backend retrieval)" >&2; exit 1 ;;
+    landing)
+      docker buildx build --platform "$PLATFORM" --load -t "$LANDING_IMAGE" "$REPO_DIR/landing-page"
+      ;;
+    *) echo "Unknown target '$target' (use: frontend backend retrieval landing)" >&2; exit 1 ;;
   esac
 done
 

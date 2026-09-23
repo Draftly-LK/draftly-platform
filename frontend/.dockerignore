@@ -1,7 +1,13 @@
-.env*
-.next
+.env
+.env.*
+!.env.example
+
 node_modules
-playwright-report
+.next
 test-results
+playwright-report
 tests
-*.log
+tsconfig.tsbuildinfo
+**/.DS_Store
+Dockerfile
+.dockerignore

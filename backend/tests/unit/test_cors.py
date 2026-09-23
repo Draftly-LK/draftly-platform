@@ -1,4 +1,4 @@
-"""CORS allowlist accepts only the exact origins configured by the environment."""
+"""CORS allowlist: exactly the origins named in ALLOWED_ORIGINS, nothing implicit."""
 
 from __future__ import annotations
 
@@ -13,12 +13,11 @@ from src.main import create_app
 VERCEL = "https://draftly-demo.vercel.app"
 
 
-def _settings(allowed_origins: str | None = None) -> config.Settings:
-    kwargs = {} if allowed_origins is None else {"allowed_origins": allowed_origins}
+def _settings(allowed_origins: str) -> config.Settings:
     return config.Settings(
         database_url="postgresql+psycopg://u:p@localhost/db",
         database_url_direct="postgresql+psycopg://u:p@localhost/db",
-        **kwargs,
+        allowed_origins=allowed_origins,
     )
 
 
@@ -41,19 +40,26 @@ def _preflight(client: TestClient, origin: str) -> str | None:
 
 
 def test_default_allowlist_is_the_local_dev_servers_only() -> None:
-    assert _settings().cors_origins == (
-        "http://localhost:3000",
-        "http://localhost:4310",
+    settings = config.Settings(
+        database_url="postgresql+psycopg://u:p@localhost/db",
+        database_url_direct="postgresql+psycopg://u:p@localhost/db",
     )
+    assert settings.cors_origins == ("http://localhost:3000", "http://localhost:4310")
 
 
-def test_allowed_origins_are_trimmed_deduplicated_and_appended() -> None:
+def test_allowed_origins_replace_the_defaults_and_are_normalised() -> None:
     settings = _settings(f" {VERCEL}/ , http://localhost:3000,,https://other.example ")
     assert settings.cors_origins == (
         VERCEL,
         "http://localhost:3000",
         "https://other.example",
     )
+
+
+def test_empty_allowlist_is_refused() -> None:
+    settings = _settings("")
+    with pytest.raises(ValueError):
+        _ = settings.cors_origins
 
 
 def test_configured_origin_passes_preflight(

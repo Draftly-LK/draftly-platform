@@ -31,3 +31,6 @@ deploy/.research/
 
 # Python bytecode
 __pycache__/
+
+# pnpm content-addressable store (created when pnpm runs inside a mounted repo)
+.pnpm-store/

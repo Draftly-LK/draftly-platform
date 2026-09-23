@@ -70,8 +70,9 @@ export function createGcsPilotStore(bucket, options = {}) {
 
 /** Create the intake route. It does not send email or contact a third party.
  * @param {{save(id: string, record: {email: string, receivedAt: string}): Promise<void>}} store
+ * @param {{ trustProxy?: boolean }} [options] trustProxy: rate-limit on the last X-Forwarded-For hop (the address the proxy saw) instead of the socket peer.
  */
-export function createPilotHandler(store) {
+export function createPilotHandler(store, { trustProxy = false } = {}) {
   /** @type {Map<string, {count: number, reset: number}>} */
   const attempts = new Map();
   /** @param {import('node:http').IncomingMessage} request @param {import('node:http').ServerResponse} response */
@@ -83,7 +84,8 @@ export function createPilotHandler(store) {
     } catch { json(response, 403, { code: 'origin_rejected' }); return; }
     const now = Date.now();
     for (const [key, value] of attempts) if (value.reset < now) attempts.delete(key);
-    const ip = request.socket.remoteAddress ?? 'unknown';
+    const forwarded = trustProxy ? request.headers['x-forwarded-for']?.toString().split(',').at(-1)?.trim() : undefined;
+    const ip = forwarded || (request.socket.remoteAddress ?? 'unknown');
     const attempt = attempts.get(ip) ?? { count: 0, reset: now + 60_000 };
     if (++attempt.count > 20) { json(response, 429, { code: 'rate_limited' }); return; }
     attempts.set(ip, attempt);
