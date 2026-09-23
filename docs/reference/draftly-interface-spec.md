@@ -388,14 +388,14 @@ SaaS dashboard.
 | --- | --- | --- |
 | Canvas | `#F4F6F8` | App background |
 | Surface | `#FFFFFF` | Main work surfaces |
-| Ink | `#172033` | Primary text and strong actions |
-| Muted ink | `#5F6B7A` | Metadata and secondary labels |
-| Border | `#D7DEE7` | Dividers, inputs, and table rules |
-| Forest | `#203A5F` | Draftly accent and verified actions |
-| Soft green | `#E6EDF6` | Selected and verified backgrounds |
-| Teal | `#176B75` | Sources, links, and corrected facts |
-| Amber | `#9C5B0B` | Warnings and review required |
-| Red | `#A43D45` | Blocking issues and destructive actions |
+| Ink | `#1B211D` | Primary text and strong actions |
+| Muted ink | `#667068` | Metadata and secondary labels |
+| Border | `#D8DDD8` | Dividers, inputs, and table rules |
+| Forest | `#24533D` | Draftly accent and verified actions |
+| Soft green | `#E2EEE7` | Selected and verified backgrounds |
+| Teal | `#26747A` | Sources, links, and corrected facts |
+| Amber | `#A56A16` | Warnings and review required |
+| Red | `#A4443E` | Blocking issues and destructive actions |
 
 Do not use gradients, decorative blobs, or a monochrome green interface. Color
 communicates status; most of the interface stays neutral.
