@@ -3860,6 +3860,93 @@
         "title": "LegalIssueRead",
         "type": "object"
       },
+      "LegalSourceListRead": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LegalSourceRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "LegalSourceListRead",
+        "type": "object"
+      },
+      "LegalSourceRead": {
+        "properties": {
+          "corpusVersion": {
+            "title": "Corpusversion",
+            "type": "string"
+          },
+          "extractionConfidence": {
+            "title": "Extractionconfidence",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "sectionCount": {
+            "title": "Sectioncount",
+            "type": "integer"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "statute",
+              "amendment"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          },
+          "weight": {
+            "enum": [
+              "binding",
+              "unverified-candidate"
+            ],
+            "title": "Weight",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "reference",
+          "type",
+          "weight",
+          "verified",
+          "sectionCount",
+          "sourceUrl",
+          "extractionConfidence",
+          "corpusVersion"
+        ],
+        "title": "LegalSourceRead",
+        "type": "object"
+      },
       "LinkDocumentRequest": {
         "additionalProperties": false,
         "properties": {
@@ -10379,6 +10466,128 @@
         "summary": "Run Preflight",
         "tags": [
           "forms"
+        ]
+      }
+    },
+    "/api/v1/library": {
+      "get": {
+        "operationId": "browse_library_api_v1_library_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "statute",
+                    "amendment"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalSourceListRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Browse Library",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/api/v1/library/{authority_id}": {
+      "get": {
+        "operationId": "get_authority_api_v1_library__authority_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "authority_id",
+            "required": true,
+            "schema": {
+              "title": "Authority Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegalSourceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Authority",
+        "tags": [
+          "library"
         ]
       }
     },

@@ -54,6 +54,7 @@ from src.modules.matter.infrastructure.repository import (
 from src.modules.matter.infrastructure.workflow_commands import SqlMatterWorkflowCommandAdapter
 from src.modules.verification.contracts import ConfirmedFactValue, FactTierSummary
 from src.platform.errors import ConflictError
+from src.platform.pagination import InvalidCursorError
 from tests.fixtures.scripted_session import FakeSession
 
 NOW = datetime(2026, 2, 3, 10, 0, tzinfo=UTC)
@@ -198,8 +199,9 @@ async def test_list_returns_a_cursor_only_when_more_rows_exist() -> None:
     assert "matters.id < 'mat_2'" in session.where_clause(1)
 
 
-def test_a_tampered_cursor_is_ignored_rather_than_trusted() -> None:
-    assert _decode_cursor("not-base64-json") is None
+def test_a_tampered_cursor_is_rejected_rather_than_trusted() -> None:
+    with pytest.raises(InvalidCursorError):
+        _decode_cursor("not-base64-json")
     assert _decode_cursor(_encode_cursor(NOW, "mat_9")) == (NOW, "mat_9")
 
 
