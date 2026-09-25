@@ -123,13 +123,38 @@
   const style = document.createElement('style');
   style.textContent = `
     .draftly-intro-panel {
-      background: #f4f1e9 !important;
+      background: rgba(20, 19, 20, .8) !important;
+      -webkit-backdrop-filter: blur(6px);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, .14);
       border-left: 4px solid #ff4002;
-      color: #141314 !important;
+      color: #fff !important;
       padding: 18px 22px;
       max-width: 46rem !important;
     }
-    .draftly-intro-panel p { color: #141314 !important; }
+    .draftly-intro-panel p { color: rgba(255, 255, 255, .92) !important; }
+    html { scroll-padding-top: 96px; }
+    /* Keep the floating nav readable when it passes over section content.
+       data-draftly-nav is set from the nav's own light/dark state. */
+    .fixed.top-0.left-0.right-0 nav {
+      border-radius: 8px;
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      transition: background-color .2s ease;
+    }
+    [data-draftly-nav="light"] nav { background: rgba(255, 251, 245, .86); }
+    [data-draftly-nav="dark"] nav { background: rgba(20, 19, 20, .72); }
+    @media (pointer: coarse) {
+      footer a, nav a, nav button { display: inline-flex; align-items: center; min-height: 44px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+      }
+    }
     .draftly-scope-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -171,6 +196,29 @@
   // The hero animation creates thousands of changing span nodes. A persistent
   // subtree observer would rescan that animation every frame, so use a small
   // number of bounded passes around hydration instead.
+  // The nav switches between light and dark treatments as it crosses sections;
+  // mirror that state onto its container so the backdrop always contrasts.
+  let navFrame = 0;
+  function syncNavTheme() {
+    navFrame = 0;
+    const bar = document.querySelector('.fixed.top-0.left-0.right-0');
+    const label = bar?.querySelector('nav a > span, nav span');
+    if (!bar || !label) return;
+    const [r, g, b] = (getComputedStyle(label).color.match(/[\d.]+/g) ?? []).map(Number);
+    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    bar.setAttribute('data-draftly-nav', luminance > 0.6 ? 'dark' : 'light');
+  }
+  const scheduleNavSync = () => { if (!navFrame) navFrame = requestAnimationFrame(syncNavTheme); };
+  addEventListener('scroll', scheduleNavSync, { passive: true });
+  addEventListener('resize', scheduleNavSync);
   applyFixes();
-  for (const delay of [100, 500, 1500, 3000]) setTimeout(applyFixes, delay);
+  // The hero renders after hydration, sometimes several seconds in, so poll
+  // briefly (bounded) until the intro panel has been tagged.
+  let attempts = 0;
+  const poll = setInterval(() => {
+    applyFixes();
+    syncNavTheme();
+    attempts += 1;
+    if ((document.querySelector('.draftly-intro-panel') && attempts >= 6) || attempts >= 30) clearInterval(poll);
+  }, 500);
 })();
