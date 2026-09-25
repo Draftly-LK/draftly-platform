@@ -7,6 +7,8 @@ import {
   listAgentMessages,
   newIdempotencyKey,
   rejectAgentAction,
+  sendAgentMessage,
+  streamAgentJobEvents,
 } from "@/lib/api/agent";
 
 describe("job state", () => {
@@ -101,5 +103,89 @@ describe("agent endpoint URLs", () => {
     expect(reject).toBe(
       "http://api.test/api/v1/matters/mat-1/agent/actions/apa-1/reject",
     );
+  });
+});
+
+describe("sendAgentMessage", () => {
+  it("posts the content with the idempotency key", async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
+    const calls: { url: string; init?: RequestInit }[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init });
+      return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
+    try {
+      await sendAgentMessage(async () => "token", "mat-1", "hello", "key-1");
+    } finally {
+      globalThis.fetch = original;
+    }
+    expect(calls[0]?.url).toBe("http://api.test/api/v1/matters/mat-1/agent/messages");
+    expect(calls[0]?.init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ content: "hello" });
+    expect((calls[0]?.init?.headers as Record<string, string>)["Idempotency-Key"]).toBe("key-1");
+  });
+});
+
+describe("streamAgentJobEvents", () => {
+  const original = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = original;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  });
+
+  function streamOf(...chunks: string[]): Response {
+    const encoder = new TextEncoder();
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+          controller.close();
+        },
+      }),
+      { status: 200 },
+    );
+  }
+
+  it("emits parsed frames, including one split across chunks", async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
+    globalThis.fetch = (async () =>
+      streamOf(
+        'event: progress\ndata: {"step":1}\n\nevent: do',
+        'ne\ndata: {"ok":true}\n\n',
+      )) as typeof fetch;
+    const seen: [string, unknown][] = [];
+    const finished = await streamAgentJobEvents(async () => "t", "job-1", (name, data) =>
+      seen.push([name, data]),
+    );
+    expect(finished).toBe(true);
+    expect(seen).toEqual([
+      ["progress", { step: 1 }],
+      ["done", { ok: true }],
+    ]);
+  });
+
+  it("reports an unparseable frame without data and ignores data-less frames", async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
+    globalThis.fetch = (async () => streamOf("event: x\ndata: {bad\n\n: comment\n\n")) as typeof fetch;
+    const seen: [string, unknown][] = [];
+    await streamAgentJobEvents(async () => "t", "job-1", (name, data) => seen.push([name, data]));
+    expect(seen).toEqual([["x", null]]);
+  });
+
+  it("returns false when unconfigured, unauthenticated, rejected or dropped", async () => {
+    const noop = () => undefined;
+    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(false);
+
+    process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
+    expect(await streamAgentJobEvents(async () => null, "job-1", noop)).toBe(false);
+
+    globalThis.fetch = (async () => new Response("no", { status: 500 })) as typeof fetch;
+    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(false);
+
+    globalThis.fetch = (async () => {
+      throw new Error("offline");
+    }) as typeof fetch;
+    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(false);
   });
 });
