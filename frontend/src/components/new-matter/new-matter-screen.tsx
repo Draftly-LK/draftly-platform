@@ -22,10 +22,11 @@ import {
   ArrowRight,
   Building2,
   Check,
+  CheckCircle2,
   CircleDashed,
   CircleHelp,
   FileKey2,
-  FlaskConical,
+  FileText,
   Gavel,
   Landmark,
   LoaderCircle,
@@ -38,6 +39,7 @@ import {
   Upload,
   UserCog,
   Wrench,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
@@ -57,11 +59,18 @@ import {
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { uploadSourceFile } from "@/lib/api/documents";
 import {
-  RTA_TAXONOMY,
   statutoryFamilies,
   subtypesInFamily,
   transactionFamilies,
 } from "@/lib/rta/taxonomy";
+import {
+  demandsOriginal,
+  inclusionText,
+  legacyTypeForSubtype,
+  PARTY_UNKNOWN,
+  type PartyAnswer,
+  togglePartyContext,
+} from "@/lib/rta/intake-helpers";
 import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type {
@@ -72,13 +81,10 @@ import type {
   MandatoryBasis,
   MatterFamilyId,
   ParcelKind,
-  PartyContext,
-  PhysicalOriginalStatus,
   RequirementGroup,
   RtaSubtypeDefinition,
   TriState,
 } from "@/types/rta";
-import type { MatterType } from "@/types";
 
 /* ── Closed vocabularies, in the display order questions.py lists them ────── */
 
@@ -102,13 +108,6 @@ const PARCEL_KIND_ANSWERS: readonly ParcelKind[] = [
   "UNKNOWN",
 ];
 
-/**
- * Q05 option values. `UNKNOWN` is deliberately not a `PartyContext` member —
- * it records that the screening has not been done and must never collapse into
- * `NATURAL_PERSONS_ONLY` (§4.1, §4.4).
- */
-const PARTY_UNKNOWN = "UNKNOWN" as const;
-type PartyAnswer = PartyContext | typeof PARTY_UNKNOWN;
 const PARTY_CONTEXT_ANSWERS: readonly PartyAnswer[] = [
   "NATURAL_PERSONS_ONLY",
   "COMPANY",
@@ -156,26 +155,6 @@ const BASIS_ICONS: Record<MandatoryBasis, typeof Scale> = {
   LOCAL_AUTHORITY: Landmark,
   CONDITIONAL: CircleHelp,
 };
-
-/** `InclusionReason` in compiler.py. Unknown values fall back to the id. */
-const INCLUSION_REASON_KEYS: Record<string, string> = {
-  BASE: "inclusionBase",
-  REGIME: "inclusionRegime",
-  EXACT_INSTRUMENT: "inclusionExactInstrument",
-  CONDITIONAL_MODULE: "inclusionConditionalModule",
-  OFFICE_POLICY: "inclusionOfficePolicy",
-  LOCAL_AUTHORITY_POLICY: "inclusionLocalAuthorityPolicy",
-  LAWYER_ADDED: "inclusionLawyerAdded",
-  RETAINED_AFTER_REVIEW: "inclusionRetainedAfterReview",
-};
-
-/** §3.3 release tiers, as an icon + text badge — never colour alone. */
-const TIER_BADGES = {
-  V0: { messageKey: "tierV0", icon: FlaskConical },
-  V1: { messageKey: "tierPlanned", icon: CircleDashed },
-  DEFERRED: { messageKey: "tierPlanned", icon: CircleDashed },
-  MANUAL_ONLY: { messageKey: "tierManualOnly", icon: ScrollText },
-} as const;
 
 const TOTAL_STEPS = 7;
 
@@ -584,9 +563,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
           <section className="mt-3">
             <h1 className="text-4xl font-semibold">{t("metadataTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("metadataBody")}</p>
-            <div className="border-amber bg-amber-bg text-amber-text mt-4 border-l-2 p-3 text-sm">
-              {t("privacy")}
-            </div>
             <label className="mt-6 block font-medium">
               {t("matterReference")}
               <input
@@ -751,8 +727,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                             number: subtype.gazetteFormNumber,
                           })
                     }
-                    tierLabel={t(TIER_BADGES[subtype.releaseTier].messageKey)}
-                    TierIcon={TIER_BADGES[subtype.releaseTier].icon}
                   />
                 </li>
               ))}
@@ -967,9 +941,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                         // Closed by default. The counts above already say what is
                         // in the checklist; opening all four at once is ~150 rows
                         // and buries the shape of the matter.
-                        className="border-border mt-4 border-b"
+                        className="border-border-strong bg-surface mt-4 overflow-hidden rounded border"
                       >
-                        <summary className="hover:bg-hover-bg flex min-h-11 cursor-pointer items-center gap-3 py-2">
+                        <summary className="hover:bg-hover-bg flex min-h-12 cursor-pointer items-center gap-3 px-4 py-3">
                           <ChevronRight
                             className="size-4 shrink-0 transition-transform [details[open]_&]:rotate-90"
                             strokeWidth={1.5}
@@ -978,11 +952,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                           <span className="font-heading flex-1 text-lg font-semibold">
                             {t(GROUP_MESSAGE_KEYS[group])}
                           </span>
-                          <span className="text-muted-ink text-sm tabular-nums">
+                          <span className="bg-selected-bg text-forest inline-flex min-w-7 justify-center rounded-full px-2 py-1 text-xs font-semibold tabular-nums">
                             {items.length}
                           </span>
                         </summary>
-                        <ul className="divide-border border-border mb-3 divide-y border-t">
+                        <ul className="border-border bg-canvas grid gap-2 border-t p-3">
                           {items.map((item) => (
                             <ChecklistRow
                               key={item.requirementDefinitionId}
@@ -1038,30 +1012,29 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             </label>
             <p className="text-muted-ink mt-3 text-sm">{t("uploadLimits")}</p>
             <RequiredDocuments snapshot={snapshot} />
-            <div className="border-amber bg-amber-bg text-amber-text mt-3 border-l-2 p-3 text-sm">
-              {t("uploadConfidentiality")}
-            </div>
             {files.length > 0 && (
-              <ul className="divide-border border-border mt-4 divide-y border-y">
-                {files.map((entry, index) => (
-                  <li
-                    key={`${entry.file.name}-${index}`}
-                    className="flex min-h-11 items-center gap-3 py-2 text-sm"
-                  >
-                    <span className="min-w-0 flex-1 truncate">
-                      {entry.file.name}
-                    </span>
-                    <span className="border-border-strong text-muted-ink inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
-                      <CircleDashed
-                        className="size-4"
-                        strokeWidth={1.5}
-                        aria-hidden="true"
-                      />
-                      {t(`fileState.${entry.state}`)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <div className="border-border-strong bg-surface mt-5 overflow-hidden rounded border">
+                <div className="border-border bg-selected-bg flex items-center justify-between gap-4 border-b px-4 py-3">
+                  <h2 className="font-semibold">{t("selectedDocumentsTitle")}</h2>
+                  <span className="text-muted-ink text-sm tabular-nums">
+                    {t("selectedFiles", { count: files.length })}
+                  </span>
+                </div>
+                <ul className="divide-border divide-y">
+                  {files.map((entry, index) => (
+                    <UploadFileRow
+                      key={`${entry.file.name}-${entry.file.size}-${index}`}
+                      entry={entry}
+                      disabled={busy}
+                      onRemove={() =>
+                        setFiles((current) =>
+                          current.filter((_, itemIndex) => itemIndex !== index),
+                        )
+                      }
+                    />
+                  ))}
+                </ul>
+              </div>
             )}
             {getToken !== null && files.length > 0 && (
               <p className="text-muted-ink mt-3 text-sm">
@@ -1128,53 +1101,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 }
 
 /* ── Pure helpers ─────────────────────────────────────────────────────────── */
-
-/**
- * `UNKNOWN` is exclusive: it means the screening has not been done, so it
- * cannot coexist with an asserted party context, and asserting one clears it.
- * Nothing here maps `UNKNOWN` onto `NATURAL_PERSONS_ONLY`.
- */
-function togglePartyContext(
-  current: PartyAnswer[],
-  answer: PartyAnswer,
-): PartyAnswer[] {
-  if (current.includes(answer))
-    return current.filter((value) => value !== answer);
-  if (answer === PARTY_UNKNOWN) return [PARTY_UNKNOWN];
-  return [...current.filter((value) => value !== PARTY_UNKNOWN), answer];
-}
-
-function inclusionText(
-  item: ApiChecklistItem,
-  t: (key: string) => string,
-): string {
-  const messageKey = INCLUSION_REASON_KEYS[item.inclusionReason];
-  const reason =
-    messageKey === undefined ? item.inclusionReason : t(messageKey);
-  return item.inclusionTriggerId === null
-    ? reason
-    : `${reason} · ${item.inclusionTriggerId}`;
-}
-
-/**
- * Derive the deprecated M2 `MatterType` for the offline demo store, which still
- * requires it. Reverses the rule pack's own legacy map rather than guessing, and
- * falls back to `other` — the coarse label is never the authority for what the
- * instrument is (§3.6).
- */
-function legacyTypeForSubtype(subtypeId: string | null): MatterType {
-  if (subtypeId === null) return "other";
-  const match = Object.entries(RTA_TAXONOMY.legacyMatterTypeMap).find(
-    ([, mapped]) => mapped === subtypeId,
-  );
-  const legacy = match?.[0];
-  return legacy === "transfer" ||
-    legacy === "gift" ||
-    legacy === "lease" ||
-    legacy === "mortgage"
-    ? legacy
-    : "other";
-}
 
 /* ── Presentational pieces ────────────────────────────────────────────────── */
 
@@ -1279,20 +1205,17 @@ function SubtypeRow({
   onSelect,
   label,
   formLabel,
-  tierLabel,
-  TierIcon,
 }: {
   subtype: RtaSubtypeDefinition;
   selected: boolean;
   onSelect: () => void;
   label: string;
   formLabel: string;
-  tierLabel: string;
-  TierIcon: typeof FlaskConical;
 }) {
   return (
     <button
       type="button"
+      data-release-tier={subtype.releaseTier}
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
@@ -1308,13 +1231,6 @@ function SubtypeRow({
           {formLabel}
         </span>
       </span>
-      <span
-        data-release-tier={subtype.releaseTier}
-        className="border-border-strong inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold"
-      >
-        <TierIcon className="size-4" strokeWidth={1.5} aria-hidden="true" />
-        {tierLabel}
-      </span>
       {selected && (
         <Check
           className="size-4 shrink-0"
@@ -1324,17 +1240,6 @@ function SubtypeRow({
       )}
     </button>
   );
-}
-
-/**
- * True when the requirement demands a physical original.
- *
- * `physical_original_policy` is the level the requirement demands (§5.4), so
- * only the two ORIGINAL_* levels change what the lawyer must physically
- * produce; NOT_REQUIRED, UNKNOWN and COPY_ONLY do not.
- */
-function demandsOriginal(policy: PhysicalOriginalStatus): boolean {
-  return policy === "ORIGINAL_REPORTED" || policy === "ORIGINAL_INSPECTED";
 }
 
 /**
@@ -1535,6 +1440,88 @@ function RequiredDocuments({
   );
 }
 
+function UploadFileRow({
+  entry,
+  disabled,
+  onRemove,
+}: {
+  entry: SelectedFile;
+  disabled: boolean;
+  onRemove: () => void;
+}) {
+  const t = useTranslations("newMatter");
+  const isPdf = entry.file.type === "application/pdf";
+  const typeLabel = isPdf ? t("documentTypePdf") : t("documentTypeImage");
+  const sizeLabel =
+    entry.file.size >= 1024 * 1024
+      ? t("fileSizeMb", {
+          size: Math.round((entry.file.size / (1024 * 1024)) * 10) / 10,
+        })
+      : t("fileSizeKb", {
+          size: Math.max(1, Math.round(entry.file.size / 1024)),
+        });
+
+  return (
+    <li className="flex min-h-16 items-center gap-3 px-4 py-3">
+      <span className="bg-selected-bg text-forest grid size-10 shrink-0 place-items-center rounded">
+        <FileText className="size-5" strokeWidth={1.5} aria-hidden="true" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium" title={entry.file.name}>
+          {entry.file.name}
+        </span>
+        <span className="text-muted-ink mt-0.5 block text-xs">
+          {typeLabel} · {sizeLabel}
+        </span>
+      </span>
+      <FileState state={entry.state} />
+      <button
+        type="button"
+        aria-label={t("removeFile", { name: entry.file.name })}
+        title={t("remove")}
+        disabled={disabled || entry.state === "uploading"}
+        onClick={onRemove}
+        className="text-muted-ink hover:bg-hover-bg hover:text-ink focus-visible:outline-ring grid size-9 shrink-0 place-items-center rounded disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <X className="size-4" strokeWidth={1.5} aria-hidden="true" />
+      </button>
+    </li>
+  );
+}
+
+function FileState({ state }: { state: FileState }) {
+  const t = useTranslations("newMatter");
+  const icon =
+    state === "attached" ? (
+      <CheckCircle2 className="size-4" strokeWidth={1.5} aria-hidden="true" />
+    ) : state === "uploading" ? (
+      <LoaderCircle
+        className="size-4 animate-spin"
+        strokeWidth={1.5}
+        aria-hidden="true"
+      />
+    ) : state === "failed" ? (
+      <AlertCircle className="size-4" strokeWidth={1.5} aria-hidden="true" />
+    ) : (
+      <CircleDashed className="size-4" strokeWidth={1.5} aria-hidden="true" />
+    );
+  const tone =
+    state === "attached"
+      ? "border-forest bg-soft-green text-forest"
+      : state === "failed"
+        ? "border-red bg-red-bg text-red"
+        : "border-border-strong text-muted-ink";
+
+  return (
+    <span
+      className={`inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold ${tone}`}
+    >
+      {icon}
+      {t(`fileState.${state}`)}
+    </span>
+  );
+}
+
 function ChecklistRow({
   item,
   label,
@@ -1548,17 +1535,21 @@ function ChecklistRow({
 }) {
   const BasisIcon = BASIS_ICONS[item.mandatoryBasis];
   return (
-    <li className="flex min-h-11 flex-wrap items-start gap-x-3 gap-y-1 py-2.5">
-      <span className="min-w-0 flex-1">
-        <span className="block font-medium">{label}</span>
-        <span className="text-muted-ink block text-sm">{reason}</span>
-      </span>
+    <li className="border-border bg-surface grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3 rounded border p-3.5">
       <span
         data-mandatory-basis={item.mandatoryBasis}
-        className="border-border-strong inline-flex min-h-7 shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold"
+        className="bg-selected-bg text-forest grid size-9 place-items-center rounded"
+        title={basisLabel}
       >
         <BasisIcon className="size-4" strokeWidth={1.5} aria-hidden="true" />
-        {basisLabel}
+      </span>
+      <span className="min-w-0">
+        <span className="block font-semibold leading-6">{label}</span>
+        <span className="text-muted-ink mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+          <span className="text-ink font-medium">{basisLabel}</span>
+          <span aria-hidden="true">·</span>
+          <span>{reason}</span>
+        </span>
       </span>
     </li>
   );

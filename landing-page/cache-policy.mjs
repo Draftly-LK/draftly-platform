@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 /**
  * `Cache-Control` for a served file. Kept separate from `serve.mjs` (which
  * binds a port at import time) so it can be unit-tested directly, the same
@@ -15,7 +13,8 @@ import path from 'node:path';
  */
 export const cacheControlFor = (filename) => {
   if (filename.endsWith('.html')) return 'no-store';
+  const normalizedFilename = filename.replaceAll('\\', '/');
   const isFingerprinted =
-    filename.includes(`${path.sep}_next${path.sep}static${path.sep}`) || /_[0-9a-f]{8,}\.[a-z0-9]+$/i.test(filename);
+    normalizedFilename.includes('/_next/static/') || /_[0-9a-f]{8,}\.[a-z0-9]+$/i.test(normalizedFilename);
   return isFingerprinted ? 'public, max-age=31536000, immutable' : 'public, max-age=300, must-revalidate';
 };

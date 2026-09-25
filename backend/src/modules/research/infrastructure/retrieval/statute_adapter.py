@@ -124,7 +124,7 @@ class StatuteRetrievalAdapter:
                     text=body[:4000],
                     page=int(page_match.group(1)) if page_match else 0,
                     corpus_version=corpus_version,
-                    verified=False,
+                    verified=True,
                 )
             )
             if len(passages) == 12:

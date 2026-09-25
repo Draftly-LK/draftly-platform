@@ -28,6 +28,7 @@ from src.modules.party.ports import (
 )
 from src.platform.errors import CapabilityDeniedError, NotFoundError
 from src.platform.privacy import find_private_content
+from tests.factories.party import SYNTHETIC_NIC, SYNTHETIC_PARTY_A
 from tests.fixtures.party_fakes import (
     ACTOR_A,
     ACTOR_B,
@@ -39,7 +40,6 @@ from tests.fixtures.party_fakes import (
     ctx,
     synthetic_party,
 )
-from tests.fixtures.party_synthetic import SYNTHETIC_NIC, SYNTHETIC_PARTY_A
 
 
 def _evidence_input() -> RecordIdentityEvidenceInput:

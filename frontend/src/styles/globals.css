@@ -47,7 +47,7 @@ html { background: var(--canvas); font-optical-sizing: auto; }
 body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; font-size: 15px; line-height: 1.5; letter-spacing: 0; }
 html[lang="si"] body { line-height: 1.75; }
 ::selection { background: var(--soft-green); }
-h1, h2, h3, .font-heading { font-family: var(--font-newsreader), var(--font-noto-serif-si), serif; font-optical-sizing: auto; }
+h1, h2, h3, .font-heading { font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; }
 button, input, textarea, select { font: inherit; letter-spacing: 0; }
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
@@ -64,4 +64,3 @@ table { font-variant-numeric: tabular-nums; }
   [data-fact-chip]::after { content: " [source: " attr(data-source) "]"; font-size: 9pt; }
   section { break-inside: avoid; }
 }
-

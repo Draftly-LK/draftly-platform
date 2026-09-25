@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD036 -->
+
 # Draftly landing page copy
 
 This copy combines Draftlyâ€™s product and research identities. It is written for a public-facing website and avoids presenting research-stage capabilities as production guarantees.

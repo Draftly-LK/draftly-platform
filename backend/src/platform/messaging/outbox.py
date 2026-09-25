@@ -221,25 +221,41 @@ class SqlOutboxRepository:
         )
         await self._session.flush()
 
-    async def reap_leases(self, *, lease_seconds: int, now: datetime | None = None) -> int:
-        """Return claims whose lease expired to pending (jobs-and-workers.md §3)."""
+    async def reap_leases(
+        self,
+        *,
+        lease_seconds: int,
+        overrides: Mapping[str, int] | None = None,
+        now: datetime | None = None,
+    ) -> int:
+        """Return claims whose lease expired to pending (jobs-and-workers.md §3).
+
+        ``lease_seconds`` is the default; ``overrides`` sets a longer or shorter
+        lease per message name (§5), so a long job is not handed to a second
+        worker while the first is still running it.
+        """
         moment = now or datetime.now(tz=UTC)
-        cutoff = moment - timedelta(seconds=lease_seconds)
+        leases = dict(overrides or {})
+        shortest = min([lease_seconds, *leases.values()])
         result = await self._session.execute(
             select(OutboxRow).where(
                 OutboxRow.state == STATE_CLAIMED,
                 OutboxRow.claimed_at.is_not(None),
-                OutboxRow.claimed_at <= cutoff,
+                OutboxRow.claimed_at <= moment - timedelta(seconds=shortest),
             )
         )
-        rows = list(result.scalars().all())
-        for row in rows:
+        reaped = 0
+        for row in result.scalars().all():
+            lease = leases.get(row.name, lease_seconds)
+            if row.claimed_at is None or row.claimed_at > moment - timedelta(seconds=lease):
+                continue
             row.state = STATE_PENDING
             row.claimed_at = None
             row.claimed_by = None
             row.available_at = moment
+            reaped += 1
         await self._session.flush()
-        return len(rows)
+        return reaped
 
     async def _require(self, message_id: int) -> OutboxRow:
         row = await self._session.get(OutboxRow, message_id)

@@ -179,7 +179,9 @@ function MatterHeaderShell({
       <nav aria-label={data.reference} className="flex min-w-0 overflow-x-auto px-4">
         {NAV_TABS.map((tab) => {
           const href = NAV_HREF[tab](matterId);
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+          const active =
+            pathname === href ||
+            (tab !== "overview" && pathname.startsWith(`${href}/`));
           return (
             <Link
               key={tab}

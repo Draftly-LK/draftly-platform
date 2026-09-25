@@ -28,6 +28,7 @@ from src.modules.check.infrastructure import orm as check_orm  # noqa: E402, F40
 from src.modules.document.infrastructure import orm as document_orm  # noqa: E402, F401
 from src.modules.draft.infrastructure import orm as draft_orm  # noqa: E402, F401
 from src.modules.matter.infrastructure import orm as matter_orm  # noqa: E402, F401
+from src.modules.matter_agent.infrastructure import orm as matter_agent_orm  # noqa: E402, F401
 from src.modules.notarial_register.infrastructure import orm as notarial_orm  # noqa: E402, F401
 from src.modules.notification.infrastructure import orm as notification_orm  # noqa: E402, F401
 from src.modules.obligations.infrastructure import orm as obligations_orm  # noqa: E402, F401
@@ -36,6 +37,7 @@ from src.modules.research.infrastructure import orm as research_orm  # noqa: E40
 from src.modules.task.infrastructure import orm as task_orm  # noqa: E402, F401
 from src.modules.verification.infrastructure import orm as verification_orm  # noqa: E402, F401
 from src.platform.config import get_settings  # noqa: E402
+from src.platform.db import idempotency as idempotency_orm  # noqa: E402, F401
 from src.platform.db.session import Base as SharedBase  # noqa: E402
 from src.platform.messaging import orm as messaging_orm  # noqa: E402, F401
 

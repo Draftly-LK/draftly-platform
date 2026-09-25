@@ -69,6 +69,7 @@ def register_routers(app: FastAPI) -> None:
     from src.modules.content_governance.api.router import router as rule_pack_router
     from src.modules.document.api.router import router as document_router
     from src.modules.draft.api.router import router as draft_router
+    from src.modules.library.api.router import router as library_router
     from src.modules.matter.api.router import router as matter_router
     from src.modules.matter_agent.api.router import router as matter_agent_router
     from src.modules.notarial_register.api.router import router as notarial_register_router
@@ -87,6 +88,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(verification_router, prefix="/api/v1")
     app.include_router(check_router, prefix="/api/v1")
     app.include_router(draft_router, prefix="/api/v1")
+    app.include_router(library_router, prefix="/api/v1")
     app.include_router(matter_agent_router, prefix="/api/v1")
     app.include_router(approval_router, prefix="/api/v1")
     app.include_router(billing_router, prefix="/api/v1")

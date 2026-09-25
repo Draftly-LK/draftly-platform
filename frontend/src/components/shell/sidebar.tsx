@@ -3,13 +3,13 @@
 import {
   CircleHelp,
   Clock3,
+  CreditCard,
   FileStack,
   Home,
   Library,
   SearchCheck,
   Menu,
   Plus,
-  RotateCcw,
   Settings,
   Workflow,
   X,
@@ -24,14 +24,12 @@ import { useDemoStore } from "@/lib/store";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { IconButton } from "@/components/ui/icon-button";
 import { CommandPalette } from "./command-palette";
-import { UserButton } from "./user-button";
 
-export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
+export function Sidebar() {
   const t = useTranslations("shell");
   const app = useTranslations("app");
   const pathname = usePathname();
   const matters = useDemoStore((state) => state.matters);
-  const resetDemo = useDemoStore((state) => state.resetDemo);
   const [open, setOpen] = useState(false);
   const links = [
     { href: "/", label: t("home"), icon: Home },
@@ -40,6 +38,7 @@ export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
     { href: "/library", label: t("library"), icon: Library },
     { href: "/research", label: t("research"), icon: SearchCheck },
     { href: "/history", label: t("history"), icon: Clock3 },
+    { href: "/billing", label: t("billing"), icon: CreditCard },
   ];
   return (
     <>
@@ -91,41 +90,35 @@ export function Sidebar({ demoMode = false }: { demoMode?: boolean }) {
             {t("create")}
           </Link>
         </div>
-        <nav className="mt-4 space-y-1" aria-label={t("workspace")}>
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className={`flex min-h-10 items-center gap-3 rounded border-l-2 px-3 ${pathname === href || (href !== "/" && pathname.startsWith(href)) ? "border-forest bg-selected-bg text-forest font-medium" : "hover:bg-hover-bg border-transparent"}`}
-            >
-              <Icon className="size-5" strokeWidth={1.5} />
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <div className="border-border mt-5 border-t pt-4">
-          <div className="text-muted-ink px-3 text-xs font-semibold uppercase">
-            {t("recentMatters")}
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+          <nav className="space-y-1" aria-label={t("workspace")}>
+            {links.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={`flex min-h-10 items-center gap-3 rounded border-l-2 px-3 ${pathname === href || (href !== "/" && pathname.startsWith(href)) ? "border-forest bg-selected-bg text-forest font-medium" : "hover:bg-hover-bg border-transparent"}`}
+              >
+                <Icon className="size-5" strokeWidth={1.5} />
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="border-border mt-5 border-t pt-4">
+            <div className="text-muted-ink px-3 text-xs font-semibold uppercase">
+              {t("recentMatters")}
+            </div>
+            {isApiEnabled() ? (
+              <ApiRecentMatterLinks />
+            ) : (
+              <RecentMatterLinks matters={matters.slice(0, 2)} />
+            )}
           </div>
-          {isApiEnabled() ? (
-            <ApiRecentMatterLinks />
-          ) : (
-            <RecentMatterLinks matters={matters.slice(0, 2)} />
-          )}
         </div>
-        <div className="border-border mt-auto border-t pt-3">
+        <div className="border-border shrink-0 border-t pt-3">
           {/* ── Profile / user button ──────────────────────────── */}
-          <UserButton demoMode={demoMode} />
           {/* ── Utility links ──────────────────────────────────── */}
-          <div className="border-border mt-2 space-y-1 border-t pt-2">
-            <button
-              className="hover:bg-hover-bg flex min-h-10 w-full items-center gap-3 rounded px-3 text-left"
-              onClick={resetDemo}
-            >
-              <RotateCcw className="size-5" strokeWidth={1.5} />
-              {t("resetDemo")}
-            </button>
+          <div className="space-y-1">
             <Link
               className="hover:bg-hover-bg flex min-h-10 items-center gap-3 rounded px-3"
               href="/settings"

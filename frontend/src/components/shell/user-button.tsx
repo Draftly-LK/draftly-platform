@@ -1,20 +1,16 @@
 "use client";
 
-/**
- * Sidebar profile control — navigates to /profile.
- * Clerk: real name + photo from session. Demo: "My profile" label only.
- */
-
-import Link from "next/link";
 import { Show, useUser } from "@clerk/nextjs";
+import { CircleUserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 
 function getInitials(name: string): string {
   return name
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
+    .map((word) => word[0]?.toUpperCase() ?? "")
     .join("");
 }
 
@@ -31,21 +27,21 @@ function clerkDisplayName(user: {
   return user.username?.trim() ?? "";
 }
 
-function ProfileLinkRow({
+function ProfileLink({
   name,
-  subtitle,
+  label,
   imageUrl,
 }: {
   name: string;
-  subtitle: string;
+  label: string;
   imageUrl?: string | null;
 }) {
-  const initials = name.trim() ? getInitials(name) : "?";
-
   return (
     <Link
       href="/profile"
-      className="hover:bg-hover-bg focus-visible:outline-ring flex items-center gap-3 rounded-[6px] px-3 py-2"
+      aria-label={label}
+      title={name.trim() || label}
+      className="hover:bg-hover-bg focus-visible:outline-ring inline-flex size-10 items-center justify-center rounded-full"
     >
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- Clerk CDN
@@ -57,61 +53,48 @@ function ProfileLinkRow({
           className="ring-forest/30 size-9 rounded-full object-cover ring-2"
         />
       ) : (
-        <div
-          aria-hidden="true"
-          className="bg-forest grid size-9 shrink-0 place-items-center rounded-full text-sm font-semibold text-white"
-        >
-          {initials}
-        </div>
+        <span className="bg-forest grid size-9 place-items-center rounded-full text-sm font-semibold text-white">
+          {name.trim() ? (
+            getInitials(name)
+          ) : (
+            <CircleUserRound aria-hidden="true" className="size-5" strokeWidth={1.5} />
+          )}
+        </span>
       )}
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium leading-tight">
-          {name.trim() || subtitle}
-        </div>
-        {name.trim() ? (
-          <span className="text-muted-ink text-xs">{subtitle}</span>
-        ) : null}
-      </div>
     </Link>
   );
 }
 
-function ClerkSidebarProfile() {
+function ClerkHeaderProfile() {
   const t = useTranslations("auth");
   const { user } = useUser();
 
   return (
     <>
       <Show when="signed-in">
-        <ProfileLinkRow
+        <ProfileLink
           name={user ? clerkDisplayName(user) : ""}
-          subtitle={t("myProfile")}
+          label={t("myProfile")}
           imageUrl={user?.imageUrl}
         />
       </Show>
       <Show when="signed-out">
-        <div className="px-3 py-2">
-          <Link
-            href="/sign-in"
-            className="text-forest hover:bg-hover-bg focus-visible:outline-ring inline-flex rounded-[6px] px-2 py-1.5 text-sm font-medium"
-          >
-            {t("signIn")}
-          </Link>
-        </div>
+        <Link
+          href="/sign-in"
+          className="text-forest hover:bg-hover-bg focus-visible:outline-ring inline-flex rounded-[6px] px-2 py-1.5 text-sm font-medium"
+        >
+          {t("signIn")}
+        </Link>
       </Show>
     </>
   );
 }
 
-function DemoSidebarProfile() {
+function DemoHeaderProfile() {
   const t = useTranslations("auth");
-  return <ProfileLinkRow name="" subtitle={t("myProfile")} />;
+  return <ProfileLink name="" label={t("myProfile")} />;
 }
 
 export function UserButton({ demoMode = false }: { demoMode?: boolean }) {
-  // demoMode is computed server-side via isClerkConfigured() in AppShell.
-  if (demoMode) {
-    return <DemoSidebarProfile />;
-  }
-  return <ClerkSidebarProfile />;
+  return demoMode ? <DemoHeaderProfile /> : <ClerkHeaderProfile />;
 }

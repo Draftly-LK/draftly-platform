@@ -1,12 +1,13 @@
 {
   // avoid-ai-writing is vendored and follows its upstream conventions.
-  // draftly-code-review is ours and is deliberately linted: a parser reads it,
-  // so its formatting matters more than most files in this repository.
   "globs": [
     "**/*.md",
     "!node_modules",
     "!frontend/node_modules",
+    "!landing-page/node_modules/**",
     "!backend/.venv/**",
+    "!frontend/test-results/**",
+    "!frontend/playwright-report/**",
     "!.agents/skills/avoid-ai-writing/**",
     // Source data for landing-page/patch-site.mjs, which decodes its literal
     // mojibake sequences; its formatting is intentional, not documentation.

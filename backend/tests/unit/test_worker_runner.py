@@ -8,6 +8,7 @@ crash costs a retry rather than the worker.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import pytest
@@ -46,7 +47,9 @@ class FakeOutbox:
     def _record(self, *entry: Any) -> None:
         self._session.journal.append((*entry, self._session.number))
 
-    async def reap_leases(self, *, lease_seconds: int) -> int:
+    async def reap_leases(
+        self, *, lease_seconds: int, overrides: Mapping[str, int] | None = None
+    ) -> int:
         self._record("reap", lease_seconds)
         return 0
 

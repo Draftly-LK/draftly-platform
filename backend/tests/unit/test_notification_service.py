@@ -8,7 +8,6 @@ from typing import Any
 import pytest
 
 from src.modules.auth.domain.models import Role
-from src.modules.auth.ports import AuditEventInput
 from src.modules.notification.application.notification_service import (
     ConsumeOutcome,
     DeliveryOutcome,
@@ -31,6 +30,7 @@ from src.modules.notification.infrastructure.email.console_adapter import Consol
 from src.modules.notification.infrastructure.email.resend_webhook import ResendWebhookVerifier
 from src.platform.messaging.envelope import EventEnvelope
 from src.platform.request_context import RequestContext
+from tests.factories.audit import FakeAudit
 
 SYNTHETIC_NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
 TEMPLATE_KEY = "obligation.reminder.due"
@@ -39,14 +39,6 @@ TEMPLATE_KEY = "obligation.reminder.due"
 class FakeClock:
     def now(self) -> datetime:
         return SYNTHETIC_NOW
-
-
-class FakeAudit:
-    def __init__(self) -> None:
-        self.events: list[AuditEventInput] = []
-
-    async def record(self, event: AuditEventInput) -> None:
-        self.events.append(event)
 
 
 class FakePreferences:

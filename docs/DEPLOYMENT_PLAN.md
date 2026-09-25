@@ -884,9 +884,6 @@ typecheck`, `lint`, `build`, and `pnpm check:markdown`.
 `uv run mypy src`, and `uv run pytest tests/unit tests/contract tests/conformance`.
 Plus an inline `python3` heredoc validating `backend/contracts/services.yaml`.
 
-`.github/workflows/pr-agent.yml` runs an advisory AI review, pinned to an
-immutable SHA, with a config-tamper guard.
-
 ### 8.2 Gaps
 
 | Gap | Detail |
@@ -899,7 +896,7 @@ immutable SHA, with a config-tamper guard.
 | **No coverage** | No `pytest-cov`, no `@vitest/coverage-v8`, no threshold |
 | **No image build, scan, or push** | The pipeline ends at "tests passed". Nothing produces a deployable artifact |
 | **No deploy job** | Deployment is entirely manual |
-| **Floating action tags** | `@v4`/`@v5`, against the file's own comment at lines 21–23 asking for immutable SHAs, which `pr-agent.yml` already does |
+| **Floating action tags** | `@v4`/`@v5`; pin third-party actions to reviewed immutable SHAs |
 
 The repo's own rubric already specifies a fuller pipeline.
 `backend/docs/service-definition-of-done.md` §8:
