@@ -42,7 +42,7 @@ test('keeps the audience cards clean after switching tabs and returning to the p
   for (const name of audienceTabs) {
     await page.getByRole('button', { name: new RegExp(name, 'i') }).click();
     // React re-renders the cards from their original data; the fixes must reapply.
-    await expect.poll(async () => page.locator('main').evaluate((main) => /Â|\+\d{2,3}$/m.test(main.innerText))).toBe(false);
+    await expect.poll(async () => page.locator('main').evaluate((main) => /Â|\+\d{2,3}$/m.test((main as HTMLElement).innerText))).toBe(false);
   }
 
   const expected = ['Deeds', 'Plans', 'Registry records', 'Assessments', 'Title reports'];
