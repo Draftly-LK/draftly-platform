@@ -17,6 +17,7 @@ import jwt
 import pytest
 import structlog
 
+from src.api.deps import get_billing_service
 from src.main import create_app
 from src.modules.auth.domain.models import AccountStatus, Role
 from tests.factories.constants import USER_A
@@ -257,6 +258,13 @@ async def test_provisioning_accepts_the_string_form_of_a_verified_email(
     """Clerk's session-token template can deliver ``"true"`` as a string."""
     token = harness.minter.mint("user_synthetic_string_true", email_verified="true")
 
+    class _NoTrialBilling:
+        # Provisioning also starts the account's trial, which needs a database
+        # this harness forbids; plan grants are covered by the billing tests.
+        async def ensure_trial(self, user_id: str) -> None:
+            return None
+
+    harness.app.dependency_overrides[get_billing_service] = lambda: _NoTrialBilling()
     response = await harness.client.post("/api/v1/me/provision", headers=harness.bearer(token))
 
     assert response.status_code == 200

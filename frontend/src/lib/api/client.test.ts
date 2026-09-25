@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { API_VERSION_PREFIX, apiBaseUrl } from "@/lib/api/client";
+import { API_VERSION_PREFIX, ApiError, apiBaseUrl, apiFetchBlob } from "@/lib/api/client";
 
 const ORIGINAL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -83,5 +83,57 @@ describe("endpoint path convention", () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("apiFetchBlob", () => {
+  it("refuses to run when the backend is not configured", async () => {
+    await expect(apiFetchBlob("/x", { getToken: async () => "t" })).rejects.toMatchObject({
+      code: "api_not_configured",
+    });
+  });
+
+  it("refuses to run without a session token", async () => {
+    setBase("http://api.test");
+    const error = await apiFetchBlob("/x", { getToken: async () => null }).catch((e) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 401, code: "unauthenticated" });
+  });
+
+  it("sends the bearer token and returns the body as a blob", async () => {
+    setBase("http://api.test");
+    const seen: { url: string; auth: string | undefined }[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      seen.push({
+        url: String(input),
+        auth: (init?.headers as Record<string, string>).Authorization,
+      });
+      return new Response("bytes", { status: 200 });
+    }) as typeof fetch;
+    try {
+      const blob = await apiFetchBlob("/api/v1/artifacts/a", { getToken: async () => "tok" });
+      expect(await blob.text()).toBe("bytes");
+    } finally {
+      globalThis.fetch = original;
+    }
+    expect(seen).toEqual([{ url: "http://api.test/api/v1/artifacts/a", auth: "Bearer tok" }]);
+  });
+
+  it("raises the backend's error for a failed response", async () => {
+    setBase("http://api.test");
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ detail: "nope" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      })) as typeof fetch;
+    try {
+      const error = await apiFetchBlob("/x", { getToken: async () => "tok" }).catch((e) => e);
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(404);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });
