@@ -1,0 +1,193 @@
+/*
+ * Gazette form page, measured against Gazette Extraordinary 1886/58 drawn at
+ * A4 width (794 px at 96 dpi). Every length is in em of `--gz-font`, so the
+ * page keeps the printed proportions at any size: 11.2px reproduces the
+ * printed scale (the compare view), and the workspace sets it larger to read.
+ *
+ * Measured on the printed page (px at 794 wide): text column 73–730; item
+ * numbers at +32, item text at +57; entry rows every 21; office box split at
+ * 58.6 %; land-details columns 287 wide with a 20 gap. Colours come from the
+ * design tokens only.
+ */
+
+.gz-page {
+  --gz-ink: var(--ink);
+  --gz-rule: var(--ink);
+  --gz-row: 1.88em;
+  width: 100%;
+  max-width: 70.88em;
+  margin: 0 auto;
+  padding: 4.22em 5.72em 5.63em 6.56em;
+  background: var(--surface);
+  color: var(--gz-ink);
+  font-size: var(--gz-font, 11.2px);
+  line-height: var(--gz-row);
+  font-optical-sizing: auto;
+  outline: none;
+}
+
+.gz-page p { margin: 0; }
+
+/* Tiptap wraps each node view in a host element; let the blank itself be the
+   flex or grid item the line lays out. */
+.gz-page .node-gzSlot { display: contents; }
+
+/* ── Lines ─────────────────────────────────────────────────────────────── */
+
+.gz-line { min-height: var(--gz-row); }
+.gz-line[data-align="center"] { text-align: center; justify-content: center; }
+.gz-line[data-align="end"] { text-align: end; justify-content: flex-end; }
+.gz-line[data-space] { margin-top: 1.78em; }
+
+.gz-formNumber { margin-bottom: 0.56em; }
+.gz-title { font-weight: 700; font-style: italic; font-size: 0.98em; margin-bottom: 0.66em; }
+.gz-act { font-style: italic; margin-bottom: 0.66em; }
+.gz-sectionRef { font-weight: 700; font-size: 0.89em; }
+.gz-note { margin-top: 0.47em; }
+.gz-para { text-align: justify; line-height: 2.02em; }
+.gz-para[data-indent] { text-indent: 2.34em; }
+.gz-signature { min-height: var(--gz-row); flex-wrap: nowrap; white-space: nowrap; overflow: hidden; }
+.gz-signature[data-indent] { padding-inline-start: 2.25em; }
+
+/* Signature blocks: 16.41em wide, the right one inset 2.62em from the margin. */
+.gz-grid[data-gz-grid="signatures"] > .gz-signature { width: 16.41em; overflow: hidden; }
+.gz-grid[data-gz-grid="signatures"] > .gz-signature:nth-child(even) {
+  justify-self: end;
+  margin-inline-end: 2.62em;
+}
+
+/* An entry: caption, then its blank taking the rest of the row. */
+.gz-entry, .gz-itemTitle, .gz-signature { display: flex; align-items: baseline; gap: 0.33em; flex-wrap: wrap; }
+.gz-entry .gz-slot.gz-size-fill,
+.gz-itemTitle .gz-slot.gz-size-fill,
+.gz-signature .gz-slot.gz-size-fill { flex: 1 1 3.75em; width: auto; min-width: 3.28em; }
+
+/* A bound blank keeps its value's natural width and drops to its own line
+   when the row is too narrow, rather than breaking the value letter by
+   letter; typed blanks keep the shrinkable leader. */
+.gz-entry .gz-slot-bound.gz-size-fill,
+.gz-signature .gz-slot-bound.gz-size-fill { flex: 1 0 auto; max-width: 100%; }
+.gz-slot-bound .gz-bound { white-space: nowrap; }
+.gz-slot-bound .gz-bound-value { white-space: normal; }
+
+/* ── Items ─────────────────────────────────────────────────────────────── */
+
+.gz-item {
+  display: grid;
+  grid-template-columns: 2.25em minmax(0, 1fr);
+  margin-top: 1.41em;
+  padding-inline-start: 2.81em;
+}
+.gz-item-body > .gz-itemTitle { margin-bottom: 0.84em; }
+.gz-item-body > .gz-entry,
+.gz-item-body > .gz-grid,
+.gz-item-body > .gz-note { margin-inline-start: 0.75em; }
+.gz-item-body > .gz-entry + .gz-entry { margin-top: 0; }
+
+.gz-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--gz-cols, 2), minmax(0, 1fr));
+  column-gap: 1.78em;
+}
+
+/* ── Office-use box ────────────────────────────────────────────────────── */
+
+.gz-box { margin-top: 0.56em; border: 1px solid var(--gz-rule); }
+.gz-box > .gz-boxHeader {
+  display: flex;
+  align-items: center;
+  min-height: 2.34em;
+  padding-inline-start: 8.25em;
+  border-bottom: 1px solid var(--gz-rule);
+}
+.gz-columns { display: grid; grid-template-columns: 58.6fr 41.4fr; }
+.gz-column { padding: 0.28em 1.22em 0.38em 1.31em; }
+.gz-column + .gz-column { border-inline-start: 1px solid var(--gz-rule); }
+.gz-column .gz-line { display: flex; white-space: nowrap; overflow: hidden; }
+.gz-column .gz-grid { column-gap: 0; }
+.gz-column .gz-line[data-indent] { padding-inline-start: 7.5em; }
+
+/* ── Tables ────────────────────────────────────────────────────────────── */
+
+.gz-table {
+  display: grid;
+  grid-template-columns: repeat(var(--gz-cols, 1), minmax(0, 1fr));
+  width: 100%;
+  margin-top: 0.28em;
+  border-top: 1px solid var(--gz-rule);
+  border-left: 1px solid var(--gz-rule);
+}
+.gz-row { display: contents; }
+.gz-cell {
+  padding: 0.19em 0.56em;
+  border-right: 1px solid var(--gz-rule);
+  border-bottom: 1px solid var(--gz-rule);
+}
+.gz-cell[data-gz-cell="header"] { font-style: italic; text-align: center; line-height: 1.5em; }
+.gz-cell:not([data-gz-cell="header"]) { min-height: 5.16em; }
+
+/* ── Blanks ────────────────────────────────────────────────────────────── */
+
+.gz-slot { display: inline-block; max-width: 100%; vertical-align: baseline; text-indent: 0; line-height: 1.5em; }
+.gz-size-xs { width: 3.75em; }
+.gz-size-sm { width: 7.5em; }
+.gz-size-md { width: 11.25em; }
+.gz-size-lg { width: 20.63em; }
+.gz-size-xl { width: 29.06em; }
+.gz-size-fill { width: 100%; }
+.gz-table .gz-slot { display: block; width: 100%; }
+
+.gz-input,
+.gz-bound {
+  display: block;
+  width: 100%;
+  min-height: 1.5em;
+  margin: 0;
+  padding: 0 0.19em;
+  border: 0;
+  border-bottom: 1.5px dotted var(--gz-ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--gz-ink);
+  font: inherit;
+  line-height: 1.5em;
+  text-align: start;
+}
+.gz-table .gz-input, .gz-table .gz-bound { border-bottom: 0; min-height: 4.5em; }
+.gz-input.gz-bare { border-bottom-color: transparent; }
+.gz-input.gz-bare:hover, .gz-input.gz-bare:focus { border-bottom-color: var(--border-strong); }
+
+textarea.gz-input { resize: none; overflow: hidden; field-sizing: content; }
+.gz-input:read-only { cursor: default; }
+.gz-input:hover:not(:read-only) { background: var(--hover-bg); }
+.gz-input:focus { background: var(--selected-bg); outline: 2px solid var(--ring); outline-offset: 0; }
+.gz-input[data-active] { background: var(--selected-bg); }
+
+.gz-bound { display: flex; align-items: baseline; gap: 0.28em; cursor: pointer; }
+.gz-bound-value { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; white-space: normal; }
+.gz-bound-icon { flex: none; width: 14px; height: 14px; align-self: center; }
+.gz-bound[data-status="confirmed"] .gz-bound-icon { color: var(--teal); }
+.gz-bound[data-status="awaiting"] { background: var(--teal-bg); }
+.gz-bound[data-status="awaiting"] .gz-bound-icon { color: var(--teal); }
+.gz-bound[data-status="unresolved"] { background: var(--amber-bg); }
+.gz-bound[data-status="unresolved"] .gz-bound-icon { color: var(--amber-text); }
+.gz-bound:hover { background: var(--hover-bg); }
+.gz-bound[data-active] { background: var(--selected-bg); outline: 2px solid var(--ring); outline-offset: 0; }
+
+/* Plain rendering: blanks drawn as the page draws them, for print and compare. */
+.gz-blank { display: block; width: 100%; height: 1.17em; border-bottom: 1.5px dotted var(--gz-ink); }
+.gz-bare-blank { border-bottom-color: transparent; }
+.gz-table .gz-blank { border-bottom: 0; height: 4.5em; }
+
+@media (max-width: 720px) {
+  .gz-page { padding: 1.88em 1.12em 2.81em; }
+  .gz-item { padding-inline-start: 0; }
+  .gz-grid, .gz-columns { grid-template-columns: minmax(0, 1fr); }
+  .gz-column + .gz-column { border-inline-start: 0; border-top: 1px solid var(--gz-rule); }
+}
+
+@media print {
+  .gz-page { max-width: none; padding: 0; }
+  .gz-input, .gz-bound { background: transparent !important; outline: none !important; }
+  .gz-bound-icon { display: none; }
+}
