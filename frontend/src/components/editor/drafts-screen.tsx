@@ -9,6 +9,7 @@ import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { generateForm, listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
+import { DEMO_GAZETTE_FORMS } from "@/lib/gazette-forms/demo-forms";
 import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { ApiGeneratedFormSummary, ApiRtaMatter, GeneratedFormState } from "@/types/rta";
@@ -197,6 +198,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
               </table>
             </div>
           )}
+          <DemoGazetteForms matterId={matterId} />
         </div>
       </AppShell>
     );
@@ -309,4 +311,32 @@ function getFormStateStyles(state: GeneratedFormState): string {
     default:
       return "border-border-strong bg-surface text-ink";
   }
+}
+
+/** The synthetic gazette forms, so the offline demo can open both drafting modes. */
+function DemoGazetteForms({ matterId }: { matterId: string }) {
+  const t = useTranslations("draft");
+  const tRoot = useTranslations();
+  const forms = DEMO_GAZETTE_FORMS.filter((form) => form.matterId === matterId);
+  if (forms.length === 0) return null;
+  return (
+    <section className="mt-6">
+      <h2 className="mb-2 text-lg font-semibold">{t("gazetteForms")}</h2>
+      <ul className="border-border-strong bg-surface divide-border divide-y rounded border">
+        {forms.map((form) => (
+          <li key={form.id} className="flex min-h-11 flex-wrap items-center gap-3 px-4 py-2">
+            <span className="font-medium">{tRoot(form.titleKey)}</span>
+            <span className="text-muted-ink text-sm">{t("formNumber", { number: form.formNumber })}</span>
+            <Link
+              className="border-border-strong hover:bg-hover-bg ml-auto inline-flex min-h-8 items-center gap-2 rounded border px-3"
+              href={`/matters/${matterId}/drafts/${form.id}`}
+            >
+              {t("open")}
+              <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }

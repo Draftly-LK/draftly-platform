@@ -15,6 +15,8 @@ export const inventoryRoutes = [
   "/matters/matter-rta-001/drafts",
   "/matters/matter-rta-001/drafts/draft-form8-001",
   "/matters/matter-rta-001/drafts/draft-form8-001/approval",
+  "/matters/matter-rta-001/drafts/demo-form-08",
+  "/matters/matter-rta-001/drafts/demo-form-12",
   "/matters/matter-rta-001/activity",
   "/matters/matter-rta-001/assistant",
   "/matters/matter-rta-001/documents/doc-sale-0020/review",
