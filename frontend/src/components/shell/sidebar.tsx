@@ -11,7 +11,6 @@ import {
   Menu,
   Plus,
   Settings,
-  Workflow,
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -34,7 +33,6 @@ export function Sidebar() {
   const links = [
     { href: "/", label: t("home"), icon: Home },
     { href: "/matters", label: t("matters"), icon: FileStack },
-    { href: "/workflows", label: t("workflows"), icon: Workflow },
     { href: "/library", label: t("library"), icon: Library },
     { href: "/research", label: t("research"), icon: SearchCheck },
     { href: "/history", label: t("history"), icon: Clock3 },
