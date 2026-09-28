@@ -308,6 +308,7 @@ async def run_agent_turn(
         state=SessionState(chat_session.state),
         created_at=chat_session.created_at,
         updated_at=chat_session.updated_at,
+        active_conversation_id=user_message.conversation_id,
     )
     ctx = RequestContext(actor_id=chat_session.user_id, account_role=role)
     execution = ExecutionContext(

@@ -123,7 +123,58 @@ class TestTheHappyPath:
             tools={"save_working_note": tool},
         )
         await runner.run(make_request())
-        assert "Saved a note." in model.seen_memory[-1]
+        assert "Saved a note." in "\n".join(model.seen_memory[-1])
+
+    async def test_a_tool_payload_reaches_the_next_model_call_transiently(self) -> None:
+        tool = RecordingTool(
+            "read_verified_facts",
+            result=ToolResult(
+                summary="Read one verified fact.",
+                payload={"facts": [{"id": "fact_1", "value": "Lot 17"}]},
+                resource_refs=("fact_1",),
+            ),
+        )
+        runner, _, model, _ = make_runner(
+            turns=[
+                ModelTurn(tool_calls=(ProposedToolCall(name="read_verified_facts", arguments={}),)),
+                ModelTurn(text="The property is Lot 17 [[ref:fact_1]]."),
+            ],
+            tools={"read_verified_facts": tool},
+        )
+
+        await runner.run(make_request())
+
+        context = "\n".join(model.seen_memory[-1])
+        assert '"value":"Lot 17"' in context
+        assert '"availableCitationIds":["fact_1"]' in context
+
+    async def test_only_tool_supplied_citations_are_persisted(self) -> None:
+        tool = RecordingTool(
+            "read_verified_facts",
+            result=ToolResult(
+                summary="Read one verified fact.",
+                resource_refs=("fact_1",),
+            ),
+        )
+        runner, conversation, _, _ = make_runner(
+            turns=[
+                ModelTurn(tool_calls=(ProposedToolCall(name="read_verified_facts", arguments={}),)),
+                ModelTurn(
+                    text=(
+                        "The property is Lot 17 [[ref:fact_1]]. "
+                        "An invented source [[ref:fact_missing]] is ignored."
+                    )
+                ),
+            ],
+            tools={"read_verified_facts": tool},
+        )
+
+        await runner.run(make_request())
+
+        message = conversation.messages[0]
+        assert message.content == "The property is Lot 17 [1]. An invented source  is ignored."
+        assert tuple(citation.source_id for citation in message.citations) == ("fact_1",)
+        assert message.citations[0].verification_status == "verified"
 
 
 class TestBudget:

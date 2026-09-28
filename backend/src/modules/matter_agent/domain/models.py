@@ -8,6 +8,7 @@ provider. Nothing here imports SQLAlchemy, FastAPI, or a provider SDK.
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
@@ -57,9 +58,39 @@ class SuggestionOrigin(StrEnum):
     AI_SUGGESTED = "ai_suggested"
 
 
-def content_hash(content: str) -> str:
-    """Stable hash of message content, used to detect drift against a copy."""
-    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+@dataclass(frozen=True)
+class AgentCitation:
+    """An immutable pointer from an answer back to an authoritative record."""
+
+    source_id: str
+    source_type: str
+    label: str
+    verification_status: str
+    locator: str | None = None
+
+
+def content_hash(content: str, citations: tuple[AgentCitation, ...] = ()) -> str:
+    """Hash visible answer text and its evidence pointers as one record."""
+    # Preserve the hash of every pre-citation transcript row exactly.
+    if not citations:
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
+    evidence = [
+        {
+            "sourceId": item.source_id,
+            "sourceType": item.source_type,
+            "label": item.label,
+            "verificationStatus": item.verification_status,
+            "locator": item.locator,
+        }
+        for item in citations
+    ]
+    canonical = json.dumps(
+        {"content": content, "citations": evidence},
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -71,6 +102,20 @@ class AgentSession:
     matter_id: str
     model_version: str
     prompt_version: str
+    created_at: datetime
+    updated_at: datetime
+    state: SessionState = SessionState.ACTIVE
+    active_conversation_id: str | None = None
+
+
+@dataclass(frozen=True)
+class AgentConversation:
+    """One visible segment inside the matter's durable assistant session."""
+
+    id: str
+    session_id: str
+    matter_id: str
+    user_id: str
     created_at: datetime
     updated_at: datetime
     state: SessionState = SessionState.ACTIVE
@@ -92,16 +137,18 @@ class AgentMessage:
     job_id: str | None = None
     tool_call_id: str | None = None
     pending_action_id: str | None = None
+    conversation_id: str | None = None
+    citations: tuple[AgentCitation, ...] = ()
 
     def __post_init__(self) -> None:
         if self.sequence < 1:
             raise ValueError("sequence starts at 1")
         if not self.content_hash:
-            object.__setattr__(self, "content_hash", content_hash(self.content))
+            object.__setattr__(self, "content_hash", content_hash(self.content, self.citations))
 
     def hash_matches(self) -> bool:
         """True when the stored hash still describes the stored content."""
-        return self.content_hash == content_hash(self.content)
+        return self.content_hash == content_hash(self.content, self.citations)
 
 
 @dataclass(frozen=True)

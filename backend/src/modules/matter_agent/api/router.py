@@ -4,6 +4,8 @@
 GET  /api/v1/matters/{id}/agent                        session, provisioned lazily
 GET  /api/v1/matters/{id}/agent/messages               transcript, from Neon
 POST /api/v1/matters/{id}/agent/messages               append + start a turn
+GET  /api/v1/matters/{id}/agent/conversations          audit segments
+POST /api/v1/matters/{id}/agent/conversations          archive + start fresh
 GET  /api/v1/agent-jobs/{jobId}                        job status
 POST /api/v1/matters/{id}/agent/actions/{id}/confirm   execute a card
 POST /api/v1/matters/{id}/agent/actions/{id}/reject    refuse a card, audited
@@ -27,6 +29,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_request_context
 from src.modules.matter_agent.api.schemas import (
+    CitationRead,
+    ConversationRead,
     JobRead,
     MessageListRead,
     MessageRead,
@@ -38,6 +42,7 @@ from src.modules.matter_agent.api.schemas import (
 )
 from src.modules.matter_agent.application.agent_service import AgentService
 from src.modules.matter_agent.domain.models import (
+    AgentConversation,
     AgentMessage,
     AgentSession,
     PendingAction,
@@ -94,6 +99,7 @@ def _to_session_read(session: AgentSession) -> SessionRead:
         prompt_version=session.prompt_version,
         created_at=session.created_at,
         updated_at=session.updated_at,
+        active_conversation_id=session.active_conversation_id,
     )
 
 
@@ -106,6 +112,26 @@ def _to_message_read(message: AgentMessage) -> MessageRead:
         created_at=message.created_at,
         job_id=message.job_id,
         pending_action_id=message.pending_action_id,
+        conversation_id=message.conversation_id,
+        citations=[
+            CitationRead(
+                source_id=item.source_id,
+                source_type=item.source_type,
+                label=item.label,
+                verification_status=item.verification_status,
+                locator=item.locator,
+            )
+            for item in message.citations
+        ],
+    )
+
+
+def _to_conversation_read(conversation: AgentConversation) -> ConversationRead:
+    return ConversationRead(
+        id=conversation.id,
+        state=conversation.state.value,
+        created_at=conversation.created_at,
+        updated_at=conversation.updated_at,
     )
 
 
@@ -159,6 +185,37 @@ async def list_messages(
             limit=page_limit,
         ),
     )
+
+
+@router.get(
+    "/matters/{matter_id}/agent/conversations",
+    response_model=list[ConversationRead],
+)
+async def list_conversations(
+    matter_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[AgentService, Depends(get_agent_service)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+) -> list[ConversationRead]:
+    async with uow:
+        rows = await service.list_conversations(ctx, matter_id)
+    return [_to_conversation_read(item) for item in rows]
+
+
+@router.post(
+    "/matters/{matter_id}/agent/conversations",
+    response_model=ConversationRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def start_conversation(
+    matter_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[AgentService, Depends(get_agent_service)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+) -> ConversationRead:
+    async with uow:
+        created = await service.start_conversation(ctx, matter_id)
+    return _to_conversation_read(created)
 
 
 @router.post(

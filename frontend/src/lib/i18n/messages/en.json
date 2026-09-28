@@ -2066,7 +2066,8 @@
   },
   "matterAssistant": {
     "title": "Matter assistant",
-    "subtitle": "One thread per matter. Suggestions are not decisions.",
+    "subtitle": "Work through this matter with its evidence beside you.",
+    "workspaceSubtitle": "Ask questions, review evidence, and prepare the next step.",
     "loading": "Loading the conversation…",
     "loadOlder": "Load older messages",
     "sending": "Sending…",
@@ -2074,6 +2075,7 @@
     "send": "Send",
     "retry": "Try again",
     "composerLabel": "Message the assistant",
+    "composerNotice": "Draftly can make mistakes. Verify important details against the cited source.",
     "composerPlaceholder": "Ask about this matter…",
     "roleAssistant": "Assistant",
     "roleYou": "You",
@@ -2089,6 +2091,33 @@
     "errorProvider": "The assistant is temporarily unavailable.",
     "errorUnknown": "Something went wrong. Your message was not lost.",
     "thread": "Conversation",
-    "empty": "No messages yet. Ask about this matter."
+    "empty": "No messages yet. Ask about this matter.",
+    "emptyTitle": "Start with the matter, not a blank page",
+    "emptyBody": "The assistant can use this matter's documents, verified facts, checks, and drafts to help you work.",
+    "suggestOverview": "Give me an overview of this matter",
+    "suggestMissing": "What evidence or information is missing?",
+    "suggestNext": "What should I do next?",
+    "newConversation": "New conversation",
+    "newConversationConfirm": "Start a new conversation? The current conversation will remain available in the audit history.",
+    "caseContext": "Matter context",
+    "close": "Close",
+    "backToContext": "Back to matter context",
+    "evidence": "Evidence",
+    "evidenceUsed": "Evidence used",
+    "openSource": "Open source",
+    "contextDocuments": "Documents",
+    "contextFacts": "Verified facts",
+    "contextChecks": "Checks",
+    "contextDrafts": "Drafts",
+    "contextNotice": "This panel reflects the latest saved matter data.",
+    "loadingContext": "Loading matter context…",
+    "matterState": "Matter state: {state}",
+    "pending": "Pending",
+    "issues": "Issues",
+    "verification": {
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "operational": "Operational"
+    }
   }
 }

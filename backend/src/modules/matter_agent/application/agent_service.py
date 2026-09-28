@@ -26,6 +26,7 @@ from src.modules.matter_agent.domain.errors import (
     PendingActionNotFoundError,
 )
 from src.modules.matter_agent.domain.models import (
+    AgentConversation,
     AgentMessage,
     AgentSession,
     JobState,
@@ -98,7 +99,7 @@ class AgentSettings:
 
 
 class AgentService:
-    """Reads and writes the matter's single chat session."""
+    """Reads and writes the matter session and its active conversation."""
 
     def __init__(
         self,
@@ -135,6 +136,8 @@ class AgentService:
 
         existing = await self._sessions.find(user_id=ctx.actor_id, matter_id=matter_id)
         if existing is not None:
+            if existing.active_conversation_id is None:
+                return await self._sessions.start_conversation(existing)
             return existing
 
         now = datetime.now(tz=UTC)
@@ -179,7 +182,37 @@ class AgentService:
     ) -> MessagePage:
         """The authoritative transcript, read from Neon. Never from a provider."""
         session = await self.get_or_create_session(ctx, matter_id)
-        return await self._conversation.page(session_id=session.id, limit=limit, cursor=cursor)
+        return await self._conversation.page(
+            session_id=session.id,
+            conversation_id=session.active_conversation_id,
+            limit=limit,
+            cursor=cursor,
+        )
+
+    async def list_conversations(
+        self, ctx: RequestContext, matter_id: str
+    ) -> tuple[AgentConversation, ...]:
+        session = await self.get_or_create_session(ctx, matter_id)
+        return await self._sessions.list_conversations(session)
+
+    async def start_conversation(self, ctx: RequestContext, matter_id: str) -> AgentConversation:
+        """Archive the visible segment and begin a clean one without deleting audit history."""
+        session = await self.get_or_create_session(ctx, matter_id)
+        updated = await self._sessions.start_conversation(session)
+        conversations = await self._sessions.list_conversations(updated)
+        created = next(item for item in conversations if item.id == updated.active_conversation_id)
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                matter_id=matter_id,
+                actor=ctx.actor_id,
+                action="agent.conversation-started",
+                target_type="agent_conversation",
+                target_id=created.id,
+                correlation_id=ctx.correlation_id,
+            )
+        )
+        return created
 
     async def append_user_message(
         self, ctx: RequestContext, matter_id: str, *, content: str, job_id: str

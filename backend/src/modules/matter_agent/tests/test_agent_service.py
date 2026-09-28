@@ -77,6 +77,23 @@ class TestSessionProvisioning:
         await service.get_or_create_session(CTX, "mat-1")
         assert "agent.session-created" in audit.actions()
 
+    async def test_starting_a_new_conversation_preserves_the_session(self) -> None:
+        service, sessions, *_ = build()
+        original = await service.get_or_create_session(CTX, "mat-1")
+
+        conversation = await service.start_conversation(CTX, "mat-1")
+        updated = await sessions.find(user_id=CTX.actor_id, matter_id="mat-1")
+
+        assert updated is not None
+        assert updated.id == original.id
+        assert conversation.id == updated.active_conversation_id
+        assert conversation.id != original.active_conversation_id
+
+    async def test_starting_a_new_conversation_is_audited(self) -> None:
+        service, _, _, audit, _, _ = build()
+        await service.start_conversation(CTX, "mat-1")
+        assert "agent.conversation-started" in audit.actions()
+
 
 class TestExistenceHiding:
     async def test_a_matter_the_caller_does_not_own_is_absent_not_forbidden(self) -> None:
