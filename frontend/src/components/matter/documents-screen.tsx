@@ -101,7 +101,7 @@ function DocumentsFlow({
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
         {/* Summary bar */}
-        <div className="border-border-strong bg-surface mb-6 flex flex-wrap gap-4 rounded border p-4">
+        <div className="border-border bg-surface mb-6 flex flex-wrap gap-4 rounded-card border p-4 shadow-card">
           <div>
             <p className="text-muted-ink text-xs font-semibold uppercase">
               {t("totalDocuments", { count: inbox.documents.length })}
@@ -172,7 +172,7 @@ function DocumentsFlow({
             <h2 className="text-muted-ink mb-3 text-xs font-semibold uppercase">
               {t("documentTable")}
             </h2>
-            <div className="border-border-strong bg-surface overflow-hidden rounded border">
+            <div className="border-border bg-surface overflow-hidden rounded-card border shadow-card">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px] border-collapse text-left">
                   <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
@@ -253,7 +253,7 @@ function DocumentsFlow({
             <h2 className="text-muted-ink mb-3 text-xs font-semibold uppercase">
               {t("sourceFilesSection")}
             </h2>
-            <div className="border-border-strong bg-surface overflow-hidden rounded border">
+            <div className="border-border bg-surface overflow-hidden rounded-card border shadow-card">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px] border-collapse text-left text-sm">
                   <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
@@ -306,7 +306,7 @@ function DocumentsUnavailable({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border-strong bg-surface rounded border p-6">
+        <div className="border-border bg-surface rounded-card border p-6 shadow-card">
           <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
           <p className="mt-2 text-sm">Backend not configured.</p>
         </div>

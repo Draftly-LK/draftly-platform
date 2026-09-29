@@ -224,7 +224,7 @@ function DashboardFlow({
   return (
     <AppShell matterId={matterId}>
       <div className="p-6">
-        <section className="border-border-strong bg-surface rounded border">
+        <section className="border-border bg-surface rounded-card shadow-card overflow-hidden border">
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_1.2fr]">
             <div>
               <div className="text-muted-ink text-xs font-semibold uppercase">
@@ -243,7 +243,7 @@ function DashboardFlow({
                   <dd className="font-medium">{t(`automation.${matter.automationScope}`)}</dd>
                 </div>
               </dl>
-              <div className="border-forest bg-selected-bg mt-5 rounded border-l-2 p-4">
+              <div className="border-gold bg-canvas mt-5 rounded border-l-[3px] p-4">
                 <div className="text-forest text-xs font-semibold uppercase">
                   {t("nextAction")}
                 </div>
@@ -282,7 +282,7 @@ function DashboardFlow({
             </div>
           </div>
         </section>
-        <section className="border-border-strong bg-surface mt-6 rounded border">
+        <section className="border-border bg-surface rounded-card shadow-card mt-6 overflow-hidden border">
           <div className="flex items-start gap-3 border-b border-border px-5 py-4">
             <div className="bg-selected-bg text-forest grid size-9 shrink-0 place-items-center rounded">
               <Sparkles className="size-5" strokeWidth={1.5} aria-hidden="true" />

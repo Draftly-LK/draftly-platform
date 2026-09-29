@@ -271,7 +271,7 @@ function DocumentProcessingReviewFlow({
             </div>
             <p className="text-muted-ink mt-2 text-xs">{t("overlayNote")}</p>
           </section>
-          <section className="border-border-strong bg-surface rounded border p-4">
+          <section className="border-border bg-surface rounded-card border p-4 shadow-card">
             <h2 className="font-semibold">{t("fieldsTitle")}</h2>
             <p className="text-muted-ink mb-4 text-sm">
               {t("fieldsDescription")}

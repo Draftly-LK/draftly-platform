@@ -184,7 +184,7 @@ function ApprovalScreenContent({
           <h2 className="mb-4 text-lg font-semibold">{t("gateTitle")}</h2>
 
           {/* Approval ready status */}
-          <div className="mb-6 rounded border border-border-strong bg-surface p-4">
+          <div className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
             <div className="flex items-center gap-3">
               {gate.approvalReady ? (
                 <CheckCircle2 className="size-5 text-forest" strokeWidth={1.5} aria-hidden="true" />
@@ -261,7 +261,7 @@ function ApprovalScreenContent({
                 </p>
               )}
               {showDeclaration ? (
-                <div className="rounded border border-border-strong bg-surface p-4">
+                <div className="rounded-card border border-border bg-surface p-4 shadow-card">
                   <div className="mb-4 max-w-2xl space-y-3">
                     <label className="flex items-start gap-3">
                       <input
@@ -313,7 +313,7 @@ function ApprovalScreenContent({
               {approvalList.items.map((approval) => (
                 <div
                   key={approval.id}
-                  className="flex items-start gap-4 rounded border border-border-strong bg-surface p-4 text-sm"
+                  className="flex items-start gap-4 rounded-card border border-border bg-surface p-4 text-sm shadow-card"
                 >
                   <div className="flex-1">
                     <div className="font-semibold">{approval.approverId}</div>
@@ -373,7 +373,7 @@ function DemoApprovalContent({
 }) {
   return (
     <AppShell matterId={matterId}>
-      <div className="rounded border border-border-strong bg-surface p-6">
+      <div className="rounded-card border border-border bg-surface p-6 shadow-card">
         <h1 className="text-2xl font-semibold">Approval</h1>
         <p className="text-muted-ink mt-2 text-sm">Demo mode: approval screen not available</p>
       </div>

@@ -217,7 +217,7 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
         {error && (
           <div
             role="alert"
-            className="border-border-strong bg-surface mt-5 flex items-start gap-3 rounded border p-4"
+            className="border-border bg-surface mt-5 flex items-start gap-3 rounded-card border p-4 shadow-card"
           >
             <AlertTriangle
               className="text-amber-text size-5 shrink-0"
@@ -321,7 +321,7 @@ function ProposalCard({
 }) {
   return (
     <div
-      className="border-border-strong bg-surface mt-2 ml-12 rounded border p-4"
+      className="border-border bg-surface mt-2 ml-12 rounded-card border p-4 shadow-card"
       data-testid="proposal-card"
     >
       <p className="text-sm font-semibold">{t("proposalTitle")}</p>
