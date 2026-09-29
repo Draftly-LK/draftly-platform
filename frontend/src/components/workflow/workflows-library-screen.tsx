@@ -234,7 +234,7 @@ function LibraryItem({
   action?: string;
 }) {
   const body = (
-    <div className="border-border-strong bg-surface hover:bg-hover-bg flex min-h-24 items-center gap-4 rounded border p-4">
+    <div className="border-border bg-surface hover:bg-hover-bg flex min-h-24 items-center gap-4 rounded-card border p-4 shadow-card">
       <span className="bg-selected-bg text-forest grid size-10 place-items-center rounded [&_svg]:size-5 [&_svg]:stroke-[1.5]">
         {icon}
       </span>

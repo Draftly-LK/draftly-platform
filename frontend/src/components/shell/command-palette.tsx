@@ -16,7 +16,14 @@ import { IconButton } from "@/components/ui/icon-button";
 
 const libraryFixtures = ["SYN-RTA-REF-01", "SYN-GAZ-02"];
 
-export function CommandPalette({ compact = false }: { compact?: boolean }) {
+export function CommandPalette({
+  compact = false,
+  tone = "light",
+}: {
+  compact?: boolean;
+  /** `dark` for the navy navigation rail. */
+  tone?: "light" | "dark";
+}) {
   // Fixture matters/documents/facts are demo-only; with the API configured the
   // palette lists no records (it still offers navigation and the library).
   const matters = demoOnly(matterFixtures);
@@ -48,10 +55,20 @@ export function CommandPalette({ compact = false }: { compact?: boolean }) {
             <Search className="size-5" strokeWidth={1.5} />
           </IconButton>
         ) : (
-          <button className="border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-2 rounded border px-3 text-left text-sm">
+          <button
+            className={
+              tone === "dark"
+                ? "border-border-on-dark text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-2 rounded border bg-white/5 px-3 text-left text-sm hover:bg-white/10"
+                : "border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-2 rounded border px-3 text-left text-sm"
+            }
+          >
             <Search className="size-4" strokeWidth={1.5} />
             <span className="min-w-0 flex-1 truncate">{t("search")}</span>
-            <kbd className="text-xs">{t("searchShortcut")}</kbd>
+            <kbd
+              className={`shrink-0 rounded border px-1 font-sans text-[10px] leading-4 ${tone === "dark" ? "border-border-on-dark" : "border-border"}`}
+            >
+              {t("searchShortcut")}
+            </kbd>
           </button>
         )}
       </Dialog.Trigger>

@@ -3,43 +3,52 @@
 @tailwind utilities;
 
 :root {
-  /* Values are fixed by docs/plan.md §Design system ("enforced, not advisory"
-     in CLAUDE.md) and asserted by tests/e2e/design-audit.spec.ts. Change the
-     plan and the audit first, then this block. */
-  --canvas: #f4f6f8;
+  /* "Trust & authority" palette (docs/review/ui-refresh): authority navy with a
+     restrained gold accent, cool neutral canvas, status hues unchanged.
+     Asserted by tests/e2e/design-audit.spec.ts — change both together. */
+  --canvas: #f3f5f8;
   --surface: #ffffff;
-  --ink: #172033;
-  --muted-ink: #5f6b7a;
-  --border: #d7dee7;
+  --ink: #0f1b2e;
+  --muted-ink: #566377;
+  --border: #dce2ea;
   --border-strong: #a7b3c2;
-  --forest: #203a5f;
-  --soft-green: #e6edf6;
+  --forest: #1b3358;
+  --soft-green: #e7eef8;
   --teal: #176b75;
   --amber: #9c5b0b;
   --amber-text: #784405;
   --red: #a43d45;
-  --selected-bg: #eaf0f7;
+  --selected-bg: #eaf0f8;
   --ring: #176b75;
-  --hover-bg: #edf1f5;
-  --active-bg: #e2e8ef;
+  --hover-bg: #eef2f7;
+  --active-bg: #e2e8f0;
   --disabled-fg: #929dac;
   --disabled-bg: #eef1f5;
   --amber-bg: #f8ead5;
   --teal-bg: #e0eef0;
   --red-bg: #f5e3e5;
+  /* Brand chrome: the navigation rail and hero bands sit on navy; gold marks
+     the one primary action and the current place, never status. */
+  --navy-950: #0b1628;
+  --navy-900: #0f1f38;
+  --navy-800: #172b4b;
+  --gold: #c69436;
+  --gold-strong: #74510f;
+  --gold-soft: #f6eedc;
   /* On-dark surface. The first-run hero sits on a photograph, and without
      these every dark surface reaches for literal white.
      Composed from the tokens above rather than written as fixed hexes, so
-     retinting the palette retints this too — an earlier version hardcoded the
-     green-era values and went on rendering them after the palette moved. */
+     retinting the palette retints this too. */
   --on-dark: var(--canvas);
   --on-dark-muted: color-mix(in srgb, var(--canvas) 68%, var(--muted-ink));
   --panel-dark: color-mix(in srgb, var(--ink) 72%, transparent);
   --border-on-dark: color-mix(in srgb, var(--canvas) 22%, transparent);
   --scrim: color-mix(in srgb, var(--ink) 55%, transparent);
-  --shadow-popover: 0 8px 24px rgb(27 33 29 / 0.12);
-  --shadow-dialog: 0 16px 48px rgb(27 33 29 / 0.16);
-  --shadow-toast: 0 6px 20px rgb(27 33 29 / 0.14);
+  --shadow-card: 0 1px 2px rgb(15 27 46 / 0.05), 0 1px 1px rgb(15 27 46 / 0.03);
+  --shadow-raised: 0 10px 24px -12px rgb(15 27 46 / 0.22), 0 2px 6px rgb(15 27 46 / 0.06);
+  --shadow-popover: 0 8px 24px rgb(15 27 46 / 0.12);
+  --shadow-dialog: 0 16px 48px rgb(15 27 46 / 0.16);
+  --shadow-toast: 0 6px 20px rgb(15 27 46 / 0.14);
 }
 
 * { box-sizing: border-box; }
@@ -48,10 +57,19 @@ body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var
 html[lang="si"] body { line-height: 1.75; }
 ::selection { background: var(--soft-green); }
 h1, h2, h3, .font-heading { font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; }
+h1, h2, h3 { letter-spacing: -0.01em; }
+.font-display { font-family: var(--font-serif), var(--font-noto-serif-si), Georgia, serif; letter-spacing: -0.015em; }
+a, button { transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
 button, input, textarea, select { font: inherit; letter-spacing: 0; }
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 table { font-variant-numeric: tabular-nums; }
+
+/* Inside a matter the matter header already carries the title band and the
+   language control, so a tab's own page header steps down a level. */
+[data-matter-header] ~ main [data-page-locale] { display: none; }
+[data-matter-header] ~ main [data-page-header] > div { padding-top: 1.25rem; padding-bottom: 1rem; }
+[data-matter-header] ~ main [data-page-header] h1 { font-size: 24px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

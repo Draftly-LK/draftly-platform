@@ -35,6 +35,7 @@ import type { Check } from "@/types/check";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 /**
  * Entry point: split between API-bound and demo modes using the same pattern
@@ -196,7 +197,7 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
       <div className="p-6">
         {/* Gates Summary Bar */}
         {gates && (
-          <section className="mb-6 rounded border border-border-strong bg-surface p-4">
+          <section className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
             <h2 className="text-xs font-semibold uppercase text-muted-ink">
               {t("gateSummary")}
             </h2>
@@ -396,6 +397,7 @@ interface DemoChecksContentProps {
 
 function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
   const t = useTranslations("checks");
+  const tRoot = useTranslations();
   const resolveCheck = useDemoStore((state) => state.resolveCheck);
 
   const [resolution, setResolution] = useState<{
@@ -429,12 +431,13 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
           {checks.map((check) => (
             <div
               key={check.id}
-              className="border-border bg-surface rounded border p-4"
+              className="border-border bg-surface rounded-card shadow-card border p-4"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold">{check.id}</h3>
-                  <p className="text-muted-ink text-sm">{check.status}</p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 space-y-2">
+                  <StatusBadge status={check.status} />
+                  <h3 className="font-semibold">{tRoot(check.descriptionKey)}</h3>
+                  <p className="text-muted-ink text-sm">{tRoot(check.suggestedResolutionKey)}</p>
                 </div>
                 <Button
                   onClick={() =>

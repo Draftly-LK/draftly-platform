@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Noto_Sans_Sinhala } from "next/font/google";
+import { IBM_Plex_Sans, Noto_Sans_Sinhala, Noto_Serif_Sinhala, Source_Serif_4 } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
@@ -18,6 +18,20 @@ const plex = IBM_Plex_Sans({
 const notoSansSi = Noto_Sans_Sinhala({
   subsets: ["sinhala"],
   variable: "--font-noto-sans-si",
+  display: "swap",
+});
+// Display face for page titles and the wordmark: a legal-register serif,
+// paired with its Sinhala counterpart so a Sinhala title keeps the same voice.
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-serif",
+  display: "swap",
+});
+const notoSerifSi = Noto_Serif_Sinhala({
+  subsets: ["sinhala"],
+  weight: ["500", "600", "700"],
+  variable: "--font-noto-serif-si",
   display: "swap",
 });
 
@@ -46,7 +60,7 @@ export default async function RootLayout({
   );
 
   return (
-    <html lang={locale} className={`${plex.variable} ${notoSansSi.variable}`}>
+    <html lang={locale} className={`${plex.variable} ${notoSansSi.variable} ${sourceSerif.variable} ${notoSerifSi.variable}`}>
       {/* Browser extensions such as Grammarly add data attributes to body
           before React hydrates. Limit suppression to this host element so
           genuine mismatches inside the application remain visible. */}

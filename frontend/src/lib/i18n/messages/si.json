@@ -172,7 +172,15 @@
     "examination": "Examination",
     "commonWorkflowsTitle": "Common workflows",
     "commonWorkflowsBody": "The RTA instruments a practice meets most often. Only those Draftly prepares in this release can be started from here.",
-    "viewAllWorkflows": "View all workflows"
+    "viewAllWorkflows": "View all workflows",
+    "eyebrow": "Registration of Title practice",
+    "snapshot": {
+      "title": "Practice at a glance",
+      "open": "Open matters",
+      "needsReview": "Need your review",
+      "drafting": "In drafting",
+      "failed": "Counts could not be loaded."
+    }
   },
   "obligations": {
     "monthlyList": "Monthly list deadline",

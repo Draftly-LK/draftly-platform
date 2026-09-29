@@ -21,7 +21,7 @@ export function LocaleToggle() {
     <div
       aria-label={t("locale")}
       data-locale={locale}
-      className="border-border-strong bg-surface inline-flex h-10 items-center rounded border p-1"
+      className="border-border-strong bg-surface text-ink inline-flex h-10 items-center rounded border p-1"
       role="group"
     >
       <Languages aria-hidden="true" className="mx-2 size-4" strokeWidth={1.5} />

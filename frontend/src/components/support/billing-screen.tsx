@@ -13,7 +13,7 @@ export function BillingScreen() {
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="mx-auto max-w-4xl space-y-6 p-6">
-        <section className="border-border-strong bg-surface rounded border p-6">
+        <section className="border-border bg-surface rounded-card border p-6 shadow-card">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-muted-ink text-xs font-semibold uppercase">
@@ -52,12 +52,12 @@ export function BillingScreen() {
         </section>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <section className="border-border-strong bg-surface rounded border p-6">
+          <section className="border-border bg-surface rounded-card border p-6 shadow-card">
             <CreditCard className="text-forest size-6" strokeWidth={1.5} />
             <h2 className="mt-4 text-xl font-semibold">{t("paymentMethod")}</h2>
             <p className="text-muted-ink mt-2 text-sm">{t("paymentEmpty")}</p>
           </section>
-          <section className="border-border-strong bg-surface rounded border p-6">
+          <section className="border-border bg-surface rounded-card border p-6 shadow-card">
             <ReceiptText className="text-forest size-6" strokeWidth={1.5} />
             <h2 className="mt-4 text-xl font-semibold">{t("billingHistory")}</h2>
             <p className="text-muted-ink mt-2 text-sm">{t("historyEmpty")}</p>
