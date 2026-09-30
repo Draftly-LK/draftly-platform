@@ -24,14 +24,9 @@ export function CommonWorkflows() {
 
   return (
     <section aria-labelledby="common-workflows-title" className="border-border border-b py-8">
-      <div className="flex items-center justify-between gap-4">
-        <h2 id="common-workflows-title" className="text-2xl font-semibold">
-          {t("commonWorkflowsTitle")}
-        </h2>
-        <Link href="/workflows" className="text-teal font-medium hover:underline">
-          {t("viewAllWorkflows")}
-        </Link>
-      </div>
+      <h2 id="common-workflows-title" className="text-2xl font-semibold">
+        {t("commonWorkflowsTitle")}
+      </h2>
       <p className="text-muted-ink mt-1 max-w-3xl text-sm">{t("commonWorkflowsBody")}</p>
       <div className="border-border-strong bg-surface mt-3 grid overflow-hidden rounded border sm:grid-cols-2 lg:grid-cols-3">
         {workflows.map(({ subtype, family, available }, index) => {

@@ -63,7 +63,8 @@ test("rails collapse below 768 and representative screens reflow", async ({
   await context.close();
 });
 
-test("English and Sinhala locale scaffolds hold across the demo path", async ({
+// Skipped while the language switcher is hidden; re-enable with LocaleToggle.
+test.skip("English and Sinhala locale scaffolds hold across the demo path", async ({
   page,
 }) => {
   test.setTimeout(90_000);

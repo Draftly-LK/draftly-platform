@@ -167,19 +167,9 @@ test.describe("authoritative screen regions and governed states are present", ()
     await expect(page.getByText("Live session", { exact: true })).toBeVisible();
   });
 
-  test("library surfaces: workflows, history, and the authority library", async ({
+  test("library surfaces: history and the authority library", async ({
     page,
   }) => {
-    await page.goto("/workflows");
-    await page.getByRole("tab", { name: "Draft templates" }).click();
-    await expect(page.getByText("Form 8 transfer template")).toBeVisible();
-    await page.getByRole("tab", { name: "Question sets" }).click();
-    await expect(page.getByText("RTA examination question set")).toBeVisible();
-    await page.getByRole("tab", { name: "Worked examples" }).click();
-    await expect(
-      page.getByText("Synthetic transfer examination example"),
-    ).toBeVisible();
-
     await page.goto("/history");
     await expect(
       page.getByText("Resume synthetic RTA transfer matter"),

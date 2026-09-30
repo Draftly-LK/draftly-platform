@@ -5,6 +5,8 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { ProvisionGate } from "@/components/auth/provision-gate";
 import { MultilingualProvider } from "@/components/shell/multilingual-provider";
+import { UserButtonProvider } from "@/components/shell/user-button";
+import { isAuthBypassEnabled } from "@/lib/auth/bypass";
 import { isClerkConfigured } from "@/lib/auth/clerk";
 import { isMultilingualEnabled } from "@/lib/i18n/multilingual";
 import "@/styles/globals.css";
@@ -57,7 +59,11 @@ export default async function RootLayout({
           timeZone="Asia/Colombo"
         >
           <MultilingualProvider enabled={multilingual}>
-            {body}
+            {/* Resolved here, on the server: AUTH_BYPASS and CLERK_SECRET_KEY
+                are undefined in the browser, where most screens render. */}
+            <UserButtonProvider demoMode={isAuthBypassEnabled() || !isClerkConfigured()}>
+              {body}
+            </UserButtonProvider>
           </MultilingualProvider>
         </NextIntlClientProvider>
       </body>

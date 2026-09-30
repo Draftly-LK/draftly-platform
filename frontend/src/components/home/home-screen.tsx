@@ -3,7 +3,6 @@ import {
   CalendarClock,
   FilePlus2,
   MessageSquareText,
-  Workflow,
 } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -32,12 +31,6 @@ export async function HomeScreen() {
       body: t("askBody"),
       icon: MessageSquareText,
     },
-    {
-      href: "/workflows",
-      title: t("workflowTitle"),
-      body: t("workflowBody"),
-      icon: Workflow,
-    },
   ];
   return (
     <AppShell>
@@ -50,7 +43,7 @@ export async function HomeScreen() {
           <h2 id="command-title" className="text-2xl font-semibold">
             {t("commandTitle")}
           </h2>
-          <div className="border-border-strong bg-surface mt-4 grid overflow-hidden rounded border md:grid-cols-3">
+          <div className="border-border-strong bg-surface mt-4 grid overflow-hidden rounded border md:grid-cols-2">
             {actions.map(({ href, title, body, icon: Icon }, index) => (
               <Link
                 href={href}

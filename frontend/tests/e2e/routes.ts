@@ -22,8 +22,6 @@ export const inventoryRoutes = [
   "/matters/matter-rta-001/missing-documents",
   "/matters/matter-rta-001/processing",
   "/profile",
-  "/workflows",
-  "/workflows/workflow-exam-001",
   "/history",
   "/library",
   "/settings",

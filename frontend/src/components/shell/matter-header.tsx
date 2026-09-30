@@ -12,7 +12,7 @@ import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { familyLabelKey, subtypeLabelKey } from "@/lib/rta/taxonomy";
 import { useDemoStore } from "@/lib/store";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
-import { LocaleToggle } from "./locale-toggle";
+import { HeaderUserButton } from "./user-button";
 import { STAGE_ORDER, stageForState } from "./matter-stage";
 
 const NAV_TABS = [
@@ -147,7 +147,8 @@ function MatterHeaderShell({
 
   return (
     <header className="border-border bg-surface border-b">
-      <div className="flex min-h-24 items-start gap-4 px-6 py-4">
+      {/* pl-16 below md keeps the title clear of the fixed mobile menu button. */}
+      <div className="flex min-h-24 items-start gap-4 py-4 pl-16 pr-6 md:pl-6">
         <div className="min-w-0 flex-1">
           <div className="text-muted-ink flex flex-wrap items-center gap-2 text-xs">
             <span className="border-border-strong rounded-full border px-2 py-1">
@@ -169,10 +170,10 @@ function MatterHeaderShell({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <LocaleToggle />
           <IconButton label={t("menu")}>
             <MoreHorizontal className="size-5" strokeWidth={1.5} />
           </IconButton>
+          <HeaderUserButton />
         </div>
       </div>
       {data.state && <MatterStageStepper state={data.state} />}

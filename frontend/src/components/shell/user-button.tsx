@@ -4,6 +4,7 @@ import { Show, useUser } from "@clerk/nextjs";
 import { CircleUserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { createContext, use } from "react";
 
 function getInitials(name: string): string {
   return name
@@ -97,4 +98,25 @@ function DemoHeaderProfile() {
 
 export function UserButton({ demoMode = false }: { demoMode?: boolean }) {
   return demoMode ? <DemoHeaderProfile /> : <ClerkHeaderProfile />;
+}
+
+/**
+ * Demo mode depends on server-only env vars, so the root layout resolves it and
+ * page headers (server or client) read it from here.
+ */
+const DemoModeContext = createContext(false);
+
+export function UserButtonProvider({
+  demoMode,
+  children,
+}: {
+  demoMode: boolean;
+  children: React.ReactNode;
+}) {
+  return <DemoModeContext value={demoMode}>{children}</DemoModeContext>;
+}
+
+/** The profile button for the right end of a page or matter header. */
+export function HeaderUserButton() {
+  return <UserButton demoMode={use(DemoModeContext)} />;
 }

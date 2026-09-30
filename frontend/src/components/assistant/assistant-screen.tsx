@@ -122,8 +122,8 @@ export function AssistantScreen() {
         {announcement}
       </div>
       <div
-        className={`grid min-h-[calc(100vh-105px)] min-[1024px]:grid-cols-[260px_minmax(0,1fr)] ${
-          evidenceOpen ? "min-[1280px]:grid-cols-[260px_minmax(0,1fr)_380px]" : ""
+        className={`relative grid min-h-[calc(100vh-105px)] lg:grid-cols-[auto_minmax(0,1fr)] ${
+          evidenceOpen ? "min-[1280px]:grid-cols-[auto_minmax(0,1fr)_380px]" : ""
         }`}
       >
         <ConversationRail
