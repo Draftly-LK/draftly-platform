@@ -2,12 +2,14 @@
 
 import { AlertCircle, ChevronRight, File, FileWarning, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { humanizeMessageKey } from "@/lib/i18n/humanize";
+import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { getDocumentInbox } from "@/lib/api/documents";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { ApiDocumentInbox } from "@/types/rta";
@@ -40,6 +42,9 @@ function DocumentsFlow({
 }) {
   const t = useTranslations("documents");
   const tProcessing = useTranslations("processing");
+  const fileStateLabel = useEnumLabel("enums.sourceFileState");
+  const boundaryLabel = useEnumLabel("enums.boundaryStatus");
+  const classLabel = (id: string) => humanizeMessageKey(id.split(".").pop() ?? id);
   const [inbox, setInbox] = useState<ApiDocumentInbox | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +60,7 @@ function DocumentsFlow({
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
-          setError(cause instanceof ApiError ? cause.message : "Failed to load documents");
+          setError(apiErrorMessage(cause, t("loadError")));
         }
       })
       .finally(() => {
@@ -65,7 +70,7 @@ function DocumentsFlow({
     return () => {
       cancelled = true;
     };
-  }, [getToken, matterId]);
+  }, [getToken, matterId, t]);
 
   if (loading) {
     return (
@@ -182,7 +187,7 @@ function DocumentsFlow({
                       <th className="px-3">{t("boundary")}</th>
                       <th className="px-3">{t("pages")}</th>
                       <th className="px-3">{t("multipleSource")}</th>
-                      <th className="px-3">Actions</th>
+                      <th className="px-3">{t("actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -208,20 +213,20 @@ function DocumentsFlow({
                           <td className="px-3">
                             <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
                               {doc.classId
-                                ? doc.classId.split(".").pop() || doc.classId
-                                : "Unidentified"}
+                                ? classLabel(doc.classId)
+                                : t("unidentifiedClass")}
                             </span>
                           </td>
                           <td className="px-3">
                             <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
-                              {doc.boundaryStatus}
+                              {boundaryLabel(doc.boundaryStatus)}
                             </span>
                           </td>
                           <td className="px-3 text-sm">
                             {doc.fragments.length}
                           </td>
                           <td className="px-3 text-sm">
-                            {doc.spansMultipleSources ? "Yes" : "No"}
+                            {doc.spansMultipleSources ? t("yes") : t("no")}
                           </td>
                           <td className="px-3">
                             {needsReview ? (
@@ -229,7 +234,7 @@ function DocumentsFlow({
                                 href={`/matters/${matterId}/documents/${doc.id}/review`}
                               >
                                 <Button>
-                                  Review
+                                  {t("reviewAction")}
                                   <ChevronRight className="size-4" strokeWidth={1.5} />
                                 </Button>
                               </Link>
@@ -281,7 +286,7 @@ function DocumentsFlow({
                         </td>
                         <td className="px-3">
                           <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
-                            {file.state}
+                            {fileStateLabel(file.state)}
                           </span>
                         </td>
                         <td className="px-3">
@@ -308,7 +313,7 @@ function DocumentsUnavailable({ matterId }: { matterId: string }) {
       <div className="p-6">
         <div className="border-border bg-surface rounded-card border p-6 shadow-card">
           <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
-          <p className="mt-2 text-sm">Backend not configured.</p>
+          <p className="mt-2 text-sm">{t("backendNotConfigured")}</p>
         </div>
       </div>
     </AppShell>

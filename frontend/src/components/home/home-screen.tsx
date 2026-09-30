@@ -12,7 +12,6 @@ import { CommonWorkflows } from "@/components/home/common-workflows";
 import { PracticeSnapshot } from "@/components/home/practice-snapshot";
 import { RecentMatters } from "@/components/home/recent-matters";
 import { AppShell } from "@/components/shell/app-shell";
-import { LocaleToggle } from "@/components/shell/locale-toggle";
 
 export async function HomeScreen() {
   const t = await getTranslations("home");
@@ -48,12 +47,7 @@ export async function HomeScreen() {
       >
         <div className="grid items-end gap-8 px-6 pb-9 pt-8 lg:grid-cols-[minmax(0,1fr)_440px] lg:px-10">
           <div className="animate-rise-in">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-gold text-xs font-semibold uppercase tracking-[0.12em]">{t("eyebrow")}</p>
-              <div className="lg:hidden">
-                <LocaleToggle />
-              </div>
-            </div>
+            <p className="text-gold text-xs font-semibold uppercase tracking-[0.12em]">{t("eyebrow")}</p>
             <h1 id="home-title" className="font-display mt-3 text-[44px] font-semibold leading-[1.05] sm:text-[52px]">
               {t("title")}
             </h1>
@@ -76,9 +70,6 @@ export async function HomeScreen() {
             </div>
           </div>
           <div className="animate-rise-in space-y-3 [animation-delay:80ms]">
-            <div className="hidden justify-end lg:flex">
-              <LocaleToggle />
-            </div>
             <PracticeSnapshot />
           </div>
         </div>

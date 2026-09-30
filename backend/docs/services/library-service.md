@@ -209,3 +209,10 @@ Recommended defaults in bold; confirm or override before coding.
 5. **V0 case-law visibility.** Keep case law disabled in the public catalogue
    until each record is independently verified and approved. Do not use the
    CommonLII harvest as production provenance.
+
+## 11. Corpus inventory
+
+`library-corpus-inventory.md` lists, by curriculum topic and source type, what
+the research corpus holds (metadata only). It does not change the trust boundary
+in §6: the case-law collections it lists stay internal-research only, and the
+topic vocabulary it shows is a candidate for §10.2, not an adopted taxonomy.

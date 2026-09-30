@@ -16,7 +16,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { isApiEnabled } from "@/lib/api/client";
 import { useRecentMatters } from "@/lib/api/use-recent-matters";
 import { useDemoStore } from "@/lib/store";
@@ -30,6 +30,15 @@ export function Sidebar() {
   const pathname = usePathname();
   const matters = useDemoStore((state) => state.matters);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
   const links = [
     { href: "/", label: t("home"), icon: Home },
     { href: "/matters", label: t("matters"), icon: FileStack },

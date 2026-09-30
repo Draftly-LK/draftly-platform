@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { generateForm, listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
@@ -98,7 +98,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
       setForms(formsResult.items);
       setMatter(matterResult);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("loadError"));
+      setError(apiErrorMessage(cause, t("loadError")));
     } finally {
       setLoading(false);
     }
@@ -123,7 +123,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
       const newForm = await generateForm(getToken, matterId);
       router.push(`/matters/${matterId}/drafts/${newForm.id}`);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("generationError"));
+      setError(apiErrorMessage(cause, t("generationError")));
       setGenerating(false);
     }
   }, [getToken, matterId, isDemoMode, router, t]);

@@ -9,8 +9,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { humanizeMessageKey } from "@/lib/i18n/humanize";
+import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import { useEffect, useState } from "react";
-import { ApiError, isApiEnabled } from "@/lib/api/client";
+import { isApiEnabled, apiErrorMessage } from "@/lib/api/client";
 import { getMatter } from "@/lib/api/matters";
 import { listIssues } from "@/lib/api/checks";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
@@ -61,7 +63,7 @@ function ApiBoundMissingDocumentsScreen({ matterId }: { matterId: string }) {
         }
       } catch (cause) {
         if (!cancelled) {
-          setError(cause instanceof ApiError ? cause.message : t("error"));
+          setError(apiErrorMessage(cause, t("error")));
         }
       } finally {
         if (!cancelled) {
@@ -188,6 +190,13 @@ function ApiBoundMissingDocumentsScreen({ matterId }: { matterId: string }) {
 }
 
 function IssueRow({ issue }: { issue: ApiLegalIssue }) {
+  const tRoot = useTranslations();
+  const severityLabel = useEnumLabel("checks.severity");
+  const stateLabel = useEnumLabel("checks.state");
+  // The issue's own summary is the readable name; the type id is only a fallback.
+  const summary = tRoot.has(issue.summaryKey)
+    ? tRoot(issue.summaryKey)
+    : humanizeMessageKey(issue.issueTypeId);
   const SeverityIcon =
     issue.severity === "BLOCKING"
       ? AlertOctagon
@@ -218,15 +227,15 @@ function IssueRow({ issue }: { issue: ApiLegalIssue }) {
             strokeWidth={1.5}
             aria-hidden="true"
           />
-          <span className="font-medium">{issue.issueTypeId}</span>
+          <span className="font-medium">{summary}</span>
         </div>
       </td>
-      <td className="px-3 text-sm">{issue.severity}</td>
+      <td className="px-3 text-sm">{severityLabel(issue.severity)}</td>
       <td className="px-3">
         <span
           className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${stateColor}`}
         >
-          {issue.state}
+          {stateLabel(issue.state)}
         </span>
       </td>
       <td className="px-3 text-sm text-muted-ink">

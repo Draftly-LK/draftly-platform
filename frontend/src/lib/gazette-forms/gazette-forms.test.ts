@@ -3,13 +3,15 @@ import { fileURLToPath } from "node:url";
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 import { GAZETTE_FORMS, gazetteFormFor, listSlots } from "./index";
+import { SINHALA_GAZETTE_FORMS } from "./sinhala";
+import type { GazetteForm } from "./types";
 
 const transcriptionDir = fileURLToPath(
   new URL("../../../../docs/reference/forms/transcriptions/", import.meta.url),
 );
 
-function transcription(formNumber: string): string[] {
-  return readFileSync(`${transcriptionDir}form-${formNumber}.txt`, "utf8")
+function transcription(language: string, formNumber: string): string[] {
+  return readFileSync(`${transcriptionDir}${language}/form-${formNumber}.txt`, "utf8")
     .split("\n")
     .filter((line) => line.trim().length > 0);
 }
@@ -45,8 +47,15 @@ function fragments(node: JSONContent): string[] {
   return out.map(key).filter((fragment) => fragment.length > 0);
 }
 
-describe.each(Object.values(GAZETTE_FORMS))("Gazette form $formNumber", (form) => {
-  const printed = transcription(form.formNumber);
+// The served set and the separately kept Sinhala set are both held to their
+// own edition's transcription.
+const EVERY_EDITION: GazetteForm[] = [
+  ...Object.values(GAZETTE_FORMS),
+  ...Object.values(SINHALA_GAZETTE_FORMS).filter((form) => GAZETTE_FORMS[form.templateId] !== form),
+];
+
+describe.each(EVERY_EDITION)("Gazette form $formNumber ($language)", (form) => {
+  const printed = transcription(form.language, form.formNumber);
   const printedKey = printed.map(key).join("");
   const templateKey = fragments(form.document).join("");
 
@@ -73,13 +82,24 @@ describe.each(Object.values(GAZETTE_FORMS))("Gazette form $formNumber", (form) =
   });
 
   it("is registered under its backend template id", () => {
-    expect(gazetteFormFor(form.templateId)).toBe(form);
+    const registered = form.language === "si" ? SINHALA_GAZETTE_FORMS : GAZETTE_FORMS;
+    expect(registered[form.templateId]).toBe(form);
   });
 });
 
 describe("listSlots", () => {
   it("walks blanks in printed order with their captions", () => {
     const slots = listSlots(GAZETTE_FORMS["rta.reg.2022.form.08"]!.document);
+    expect(slots.slice(0, 3).map((slot) => [slot.id, slot.field, slot.caption, slot.itemNumber])).toEqual([
+      ["f08.1.a", "district", "(a) District", "1."],
+      ["f08.1.aa", "ds_division", "(b) Divisional Secretary’s Division", "1."],
+      ["f08.1.ae", "gn_division", "(c) Grama Niladhari Division", "1."],
+    ]);
+    expect(slots[0]!.itemTitle).toBe("Particulars of Land Parcel");
+  });
+
+  it("walks the Sinhala edition the same way, under its own captions", () => {
+    const slots = listSlots(SINHALA_GAZETTE_FORMS["rta.reg.2022.form.08"]!.document);
     expect(slots.slice(0, 3).map((slot) => [slot.id, slot.field, slot.caption, slot.itemNumber])).toEqual([
       ["f08.1.a", "district", "(අ) දිස්ත්‍රික්කය", "1."],
       ["f08.1.aa", "ds_division", "(ආ) ප්‍රාදේශීය ලේකම් කොට්ඨාසය", "1."],

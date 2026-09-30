@@ -2,12 +2,13 @@
 
 import { AlertCircle, ChevronRight, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { listSourceFiles, processSourceFile } from "@/lib/api/documents";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { ApiProcessingRun, ApiSourceFile } from "@/types/rta";
@@ -43,6 +44,7 @@ function ProcessingFlow({
   matterId: string;
 }) {
   const t = useTranslations("processing");
+  const fileStateLabel = useEnumLabel("enums.sourceFileState");
   const [sourceFiles, setSourceFiles] = useState<ProcessingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +63,7 @@ function ProcessingFlow({
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
-          setError(cause instanceof ApiError ? cause.message : t("error"));
+          setError(apiErrorMessage(cause, t("error")));
         }
       })
       .finally(() => {
@@ -95,7 +97,7 @@ function ProcessingFlow({
           )
         );
       } catch (cause: unknown) {
-        const message = cause instanceof ApiError ? cause.message : t("error");
+        const message = apiErrorMessage(cause, t("error"));
         setError(message);
         setSourceFiles((current) =>
           current.map((f) =>
@@ -173,7 +175,7 @@ function ProcessingFlow({
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{file.originalFilename}</p>
                     <p className="text-muted-ink text-sm">
-                      {file.pageCount ? `${file.pageCount} pages` : ""}
+                      {file.pageCount ? t("pageCount", { count: file.pageCount }) : ""}
                     </p>
                   </div>
                   {file.isProcessing ? (
@@ -215,7 +217,7 @@ function ProcessingFlow({
                       ? t("succeeded")
                       : file.state === "PROCESSING_FAILED"
                         ? t("failed")
-                        : file.state}
+                        : fileStateLabel(file.state)}
                   </span>
                 </li>
               ))}
@@ -246,7 +248,7 @@ function ProcessingUnavailable({ matterId }: { matterId: string }) {
       <div className="p-6">
         <div className="border-border bg-surface rounded-card border p-6 shadow-card">
           <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
-          <p className="mt-2 text-sm">Backend not configured.</p>
+          <p className="mt-2 text-sm">{t("backendNotConfigured")}</p>
         </div>
       </div>
     </AppShell>

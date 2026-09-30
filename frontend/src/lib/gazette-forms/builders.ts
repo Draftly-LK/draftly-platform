@@ -98,7 +98,16 @@ export function grid(
   cols = 2,
   variant: "fields" | "signatures" = "fields",
 ): JSONContent {
-  return { type: "gzGrid", attrs: { cols, variant }, content: children };
+  return { type: "gzGrid", attrs: { cols, variant, rows: null }, content: children };
+}
+
+/**
+ * Lines that fill down each column before the next, `rows` to a column. The
+ * page prints Item 1 this way, (a)-(f) beside (g)-(l), so document order, and
+ * the order field-by-field review walks, is (a) to (l).
+ */
+export function columnGrid(children: JSONContent[], rows: number, cols = 2): JSONContent {
+  return { type: "gzGrid", attrs: { cols, variant: "fields", rows }, content: children };
 }
 
 export function signatures(children: JSONContent[]): JSONContent {

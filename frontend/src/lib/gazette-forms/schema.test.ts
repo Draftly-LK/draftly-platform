@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { form08Document } from "./form-08";
-import { form12Document } from "./form-12";
+import { form08Document } from "./english/form-08";
+import { form12Document } from "./english/form-12";
 import { GAZETTE_NODES, GAZETTE_TEMPLATE_LOAD, GazetteLock, GzSlot } from "./schema";
 
 let editor: Editor | null = null;

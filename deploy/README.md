@@ -112,7 +112,6 @@ Environment variables (Production):
 | `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
 | `NEXT_PUBLIC_CLERK_AFTER_SIGN_OUT_URL` | `/sign-in` |
 | `NEXT_PUBLIC_USE_MOCK_PIPELINE` | `false` |
-| `MULTILINGUAL_LANGUAGE_SUPPORT` | `true` |
 
 Do not set `AUTH_BYPASS`. `NEXT_PUBLIC_*` values are baked in at build time, so
 redeploy on Vercel after changing them. `frontend/vercel.json` turns off

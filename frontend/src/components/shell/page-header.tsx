@@ -1,5 +1,3 @@
-import { LocaleToggle } from "./locale-toggle";
-
 /**
  * Page title band shared by every workspace screen: an optional eyebrow, the
  * title in the display serif, a one-line description, and actions on the right.
@@ -29,9 +27,6 @@ export function PageHeader({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {action}
-          <span data-page-locale>
-            <LocaleToggle />
-          </span>
         </div>
       </div>
     </div>

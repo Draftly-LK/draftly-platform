@@ -6,13 +6,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { IconButton } from "@/components/ui/icon-button";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { familyLabelKey, subtypeLabelKey } from "@/lib/rta/taxonomy";
 import { useDemoStore } from "@/lib/store";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
-import { LocaleToggle } from "./locale-toggle";
 import { STAGE_ORDER, stageForState } from "./matter-stage";
 
 const NAV_TABS = [
@@ -72,7 +71,7 @@ function ApiBoundMatterHeader({ matterId }: { matterId: string }) {
         if (!cancelled) setMatter(result);
       })
       .catch((cause: unknown) => {
-        if (!cancelled) setError(cause instanceof ApiError ? cause.message : t("loadError"));
+        if (!cancelled) setError(apiErrorMessage(cause, t("loadError")));
       });
     return () => {
       cancelled = true;
@@ -174,7 +173,6 @@ function MatterHeaderShell({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <LocaleToggle />
           <IconButton label={t("menu")}>
             <MoreHorizontal className="size-5" strokeWidth={1.5} />
           </IconButton>

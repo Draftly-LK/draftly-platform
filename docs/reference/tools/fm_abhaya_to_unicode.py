@@ -9,7 +9,7 @@ corrected: spelling variants printed in the gazette are kept as printed.
 Usage (from the repository root):
 
     uv run --with pymupdf python docs/reference/tools/fm_abhaya_to_unicode.py \
-        docs/reference/1886-58_S.pdf 08 > docs/reference/forms/transcriptions/form-08.txt
+        docs/reference/1886-58_S.pdf 08 > docs/reference/forms/transcriptions/si/form-08.txt
 
 Every transcription must still be proof-read against the page image before a
 template relies on it; unmapped glyphs are reported on stderr.

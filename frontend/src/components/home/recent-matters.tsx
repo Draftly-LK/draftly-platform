@@ -106,6 +106,8 @@ function RecentMatterRows({
             date: format.dateTime(new Date(matter.updatedAt), {
               day: "numeric",
               month: "short",
+              calendar: "gregory",
+              numberingSystem: "latn",
             }),
           })}
           <ArrowRight

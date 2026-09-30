@@ -3,14 +3,17 @@
 import { AlertCircle, CheckCircle, FileText, LoaderCircle, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import { useEffect, useState } from "react";
-import { ApiError, isApiEnabled } from "@/lib/api/client";
-import { listForms, getForm } from "@/lib/api/drafts";
+import { isApiEnabled, apiErrorMessage } from "@/lib/api/client";
+import { listForms, getForm, recordFieldDecision } from "@/lib/api/drafts";
 import { listCheckResults } from "@/lib/api/checks";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
-import type { ApiFormField, ApiCheckResult, ApiFactCandidate } from "@/types/rta";
+import { FieldReviewCard, type FieldDecision } from "@/components/gazette/field-review-card";
+import { Button } from "@/components/ui/button";
+import type { ApiFormField, ApiCheckResult, ApiFactCandidate, ApiGeneratedForm } from "@/types/rta";
 
 /** Shared prop type for a translator passed down to a child component. */
 type Translator = ReturnType<typeof useTranslations>;
@@ -27,7 +30,11 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
   const getToken = useTokenProvider();
   const t = useTranslations("facts");
   const tRoot = useTranslations();
-  const [fields, setFields] = useState<ApiFormField[]>([]);
+  const [form, setForm] = useState<ApiGeneratedForm | null>(null);
+  const fields = form?.fields ?? [];
+  const [openFieldId, setOpenFieldId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [checkResults, setCheckResults] = useState<ApiCheckResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +53,7 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
           // Get the most recent form
           const form = await getForm(getToken, firstForm.id);
           if (!cancelled) {
-            setFields(form.fields);
+            setForm(form);
           }
         }
 
@@ -57,7 +64,7 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
         }
       } catch (cause) {
         if (!cancelled) {
-          setError(cause instanceof ApiError ? cause.message : t("error"));
+          setError(apiErrorMessage(cause, t("error")));
         }
       } finally {
         if (!cancelled) {
@@ -71,6 +78,29 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
       cancelled = true;
     };
   }, [getToken, matterId, t]);
+
+  // A lawyer may confirm, correct or clear a fact. The server keeps the
+  // extracted value and the history, and refuses to retype a critical
+  // particular, so this only sends the decision.
+  const decide = async (field: ApiFormField, decision: FieldDecision) => {
+    if (!form) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await recordFieldDecision(
+        getToken,
+        form.id,
+        { fieldId: field.fieldId, ...decision },
+        form.version,
+      );
+      setForm(updated);
+      setOpenFieldId(null);
+    } catch (cause) {
+      setSaveError(apiErrorMessage(cause, t("decisionError")));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Filter to only fields with facts
   const factsFields = fields.filter((field) => field.factId !== null);
@@ -160,9 +190,10 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
                 <th className="px-3 text-left">{t("fact")}</th>
                 <th className="px-3 text-left">{t("value")}</th>
                 <th className="px-3 text-left">{t("source")}</th>
-                <th className="px-3 text-left">Version</th>
-                <th className="px-3 text-left">Status</th>
-                <th className="px-3 text-left">Evidence</th>
+                <th className="px-3 text-left">{t("versionColumn")}</th>
+                <th className="px-3 text-left">{t("status")}</th>
+                <th className="px-3 text-left">{t("evidenceColumn")}</th>
+                <th className="px-3 text-left">{t("actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-border divide-y">
@@ -173,6 +204,15 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
                   checks={factToChecks.get(field.factId!) || []}
                   t={t}
                   tRoot={tRoot}
+                  open={openFieldId === field.id}
+                  onToggle={() => {
+                    setSaveError(null);
+                    setOpenFieldId(openFieldId === field.id ? null : field.id);
+                  }}
+                  saving={saving}
+                  saveError={openFieldId === field.id ? saveError : null}
+                  onDecision={(decision) => void decide(field, decision)}
+                  readOnly={form?.state === "APPROVED"}
                 />
               ))}
             </tbody>
@@ -188,18 +228,31 @@ function FactRow({
   checks,
   t,
   tRoot,
+  open,
+  onToggle,
+  saving,
+  saveError,
+  onDecision,
+  readOnly,
 }: {
   field: ApiFormField;
   checks: ApiCheckResult[];
   t: Translator;
   tRoot: Translator;
+  open: boolean;
+  onToggle: () => void;
+  saving: boolean;
+  saveError: string | null;
+  onDecision: (decision: FieldDecision) => void;
+  readOnly: boolean;
 }) {
   return (
+    <>
     <tr className="border-border h-11 hover:bg-hover-bg">
       <td className="px-3 font-medium">{tRoot(field.labelKey)}</td>
       <td className="px-3 max-w-64 truncate text-sm">{field.displayValue}</td>
       <td className="px-3 text-sm">
-        <span className="text-muted-ink">Form {field.sectionKey}</span>
+        <span className="text-muted-ink">{t("formSection", { section: field.sectionKey })}</span>
       </td>
       <td className="px-3 text-sm">{field.factVersion ?? "—"}</td>
       <td className="px-3">
@@ -211,24 +264,48 @@ function FactRow({
             <StatusBadge icon="warning" label={t("awaitingConfirmation")} />
           )}
           {field.reviewedBy && (
-            <span className="text-muted-ink text-xs">Reviewed by: {field.reviewedBy}</span>
+            <span className="text-muted-ink text-xs">{t("reviewedByLabel", { reviewer: field.reviewedBy })}</span>
           )}
         </div>
       </td>
       <td className="px-3">
         <div className="flex flex-col gap-1 text-xs text-muted-ink">
           {field.evidenceReferenceIds.length > 0 && (
-            <span>Evidence references: {field.evidenceReferenceIds.length}</span>
+            <span>{t("evidenceReferences", { count: field.evidenceReferenceIds.length })}</span>
           )}
           {checks.length > 0 && (
-            <span>Referenced by {checks.length} check(s)</span>
+            <span>{t("referencedByChecks", { count: checks.length })}</span>
           )}
           {field.conflictingCandidates.length > 0 && (
             <ConflictIndicator candidates={field.conflictingCandidates} t={t} />
           )}
         </div>
       </td>
+      <td className="px-3">
+        <Button aria-expanded={open} onClick={onToggle}>
+          {open ? t("closeReview") : readOnly ? t("viewFact") : t("reviewFact")}
+        </Button>
+      </td>
     </tr>
+    {open && (
+      <tr className="border-border border-b">
+        <td colSpan={7} className="bg-canvas px-3 py-3">
+          {saveError && (
+            <p role="alert" className="text-red mb-2 flex items-center gap-2 text-sm">
+              <AlertCircle className="size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+              {saveError}
+            </p>
+          )}
+          <FieldReviewCard
+            field={field}
+            busy={saving}
+            readOnly={readOnly}
+            onDecision={onDecision}
+          />
+        </td>
+      </tr>
+    )}
+    </>
   );
 }
 
@@ -240,6 +317,7 @@ function ConflictIndicator({
   t: Translator;
 }) {
   const [open, setOpen] = useState(false);
+  const factStatusLabel = useEnumLabel("enums.factStatus");
 
   return (
     <div className="rounded border border-amber bg-amber-bg/50 p-2">
@@ -255,12 +333,12 @@ function ConflictIndicator({
         <div className="mt-2 space-y-2 border-t border-amber pt-2">
           {candidates.map((candidate, index) => (
             <div key={index} className="text-xs">
-              <div className="font-medium">Candidate {index + 1}</div>
+              <div className="font-medium">{t("candidateNumber", { number: index + 1 })}</div>
               <div className="text-amber-text text-xs">
                 {String(candidate.value)}
               </div>
               <div className="text-muted-ink mt-1 text-xs">
-                {t("candidateStatus")}: {candidate.status}
+                {t("candidateStatus")}: {factStatusLabel(candidate.status)}
                 {candidate.modelReportedConfidence !== null && (
                   <span>
                     · {t("candidateConfidence")}: {Math.round(

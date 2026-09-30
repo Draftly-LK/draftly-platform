@@ -40,7 +40,7 @@ import {
   type ApiAgentJob,
   type ApiAgentMessage,
 } from "@/lib/api/agent";
-import { ApiError } from "@/lib/api/client";
+import { ApiError, apiErrorMessage } from "@/lib/api/client";
 import { getChecklist, getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 
@@ -827,7 +827,7 @@ function describe(
     if (cause.code === "capability_denied") return t("errorCapability");
     if (cause.code === "matter_agent_disabled") return t("errorDisabled");
     if (cause.code === "agent_model_unavailable") return t("errorProvider");
-    return cause.message;
+    return apiErrorMessage(cause, t("errorUnknown"));
   }
   return t("errorUnknown");
 }
