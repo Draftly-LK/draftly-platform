@@ -25,6 +25,29 @@ export interface ApiAgentSession {
   promptVersion: string;
   createdAt: string;
   updatedAt: string;
+  activeConversationId: string | null;
+}
+
+export interface ApiAgentConversation {
+  id: string;
+  state: "active" | "closed";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiAgentCitation {
+  sourceId: string;
+  sourceType:
+    | "matter"
+    | "document"
+    | "fact"
+    | "check"
+    | "draft"
+    | "party"
+    | "record";
+  label: string;
+  verificationStatus: "verified" | "unverified" | "operational";
+  locator: string | null;
 }
 
 export interface ApiAgentMessage {
@@ -35,6 +58,8 @@ export interface ApiAgentMessage {
   createdAt: string;
   jobId: string | null;
   pendingActionId: string | null;
+  conversationId: string | null;
+  citations: ApiAgentCitation[];
 }
 
 export interface ApiAgentMessagePage {
@@ -88,6 +113,32 @@ export function listAgentMessages(
   );
 }
 
+export function listAgentConversations(
+  getToken: TokenProvider,
+  matterId: string,
+): Promise<ApiAgentConversation[]> {
+  return apiFetch<ApiAgentConversation[]>(
+    `${AGENT_BASE(matterId)}/conversations`,
+    {
+      method: "GET",
+      getToken,
+    },
+  );
+}
+
+export function startAgentConversation(
+  getToken: TokenProvider,
+  matterId: string,
+): Promise<ApiAgentConversation> {
+  return apiFetch<ApiAgentConversation>(
+    `${AGENT_BASE(matterId)}/conversations`,
+    {
+      method: "POST",
+      getToken,
+    },
+  );
+}
+
 export function sendAgentMessage(
   getToken: TokenProvider,
   matterId: string,
@@ -137,9 +188,7 @@ export function rejectAgentAction(
 
 /** A turn is finished when it can no longer change. */
 export function isTerminalJobState(state: ApiAgentJob["state"]): boolean {
-  return (
-    state === "succeeded" || state === "failed" || state === "dead_letter"
-  );
+  return state === "succeeded" || state === "failed" || state === "dead_letter";
 }
 
 /**
@@ -153,7 +202,6 @@ export function newIdempotencyKey(): string {
     ? crypto.randomUUID()
     : `k-${Date.now()}-${Math.round(Math.random() * 1e9)}`;
 }
-
 
 /**
  * Stream turn progress over SSE, using `fetch` rather than `EventSource`.
@@ -184,11 +232,17 @@ export async function streamAgentJobEvents(
 
   let response: Response;
   try {
-    response = await fetch(`${base}${API_VERSION_PREFIX}/agent-jobs/${jobId}/events`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}`, Accept: "text/event-stream" },
-      signal,
-    });
+    response = await fetch(
+      `${base}${API_VERSION_PREFIX}/agent-jobs/${jobId}/events`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "text/event-stream",
+        },
+        signal,
+      },
+    );
   } catch {
     return false;
   }

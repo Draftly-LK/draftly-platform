@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from src.modules.matter_agent.domain.models import (
+    AgentCitation,
+    AgentConversation,
     AgentMessage,
     AgentSession,
     MessageRole,
@@ -92,6 +94,7 @@ class ConversationPort(Protocol):
         job_id: str | None = None,
         tool_call_id: str | None = None,
         pending_action_id: str | None = None,
+        citations: tuple[AgentCitation, ...] = (),
     ) -> AgentMessage:
         """Append at the next sequence. Commits with its outbox event."""
         ...
@@ -102,9 +105,12 @@ class ConversationPort(Protocol):
         session_id: str,
         limit: int,
         cursor: Cursor | None = None,
+        conversation_id: str | None = None,
     ) -> MessagePage: ...
 
-    async def recent(self, *, session_id: str, limit: int) -> tuple[AgentMessage, ...]:
+    async def recent(
+        self, *, session_id: str, limit: int, conversation_id: str | None = None
+    ) -> tuple[AgentMessage, ...]:
         """The newest `limit` messages, oldest first, for the model turn."""
         ...
 
@@ -221,6 +227,10 @@ class AgentSessionRepository(Protocol):
     async def create(self, session: AgentSession) -> AgentSession:
         """Provision lazily. Unique on (user_id, matter_id) under concurrency."""
         ...
+
+    async def start_conversation(self, session: AgentSession) -> AgentSession: ...
+
+    async def list_conversations(self, session: AgentSession) -> tuple[AgentConversation, ...]: ...
 
 
 class ToolCallRepository(Protocol):

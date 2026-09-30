@@ -8,7 +8,9 @@ export default defineConfig({
   ...base,
   testIgnore: undefined,
   testMatch: ["auth-flow.spec.ts"],
-  use: { ...base.use, baseURL: "http://127.0.0.1:4311" },
+  // The base config's auth project pins port 4310, so the dedicated suite
+  // needs a project that targets the fresh server below.
+  projects: [{ name: "auth", use: { baseURL: "http://127.0.0.1:4311" } }],
   webServer: {
     command: "pnpm dev -p 4311",
     url: "http://127.0.0.1:4311",

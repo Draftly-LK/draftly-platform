@@ -4,11 +4,13 @@ import {
   getAgentJob,
   getAgentSession,
   isTerminalJobState,
+  listAgentConversations,
   listAgentMessages,
   newIdempotencyKey,
   rejectAgentAction,
   sendAgentMessage,
   streamAgentJobEvents,
+  startAgentConversation,
 } from "@/lib/api/agent";
 
 describe("job state", () => {
@@ -77,7 +79,9 @@ describe("agent endpoint URLs", () => {
     const url = await capture((getToken) =>
       listAgentMessages(getToken, "mat-1", { limit: 20 }),
     );
-    expect(url).toBe("http://api.test/api/v1/matters/mat-1/agent/messages?limit=20");
+    expect(url).toBe(
+      "http://api.test/api/v1/matters/mat-1/agent/messages?limit=20",
+    );
     // The whole point: exactly one version segment, never /api/v1/api/v1.
     expect(url.match(/\/api\/v1/g)).toHaveLength(1);
     expect(url).not.toContain("/api/v1/api/v1");
@@ -87,6 +91,19 @@ describe("agent endpoint URLs", () => {
     process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
     const url = await capture((getToken) => getAgentJob(getToken, "ajob-1"));
     expect(url).toBe("http://api.test/api/v1/agent-jobs/ajob-1");
+  });
+
+  it("lists and starts auditable conversation segments under the matter", async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
+    const list = await capture((getToken) =>
+      listAgentConversations(getToken, "mat-1"),
+    );
+    const start = await capture((getToken) =>
+      startAgentConversation(getToken, "mat-1"),
+    );
+    const expected = "http://api.test/api/v1/matters/mat-1/agent/conversations";
+    expect(list).toBe(expected);
+    expect(start).toBe(expected);
   });
 
   it("builds confirm and reject under the matter", async () => {

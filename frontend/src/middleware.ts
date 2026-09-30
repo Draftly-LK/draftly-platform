@@ -1,12 +1,20 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
-import { isAuthBypassEnabled, warnIfBypassSetInProduction } from "@/lib/auth/bypass";
+import {
+  NextResponse,
+  type NextFetchEvent,
+  type NextRequest,
+} from "next/server";
+import {
+  isAuthBypassEnabled,
+  warnIfBypassSetInProduction,
+} from "@/lib/auth/bypass";
 import { isClerkConfigured } from "@/lib/auth/clerk";
 
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/clerk-not-configured(.*)",
+  "/animations/gavel-ascii.json",
 ]);
 
 const clerkAuthMiddleware = clerkMiddleware(async (auth, request) => {
@@ -15,7 +23,10 @@ const clerkAuthMiddleware = clerkMiddleware(async (auth, request) => {
   }
 });
 
-export default function middleware(request: NextRequest, event: NextFetchEvent) {
+export default function middleware(
+  request: NextRequest,
+  event: NextFetchEvent,
+) {
   warnIfBypassSetInProduction();
 
   // AUTH_BYPASS=true skips auth for local development.

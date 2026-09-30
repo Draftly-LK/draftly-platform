@@ -18,6 +18,8 @@ Three rules shape the code:
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
@@ -27,6 +29,7 @@ from src.modules.matter_agent.application.tool_executor import ExecutionContext,
 from src.modules.matter_agent.domain.allowlist import TOOL_ALLOWLIST
 from src.modules.matter_agent.domain.errors import LegalResearchUnavailableError, ModelProviderError
 from src.modules.matter_agent.domain.models import (
+    AgentCitation,
     AgentSession,
     JobState,
     MessageRole,
@@ -59,6 +62,8 @@ Honesty rules you must follow in every reply:
 - You cannot verify facts, approve, export, attest, waive, or change holds,
   roles, billing or provider settings. Say so plainly and point to the screen.
 - If you lack a tool for something, say so. Never guess a value.
+- When tool data supports a factual claim, cite the supplied record immediately
+  after that claim using exactly [[ref:RECORD_ID]]. Never invent a record ID.
 """
 
 
@@ -101,9 +106,13 @@ class TurnRunner:
             return await self._abstain(request)
 
         history = await self._conversation.recent(
-            session_id=request.session.id, limit=request.budget.history_messages
+            session_id=request.session.id,
+            conversation_id=request.session.active_conversation_id,
+            limit=request.budget.history_messages,
         )
         memory_context = await self._safe_memory(request)
+        turn_context = list(memory_context)
+        citation_catalog: dict[str, AgentCitation] = {}
         declarations = self._declarations(request.execution)
 
         executed = 0
@@ -114,7 +123,7 @@ class TurnRunner:
             turn = await self._model.run_turn(
                 system_prompt=SYSTEM_PROMPT,
                 history=history,
-                memory_context=memory_context,
+                memory_context=tuple(turn_context),
                 tools=declarations,
             )
             if not turn.tool_calls:
@@ -128,9 +137,29 @@ class TurnRunner:
                 if outcome.result and outcome.result.pending_action_id:
                     pending_ids.append(outcome.result.pending_action_id)
                 if outcome.outcome is ToolCallOutcome.EXECUTED and outcome.result:
-                    memory_context = (*memory_context, outcome.result.summary)
+                    result = outcome.result
+                    for resource_id in result.resource_refs:
+                        citation_catalog[resource_id] = _citation_for_ref(
+                            resource_id, tool=proposal.name
+                        )
+                    # Tool payload is provider-transient. It is never appended
+                    # to Neon, memory, stream events, logs or audit payloads.
+                    turn_context.append(
+                        json.dumps(
+                            {
+                                "tool": proposal.name,
+                                "summary": result.summary,
+                                "availableCitationIds": list(result.resource_refs),
+                                "payload": result.payload,
+                            },
+                            ensure_ascii=False,
+                            default=str,
+                            separators=(",", ":"),
+                        )
+                    )
 
-        text = (turn.text if turn else "") or _EMPTY_TURN_TEXT
+        raw_text = (turn.text if turn else "") or _EMPTY_TURN_TEXT
+        text, citations = _resolve_citations(raw_text, citation_catalog)
         message = await self._conversation.append(
             session=request.session,
             role=MessageRole.ASSISTANT,
@@ -140,6 +169,7 @@ class TurnRunner:
             # transcript alone is enough to render it. Without this the
             # pending action exists but nothing in the UI can reach it.
             pending_action_id=pending_ids[0] if pending_ids else None,
+            citations=citations,
         )
         return TurnResult(
             job_id=request.job_id,
@@ -225,6 +255,53 @@ class TurnRunner:
 
 
 _EMPTY_TURN_TEXT = "I could not produce an answer for that. Try rephrasing the question."
+
+_CITATION_MARKER = re.compile(r"\[\[ref:([A-Za-z0-9_-]{1,128})\]\]")
+
+
+def _resolve_citations(
+    text: str, catalog: dict[str, AgentCitation]
+) -> tuple[str, tuple[AgentCitation, ...]]:
+    """Render only references produced by executed tools; strip invented IDs."""
+    ordered: list[AgentCitation] = []
+    numbers: dict[str, int] = {}
+
+    def replace_marker(match: re.Match[str]) -> str:
+        source_id = match.group(1)
+        citation = catalog.get(source_id)
+        if citation is None:
+            return ""
+        if source_id not in numbers:
+            ordered.append(citation)
+            numbers[source_id] = len(ordered)
+        return f"[{numbers[source_id]}]"
+
+    return _CITATION_MARKER.sub(replace_marker, text).strip(), tuple(ordered)
+
+
+def _citation_for_ref(resource_id: str, *, tool: str) -> AgentCitation:
+    prefix = resource_id.split("_", 1)[0].split("-", 1)[0]
+    if prefix in {"src", "doc", "pg"}:
+        source_type, label, status = "document", "Matter document", "unverified"
+    elif prefix == "fact":
+        source_type, label, status = "fact", "Verified matter fact", "verified"
+    elif prefix == "cli":
+        source_type, label, status = "check", "Matter requirement", "operational"
+    elif prefix == "frm":
+        source_type, label, status = "draft", "Working draft", "operational"
+    elif prefix == "mat":
+        source_type, label, status = "matter", "Matter record", "operational"
+    elif prefix in {"party", "pty"}:
+        source_type, label, status = "party", "Matter party", "unverified"
+    else:
+        source_type, label, status = "record", tool.replace("_", " ").title(), "unverified"
+    return AgentCitation(
+        source_id=resource_id,
+        source_type=source_type,
+        label=label,
+        verification_status=status,
+    )
+
 
 #: Words that mark a question as needing legal authority rather than matter
 #: data. Deliberately broad: over-abstaining is a usability cost, answering a
