@@ -134,7 +134,7 @@ function ProcessingFlow({
       <AppShell matterId={matterId}>
         <PageHeader title={t("title")} description={t("description")} />
         <div className="p-6">
-          <div className="border-border-strong bg-surface rounded border p-6 text-center">
+          <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
             <p className="text-muted-ink mb-4">{t("emptyState")}</p>
             <Link href={`/matters/${matterId}`}>
               <Button variant="primary">
@@ -244,7 +244,7 @@ function ProcessingUnavailable({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border-strong bg-surface rounded border p-6">
+        <div className="border-border bg-surface rounded-card border p-6 shadow-card">
           <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
           <p className="mt-2 text-sm">Backend not configured.</p>
         </div>

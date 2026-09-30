@@ -115,7 +115,7 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
       <AppShell matterId={matterId}>
         <PageHeader title={t("title")} description={t("description")} />
         <div className="p-6">
-          <div className="border-border-strong bg-surface rounded border p-6 text-center">
+          <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
             <FileText className="mx-auto size-12 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
             <h2 className="mt-4 text-lg font-semibold">{t("noFormsEmpty")}</h2>
             <p className="text-muted-ink mt-2">{t("noFormsEmptyBody")}</p>
@@ -320,7 +320,7 @@ function OfflineFactsScreen({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border-strong bg-surface rounded border p-6 text-center">
+        <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
           <FileText className="mx-auto size-12 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
           <h2 className="mt-4 text-lg font-semibold">{t("noFormsEmpty")}</h2>
           <p className="text-muted-ink mt-2">{t("noFormsEmptyBody")}</p>

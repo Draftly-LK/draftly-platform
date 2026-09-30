@@ -27,7 +27,7 @@ export function MattersScreen() {
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border-strong bg-surface overflow-x-auto rounded border">
+        <div className="border-border bg-surface overflow-x-auto rounded-card border shadow-card">
           {isApiEnabled() ? <ApiMatterTable /> : <DemoMatterTable />}
         </div>
       </div>

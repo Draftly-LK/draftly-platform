@@ -19,7 +19,7 @@ export function AppShell({
       <div className="min-w-0 md:pl-[244px]">
         <div
           data-app-chrome
-          className="border-border bg-surface flex min-h-14 items-center justify-end border-b px-4 sm:px-6"
+          className="border-border bg-surface/90 sticky top-0 z-10 flex min-h-14 items-center justify-end border-b px-4 backdrop-blur sm:px-6"
         >
           <UserButton demoMode={demoMode} />
         </div>

@@ -105,7 +105,7 @@ function ApiBoundMissingDocumentsScreen({ matterId }: { matterId: string }) {
       <AppShell matterId={matterId}>
         <PageHeader title={t("title")} description={t("description")} />
         <div className="p-6">
-          <div className="border-border-strong bg-surface rounded border p-6 text-center">
+          <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
             <FileQuestion
               className="mx-auto size-12 text-muted-ink"
               strokeWidth={1.5}
@@ -245,7 +245,7 @@ function OfflineMissingDocumentsScreen({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border-strong bg-surface rounded border p-6 text-center">
+        <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
           <FileQuestion
             className="mx-auto size-12 text-muted-ink"
             strokeWidth={1.5}

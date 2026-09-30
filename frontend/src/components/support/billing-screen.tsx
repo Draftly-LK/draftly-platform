@@ -54,7 +54,7 @@ export function BillingScreen() {
       {isApiEnabled() ? <SubscriptionLoader onLoad={setSubscription} /> : null}
       <PageHeader title={t("title")} description={t("description")} />
       <div className="max-w-6xl space-y-8 p-6">
-        <section className="border-border-strong bg-surface rounded border p-6">
+        <section className="border-border bg-surface rounded-card border p-6 shadow-card">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-muted-ink text-xs font-semibold uppercase">
@@ -124,7 +124,7 @@ export function BillingScreen() {
             ))}
           </div>
 
-          <div className="border-border-strong bg-surface mt-5 rounded border p-5">
+          <div className="border-border bg-surface mt-5 rounded-card border p-5 shadow-card">
             <div className="flex gap-3">
               <ShieldCheck
                 className="text-forest mt-0.5 size-5 shrink-0"
@@ -148,14 +148,14 @@ export function BillingScreen() {
             {t("currentBilling")}
           </h2>
           <div className="mt-4 grid gap-5 md:grid-cols-2">
-            <div className="border-border-strong bg-surface rounded border p-6">
+            <div className="border-border bg-surface rounded-card border p-6 shadow-card">
               <CreditCard className="text-forest size-6" strokeWidth={1.5} />
               <h3 className="mt-4 text-xl font-semibold">
                 {t("paymentMethod")}
               </h3>
               <p className="text-muted-ink mt-2 text-sm">{t("paymentBody")}</p>
             </div>
-            <div className="border-border-strong bg-surface rounded border p-6">
+            <div className="border-border bg-surface rounded-card border p-6 shadow-card">
               <ReceiptText className="text-forest size-6" strokeWidth={1.5} />
               <h3 className="mt-4 text-xl font-semibold">
                 {t("billingHistory")}
@@ -226,7 +226,7 @@ function PlanCard({ plan }: { plan: PlanKey }) {
   return (
     <article
       className={cn(
-        "bg-surface flex h-full flex-col rounded border p-5",
+        "bg-surface flex h-full flex-col rounded-card border p-5 shadow-card",
         recommended ? "border-forest" : "border-border-strong",
       )}
     >

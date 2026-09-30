@@ -260,7 +260,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
 
           {/* Create export form */}
           {showExportForm && (
-            <div className="mb-6 rounded border border-border-strong bg-surface p-4">
+            <div className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold">{t("selectForm")}</label>
@@ -329,7 +329,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
           {exportList.items.length > 0 ? (
             <div className="space-y-2">
               {exportList.items.map((item) => (
-                <div key={item.id} className="flex items-start gap-4 rounded border border-border-strong bg-surface p-4 text-sm">
+                <div key={item.id} className="flex items-start gap-4 rounded-card border border-border bg-surface p-4 text-sm shadow-card">
                   <File className="mt-0.5 size-5 shrink-0 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
                   <div className="flex-1">
                     <div className="font-semibold">Form {item.artifactKind}</div>
@@ -349,7 +349,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
               ))}
             </div>
           ) : (
-            <div className="rounded border border-border-strong bg-surface p-6 text-center text-sm">
+            <div className="rounded-card border border-border bg-surface p-6 text-center text-sm shadow-card">
               <File className="mx-auto mb-2 size-8 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
               <p className="text-muted-ink">{t("noExports")}</p>
             </div>
@@ -375,7 +375,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
 
           {/* Create event form */}
           {showEventForm && (
-            <div className="mb-6 rounded border border-border-strong bg-surface p-4">
+            <div className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold">{t("eventType")}</label>
@@ -460,7 +460,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
           {eventList.items.length > 0 ? (
             <div className="space-y-2">
               {eventList.items.map((item) => (
-                <div key={item.id} className="flex items-start gap-4 rounded border border-border-strong bg-surface p-4 text-sm">
+                <div key={item.id} className="flex items-start gap-4 rounded-card border border-border bg-surface p-4 text-sm shadow-card">
                   <Calendar className="mt-0.5 size-5 shrink-0 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
                   <div className="flex-1">
                     <div className="font-semibold">{eventTypeLabels[item.eventType]}</div>
@@ -487,7 +487,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
               ))}
             </div>
           ) : (
-            <div className="rounded border border-border-strong bg-surface p-6 text-center text-sm">
+            <div className="rounded-card border border-border bg-surface p-6 text-center text-sm shadow-card">
               <Calendar className="mx-auto mb-2 size-8 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
               <p className="text-muted-ink">{t("noEvents")}</p>
             </div>
@@ -504,7 +504,7 @@ function DemoExportsContent({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="rounded border border-border-strong bg-surface p-6">
+        <div className="rounded-card border border-border bg-surface p-6 shadow-card">
           <p className="text-muted-ink text-sm">Demo mode: export and registration screen not available</p>
         </div>
       </div>
