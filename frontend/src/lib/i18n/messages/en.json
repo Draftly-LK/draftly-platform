@@ -141,11 +141,6 @@
     },
     "assistantTab": "Assistant"
   },
-  "placeholder": {
-    "title": "{screen}",
-    "body": "This workspace view is being assembled from the typed M2 contract.",
-    "unknown": "Workspace"
-  },
   "home": {
     "title": "Good morning",
     "description": "Resume a matter or start a scoped notarial task.",
@@ -168,7 +163,15 @@
     "inReview": "In review",
     "examination": "Examination",
     "commonWorkflowsTitle": "Common workflows",
-    "commonWorkflowsBody": "The RTA instruments a practice meets most often. Only those Draftly prepares in this release can be started from here."
+    "commonWorkflowsBody": "The RTA instruments a practice meets most often. Only those Draftly prepares in this release can be started from here.",
+    "eyebrow": "Registration of Title practice",
+    "snapshot": {
+      "title": "Practice at a glance",
+      "open": "Open matters",
+      "needsReview": "Need your review",
+      "drafting": "In drafting",
+      "failed": "Counts could not be loaded."
+    }
   },
   "obligations": {
     "monthlyList": "Monthly list deadline",
@@ -259,20 +262,6 @@
     "nextDraftBody": "The blocking requirements are clear, so the prescribed form can be prepared.",
     "nextReview": "Review the generated form",
     "nextReviewBody": "A form exists and is waiting on your verification before approval.",
-    "state": {
-      "INTAKE_DRAFT": "Intake",
-      "ROUTED": "Routed",
-      "EVIDENCE_COLLECTION": "Collecting evidence",
-      "REVIEW_REQUIRED": "Review required",
-      "LEGAL_REVIEW": "Legal review",
-      "READY_TO_DRAFT": "Ready to draft",
-      "DRAFTING": "Drafting",
-      "APPROVAL_PENDING": "Approval pending",
-      "APPROVED": "Approved",
-      "EXPORTED": "Exported",
-      "SUBMITTED": "Submitted",
-      "REGISTERED": "Registered"
-    },
     "automation": {
       "ASSESSING": "Being assessed",
       "V0_AUTOMATED": "Prepared by Draftly",
@@ -338,7 +327,13 @@
     "continue": "Continue to inbox",
     "uploadStored": "{name} stored for processing",
     "sourceFileState": "State",
-    "sourceFileName": "Filename"
+    "sourceFileName": "Filename",
+    "unidentifiedClass": "Unidentified",
+    "yes": "Yes",
+    "no": "No",
+    "reviewAction": "Review",
+    "backendNotConfigured": "Backend not configured.",
+    "loadError": "Failed to load documents"
   },
   "facts": {
     "deedNumber": "Deed number",
@@ -431,7 +426,7 @@
     "notaryCode": "Notary code",
     "priorInstrumentConsideration": "Prior instrument consideration",
     "derivedTitle": "Verified facts from evidence",
-    "derivedBody": "Facts shown here are extracted from generated forms and check runs. No direct fact-verification action is available in this view.",
+    "derivedBody": "Facts shown here are extracted from generated forms and check runs. Open a fact to confirm, correct or clear it; the extracted value and the history are kept.",
     "noFormsEmpty": "No forms generated yet",
     "noFormsEmptyBody": "Facts will appear here once a form has been generated or checks have been run.",
     "generateFormLink": "Generate a form",
@@ -446,7 +441,15 @@
     "awaitingConfirmation": "Awaiting confirmation",
     "reviewedByLabel": "Reviewed by {reviewer}",
     "loading": "Loading facts…",
-    "error": "Could not load facts"
+    "error": "Could not load facts",
+    "candidateNumber": "Candidate {number}",
+    "versionColumn": "Version",
+    "evidenceColumn": "Evidence",
+    "formSection": "Form {section}",
+    "decisionError": "Could not save this change. Try again.",
+    "closeReview": "Close",
+    "reviewFact": "Review or correct",
+    "viewFact": "View"
   },
   "sections": {
     "parcel": "Land parcel particulars",
@@ -655,7 +658,28 @@
     "runPreflight": "Run preflight",
     "runningPreflight": "Running preflight…",
     "staleError": "Could not mark form stale",
-    "loading": "Loading form…"
+    "loading": "Loading form…",
+    "formNumber": "Form {number}",
+    "formVersion": "v{version}",
+    "knownDefects": "Known source text defects",
+    "readiness": "Form readiness",
+    "reviewReady": "Review ready",
+    "approvalReady": "Approval ready",
+    "registrationReady": "Registration ready",
+    "registrationNever": "No template in this repository can be registration ready.",
+    "ready": "Ready",
+    "notReady": "Not ready",
+    "blocking": "Blocking issues",
+    "warnings": "Warnings",
+    "approveForm": "Approve",
+    "markStaleTitle": "Mark form stale",
+    "markStaleBody": "Use this if the form's inputs have moved and need re-evaluation.",
+    "markStaleReason": "Reason (optional)",
+    "markStale": "Mark stale",
+    "notFound": "Draft not found",
+    "gazetteForms": "Gazette forms (synthetic demo)",
+    "legacyDraftNotice": "This sample draft is a summary only. Open one of the Gazette form drafts from the drafts list to edit it.",
+    "backToDrafts": "Back to drafts"
   },
   "checks": {
     "title": "Checks and missing evidence",
@@ -1056,24 +1080,84 @@
     "saved": "Preferences saved locally"
   },
   "billing": {
-    "title": "Billing and plan",
-    "description": "Review your workspace plan, payment details, and billing history.",
-    "currentPlan": "Current plan",
-    "planName": "Draftly Pilot",
-    "planDescription": "Core workspace features are included while Draftly is in its pilot period.",
-    "active": "Active",
-    "price": "Included",
-    "priceDetail": "No subscription charge during the pilot.",
-    "features": "Plan includes",
-    "matters": "Matter and evidence workspaces",
-    "documents": "Document processing and review",
-    "workflows": "Guided legal workflows",
+    "title": "Billing and plans",
+    "description": "Review your pilot access and explore illustrative plans for individual legal practice.",
+    "currentAccess": "Current access",
+    "pilotName": "Draftly Pilot",
+    "pilotDescription": "You currently have complimentary access to Draftly as part of the pilot program.",
+    "pilotSupporting": "During the pilot, you can use Draftly without a subscription charge or payment method.",
+    "pilotPeriod": "Pilot period: {start} to {end}",
+    "statusActive": "Active",
+    "statusActionNeeded": "Action needed",
+    "statusEnded": "Ended",
+    "pilotPrice": "Pilot price",
+    "pilotPriceValue": "LKR 0",
     "paymentMethod": "Payment method",
-    "paymentEmpty": "No payment method is required for your current plan.",
+    "paymentNotRequired": "Not required",
+    "featureAccess": "Feature access",
+    "fullFeatureSet": "Full pilot feature set",
+    "noAutomaticCharge": "You will not be charged automatically when your pilot ends.",
+    "plansTitle": "Plans after the pilot",
+    "plansDescription": "Choose a plan based on how much you use Draftly for your legal work.",
+    "illustrativeTitle": "Illustrative post-pilot plans",
+    "illustrativeBody": "Plan allowances are proposed and may change before commercial launch.",
+    "recommended": "Recommended",
+    "allowances": {
+      "matters": "Active matters",
+      "documents": "Documents per month",
+      "pages": "Pages processed per month",
+      "storage": "Storage",
+      "research": "Research and AI"
+    },
+    "solo": {
+      "eyebrow": "Solo",
+      "name": "Solo",
+      "description": "For lighter individual use.",
+      "price": "Pricing to be announced",
+      "matters": "25",
+      "documents": "50",
+      "pages": "500",
+      "storage": "10 GB",
+      "research": "Included allowance; limit TBA",
+      "service": "Standard processing and support"
+    },
+    "professional": {
+      "eyebrow": "Professional",
+      "name": "Professional",
+      "description": "For regular legal work across multiple matters.",
+      "price": "Pricing to be announced",
+      "matters": "75",
+      "documents": "150",
+      "pages": "1,500",
+      "storage": "50 GB",
+      "research": "Expanded allowance; limit TBA",
+      "service": "Priority processing planned; priority support"
+    },
+    "advanced": {
+      "eyebrow": "Advanced",
+      "name": "Advanced",
+      "description": "For high-volume individual practitioners.",
+      "price": "Contact us",
+      "matters": "Up to 150",
+      "documents": "300",
+      "pages": "3,000",
+      "storage": "100 GB",
+      "research": "High-volume allowance; limit TBA",
+      "service": "Highest processing priority planned; priority support"
+    },
+    "serviceLevel": "Service level",
+    "draftsExportsIncluded": "Drafting and exports are included within plan usage.",
+    "contactUs": "Contact us",
+    "qualityTitle": "Consistent legal intelligence",
+    "qualityBody": "The quality of Draftly’s legal research and citations is consistent across plans. Plans differ by usage limits and service level.",
+    "caseLawPlanned": "Statutory research, citations, and AI-assisted research and drafting are included. Case-law search is planned and will not be quality-tiered when released.",
+    "currentBilling": "Current billing",
+    "paymentBody": "No payment method is required during your Draftly pilot. Billing will only begin if you choose a paid plan after the pilot.",
     "billingHistory": "Billing history",
-    "historyEmpty": "No invoices have been issued.",
-    "contact": "Need help with billing?",
-    "contactBody": "Contact your workspace administrator to change your plan or organization details."
+    "historyBody": "No charges have been made to your account.",
+    "helpTitle": "Questions about your pilot or future plan?",
+    "helpBody": "Contact the Draftly team if you need help with your pilot access or future subscription.",
+    "contactTeam": "Contact the Draftly team"
   },
   "help": {
     "title": "Help",
@@ -1898,6 +1982,210 @@
       "subtype_not_piloted": "Draftly does not prepare this instrument yet.",
       "transmission": "transmission on death is handled through the estate path.",
       "two_parcel_examination": "two parcels have to be examined together, and Draftly examines one."
+    },
+    "form": {
+      "watermark": {
+        "draft_not_approved": "DRAFT — NOT APPROVED FOR EXECUTION OR REGISTRATION"
+      },
+      "defect": {
+        "caption_or_request_sentence_mismatch": "The source form set has a caption or request sentence that does not match its instrument.",
+        "deceased_rendered_diseased": "The source English text prints “diseased” where “deceased” is meant.",
+        "english_text_not_lawyer_validated": "The English form text has not been validated by a lawyer.",
+        "sinhala_tamil_text_not_held": "The official Sinhala and Tamil texts are not held as validated sources.",
+        "translation_unverified": "The translation is unverified.",
+        "current_revision_unverified": "Whether this is the current revision is unverified.",
+        "official_artifact_not_held": "The official form artifact is not held.",
+        "scan_contains_private_sample_data": "The reference scan contains private sample data."
+      },
+      "preflight": {
+        "unresolved_required_field": "A required field is unresolved.",
+        "field_conflicted": "Sources conflict on a field.",
+        "form_stale": "The form is stale and must be re-evaluated.",
+        "open_blocking_issue": "A blocking issue is open.",
+        "open_statutory_blocker": "A statutory blocker is open.",
+        "open_high_risk_issue": "A high-risk issue is open.",
+        "critical_fact_unconfirmed": "A critical fact is unconfirmed.",
+        "checklist_requirement_blocking": "A checklist requirement is blocking.",
+        "unacknowledged_warning_issue": "A warning issue has not been acknowledged.",
+        "template_not_validated": "The template is a transcription, not a validated template.",
+        "source_reverification_required": "A source needs re-verification.",
+        "unresolved_optional_field": "An optional field is unresolved.",
+        "field_awaiting_confirmation": "A field awaits a lawyer's confirmation.",
+        "template_source_defect": "The template's source text has a recorded defect."
+      },
+      "reg_2022_form_08": {
+        "title": "Form 8 — Instrument of transfer or sale",
+        "section": {
+          "parcel": "Land details",
+          "title": "Prior registration",
+          "transferor": "Transferor",
+          "transferee": "Transferee",
+          "consideration": "Consideration",
+          "attestation": "Attestation"
+        },
+        "field": {
+          "district": {
+            "label": "District"
+          },
+          "ds_division": {
+            "label": "Divisional Secretariat division"
+          },
+          "gn_division": {
+            "label": "Grama Niladhari division"
+          },
+          "cadastral_map_no": {
+            "label": "Cadastral map number"
+          },
+          "block_no": {
+            "label": "Block number"
+          },
+          "sheet_no": {
+            "label": "Sheet number"
+          },
+          "parcel_no": {
+            "label": "Land parcel number"
+          },
+          "extent": {
+            "label": "Extent"
+          },
+          "village": {
+            "label": "Village or town"
+          },
+          "assessment_number": {
+            "label": "Assessment number"
+          },
+          "extent_subject_to_transfer": {
+            "label": "Extent subject to the transfer"
+          },
+          "place_of_registration": {
+            "label": "Place of registration"
+          },
+          "title_certificate_no": {
+            "label": "Title certificate number"
+          },
+          "class_of_title": {
+            "label": "Class of title"
+          },
+          "transferor_name": {
+            "label": "Transferor — full name"
+          },
+          "transferor_nic": {
+            "label": "Transferor — NIC number"
+          },
+          "transferor_address": {
+            "label": "Transferor — address"
+          },
+          "transferee_name": {
+            "label": "Transferee — full name"
+          },
+          "transferee_nic": {
+            "label": "Transferee — NIC number"
+          },
+          "transferee_address": {
+            "label": "Transferee — address"
+          },
+          "consideration": {
+            "label": "Consideration — in figures"
+          },
+          "consideration_words": {
+            "label": "Consideration — in words"
+          },
+          "notary_name": {
+            "label": "Notary's name"
+          },
+          "notary_code": {
+            "label": "Notary's registration number"
+          },
+          "attestation_date": {
+            "label": "Date of attestation"
+          }
+        }
+      },
+      "reg_2022_form_12": {
+        "title": "Form 12 — Instrument of cancellation of a mortgage",
+        "section": {
+          "parcel": "Land details",
+          "title": "Prior registration",
+          "prior_mortgage": "Mortgage being cancelled",
+          "mortgagee": "Mortgagee",
+          "discharge": "Discharge",
+          "attestation": "Attestation"
+        },
+        "field": {
+          "district": {
+            "label": "District"
+          },
+          "ds_division": {
+            "label": "Divisional Secretariat division"
+          },
+          "gn_division": {
+            "label": "Grama Niladhari division"
+          },
+          "cadastral_map_no": {
+            "label": "Cadastral map number"
+          },
+          "block_no": {
+            "label": "Block number"
+          },
+          "sheet_no": {
+            "label": "Sheet number"
+          },
+          "parcel_no": {
+            "label": "Land parcel number"
+          },
+          "extent": {
+            "label": "Extent"
+          },
+          "place_of_registration": {
+            "label": "Place of registration"
+          },
+          "title_certificate_no": {
+            "label": "Title certificate number"
+          },
+          "class_of_title": {
+            "label": "Class of title"
+          },
+          "registered_owner_name": {
+            "label": "Registered owner (mortgagor) — full name"
+          },
+          "mortgage_reference": {
+            "label": "Mortgage — registered entry (day book number)"
+          },
+          "mortgage_registration_date": {
+            "label": "Mortgage — registration date"
+          },
+          "mortgagee_name": {
+            "label": "Mortgagee — full name"
+          },
+          "mortgagee_address": {
+            "label": "Mortgagee — address"
+          },
+          "releasing_party_authority": {
+            "label": "Releasing party's authority confirmed"
+          },
+          "discharge_evidence_kind": {
+            "label": "Discharge evidence — kind"
+          },
+          "discharge_reference": {
+            "label": "Discharge evidence — reference"
+          },
+          "discharge_date": {
+            "label": "Discharge evidence — date"
+          },
+          "cancellation_particulars": {
+            "label": "Cancellation particulars"
+          },
+          "notary_name": {
+            "label": "Notary's name"
+          },
+          "notary_code": {
+            "label": "Notary's registration number"
+          },
+          "attestation_date": {
+            "label": "Date of attestation"
+          }
+        }
+      }
     }
   },
   "approval": {
@@ -1919,7 +2207,19 @@
     "nextAction": "Go to exports",
     "loadError": "Could not load approval data",
     "approveError": "Could not record approval",
-    "conflictError": "The approval gate has changed. Please refresh and try again."
+    "conflictError": "The approval gate has changed. Please refresh and try again.",
+    "errorForbidden": "You are not authorized to approve this form.",
+    "errorNotFound": "Form or approval gate not found.",
+    "blockingTitle": "Blocking issues",
+    "warningsTitle": "Warnings",
+    "resolveBefore": "Resolve blocking issues in the",
+    "resolveLink": "form detail screen",
+    "resolveAfter": "before approving.",
+    "cancel": "Cancel",
+    "current": "Current",
+    "formApproved": "Form approved",
+    "formApprovedBody": "The form is now ready for export and registration tracking.",
+    "demoUnavailable": "Demo mode: approval screen not available"
   },
   "exports": {
     "title": "Export & registration",
@@ -1963,7 +2263,20 @@
     "eventRecorded": "Registration event recorded.",
     "loadError": "Could not load export or registration data",
     "createError": "Could not record event",
-    "conflictError": "Data has changed. Please refresh and try again."
+    "conflictError": "Data has changed. Please refresh and try again.",
+    "formFallback": "Form {number}",
+    "formOption": "{title} (v{version})",
+    "formRequired": "Select a form first.",
+    "eventDateRequired": "Event date is required.",
+    "loading": "Loading…",
+    "chooseForm": "Choose a form…",
+    "creating": "Creating…",
+    "cancel": "Cancel",
+    "optional": "Optional",
+    "recording": "Recording…",
+    "recordEventAction": "Record event",
+    "returnedEvent": "Returned by the registry",
+    "demoUnavailable": "Exports and registration events need the live service and are not available in the offline demo."
   },
   "processing": {
     "title": "Processing",
@@ -1977,7 +2290,9 @@
     "continueToInbox": "Continue to document inbox",
     "succeeded": "Success",
     "failed": "Failed",
-    "noUnprocessed": "All documents have been processed."
+    "noUnprocessed": "All documents have been processed.",
+    "pageCount": "{count, plural, one {# page} other {# pages}}",
+    "backendNotConfigured": "Backend not configured."
   },
   "documentProcessingReview": {
     "title": "Document review",
@@ -2021,7 +2336,12 @@
     "boundarySuccess": "Boundary confirmed.",
     "back": "Back to documents",
     "loading": "Loading document…",
-    "error": "Could not load the document. Try again."
+    "error": "Could not load the document. Try again.",
+    "documentNotFound": "Document not found",
+    "lawyerConfirmed": "Lawyer-confirmed",
+    "chooseClass": "Choose a class...",
+    "saving": "Saving...",
+    "backendNotConfigured": "Backend not configured."
   },
   "missingDocuments": {
     "title": "Missing documents",
@@ -2039,7 +2359,8 @@
   },
   "matterAssistant": {
     "title": "Matter assistant",
-    "subtitle": "One thread per matter. Suggestions are not decisions.",
+    "subtitle": "Work through this matter with its evidence beside you.",
+    "workspaceSubtitle": "Ask questions, review evidence, and prepare the next step.",
     "loading": "Loading the conversation…",
     "loadOlder": "Load older messages",
     "sending": "Sending…",
@@ -2047,6 +2368,7 @@
     "send": "Send",
     "retry": "Try again",
     "composerLabel": "Message the assistant",
+    "composerNotice": "Draftly can make mistakes. Verify important details against the cited source.",
     "composerPlaceholder": "Ask about this matter…",
     "roleAssistant": "Assistant",
     "roleYou": "You",
@@ -2062,6 +2384,178 @@
     "errorProvider": "The assistant is temporarily unavailable.",
     "errorUnknown": "Something went wrong. Your message was not lost.",
     "thread": "Conversation",
-    "empty": "No messages yet. Ask about this matter."
+    "empty": "No messages yet. Ask about this matter.",
+    "emptyTitle": "Start with the matter, not a blank page",
+    "emptyBody": "The assistant can use this matter's documents, verified facts, checks, and drafts to help you work.",
+    "suggestOverview": "Give me an overview of this matter",
+    "suggestMissing": "What evidence or information is missing?",
+    "suggestNext": "What should I do next?",
+    "newConversation": "New conversation",
+    "newConversationConfirm": "Start a new conversation? The current conversation will remain available in the audit history.",
+    "caseContext": "Matter context",
+    "close": "Close",
+    "backToContext": "Back to matter context",
+    "evidence": "Evidence",
+    "evidenceUsed": "Evidence used",
+    "openSource": "Open source",
+    "contextDocuments": "Documents",
+    "contextFacts": "Verified facts",
+    "contextChecks": "Checks",
+    "contextDrafts": "Drafts",
+    "contextNotice": "This panel reflects the latest saved matter data.",
+    "loadingContext": "Loading matter context…",
+    "matterState": "Matter state: {state}",
+    "pending": "Pending",
+    "issues": "Issues",
+    "verification": {
+      "verified": "Verified",
+      "unverified": "Unverified",
+      "operational": "Operational"
+    }
+  },
+  "gazette": {
+    "modeLabel": "Drafting mode",
+    "modeGuided": "Field by field",
+    "modeDocument": "Fill in document",
+    "progress": "{filled} of {total} blanks filled",
+    "step": "Blank {current} of {total}",
+    "previous": "Previous",
+    "next": "Next",
+    "nextEmpty": "Next empty blank",
+    "lockedNote": "Prescribed wording is locked",
+    "sourceBody": "Form {form}: transcribed verbatim from the English edition of Gazette Extraordinary 1886/58 of 2014-10-31 ({pages} pages). A transcription, not a lawyer-approved template. Only the blanks can be filled.",
+    "documentLabel": "Gazette form",
+    "localOnly": "Typed blanks are saved on this device only until the draft API can store them.",
+    "selectBlank": "Select a blank on the form to review it.",
+    "notOnForm": "Not printed on the form",
+    "notOnFormBody": "The template records these fields, but the printed gazette form has no blank for them.",
+    "fieldMissing": "This blank's field is not on the generated form.",
+    "noRendering": "No gazette rendering exists for this template yet, so its fields are reviewed one by one.",
+    "status": {
+      "unresolved": "Unresolved",
+      "awaiting": "Awaiting confirmation",
+      "confirmed": "Confirmed"
+    },
+    "critical": "Critical",
+    "required": "Required",
+    "aiSuggested": "AI-suggested",
+    "unresolvedValue": "Unresolved",
+    "unresolvedReason": {
+      "NO_FACT": "No verified fact supplies this field yet.",
+      "FACT_NOT_CONFIRMED": "A fact exists but a lawyer has not confirmed it.",
+      "FACT_CONFLICTED": "Sources disagree on this fact.",
+      "FACT_SUPERSEDED": "The fact was replaced by a newer version.",
+      "BLOCKED_BY_ISSUE": "An open issue blocks this field."
+    },
+    "conflicts": "Conflicting candidates",
+    "candidateStatus": "Status: {status}",
+    "confidence": "Model confidence {value}%",
+    "criticalNote": "Critical particulars come from confirmed facts. They can be confirmed or cleared here, never typed onto the form.",
+    "confirm": "Confirm",
+    "correct": "Correct",
+    "clear": "Clear",
+    "correctedValue": "Corrected text",
+    "reason": "Reason (required)",
+    "reasonHint": "Why this decision is being recorded",
+    "saveCorrection": "Save correction",
+    "confirmClear": "Clear field",
+    "cancel": "Cancel",
+    "refused": {
+      "APPROVED_FORM_IMMUTABLE": "An approved form cannot be changed. Amend it as a new form version.",
+      "UNKNOWN_FIELD": "That field is not on this form.",
+      "FIELD_NOT_POPULATED": "There is no value to confirm yet.",
+      "REASON_REQUIRED": "Give a reason for this decision.",
+      "CRITICAL_FIELD_REQUIRES_CONFIRMED_FACT": "A critical field is confirmed from a verified fact, never typed.",
+      "LAWYER_AUTHORED_TEXT_NOT_PERMITTED": "This template does not allow lawyer-written text in that field.",
+      "FIELD_VALUE_REQUIRED": "Enter the corrected text."
+    },
+    "slot": {
+      "conditions": "Item 7 — conditions",
+      "encumbranceNature": "Item 8 — encumbrance: nature",
+      "encumbranceDetails": "Item 8 — encumbrance: details",
+      "encumbrancePeriod": "Item 8 — encumbrance: period of validity",
+      "transferYear": "Transfer clause — year (after “20”)",
+      "transferMonth": "Transfer clause — month",
+      "transferDay": "Transfer clause — day",
+      "transferorSignedOn": "Transferor's signature — date",
+      "transfereeSignedOn": "Transferee's signature — date",
+      "lifeInterestHolder": "Life-interest release — holder's name (complete only if applicable)",
+      "lifeInterestSignedOn": "Life-interest holder's signature — date",
+      "witnessedOn": "Witnesses' statement — date signed",
+      "witnessedAt": "Witnesses' statement — place signed",
+      "witnessNames": "Witnesses — full names",
+      "witnessNics": "Witnesses — NIC numbers",
+      "witnessAddresses": "Witnesses — addresses",
+      "mortgageDayBook": "Item 5 — mortgage instrument: day book number",
+      "mortgageDate": "Item 5 — mortgage instrument: date",
+      "mortgagePrincipal": "Item 5 — mortgage instrument: principal sum",
+      "mortgageAttestedBy": "Item 5 — mortgage instrument: attested by",
+      "releaseMortgagorAddress": "Release clause — mortgagor's residence",
+      "releaseMortgagorName": "Release clause — mortgagor's name",
+      "releaseReleasorAddress": "Release clause — releasing party's residence",
+      "releaseReleasorName": "Release clause — releasing party's name",
+      "ownerSignedOn": "Owner's signature — date",
+      "mortgageeSignedOn": "Mortgagee's signature — date",
+      "encumbranceOtherLand": "Item 8 — encumbrances / rights over other land",
+      "mortgagorSignedOn": "Mortgagor's signature — date"
+    },
+    "compareTitle": "Form {form} — gazette pages beside the rendering",
+    "comparePlain": "Draw blanks as printed"
+  },
+  "generatedFormState": {
+    "GENERATED_DRAFT": "Generated draft",
+    "UNRESOLVED": "Unresolved",
+    "REVIEW_READY": "Review ready",
+    "LAWYER_REVIEWED": "Lawyer reviewed",
+    "APPROVAL_PENDING": "Approval pending",
+    "APPROVED": "Approved",
+    "EXPORTED": "Exported",
+    "SUBMITTED": "Submitted",
+    "REGISTERED": "Registered",
+    "STALE_TEMPLATE": "Stale template",
+    "STALE_AFTER_APPROVAL": "Stale after approval"
+  },
+  "enums": {
+    "sourceFileState": {
+      "UPLOAD_INITIATED": "Upload started",
+      "QUARANTINED": "Being scanned",
+      "VALIDATED": "Checked",
+      "STORED": "Stored",
+      "PROCESSING": "Processing",
+      "PROCESSED": "Processed",
+      "PROCESSING_FAILED": "Processing failed",
+      "REJECTED": "Rejected",
+      "SUPERSEDED": "Replaced"
+    },
+    "factStatus": {
+      "EXTRACTED_CANDIDATE": "Extracted",
+      "CORROBORATED": "Corroborated",
+      "CONFLICTED": "Conflicting",
+      "REVIEW_REQUIRED": "Needs review",
+      "LAWYER_CONFIRMED": "Lawyer confirmed",
+      "LOCKED_FOR_FORM": "Locked for form",
+      "SUPERSEDED": "Replaced"
+    },
+    "preflightCode": {
+      "UNRESOLVED_REQUIRED_FIELD": "Required field unresolved",
+      "FIELD_CONFLICTED": "Field has conflicting sources",
+      "FORM_STALE": "Form is stale",
+      "OPEN_BLOCKING_ISSUE": "Blocking issue open",
+      "OPEN_STATUTORY_BLOCKER": "Statutory blocker open",
+      "OPEN_HIGH_RISK_ISSUE": "High-risk issue open",
+      "CRITICAL_FACT_UNCONFIRMED": "Critical fact unconfirmed",
+      "CHECKLIST_REQUIREMENT_BLOCKING": "Checklist requirement blocking",
+      "UNACKNOWLEDGED_WARNING_ISSUE": "Warning not acknowledged",
+      "TEMPLATE_NOT_VALIDATED": "Template not validated",
+      "SOURCE_REVERIFICATION_REQUIRED": "Source needs re-verification",
+      "UNRESOLVED_OPTIONAL_FIELD": "Optional field unresolved",
+      "FIELD_AWAITING_CONFIRMATION": "Field awaiting confirmation",
+      "TEMPLATE_SOURCE_DEFECT": "Template source defect"
+    },
+    "boundaryStatus": {
+      "CANDIDATE": "Candidate",
+      "REVIEW_REQUIRED": "Review required",
+      "CONFIRMED": "Confirmed"
+    }
   }
 }

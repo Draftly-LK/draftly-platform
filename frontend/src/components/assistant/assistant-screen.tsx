@@ -313,7 +313,7 @@ export function AssistantScreen() {
             <h2 className="text-2xl font-semibold">{t("evidence")}</h2>
             {citation ? (
               <>
-                <div className="border-border-strong bg-surface mt-4 rounded border p-4">
+                <div className="border-border bg-surface mt-4 rounded-card border p-4 shadow-card">
                   <div className="text-teal text-xs font-semibold uppercase">
                     {t("exactText")}
                   </div>
@@ -325,7 +325,7 @@ export function AssistantScreen() {
                     {t("page", { page: citation.evidence.page })}
                   </div>
                 </div>
-                <div className="border-border-strong bg-surface mt-4 rounded border p-4">
+                <div className="border-border bg-surface mt-4 rounded-card border p-4 shadow-card">
                   <div className="text-muted-ink text-xs font-semibold uppercase">
                     {t("authority")}
                   </div>

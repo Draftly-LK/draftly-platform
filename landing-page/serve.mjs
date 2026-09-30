@@ -89,6 +89,11 @@ createServer((request, response) => {
   }
   const firstSegment = decodedPath.split('/').filter(Boolean)[0];
   if (unavailableRoutes.has(firstSegment)) {
+    // Next prefetches footer links before draftly-fixes.js removes them; a 204
+    // keeps the console clean without exposing a page.
+    if (requestUrl.searchParams.has('_rsc')) {
+      response.writeHead(204, { 'cache-control': 'no-store' }).end(); return;
+    }
     response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('Not found'); return;
   }
   if (decodedPath === '/favicon.ico') decodedPath = '/draftly-favicon.svg';

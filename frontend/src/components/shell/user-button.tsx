@@ -104,7 +104,9 @@ export function UserButton({ demoMode = false }: { demoMode?: boolean }) {
  * Demo mode depends on server-only env vars, so the root layout resolves it and
  * page headers (server or client) read it from here.
  */
-const DemoModeContext = createContext(false);
+// Defaults to demo: with no provider above (tests, isolated renders) there is
+// no ClerkProvider either, and the Clerk hooks would throw.
+const DemoModeContext = createContext(true);
 
 export function UserButtonProvider({
   demoMode,
@@ -118,5 +120,10 @@ export function UserButtonProvider({
 
 /** The profile button for the right end of a page or matter header. */
 export function HeaderUserButton() {
-  return <UserButton demoMode={use(DemoModeContext)} />;
+  // data-no-print: the old top bar hid it in print via data-app-chrome.
+  return (
+    <span data-no-print className="inline-flex">
+      <UserButton demoMode={use(DemoModeContext)} />
+    </span>
+  );
 }

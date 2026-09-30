@@ -1,7 +1,39 @@
 import { HeaderUserButton } from "./user-button";
 
-// The language switcher (LocaleToggle) is hidden until translation works end to end.
-// pl-16 below md keeps the title clear of the fixed mobile menu button.
-export function PageHeader({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
-  return <div className="flex flex-wrap items-start gap-4 border-b border-border bg-surface py-5 pl-16 pr-6 md:pl-6"><div className="min-w-0 flex-1"><h1 className="text-3xl font-semibold">{title}</h1>{description && <p className="mt-1 max-w-3xl text-muted-ink">{description}</p>}</div>{action}<HeaderUserButton /></div>;
+/**
+ * Page title band shared by every workspace screen: an optional eyebrow, the
+ * title in the display serif, a one-line description, and actions on the right,
+ * ending with the profile button so the header is the only bar above the page.
+ */
+export function PageHeader({
+  title,
+  description,
+  action,
+  eyebrow,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  eyebrow?: string;
+}) {
+  return (
+    <div data-page-header className="border-border bg-surface border-b">
+      {/* pl-16 below md keeps the title clear of the fixed mobile menu button. */}
+      <div className="flex flex-wrap items-end gap-4 pb-5 pl-16 pr-6 pt-7 md:pl-6">
+        <div className="min-w-0 flex-1">
+          {eyebrow && (
+            <p className="text-gold-strong mb-1 text-xs font-semibold uppercase tracking-[0.1em]">
+              {eyebrow}
+            </p>
+          )}
+          <h1 className="font-display text-[32px] font-semibold leading-tight">{title}</h1>
+          {description && <p className="text-muted-ink mt-1.5 max-w-3xl">{description}</p>}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {action}
+          <HeaderUserButton />
+        </div>
+      </div>
+    </div>
+  );
 }

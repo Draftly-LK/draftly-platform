@@ -1,19 +1,19 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
+import { FileText, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { IconButton } from "@/components/ui/icon-button";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { familyLabelKey, subtypeLabelKey } from "@/lib/rta/taxonomy";
 import { useDemoStore } from "@/lib/store";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
-import { HeaderUserButton } from "./user-button";
 import { STAGE_ORDER, stageForState } from "./matter-stage";
+import { HeaderUserButton } from "./user-button";
 
 const NAV_TABS = [
   "overview",
@@ -72,7 +72,7 @@ function ApiBoundMatterHeader({ matterId }: { matterId: string }) {
         if (!cancelled) setMatter(result);
       })
       .catch((cause: unknown) => {
-        if (!cancelled) setError(cause instanceof ApiError ? cause.message : t("loadError"));
+        if (!cancelled) setError(apiErrorMessage(cause, t("loadError")));
       });
     return () => {
       cancelled = true;
@@ -146,25 +146,30 @@ function MatterHeaderShell({
   const pathname = usePathname();
 
   return (
-    <header className="border-border bg-surface border-b">
+    <header data-matter-header className="border-border bg-surface border-b">
       {/* pl-16 below md keeps the title clear of the fixed mobile menu button. */}
-      <div className="flex min-h-24 items-start gap-4 py-4 pl-16 pr-6 md:pl-6">
+      <div className="flex items-start gap-4 pb-3 pl-16 pr-6 pt-5 md:pl-6">
+        <span className="bg-navy-900 text-gold hidden size-12 shrink-0 place-items-center rounded-lg sm:grid" aria-hidden="true">
+          <FileText className="size-6" strokeWidth={1.5} />
+        </span>
         <div className="min-w-0 flex-1">
           <div className="text-muted-ink flex flex-wrap items-center gap-2 text-xs">
-            <span className="border-border-strong rounded-full border px-2 py-1">
+            <span className="bg-gold-soft text-gold-strong rounded px-1.5 py-0.5 font-semibold tracking-wide">
               {t("regime")}
             </span>
-            <span>{data.subtitleKey ? tRoot(data.subtitleKey) : data.subtitleFallback}</span>
+            <span className="truncate">{data.subtitleKey ? tRoot(data.subtitleKey) : data.subtitleFallback}</span>
             {data.state && (
               <>
-                <span>·</span>
-                <span>{t(`stateLabel.${data.state}`)}</span>
+                <span aria-hidden="true">·</span>
+                <span className="text-ink font-medium">{t(`stateLabel.${data.state}`)}</span>
               </>
             )}
           </div>
-          <h1 className="mt-1 truncate text-2xl font-semibold">{data.reference}</h1>
+          <h1 className="font-display mt-1 truncate text-[28px] font-semibold leading-tight tabular-nums">
+            {data.reference}
+          </h1>
           {updatedAt && (
-            <div className="text-muted-ink mt-1 truncate text-sm">
+            <div className="text-muted-ink mt-0.5 truncate text-sm">
               {t("updated", { date: updatedAt })}
             </div>
           )}
@@ -187,7 +192,8 @@ function MatterHeaderShell({
             <Link
               key={tab}
               href={href}
-              className={`min-h-11 shrink-0 border-b-2 px-3 py-3 text-sm font-medium ${active ? "border-forest text-forest" : "text-muted-ink hover:text-ink border-transparent"}`}
+              aria-current={active ? "page" : undefined}
+              className={`min-h-11 shrink-0 border-b-2 px-3 py-3 text-sm font-medium ${active ? "border-gold text-ink" : "text-muted-ink hover:text-ink hover:border-border-strong border-transparent"}`}
             >
               {t(tab)}
             </Link>

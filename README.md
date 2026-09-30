@@ -78,12 +78,11 @@ App: [http://localhost:4310](http://localhost:4310)
 
 ### Interface language
 
-- `MULTILINGUAL_LANGUAGE_SUPPORT` in `frontend/.env` controls the Sinhala UI
-  locale. Default (unset or any value but `false`) keeps English + Sinhala.
-- `MULTILINGUAL_LANGUAGE_SUPPORT=false` serves English only: the
-  `draftly-locale` cookie is ignored and the locale toggle is not rendered.
-- The flag gates interface chrome only. A matter's instrument language and a
-  document's language stay part of the matter record either way.
+- The interface is English only. There is no language switch, and a stored
+  `draftly-locale` cookie is ignored. Sinhala strings stay in
+  `frontend/src/lib/i18n/messages/si.json` for a later release.
+- A matter's instrument language and a document's language are matter data and
+  are unaffected.
 
 #### Clerk Dashboard (required for one email + one session)
 

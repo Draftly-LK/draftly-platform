@@ -12,12 +12,15 @@ indistinguishable from a genuinely missing session.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.matter_agent.domain.models import (
+    AgentCitation,
+    AgentConversation,
     AgentMessage,
     AgentSession,
     MessageRole,
@@ -28,6 +31,7 @@ from src.modules.matter_agent.domain.models import (
     content_hash,
 )
 from src.modules.matter_agent.infrastructure.orm import (
+    AgentConversationRow,
     AgentMessageRow,
     AgentPendingActionRow,
     AgentSessionRow,
@@ -48,6 +52,19 @@ def _to_session(row: AgentSessionRow) -> AgentSession:
         state=SessionState(row.state),
         created_at=row.created_at,
         updated_at=row.updated_at,
+        active_conversation_id=row.active_conversation_id,
+    )
+
+
+def _to_conversation(row: AgentConversationRow) -> AgentConversation:
+    return AgentConversation(
+        id=row.id,
+        session_id=row.session_id,
+        user_id=row.user_id,
+        matter_id=row.matter_id,
+        state=SessionState(row.state),
+        created_at=row.created_at,
+        updated_at=row.updated_at,
     )
 
 
@@ -64,6 +81,17 @@ def _to_message(row: AgentMessageRow) -> AgentMessage:
         job_id=row.job_id,
         tool_call_id=row.tool_call_id,
         pending_action_id=row.pending_action_id,
+        conversation_id=row.conversation_id,
+        citations=tuple(
+            AgentCitation(
+                source_id=str(item.get("sourceId", "")),
+                source_type=str(item.get("sourceType", "record")),
+                label=str(item.get("label", item.get("sourceId", ""))),
+                verification_status=str(item.get("verificationStatus", "unverified")),
+                locator=(str(item["locator"]) if item.get("locator") is not None else None),
+            )
+            for item in row.citations
+        ),
         created_at=row.created_at,
     )
 
@@ -113,12 +141,62 @@ class SqlAgentSessionRepository:
                 state=session.state.value,
                 model_version=session.model_version,
                 prompt_version=session.prompt_version,
+                active_conversation_id=session.active_conversation_id,
                 created_at=session.created_at,
                 updated_at=session.updated_at,
             )
         )
         await self._db.flush()
-        return session
+        return await self.start_conversation(session)
+
+    async def start_conversation(self, session: AgentSession) -> AgentSession:
+        now = datetime.now(tz=UTC)
+        row = (
+            await self._db.execute(
+                select(AgentSessionRow).where(AgentSessionRow.id == session.id).with_for_update()
+            )
+        ).scalar_one()
+        if row.active_conversation_id:
+            current = (
+                await self._db.execute(
+                    select(AgentConversationRow).where(
+                        AgentConversationRow.id == row.active_conversation_id,
+                        AgentConversationRow.session_id == session.id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if current is not None:
+                current.state = SessionState.CLOSED.value
+                current.updated_at = now
+
+        conversation = AgentConversationRow(
+            id=ids.new_id(ids.AGENT_CONVERSATION),
+            session_id=session.id,
+            user_id=session.user_id,
+            matter_id=session.matter_id,
+            state=SessionState.ACTIVE.value,
+            created_at=now,
+            updated_at=now,
+        )
+        self._db.add(conversation)
+        row.active_conversation_id = conversation.id
+        row.updated_at = now
+        await self._db.flush()
+        return replace(session, active_conversation_id=conversation.id, updated_at=now)
+
+    async def list_conversations(self, session: AgentSession) -> tuple[AgentConversation, ...]:
+        rows = (
+            (
+                await self._db.execute(
+                    select(AgentConversationRow)
+                    .where(AgentConversationRow.session_id == session.id)
+                    .order_by(AgentConversationRow.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return tuple(_to_conversation(row) for row in rows)
 
 
 class NeonConversationAdapter:
@@ -142,6 +220,7 @@ class NeonConversationAdapter:
         job_id: str | None = None,
         tool_call_id: str | None = None,
         pending_action_id: str | None = None,
+        citations: tuple[AgentCitation, ...] = (),
     ) -> AgentMessage:
         next_sequence = (
             await self._db.execute(
@@ -159,10 +238,12 @@ class NeonConversationAdapter:
             sequence=int(next_sequence),
             role=role,
             content=content,
-            content_hash=content_hash(content),
+            content_hash=content_hash(content, citations),
             job_id=job_id,
             tool_call_id=tool_call_id,
             pending_action_id=pending_action_id,
+            conversation_id=session.active_conversation_id,
+            citations=citations,
             created_at=datetime.now(tz=UTC),
         )
         self._db.add(
@@ -178,6 +259,17 @@ class NeonConversationAdapter:
                 job_id=message.job_id,
                 tool_call_id=message.tool_call_id,
                 pending_action_id=message.pending_action_id,
+                conversation_id=message.conversation_id,
+                citations=[
+                    {
+                        "sourceId": item.source_id,
+                        "sourceType": item.source_type,
+                        "label": item.label,
+                        "verificationStatus": item.verification_status,
+                        "locator": item.locator,
+                    }
+                    for item in message.citations
+                ],
                 created_at=message.created_at,
             )
         )
@@ -190,6 +282,7 @@ class NeonConversationAdapter:
         session_id: str,
         limit: int,
         cursor: Cursor | None = None,
+        conversation_id: str | None = None,
     ) -> MessagePage:
         """Newest first, cursor keyed on the monotonic sequence.
 
@@ -197,6 +290,8 @@ class NeonConversationAdapter:
         stronger than ``createdAt`` plus id: two messages cannot share it.
         """
         query = select(AgentMessageRow).where(AgentMessageRow.session_id == session_id)
+        if conversation_id is not None:
+            query = query.where(AgentMessageRow.conversation_id == conversation_id)
         if cursor is not None:
             query = query.where(AgentMessageRow.sequence < int(cursor.id))
         rows = (
@@ -222,16 +317,14 @@ class NeonConversationAdapter:
             has_more=has_more,
         )
 
-    async def recent(self, *, session_id: str, limit: int) -> tuple[AgentMessage, ...]:
+    async def recent(
+        self, *, session_id: str, limit: int, conversation_id: str | None = None
+    ) -> tuple[AgentMessage, ...]:
+        query = select(AgentMessageRow).where(AgentMessageRow.session_id == session_id)
+        if conversation_id is not None:
+            query = query.where(AgentMessageRow.conversation_id == conversation_id)
         rows = (
-            (
-                await self._db.execute(
-                    select(AgentMessageRow)
-                    .where(AgentMessageRow.session_id == session_id)
-                    .order_by(AgentMessageRow.sequence.desc())
-                    .limit(limit)
-                )
-            )
+            (await self._db.execute(query.order_by(AgentMessageRow.sequence.desc()).limit(limit)))
             .scalars()
             .all()
         )

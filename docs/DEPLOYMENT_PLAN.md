@@ -1628,7 +1628,7 @@ Run in order. Any failure stops the deploy and triggers §15.
 - [ ] **Sign in as a second user and confirm the first user's matter returns
       404, not 403** — the §13.1 existence-hiding guarantee
 - [ ] Audit events appear for every mutation above
-- [ ] Sinhala locale toggle works if `MULTILINGUAL_LANGUAGE_SUPPORT=true`
+- [ ] The interface is English only and shows no language switch
 
 ### Configuration — confirm, do not assume
 

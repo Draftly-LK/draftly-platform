@@ -23,13 +23,13 @@ export function CommonWorkflows() {
   if (workflows.length === 0) return null;
 
   return (
-    <section aria-labelledby="common-workflows-title" className="border-border border-b py-8">
-      <h2 id="common-workflows-title" className="text-2xl font-semibold">
+    <section aria-labelledby="common-workflows-title">
+      <h2 id="common-workflows-title" className="text-xl font-semibold">
         {t("commonWorkflowsTitle")}
       </h2>
       <p className="text-muted-ink mt-1 max-w-3xl text-sm">{t("commonWorkflowsBody")}</p>
-      <div className="border-border-strong bg-surface mt-3 grid overflow-hidden rounded border sm:grid-cols-2 lg:grid-cols-3">
-        {workflows.map(({ subtype, family, available }, index) => {
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {workflows.map(({ subtype, family, available }) => {
           const TierIcon = available ? FlaskConical : CircleDashed;
           const form =
             subtype.gazetteFormNumber === null
@@ -48,10 +48,12 @@ export function CommonWorkflows() {
                   />
                 )}
               </span>
-              <span className="text-muted-ink mt-1 block text-xs">
+              <span className="text-muted-ink -mt-2 block text-xs">
                 {tRoot(family.labelKey)} · {form}
               </span>
-              <span className="text-muted-ink mt-3 inline-flex items-center gap-2 text-xs font-medium">
+              <span
+                className={`mt-auto inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium ${available ? "border-transparent bg-gold-soft text-gold-strong" : "border-border text-muted-ink"}`}
+              >
                 <TierIcon className="size-4" strokeWidth={1.5} aria-hidden="true" />
                 {tWorkflow(`tier.${subtype.releaseTier}`)}
               </span>
@@ -59,17 +61,17 @@ export function CommonWorkflows() {
           );
           // Only an instrument this release prepares is actionable; the rest are
           // shown for orientation and are deliberately not links.
-          const border = index > 0 ? "border-border border-t sm:border-t-0 sm:border-l" : "";
+          const cardBase = "rounded-card border-border flex min-h-32 flex-col gap-3 border p-5";
           return available ? (
             <Link
               key={subtype.id}
               href="/new"
-              className={`hover:bg-hover-bg group flex min-h-28 flex-col p-5 ${border}`}
+              className={`${cardBase} bg-surface shadow-card hover:border-border-strong hover:shadow-raised group transition-shadow`}
             >
               {card}
             </Link>
           ) : (
-            <div key={subtype.id} className={`flex min-h-28 flex-col p-5 ${border}`}>
+            <div key={subtype.id} className={`${cardBase} bg-canvas`}>
               {card}
             </div>
           );

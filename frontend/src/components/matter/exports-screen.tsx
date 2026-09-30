@@ -8,9 +8,9 @@ import {
   LoaderCircle,
   Plus,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import {
   createExport,
   createRegistrationEvent,
@@ -20,6 +20,7 @@ import {
 import { listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
+import { humanizeMessageKey } from "@/lib/i18n/humanize";
 import type {
   ApiFormExportList,
   ApiRegistrationEventList,
@@ -55,6 +56,16 @@ interface ExportsScreenContentProps {
 
 function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps) {
   const t = useTranslations("exports");
+  const tRoot = useTranslations();
+  const format = useFormatter();
+  const formatDate = (value: string) => format.dateTime(new Date(value), { dateStyle: "medium" });
+  /** The watermark's own message, or a readable form of its key. */
+  const watermarkText = (key: string) => (tRoot.has(key) ? tRoot(key) : humanizeMessageKey(key));
+  /** Title of a generated form's template, or "Form 08" when it has no message. */
+  const formTitle = (templateId: string) => {
+    const key = `rta.form.${templateId.replace(/^rta\./, "").replace(/\./g, "_")}.title`;
+    return tRoot.has(key) ? tRoot(key) : t("formFallback", { number: templateId.split(".").pop() ?? templateId });
+  };
 
   const [matter, setMatter] = useState<ApiRtaMatter | null>(null);
   const [exportList, setExportList] = useState<ApiFormExportList | null>(null);
@@ -65,7 +76,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
   // Form for creating export
   const [showExportForm, setShowExportForm] = useState(false);
   const [availableForms, setAvailableForms] = useState<
-    Array<{ id: string; titleKey: string }>
+    Array<{ id: string; templateId: string; formVersion: number }>
   >([]);
   const [selectedFormId, setSelectedFormId] = useState<string>("");
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>("WORKING_DRAFT_MANIFEST");
@@ -98,7 +109,8 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       // Extract available forms
       const forms = formsResult.items.map((form) => ({
         id: form.id,
-        titleKey: form.templateId,
+        templateId: form.templateId,
+        formVersion: form.formVersion,
       }));
       setAvailableForms(forms);
 
@@ -107,7 +119,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
         setSelectedFormId(forms[0]!.id);
       }
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("loadError"));
+      setError(apiErrorMessage(cause, t("loadError")));
     } finally {
       setLoading(false);
     }
@@ -120,7 +132,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
   // Handle create export
   const handleCreateExport = useCallback(async () => {
     if (!selectedFormId) {
-      setError("Select a form first.");
+      setError(t("formRequired"));
       return;
     }
 
@@ -136,7 +148,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       setSelectedFormId(availableForms.length === 1 ? availableForms[0]!.id : "");
       setSelectedFormat("WORKING_DRAFT_MANIFEST");
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("createError"));
+      setError(apiErrorMessage(cause, t("createError")));
     } finally {
       setCreatingExport(false);
     }
@@ -145,7 +157,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
   // Handle create registration event
   const handleCreateEvent = useCallback(async () => {
     if (!eventDate) {
-      setError("Event date is required.");
+      setError(t("eventDateRequired"));
       return;
     }
 
@@ -172,7 +184,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       setRegistryOffice("");
       setResultNote("");
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("createError"));
+      setError(apiErrorMessage(cause, t("createError")));
     } finally {
       setCreatingEvent(false);
     }
@@ -183,7 +195,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       <AppShell matterId={matterId}>
         <div className="flex items-center gap-2 p-6 text-muted-ink">
           <LoaderCircle className="size-5 animate-spin" strokeWidth={1.5} aria-hidden="true" />
-          Loading…
+          {t("loading")}
         </div>
       </AppShell>
     );
@@ -218,6 +230,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
     DAY_BOOK_ENTERED: t("dayBookEnteredEvent"),
     REGISTERED: t("registeredEvent"),
     REFUSED: t("refusedEvent"),
+    RETURNED: t("returnedEvent"),
   };
 
   return (
@@ -260,7 +273,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
 
           {/* Create export form */}
           {showExportForm && (
-            <div className="mb-6 rounded border border-border-strong bg-surface p-4">
+            <div className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold">{t("selectForm")}</label>
@@ -269,10 +282,10 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     onChange={(e) => setSelectedFormId(e.target.value)}
                     className="border-border-strong bg-surface mt-2 w-full rounded border px-3 py-2 text-sm"
                   >
-                    <option value="">Choose a form…</option>
-                    {availableForms.map((form, idx) => (
+                    <option value="">{t("chooseForm")}</option>
+                    {availableForms.map((form) => (
                       <option key={form.id} value={form.id}>
-                        Form {idx + 1}
+                        {t("formOption", { title: formTitle(form.templateId), version: form.formVersion })}
                       </option>
                     ))}
                   </select>
@@ -317,9 +330,9 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     ) : (
                       <Download className="size-4" strokeWidth={1.5} />
                     )}
-                    {creatingExport ? "Creating…" : "Create export"}
+                    {creatingExport ? t("creating") : t("createExport")}
                   </Button>
-                  <Button onClick={() => setShowExportForm(false)}>Cancel</Button>
+                  <Button onClick={() => setShowExportForm(false)}>{t("cancel")}</Button>
                 </div>
               </div>
             </div>
@@ -329,19 +342,19 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
           {exportList.items.length > 0 ? (
             <div className="space-y-2">
               {exportList.items.map((item) => (
-                <div key={item.id} className="flex items-start gap-4 rounded border border-border-strong bg-surface p-4 text-sm">
+                <div key={item.id} className="flex items-start gap-4 rounded-card border border-border bg-surface p-4 text-sm shadow-card">
                   <File className="mt-0.5 size-5 shrink-0 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
                   <div className="flex-1">
-                    <div className="font-semibold">Form {item.artifactKind}</div>
+                    <div className="font-semibold">{formatLabels[item.artifactKind] || item.artifactKind}</div>
                     <div className="text-muted-ink mt-1 text-xs">
                       {t("format")}: {formatLabels[item.artifactKind] || item.artifactKind}
                     </div>
                     <div className="text-muted-ink text-xs">
-                      {t("createdAt")}: {new Date(item.createdAt).toLocaleDateString()}
+                      {t("createdAt")}: {formatDate(item.createdAt)}
                     </div>
                     {item.watermarked && (
                       <div className="text-amber-text text-xs">
-                        {t("watermarked")}: {item.watermarkKey}
+                        {t("watermarked")}{item.watermarkKey ? `: ${watermarkText(item.watermarkKey)}` : ""}
                       </div>
                     )}
                   </div>
@@ -349,7 +362,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
               ))}
             </div>
           ) : (
-            <div className="rounded border border-border-strong bg-surface p-6 text-center text-sm">
+            <div className="rounded-card border border-border bg-surface p-6 text-center text-sm shadow-card">
               <File className="mx-auto mb-2 size-8 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
               <p className="text-muted-ink">{t("noExports")}</p>
             </div>
@@ -375,7 +388,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
 
           {/* Create event form */}
           {showEventForm && (
-            <div className="mb-6 rounded border border-border-strong bg-surface p-4">
+            <div className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold">{t("eventType")}</label>
@@ -410,7 +423,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     type="text"
                     value={dayBookReference}
                     onChange={(e) => setDayBookReference(e.target.value)}
-                    placeholder="Optional"
+                    placeholder={t("optional")}
                     className="border-border-strong bg-surface mt-2 w-full rounded border px-3 py-2 text-sm"
                   />
                 </div>
@@ -421,7 +434,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     type="text"
                     value={registryOffice}
                     onChange={(e) => setRegistryOffice(e.target.value)}
-                    placeholder="Optional"
+                    placeholder={t("optional")}
                     className="border-border-strong bg-surface mt-2 w-full rounded border px-3 py-2 text-sm"
                   />
                 </div>
@@ -431,7 +444,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                   <textarea
                     value={resultNote}
                     onChange={(e) => setResultNote(e.target.value)}
-                    placeholder="Optional"
+                    placeholder={t("optional")}
                     className="border-border-strong bg-surface mt-2 w-full rounded border px-3 py-2 text-sm"
                     rows={3}
                   />
@@ -448,9 +461,9 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     ) : (
                       <Calendar className="size-4" strokeWidth={1.5} />
                     )}
-                    {creatingEvent ? "Recording…" : "Record event"}
+                    {creatingEvent ? t("recording") : t("recordEventAction")}
                   </Button>
-                  <Button onClick={() => setShowEventForm(false)}>Cancel</Button>
+                  <Button onClick={() => setShowEventForm(false)}>{t("cancel")}</Button>
                 </div>
               </div>
             </div>
@@ -460,21 +473,21 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
           {eventList.items.length > 0 ? (
             <div className="space-y-2">
               {eventList.items.map((item) => (
-                <div key={item.id} className="flex items-start gap-4 rounded border border-border-strong bg-surface p-4 text-sm">
+                <div key={item.id} className="flex items-start gap-4 rounded-card border border-border bg-surface p-4 text-sm shadow-card">
                   <Calendar className="mt-0.5 size-5 shrink-0 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
                   <div className="flex-1">
                     <div className="font-semibold">{eventTypeLabels[item.eventType]}</div>
                     <div className="text-muted-ink mt-1 text-xs">
-                      {new Date(item.eventDate).toLocaleDateString()}
+                      {formatDate(item.eventDate)}
                     </div>
                     {item.dayBookReference && (
                       <div className="text-muted-ink text-xs">
-                        Day book: {item.dayBookReference}
+                        {t("dayBookReference")}: {item.dayBookReference}
                       </div>
                     )}
                     {item.registryOffice && (
                       <div className="text-muted-ink text-xs">
-                        Office: {item.registryOffice}
+                        {t("registryOffice")}: {item.registryOffice}
                       </div>
                     )}
                     {item.resultNote && (
@@ -487,7 +500,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
               ))}
             </div>
           ) : (
-            <div className="rounded border border-border-strong bg-surface p-6 text-center text-sm">
+            <div className="rounded-card border border-border bg-surface p-6 text-center text-sm shadow-card">
               <Calendar className="mx-auto mb-2 size-8 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
               <p className="text-muted-ink">{t("noEvents")}</p>
             </div>
@@ -504,8 +517,8 @@ function DemoExportsContent({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="rounded border border-border-strong bg-surface p-6">
-          <p className="text-muted-ink text-sm">Demo mode: export and registration screen not available</p>
+        <div className="rounded-card border border-border bg-surface p-6 shadow-card">
+          <p className="text-muted-ink text-sm">{t("demoUnavailable")}</p>
         </div>
       </div>
     </AppShell>
