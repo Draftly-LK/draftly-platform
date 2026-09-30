@@ -633,6 +633,7 @@ function ContextPanel({
   onClearCitation: () => void;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const tNav = useTranslations("matterNav");
   if (selectedCitation)
     return (
       <div className="p-5">
@@ -712,7 +713,7 @@ function ContextPanel({
         </h2>
         {context && (
           <p className="text-muted-ink mt-1 text-sm">
-            {t("matterState", { state: context.state })}
+            {t("matterState", { state: tNav(`stateLabel.${context.state}`) })}
           </p>
         )}
       </div>
