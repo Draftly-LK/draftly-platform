@@ -205,7 +205,7 @@ function ApprovalScreenContent({
               <ul className="space-y-2">
                 {gate.blocking.map((item) => (
                   <div
-                    key={item.code}
+                    key={item.id}
                     className="flex gap-3 rounded border border-red bg-red-bg p-3 text-sm"
                   >
                     <TriangleAlert
@@ -232,7 +232,7 @@ function ApprovalScreenContent({
               <ul className="space-y-2">
                 {gate.warnings.map((item) => (
                   <div
-                    key={item.code}
+                    key={item.id}
                     className="flex gap-3 rounded border border-amber bg-amber-bg p-3 text-sm"
                   >
                     <TriangleAlert
