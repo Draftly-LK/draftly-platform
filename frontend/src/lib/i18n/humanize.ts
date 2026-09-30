@@ -8,7 +8,7 @@
  */
 
 /** Trailing segments that describe the slot, not the thing (`…district.label`). */
-const SLOT_SEGMENTS = new Set(["label", "title", "body", "description", "purpose", "text", "name"]);
+const SLOT_SEGMENTS = new Set(["label", "title", "body", "description", "purpose", "text", "name", "summary"]);
 
 function words(segment: string): string {
   const spaced = segment

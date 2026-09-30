@@ -16,6 +16,7 @@ describe("humanizeMessageKey", () => {
     expect(humanizeMessageKey("rta.form.reg_2022_form_08.field.district.label")).toBe("District");
     expect(humanizeMessageKey("rta.form.reg_2022_form_08.title")).toBe("Reg 2022 form 08");
     expect(humanizeMessageKey("rta.subtype.transfer_sale")).toBe("Transfer sale");
+    expect(humanizeMessageKey("rta.issue.party_identity_conflict.summary")).toBe("Party identity conflict");
   });
 
   it("handles a bare key and an empty one", () => {
