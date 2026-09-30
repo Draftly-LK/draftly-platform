@@ -142,7 +142,7 @@ export function LibraryScreen() {
                         {source.type === "amendment"
                           ? t("amendment")
                           : t("statute")}{" "}
-                        · {source.reference} · {source.id}
+                        · {source.reference}
                       </p>
                       <p className="text-muted-ink mt-1 text-xs">
                         {t("sectionCount", { count: source.sectionCount })}
