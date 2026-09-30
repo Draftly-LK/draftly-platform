@@ -6,11 +6,14 @@ allocation is monotonic and unique, and every recorded tool call is kept.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from src.modules.matter_agent.application.actions import CHECKLIST_DECISION
 from src.modules.matter_agent.application.agent_service import AgentJob
 from src.modules.matter_agent.domain.models import (
+    AgentCitation,
+    AgentConversation,
     AgentMessage,
     AgentSession,
     JobState,
@@ -33,6 +36,7 @@ from src.platform.pagination import Cursor
 class FakeSessionRepo:
     def __init__(self) -> None:
         self.rows: dict[tuple[str, str], AgentSession] = {}
+        self.conversations: dict[str, list[AgentConversation]] = {}
         self.create_calls = 0
 
     async def find(self, *, user_id: str, matter_id: str) -> AgentSession | None:
@@ -45,7 +49,33 @@ class FakeSessionRepo:
             # Mirrors the unique constraint: the first writer wins.
             return self.rows[key]
         self.rows[key] = session
-        return session
+        return await self.start_conversation(session)
+
+    async def start_conversation(self, session: AgentSession) -> AgentSession:
+        now = datetime.now(tz=UTC)
+        rows = self.conversations.setdefault(session.id, [])
+        if rows:
+            rows[-1] = replace(rows[-1], state=SessionState.CLOSED, updated_at=now)
+        conversation = AgentConversation(
+            id=ids.new_id(ids.AGENT_CONVERSATION),
+            session_id=session.id,
+            user_id=session.user_id,
+            matter_id=session.matter_id,
+            state=SessionState.ACTIVE,
+            created_at=now,
+            updated_at=now,
+        )
+        rows.append(conversation)
+        updated = replace(
+            session,
+            active_conversation_id=conversation.id,
+            updated_at=now,
+        )
+        self.rows[(session.user_id, session.matter_id)] = updated
+        return updated
+
+    async def list_conversations(self, session: AgentSession) -> tuple[AgentConversation, ...]:
+        return tuple(reversed(self.conversations.get(session.id, [])))
 
 
 class FakeConversation:
@@ -61,6 +91,7 @@ class FakeConversation:
         job_id: str | None = None,
         tool_call_id: str | None = None,
         pending_action_id: str | None = None,
+        citations: tuple[AgentCitation, ...] = (),
     ) -> AgentMessage:
         message = AgentMessage(
             id=ids.new_id(ids.AGENT_MESSAGE),
@@ -74,14 +105,23 @@ class FakeConversation:
             job_id=job_id,
             tool_call_id=tool_call_id,
             pending_action_id=pending_action_id,
+            conversation_id=session.active_conversation_id,
+            citations=citations,
         )
         self.messages.append(message)
         return message
 
     async def page(
-        self, *, session_id: str, limit: int, cursor: Cursor | None = None
+        self,
+        *,
+        session_id: str,
+        limit: int,
+        cursor: Cursor | None = None,
+        conversation_id: str | None = None,
     ) -> MessagePage:
         rows = [m for m in reversed(self.messages) if m.session_id == session_id]
+        if conversation_id is not None:
+            rows = [m for m in rows if m.conversation_id == conversation_id]
         if cursor is not None:
             rows = [m for m in rows if m.sequence < int(cursor.id)]
         page = rows[:limit]
@@ -96,8 +136,12 @@ class FakeConversation:
             has_more=has_more,
         )
 
-    async def recent(self, *, session_id: str, limit: int) -> tuple[AgentMessage, ...]:
+    async def recent(
+        self, *, session_id: str, limit: int, conversation_id: str | None = None
+    ) -> tuple[AgentMessage, ...]:
         rows = [m for m in self.messages if m.session_id == session_id]
+        if conversation_id is not None:
+            rows = [m for m in rows if m.conversation_id == conversation_id]
         return tuple(rows[-limit:])
 
 

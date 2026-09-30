@@ -45,6 +45,31 @@ class AgentSessionRow(Base):
     state: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     model_version: Mapped[str] = mapped_column(String(128), nullable=False, default="")
     prompt_version: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    active_conversation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AgentConversationRow(Base):
+    """A visible transcript segment; closing it never removes its messages."""
+
+    __tablename__ = "agent_conversations"
+    __table_args__ = (
+        Index("ix_agent_conversations_session_created", "session_id", "created_at"),
+        Index("ix_agent_conversations_user_matter", "user_id", "matter_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("agent_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -76,6 +101,10 @@ class AgentMessageRow(Base):
     job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tool_call_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     pending_action_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("agent_conversations.id", ondelete="CASCADE"), nullable=True
+    )
+    citations: Mapped[list[Any]] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
