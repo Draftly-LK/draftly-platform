@@ -5,6 +5,7 @@ import {
   editReviewCandidate,
   getDocumentInbox,
   getDocumentReview,
+  getPrivateDocumentArtifact,
   getSourceFile,
   listSourceFiles,
   processSourceFile,
@@ -141,5 +142,16 @@ describe("list queries", () => {
     expect(recorder.only().path).toBe(
       "/api/v1/matters/mat-1/document-inbox?limit=5&cursor=xyz",
     );
+  });
+});
+
+describe("private document artifacts", () => {
+  it("fetches the derivative as an authenticated blob", async () => {
+    const blob = await getPrivateDocumentArtifact(token, "/api/v1/artifacts/art-1");
+    expect(blob).toBeInstanceOf(Blob);
+    const request = recorder.only();
+    expect(request.method).toBe("GET");
+    expect(request.path).toBe("/api/v1/artifacts/art-1");
+    expect(request.headers.Authorization).toBe("Bearer synthetic-token");
   });
 });

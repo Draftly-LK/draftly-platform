@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { diffProfile, toEditableProfile, type EditableProfile } from "./profile-fields";
+import {
+  diffProfile,
+  pickEditableProfile,
+  toEditableProfile,
+  type EditableProfile,
+} from "./profile-fields";
+import type { User } from "@/types";
 
 const BLANK: EditableProfile = {
   displayName: "",
@@ -68,6 +74,22 @@ describe("toEditableProfile", () => {
       displayName: "W. A. Perera",
       notaryRegistration: "NR-4821",
       jurisdiction: "Colombo",
+    });
+  });
+});
+
+describe("pickEditableProfile", () => {
+  it("keeps only the editable fields of a full user record", () => {
+    const user = {
+      ...BLANK,
+      id: "user-1",
+      displayName: "Synthetic Lawyer",
+      phone: "011 000 0000",
+    } as unknown as User;
+    expect(pickEditableProfile(user)).toEqual({
+      ...BLANK,
+      displayName: "Synthetic Lawyer",
+      phone: "011 000 0000",
     });
   });
 });

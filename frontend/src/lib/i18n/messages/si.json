@@ -682,7 +682,26 @@
     "runPreflight": "Run preflight",
     "runningPreflight": "Running preflight…",
     "staleError": "Could not mark form stale",
-    "loading": "Loading form…"
+    "loading": "Loading form…",
+    "formNumber": "Form {number}",
+    "formVersion": "v{version}",
+    "knownDefects": "Known source text defects",
+    "readiness": "Form readiness",
+    "reviewReady": "Review ready",
+    "approvalReady": "Approval ready",
+    "registrationReady": "Registration ready",
+    "registrationNever": "No template in this repository can be registration ready.",
+    "ready": "Ready",
+    "notReady": "Not ready",
+    "blocking": "Blocking issues",
+    "warnings": "Warnings",
+    "approveForm": "Approve",
+    "markStaleTitle": "Mark form stale",
+    "markStaleBody": "Use this if the form's inputs have moved and need re-evaluation.",
+    "markStaleReason": "Reason (optional)",
+    "markStale": "Mark stale",
+    "notFound": "Draft not found",
+    "gazetteForms": "Gazette forms (synthetic demo)"
   },
   "checks": {
     "title": "Checks and missing evidence",
@@ -1985,6 +2004,210 @@
       "subtype_not_piloted": "Draftly does not prepare this instrument yet.",
       "transmission": "transmission on death is handled through the estate path.",
       "two_parcel_examination": "two parcels have to be examined together, and Draftly examines one."
+    },
+    "form": {
+      "watermark": {
+        "draft_not_approved": "DRAFT — NOT APPROVED FOR EXECUTION OR REGISTRATION"
+      },
+      "defect": {
+        "caption_or_request_sentence_mismatch": "The source form set has a caption or request sentence that does not match its instrument.",
+        "deceased_rendered_diseased": "The source English text prints “diseased” where “deceased” is meant.",
+        "english_text_not_lawyer_validated": "The English form text has not been validated by a lawyer.",
+        "sinhala_tamil_text_not_held": "The official Sinhala and Tamil texts are not held as validated sources.",
+        "translation_unverified": "The translation is unverified.",
+        "current_revision_unverified": "Whether this is the current revision is unverified.",
+        "official_artifact_not_held": "The official form artifact is not held.",
+        "scan_contains_private_sample_data": "The reference scan contains private sample data."
+      },
+      "preflight": {
+        "unresolved_required_field": "A required field is unresolved.",
+        "field_conflicted": "Sources conflict on a field.",
+        "form_stale": "The form is stale and must be re-evaluated.",
+        "open_blocking_issue": "A blocking issue is open.",
+        "open_statutory_blocker": "A statutory blocker is open.",
+        "open_high_risk_issue": "A high-risk issue is open.",
+        "critical_fact_unconfirmed": "A critical fact is unconfirmed.",
+        "checklist_requirement_blocking": "A checklist requirement is blocking.",
+        "unacknowledged_warning_issue": "A warning issue has not been acknowledged.",
+        "template_not_validated": "The template is a transcription, not a validated template.",
+        "source_reverification_required": "A source needs re-verification.",
+        "unresolved_optional_field": "An optional field is unresolved.",
+        "field_awaiting_confirmation": "A field awaits a lawyer's confirmation.",
+        "template_source_defect": "The template's source text has a recorded defect."
+      },
+      "reg_2022_form_08": {
+        "title": "පැවරීමේ හෝ විකිණීමේ සාධන පත්‍රය",
+        "section": {
+          "parcel": "Land details",
+          "title": "Prior registration",
+          "transferor": "Transferor",
+          "transferee": "Transferee",
+          "consideration": "Consideration",
+          "attestation": "Attestation"
+        },
+        "field": {
+          "district": {
+            "label": "දිස්ත්‍රික්කය"
+          },
+          "ds_division": {
+            "label": "ප්‍රාදේශීය ලේකම් කොට්ඨාසය"
+          },
+          "gn_division": {
+            "label": "ග්‍රාම නිලධාරී කොට්ඨාසය"
+          },
+          "cadastral_map_no": {
+            "label": "කැඩැස්තර සිතියමේ අංකය"
+          },
+          "block_no": {
+            "label": "කලාප අංකය"
+          },
+          "sheet_no": {
+            "label": "Sheet number"
+          },
+          "parcel_no": {
+            "label": "ඉඩම් කොටසේ අංකය"
+          },
+          "extent": {
+            "label": "ප්‍රමාණය"
+          },
+          "village": {
+            "label": "ග්‍රාමය හෝ නගරය"
+          },
+          "assessment_number": {
+            "label": "වරිපනම් අංකය"
+          },
+          "extent_subject_to_transfer": {
+            "label": "පැවරීමට යටත්වන ඉඩමේ ප්‍රමාණය"
+          },
+          "place_of_registration": {
+            "label": "ලියාපදිංචි කළ ස්ථානය"
+          },
+          "title_certificate_no": {
+            "label": "හිමිකම් සහතිකයේ අංකය"
+          },
+          "class_of_title": {
+            "label": "හිමිකම් පන්තිය"
+          },
+          "transferor_name": {
+            "label": "Transferor — full name"
+          },
+          "transferor_nic": {
+            "label": "Transferor — NIC number"
+          },
+          "transferor_address": {
+            "label": "Transferor — address"
+          },
+          "transferee_name": {
+            "label": "Transferee — full name"
+          },
+          "transferee_nic": {
+            "label": "Transferee — NIC number"
+          },
+          "transferee_address": {
+            "label": "Transferee — address"
+          },
+          "consideration": {
+            "label": "Consideration — in figures"
+          },
+          "consideration_words": {
+            "label": "Consideration — in words"
+          },
+          "notary_name": {
+            "label": "Notary's name"
+          },
+          "notary_code": {
+            "label": "Notary's registration number"
+          },
+          "attestation_date": {
+            "label": "Date of attestation"
+          }
+        }
+      },
+      "reg_2022_form_12": {
+        "title": "උකස අවලංගු කිරීමේ සාධන පත්‍රය",
+        "section": {
+          "parcel": "Land details",
+          "title": "Prior registration",
+          "prior_mortgage": "Mortgage being cancelled",
+          "mortgagee": "Mortgagee",
+          "discharge": "Discharge",
+          "attestation": "Attestation"
+        },
+        "field": {
+          "district": {
+            "label": "දිස්ත්‍රික්කය"
+          },
+          "ds_division": {
+            "label": "ප්‍රාදේශීය ලේකම් කොට්ඨාසය"
+          },
+          "gn_division": {
+            "label": "ග්‍රාම නිලධාරී කොට්ඨාසය"
+          },
+          "cadastral_map_no": {
+            "label": "කැඩැස්තර සිතියමේ අංකය"
+          },
+          "block_no": {
+            "label": "කලාප අංකය"
+          },
+          "sheet_no": {
+            "label": "Sheet number"
+          },
+          "parcel_no": {
+            "label": "ඉඩම් කොටසේ අංකය"
+          },
+          "extent": {
+            "label": "ප්‍රමාණය"
+          },
+          "place_of_registration": {
+            "label": "ලියාපදිංචි කළ ස්ථානය"
+          },
+          "title_certificate_no": {
+            "label": "හිමිකම් සහතිකයේ අංකය"
+          },
+          "class_of_title": {
+            "label": "හිමිකම් පන්තිය"
+          },
+          "registered_owner_name": {
+            "label": "Registered owner (mortgagor) — full name"
+          },
+          "mortgage_reference": {
+            "label": "Mortgage — registered entry (day book number)"
+          },
+          "mortgage_registration_date": {
+            "label": "Mortgage — registration date"
+          },
+          "mortgagee_name": {
+            "label": "Mortgagee — full name"
+          },
+          "mortgagee_address": {
+            "label": "Mortgagee — address"
+          },
+          "releasing_party_authority": {
+            "label": "Releasing party's authority confirmed"
+          },
+          "discharge_evidence_kind": {
+            "label": "Discharge evidence — kind"
+          },
+          "discharge_reference": {
+            "label": "Discharge evidence — reference"
+          },
+          "discharge_date": {
+            "label": "Discharge evidence — date"
+          },
+          "cancellation_particulars": {
+            "label": "Cancellation particulars"
+          },
+          "notary_name": {
+            "label": "Notary's name"
+          },
+          "notary_code": {
+            "label": "Notary's registration number"
+          },
+          "attestation_date": {
+            "label": "Date of attestation"
+          }
+        }
+      }
     }
   },
   "_todo": "TODO(si): English fallbacks pending native-Sinhala drafting and lawyer terminology review",
@@ -2180,5 +2403,104 @@
     },
     "thread": "සංවාදය",
     "empty": "තවම පණිවිඩ නැත. මෙම කාරණය ගැන අසන්න."
+  },
+  "gazette": {
+    "modeLabel": "Drafting mode",
+    "modeGuided": "Field by field",
+    "modeDocument": "Fill in document",
+    "progress": "{filled} of {total} blanks filled",
+    "step": "Blank {current} of {total}",
+    "previous": "Previous",
+    "next": "Next",
+    "nextEmpty": "Next empty blank",
+    "lockedNote": "Prescribed wording is locked",
+    "sourceBody": "Form {form}: transcribed verbatim from Gazette Extraordinary 1886/58 of 2014-10-31 ({pages} pages). A transcription, not a lawyer-approved template. Only the blanks can be filled.",
+    "documentLabel": "Gazette form",
+    "localOnly": "Typed blanks are saved on this device only until the draft API can store them.",
+    "selectBlank": "Select a blank on the form to review it.",
+    "notOnForm": "Not printed on the form",
+    "notOnFormBody": "The template records these fields, but the printed gazette form has no blank for them.",
+    "fieldMissing": "This blank's field is not on the generated form.",
+    "noRendering": "No gazette rendering exists for this template yet, so its fields are reviewed one by one.",
+    "status": {
+      "unresolved": "Unresolved",
+      "awaiting": "Awaiting confirmation",
+      "confirmed": "Confirmed"
+    },
+    "critical": "Critical",
+    "required": "Required",
+    "aiSuggested": "AI-suggested",
+    "unresolvedValue": "Unresolved",
+    "unresolvedReason": {
+      "MISSING_FACT": "No verified fact supplies this field.",
+      "FACT_UNCONFIRMED": "The fact is not confirmed yet.",
+      "FACT_CONFLICTED": "Sources disagree on this fact.",
+      "CRITICAL_FACT_UNCONFIRMED": "A critical fact needs a lawyer's confirmation."
+    },
+    "conflicts": "Conflicting candidates",
+    "candidateStatus": "Status: {status}",
+    "confidence": "Model confidence {value}%",
+    "criticalNote": "Critical particulars come from confirmed facts. They can be confirmed or cleared here, never typed onto the form.",
+    "confirm": "Confirm",
+    "correct": "Correct",
+    "clear": "Clear",
+    "correctedValue": "Corrected text",
+    "reason": "Reason (required)",
+    "reasonHint": "Why this decision is being recorded",
+    "saveCorrection": "Save correction",
+    "confirmClear": "Clear field",
+    "cancel": "Cancel",
+    "refused": {
+      "APPROVED_FORM_IMMUTABLE": "An approved form cannot be changed. Amend it as a new form version.",
+      "UNKNOWN_FIELD": "That field is not on this form.",
+      "FIELD_NOT_POPULATED": "There is no value to confirm yet.",
+      "REASON_REQUIRED": "Give a reason for this decision.",
+      "CRITICAL_FIELD_REQUIRES_CONFIRMED_FACT": "A critical field is confirmed from a verified fact, never typed.",
+      "LAWYER_AUTHORED_TEXT_NOT_PERMITTED": "This template does not allow lawyer-written text in that field.",
+      "FIELD_VALUE_REQUIRED": "Enter the corrected text."
+    },
+    "slot": {
+      "conditions": "Item 7 — conditions",
+      "encumbranceNature": "Item 8 — encumbrance: nature",
+      "encumbranceDetails": "Item 8 — encumbrance: details",
+      "encumbrancePeriod": "Item 8 — encumbrance: period of validity",
+      "transferYear": "Transfer clause — year (after “20”)",
+      "transferMonth": "Transfer clause — month",
+      "transferDay": "Transfer clause — day",
+      "transferorSignedOn": "Transferor's signature — date",
+      "transfereeSignedOn": "Transferee's signature — date",
+      "lifeInterestHolder": "Life-interest release — holder's name (complete only if applicable)",
+      "lifeInterestSignedOn": "Life-interest holder's signature — date",
+      "witnessedOn": "Witnesses' statement — date signed",
+      "witnessedAt": "Witnesses' statement — place signed",
+      "witnessNames": "Witnesses — full names",
+      "witnessNics": "Witnesses — NIC numbers",
+      "witnessAddresses": "Witnesses — addresses",
+      "mortgageDayBook": "Item 5 — mortgage instrument: day book number",
+      "mortgageDate": "Item 5 — mortgage instrument: date",
+      "mortgagePrincipal": "Item 5 — mortgage instrument: principal sum",
+      "mortgageAttestedBy": "Item 5 — mortgage instrument: attested by",
+      "releaseMortgagorAddress": "Release clause — mortgagor's residence",
+      "releaseMortgagorName": "Release clause — mortgagor's name",
+      "releaseReleasorAddress": "Release clause — releasing party's residence",
+      "releaseReleasorName": "Release clause — releasing party's name",
+      "ownerSignedOn": "Owner's signature — date",
+      "mortgageeSignedOn": "Mortgagee's signature — date"
+    },
+    "compareTitle": "Form {form} — gazette pages beside the rendering",
+    "comparePlain": "Draw blanks as printed"
+  },
+  "generatedFormState": {
+    "GENERATED_DRAFT": "Generated draft",
+    "UNRESOLVED": "Unresolved",
+    "REVIEW_READY": "Review ready",
+    "LAWYER_REVIEWED": "Lawyer reviewed",
+    "APPROVAL_PENDING": "Approval pending",
+    "APPROVED": "Approved",
+    "EXPORTED": "Exported",
+    "SUBMITTED": "Submitted",
+    "REGISTERED": "Registered",
+    "STALE_TEMPLATE": "Stale template",
+    "STALE_AFTER_APPROVAL": "Stale after approval"
   }
 }

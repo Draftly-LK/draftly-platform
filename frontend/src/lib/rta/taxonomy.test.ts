@@ -10,7 +10,9 @@ import {
   isV0Subtype,
   migrateLegacyMatterType,
   prescribedInstruments,
+  familyLabelKey,
   statutoryFamilies,
+  subtypeLabelKey,
   subtypesInFamily,
   transactionFamilies,
   v0SubtypeIds,
@@ -188,5 +190,22 @@ describe("legacy matter-type migration", () => {
   it("returns null rather than guessing for an unmapped value", () => {
     expect(migrateLegacyMatterType("nonsense")).toBeNull();
     expect(migrateLegacyMatterType("")).toBeNull();
+  });
+});
+
+describe("label keys", () => {
+  it("returns the message key for every family and subtype", () => {
+    for (const family of families()) {
+      expect(familyLabelKey(family.id)).toBe(family.labelKey);
+    }
+    for (const subtype of allSubtypes()) {
+      expect(subtypeLabelKey(subtype.id)).toBe(subtype.labelKey);
+    }
+  });
+
+  it("returns undefined for an unknown id rather than guessing", () => {
+    // @ts-expect-error deliberately outside the typed id union
+    expect(familyLabelKey("no_such_family")).toBeUndefined();
+    expect(subtypeLabelKey("no_such_subtype")).toBeUndefined();
   });
 });
