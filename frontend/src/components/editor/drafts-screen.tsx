@@ -2,6 +2,7 @@
 
 import { AlertCircle, ArrowRight, FilePlus2, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { subtypeLabelKey } from "@/lib/rta/taxonomy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -259,7 +260,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                       key={form.id}
                       className="border-border h-11 border-b last:border-b-0"
                     >
-                      <td className="px-4">{tRoot(matter?.subtypeId ? `rta.subtype.${matter.subtypeId}` : "label.form")}</td>
+                      <td className="px-4">{tRoot((matter?.subtypeId ? subtypeLabelKey(matter.subtypeId) : undefined) ?? "label.form")}</td>
                       <td className="px-4 tabular-nums">v{form.formVersion}</td>
                       <td className="px-4">
                         <span className={cn(
