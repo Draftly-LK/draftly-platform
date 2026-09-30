@@ -880,12 +880,17 @@ export interface ApiFactCandidate {
   modelReportedConfidence: number | null;
 }
 
-/** Why a field renders its unresolved token instead of a value (§9.4). */
+/**
+ * Why a field renders its unresolved token instead of a value (§9.4). Mirrors
+ * `UnresolvedReason` in backend/src/modules/content_governance/domain/enums.py;
+ * every value needs a `gazette.unresolvedReason.*` message.
+ */
 export type UnresolvedReason =
-  | "MISSING_FACT"
-  | "FACT_UNCONFIRMED"
+  | "NO_FACT"
+  | "FACT_NOT_CONFIRMED"
   | "FACT_CONFLICTED"
-  | "CRITICAL_FACT_UNCONFIRMED";
+  | "FACT_SUPERSEDED"
+  | "BLOCKED_BY_ISSUE";
 
 /** Mirrors `FormFieldRead`. */
 export interface ApiFormField {
@@ -1090,7 +1095,8 @@ export type RegistrationEventType =
   | "PRESENTED"
   | "DAY_BOOK_ENTERED"
   | "REGISTERED"
-  | "REFUSED";
+  | "REFUSED"
+  | "RETURNED";
 
 /** Mirrors `RegistrationEventRead`. */
 export interface ApiRegistrationEvent {

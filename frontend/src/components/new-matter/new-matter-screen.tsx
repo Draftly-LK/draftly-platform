@@ -45,10 +45,9 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import {
   compileChecklist,
   confirmSubtype,
@@ -247,7 +246,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
   const describeError = useCallback(
     (cause: unknown) =>
-      cause instanceof ApiError ? cause.message : t("genericError"),
+      apiErrorMessage(cause, t("genericError")),
     [t],
   );
 
@@ -469,9 +468,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
           <div className="font-display text-on-dark text-3xl font-semibold">
             {t("entryTitle")}
           </div>
-          <div className="ml-auto">
-            <LocaleToggle />
-          </div>
         </header>
         <section className="relative min-h-screen overflow-hidden pt-16">
           <Image
@@ -549,9 +545,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
         <BrandMark className="size-8 shrink-0" />
         <div className="font-heading text-2xl font-semibold">
           {t("entryTitle")}
-        </div>
-        <div className="ml-auto">
-          <LocaleToggle />
         </div>
       </header>
       <div className="mx-auto max-w-3xl p-6 sm:p-10">

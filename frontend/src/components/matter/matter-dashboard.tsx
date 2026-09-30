@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { listIssues } from "@/lib/api/checks";
-import { ApiError, type TokenProvider } from "@/lib/api/client";
+import { type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { getDocumentInbox } from "@/lib/api/documents";
 import { listForms } from "@/lib/api/drafts";
 import { listMatterFacts } from "@/lib/api/facts";
@@ -108,7 +108,7 @@ function DashboardFlow({
           setData({ matter, checklist, inbox, openIssues, forms, facts });
       })
       .catch((cause: unknown) => {
-        if (!cancelled) setError(cause instanceof ApiError ? cause.message : t("loadFailed"));
+        if (!cancelled) setError(apiErrorMessage(cause, t("loadFailed")));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -236,7 +236,7 @@ function DashboardFlow({
               <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
                 <div>
                   <dt className="text-muted-ink text-xs">{t("matterState")}</dt>
-                  <dd className="font-medium">{t(`state.${matter.state}`)}</dd>
+                  <dd className="font-medium">{tNav(`stateLabel.${matter.state}`)}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-ink text-xs">{t("scope")}</dt>
@@ -297,7 +297,7 @@ function DashboardFlow({
               <p className="text-muted-ink mt-1 text-sm">
                 {t("summaryStatus", {
                   instrument: instrumentLabel,
-                  state: t(`state.${matter.state}`),
+                  state: tNav(`stateLabel.${matter.state}`),
                 })}
               </p>
             </div>

@@ -64,7 +64,6 @@ export default defineConfig({
         NEXT_PUBLIC_API_BASE_URL: "",
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "",
         CLERK_SECRET_KEY: "",
-        MULTILINGUAL_LANGUAGE_SUPPORT: "true",
         NEXT_DIST_DIR: ".next-e2e",
       },
     },

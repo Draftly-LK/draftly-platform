@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, Noto_Sans_Sinhala, Noto_Serif_Sinhala, Source_Serif_4 } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { ProvisionGate } from "@/components/auth/provision-gate";
-import { MultilingualProvider } from "@/components/shell/multilingual-provider";
+import { IntlProvider } from "@/components/shell/intl-provider";
 import { isClerkConfigured } from "@/lib/auth/clerk";
-import { isMultilingualEnabled } from "@/lib/i18n/multilingual";
 import "@/styles/globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -45,9 +43,8 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   const messages = await getMessages();
-  const multilingual = isMultilingualEnabled();
   // ProvisionGate renders translated copy on its blocking-error state, so it
-  // has to sit inside NextIntlClientProvider — not the other way around.
+  // has to sit inside IntlProvider — not the other way around.
   const body = isClerkConfigured() ? (
     <ClerkProvider afterSignOutUrl="/sign-in">
       {/* Inside ClerkProvider: it reads the session to know when to run.
@@ -65,15 +62,13 @@ export default async function RootLayout({
           before React hydrates. Limit suppression to this host element so
           genuine mismatches inside the application remain visible. */}
       <body suppressHydrationWarning>
-        <NextIntlClientProvider
+        <IntlProvider
           locale={locale}
-          messages={messages}
+          messages={messages as Record<string, unknown>}
           timeZone="Asia/Colombo"
         >
-          <MultilingualProvider enabled={multilingual}>
-            {body}
-          </MultilingualProvider>
-        </NextIntlClientProvider>
+          {body}
+        </IntlProvider>
       </body>
     </html>
   );

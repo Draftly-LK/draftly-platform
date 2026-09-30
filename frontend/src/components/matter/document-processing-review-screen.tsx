@@ -10,12 +10,13 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { humanizeMessageKey } from "@/lib/i18n/humanize";
 import { useEffect, useMemo, useState } from "react";
 import { ClassificationReviewScreen } from "@/components/matter/classification-review-screen";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
-import { ApiError, isApiEnabled } from "@/lib/api/client";
+import { ApiError, isApiEnabled, apiErrorMessage } from "@/lib/api/client";
 import {
   approveReviewCandidate,
   editReviewCandidate,
@@ -86,7 +87,7 @@ function DocumentProcessingReviewFlow({
         )
           setLegacy(true);
         else
-          setError(cause instanceof ApiError ? cause.message : t("loadError"));
+          setError(apiErrorMessage(cause, t("loadError")));
       });
     return () => {
       active = false;
@@ -112,7 +113,7 @@ function DocumentProcessingReviewFlow({
       .catch((cause: unknown) => {
         if (!controller.signal.aborted)
           setError(
-            cause instanceof ApiError ? cause.message : t("artifactError"),
+            apiErrorMessage(cause, t("artifactError")),
           );
       });
     return () => {
@@ -154,7 +155,7 @@ function DocumentProcessingReviewFlow({
         ),
       );
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("saveError"));
+      setError(apiErrorMessage(cause, t("saveError")));
     } finally {
       setBusy(null);
     }
@@ -167,7 +168,7 @@ function DocumentProcessingReviewFlow({
         await approveReviewCandidate(getToken, field.id, field.version),
       );
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("approveError"));
+      setError(apiErrorMessage(cause, t("approveError")));
     } finally {
       setBusy(null);
     }
@@ -280,7 +281,7 @@ function DocumentProcessingReviewFlow({
               {review.candidates.map((field) => (
                 <div key={field.id}>
                   <label className="text-sm font-medium">
-                    {field.key}
+                    {humanizeMessageKey(field.key)}
                     <input
                       className="border-border-strong mt-1 w-full rounded border px-3 py-2"
                       value={edits[field.id] ?? ""}

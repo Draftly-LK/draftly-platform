@@ -4,6 +4,7 @@ import { AlertCircle, Check, CircleCheck, CircleDashed, Eraser, LoaderCircle, Pe
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { fieldStatus, printedValue, type FieldStatus } from "@/lib/gazette-forms/field-state";
+import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import { cn } from "@/lib/utils";
 import type { ApiFormField } from "@/types/rta";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ export function FieldReviewCard({
 }) {
   const t = useTranslations("gazette");
   const tRoot = useTranslations();
+  const factStatusLabel = useEnumLabel("enums.factStatus");
   const [editing, setEditing] = useState<"CORRECT" | "CLEAR" | null>(null);
   const [value, setValue] = useState("");
   const [reason, setReason] = useState("");
@@ -123,7 +125,7 @@ export function FieldReviewCard({
               <li key={`${candidate.factId}-${candidate.version}`} className="bg-surface rounded p-2 text-sm">
                 <div className="font-medium">{String(candidate.value)}</div>
                 <div className="text-muted-ink text-xs">
-                  {t("candidateStatus", { status: candidate.status })}
+                  {t("candidateStatus", { status: factStatusLabel(candidate.status) })}
                   {candidate.modelReportedConfidence !== null &&
                     ` · ${t("confidence", { value: Math.round(candidate.modelReportedConfidence * 100) })}`}
                 </div>

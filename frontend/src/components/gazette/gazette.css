@@ -90,6 +90,12 @@
   column-gap: 1.78em;
 }
 
+/* Item 1 fills down each column: (a)-(f) beside (g)-(l). */
+.gz-grid[data-gz-flow="column"] {
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--gz-rows), auto);
+}
+
 /* ── Office-use box ────────────────────────────────────────────────────── */
 
 .gz-box { margin-top: 0.56em; border: 1px solid var(--gz-rule); }
@@ -183,6 +189,7 @@ textarea.gz-input { resize: none; overflow: hidden; field-sizing: content; }
   .gz-page { padding: 1.88em 1.12em 2.81em; }
   .gz-item { padding-inline-start: 0; }
   .gz-grid, .gz-columns { grid-template-columns: minmax(0, 1fr); }
+  .gz-grid[data-gz-flow="column"] { grid-auto-flow: row; grid-template-rows: none; }
   .gz-column + .gz-column { border-inline-start: 0; border-top: 1px solid var(--gz-rule); }
 }
 

@@ -63,68 +63,41 @@ test("rails collapse below 768 and representative screens reflow", async ({
   await context.close();
 });
 
-test("English and Sinhala locale scaffolds hold across the demo path", async ({
+test("the interface is English only, with no language switch", async ({
   page,
 }) => {
   test.setTimeout(90_000);
   const problems = observeProblems(page);
-  await page.goto("/");
-  const toggle = page.locator("[data-locale]").first();
-  await expect(toggle.getByRole("button", { name: "සිං" })).toBeVisible();
-  await toggle.getByRole("button", { name: "සිං" }).click();
-  await expect(page.locator("html")).toHaveAttribute("lang", "si");
+  // A stored Sinhala preference from an earlier build must not take effect.
+  await page.context().addCookies([
+    { name: "draftly-locale", value: "si", domain: "127.0.0.1", path: "/" },
+  ]);
 
   for (const route of [
+    "/",
     "/new",
     "/matters/matter-rta-001/documents",
     "/matters/matter-rta-001/facts",
-    "/matters/matter-rta-001/workflow",
     "/matters/matter-rta-001/checks",
-    "/assistant",
     "/matters/matter-rta-001/drafts",
-    "/matters/matter-rta-001/drafts/draft-form8-001",
     "/matters/matter-rta-001/activity",
   ]) {
     await page.goto(route, { waitUntil: "domcontentloaded" });
-    await expect(page.locator("html")).toHaveAttribute("lang", "si");
-    const probe = await page.evaluate(() => {
-      const localeControl =
-        document.querySelector<HTMLElement>("[data-locale]");
-      const sinhalaButton = [
-        ...(localeControl?.querySelectorAll("button") ?? []),
-      ].find((button) => button.textContent?.includes("සිං"));
-      return {
-        bodyFont: getComputedStyle(document.body).fontFamily,
-        headingFont: getComputedStyle(
-          document.querySelector("h1, h2") ?? document.body,
-        ).fontFamily,
-        glyphFits: sinhalaButton
-          ? sinhalaButton.scrollHeight <= sinhalaButton.clientHeight
-          : false,
-        overflow:
-          document.documentElement.scrollWidth -
-          document.documentElement.clientWidth,
-        rawKey:
-          /\b(?:app|shell|home|matter|documents|facts|workflow|checks|assistant|drafts|activity)\.[a-z][\w.]*/i.test(
-            document.body.innerText,
-          ),
-      };
-    });
-    expect(probe.bodyFont, route).toContain("Noto Sans Sinhala");
-    expect(probe.headingFont, route).toContain("Noto Sans Sinhala");
-    expect(probe.glyphFits, route).toBe(true);
+    await expect(page.locator("html"), route).toHaveAttribute("lang", "en");
+    await expect(page.locator("[data-locale]"), route).toHaveCount(0);
+    const probe = await page.evaluate(() => ({
+      overflow:
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+      rawKey:
+        /\b(?:app|shell|home|matter|documents|facts|workflow|checks|assistant|drafts|activity)\.[a-z][\w.]*/i.test(
+          document.body.innerText,
+        ),
+    }));
     expect(probe.overflow, route).toBeLessThanOrEqual(0);
     expect(probe.rawKey, route).toBe(false);
   }
 
-  await page.goto("/", { waitUntil: "load" });
-  const currentToggle = page.locator("[data-locale]").first();
-  await currentToggle.getByRole("button", { name: "EN" }).click();
-  const localeCookie = (await page.context().cookies()).find(
-    (cookie) => cookie.name === "draftly-locale",
-  );
-  expect(localeCookie?.value).toBe("en");
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
   expect(problems).toEqual([]);
 });
 

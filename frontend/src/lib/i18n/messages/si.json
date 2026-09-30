@@ -142,11 +142,6 @@
     },
     "assistantTab": "සහායක"
   },
-  "placeholder": {
-    "title": "{screen}",
-    "body": "This workspace view is being assembled from the typed M2 contract.",
-    "unknown": "Workspace"
-  },
   "home": {
     "title": "Good morning",
     "description": "Resume a matter or start a scoped notarial task.",
@@ -271,20 +266,6 @@
     "nextDraftBody": "The blocking requirements are clear, so the prescribed form can be prepared.",
     "nextReview": "Review the generated form",
     "nextReviewBody": "A form exists and is waiting on your verification before approval.",
-    "state": {
-      "INTAKE_DRAFT": "Intake",
-      "ROUTED": "Routed",
-      "EVIDENCE_COLLECTION": "Collecting evidence",
-      "REVIEW_REQUIRED": "Review required",
-      "LEGAL_REVIEW": "Legal review",
-      "READY_TO_DRAFT": "Ready to draft",
-      "DRAFTING": "Drafting",
-      "APPROVAL_PENDING": "Approval pending",
-      "APPROVED": "Approved",
-      "EXPORTED": "Exported",
-      "SUBMITTED": "Submitted",
-      "REGISTERED": "Registered"
-    },
     "automation": {
       "ASSESSING": "Being assessed",
       "V0_AUTOMATED": "Prepared by Draftly",
@@ -350,7 +331,13 @@
     "continue": "Continue to inbox",
     "uploadStored": "{name} stored for processing",
     "sourceFileState": "State",
-    "sourceFileName": "Filename"
+    "sourceFileName": "Filename",
+    "unidentifiedClass": "Unidentified",
+    "yes": "Yes",
+    "no": "No",
+    "reviewAction": "Review",
+    "backendNotConfigured": "Backend not configured.",
+    "loadError": "Failed to load documents"
   },
   "facts": {
     "deedNumber": "Deed number",
@@ -443,7 +430,7 @@
     "notaryCode": "Notary code",
     "priorInstrumentConsideration": "Prior instrument consideration",
     "derivedTitle": "Verified facts from evidence",
-    "derivedBody": "Facts shown here are extracted from generated forms and check runs. No direct fact-verification action is available in this view.",
+    "derivedBody": "Facts shown here are extracted from generated forms and check runs. Open a fact to confirm, correct or clear it; the extracted value and the history are kept.",
     "noFormsEmpty": "No forms generated yet",
     "noFormsEmptyBody": "Facts will appear here once a form has been generated or checks have been run.",
     "generateFormLink": "Generate a form",
@@ -458,7 +445,15 @@
     "awaitingConfirmation": "Awaiting confirmation",
     "reviewedByLabel": "Reviewed by {reviewer}",
     "loading": "Loading facts…",
-    "error": "Could not load facts"
+    "error": "Could not load facts",
+    "candidateNumber": "Candidate {number}",
+    "versionColumn": "Version",
+    "evidenceColumn": "Evidence",
+    "formSection": "Form {section}",
+    "decisionError": "Could not save this change. Try again.",
+    "closeReview": "Close",
+    "reviewFact": "Review or correct",
+    "viewFact": "View"
   },
   "sections": {
     "parcel": "Land parcel particulars",
@@ -709,7 +704,9 @@
     "markStaleReason": "Reason (optional)",
     "markStale": "Mark stale",
     "notFound": "Draft not found",
-    "gazetteForms": "Gazette forms (synthetic demo)"
+    "gazetteForms": "Gazette forms (synthetic demo)",
+    "legacyDraftNotice": "This sample draft is a summary only. Open one of the Gazette form drafts from the drafts list to edit it.",
+    "backToDrafts": "Back to drafts"
   },
   "checks": {
     "title": "Checks and missing evidence",
@@ -2238,7 +2235,19 @@
     "nextAction": "Go to exports",
     "loadError": "Could not load approval data",
     "approveError": "Could not record approval",
-    "conflictError": "The approval gate has changed. Please refresh and try again."
+    "conflictError": "The approval gate has changed. Please refresh and try again.",
+    "errorForbidden": "You are not authorized to approve this form.",
+    "errorNotFound": "Form or approval gate not found.",
+    "blockingTitle": "Blocking issues",
+    "warningsTitle": "Warnings",
+    "resolveBefore": "Resolve blocking issues in the",
+    "resolveLink": "form detail screen",
+    "resolveAfter": "before approving.",
+    "cancel": "Cancel",
+    "current": "Current",
+    "formApproved": "Form approved",
+    "formApprovedBody": "The form is now ready for export and registration tracking.",
+    "demoUnavailable": "Demo mode: approval screen not available"
   },
   "exports": {
     "title": "Export & registration",
@@ -2282,7 +2291,20 @@
     "eventRecorded": "Registration event recorded.",
     "loadError": "Could not load export or registration data",
     "createError": "Could not record event",
-    "conflictError": "Data has changed. Please refresh and try again."
+    "conflictError": "Data has changed. Please refresh and try again.",
+    "formFallback": "Form {number}",
+    "formOption": "{title} (v{version})",
+    "formRequired": "Select a form first.",
+    "eventDateRequired": "Event date is required.",
+    "loading": "Loading…",
+    "chooseForm": "Choose a form…",
+    "creating": "Creating…",
+    "cancel": "Cancel",
+    "optional": "Optional",
+    "recording": "Recording…",
+    "recordEventAction": "Record event",
+    "returnedEvent": "Returned by the registry",
+    "demoUnavailable": "Exports and registration events need the live service and are not available in the offline demo."
   },
   "processing": {
     "title": "ක්‍රියා කරමින්",
@@ -2296,7 +2318,9 @@
     "continueToInbox": "ඩොකුමෙන්ට ඉබ්බ පෙට්ටියට යන්න",
     "succeeded": "සාර්ථකයි",
     "failed": "අසාර්ථක",
-    "noUnprocessed": "සියලු ඩොකුමෙන්ටු ක්‍රියා කරන ලදී."
+    "noUnprocessed": "සියලු ඩොකුමෙන්ටු ක්‍රියා කරන ලදී.",
+    "pageCount": "{count, plural, one {# page} other {# pages}}",
+    "backendNotConfigured": "Backend not configured."
   },
   "documentProcessingReview": {
     "title": "ලේඛන සමාලෝචනය",
@@ -2340,7 +2364,12 @@
     "boundarySuccess": "සීමාව තහවුරු කරන ලදී.",
     "back": "ඩොකුමෙන්ට ශ්‍රෙණීවලට ආපසු යන්න",
     "loading": "ඩොකුමෙන්ටුව පූරණය කරමින්…",
-    "error": "ඩොකුමෙන්ටුව පූරණය කිරීමට නොහැකි විය. නැවත උත්සාහ කරන්න."
+    "error": "ඩොකුමෙන්ටුව පූරණය කිරීමට නොහැකි විය. නැවත උත්සාහ කරන්න.",
+    "documentNotFound": "Document not found",
+    "lawyerConfirmed": "Lawyer-confirmed",
+    "chooseClass": "Choose a class...",
+    "saving": "Saving...",
+    "backendNotConfigured": "Backend not configured."
   },
   "missingDocuments": {
     "title": "Missing documents",
@@ -2422,7 +2451,7 @@
     "next": "Next",
     "nextEmpty": "Next empty blank",
     "lockedNote": "Prescribed wording is locked",
-    "sourceBody": "Form {form}: transcribed verbatim from Gazette Extraordinary 1886/58 of 2014-10-31 ({pages} pages). A transcription, not a lawyer-approved template. Only the blanks can be filled.",
+    "sourceBody": "Form {form}: transcribed verbatim from the English edition of Gazette Extraordinary 1886/58 of 2014-10-31 ({pages} pages). A transcription, not a lawyer-approved template. Only the blanks can be filled.",
     "documentLabel": "Gazette form",
     "localOnly": "Typed blanks are saved on this device only until the draft API can store them.",
     "selectBlank": "Select a blank on the form to review it.",
@@ -2440,10 +2469,11 @@
     "aiSuggested": "AI-suggested",
     "unresolvedValue": "Unresolved",
     "unresolvedReason": {
-      "MISSING_FACT": "No verified fact supplies this field.",
-      "FACT_UNCONFIRMED": "The fact is not confirmed yet.",
+      "NO_FACT": "No verified fact supplies this field yet.",
+      "FACT_NOT_CONFIRMED": "A fact exists but a lawyer has not confirmed it.",
       "FACT_CONFLICTED": "Sources disagree on this fact.",
-      "CRITICAL_FACT_UNCONFIRMED": "A critical fact needs a lawyer's confirmation."
+      "FACT_SUPERSEDED": "The fact was replaced by a newer version.",
+      "BLOCKED_BY_ISSUE": "An open issue blocks this field."
     },
     "conflicts": "Conflicting candidates",
     "candidateStatus": "Status: {status}",
@@ -2493,7 +2523,9 @@
       "releaseReleasorAddress": "Release clause — releasing party's residence",
       "releaseReleasorName": "Release clause — releasing party's name",
       "ownerSignedOn": "Owner's signature — date",
-      "mortgageeSignedOn": "Mortgagee's signature — date"
+      "mortgageeSignedOn": "Mortgagee's signature — date",
+      "encumbranceOtherLand": "Item 8 — encumbrances / rights over other land",
+      "mortgagorSignedOn": "Mortgagor's signature — date"
     },
     "compareTitle": "Form {form} — gazette pages beside the rendering",
     "comparePlain": "Draw blanks as printed"
@@ -2510,5 +2542,48 @@
     "REGISTERED": "Registered",
     "STALE_TEMPLATE": "Stale template",
     "STALE_AFTER_APPROVAL": "Stale after approval"
+  },
+  "enums": {
+    "sourceFileState": {
+      "UPLOAD_INITIATED": "Upload started",
+      "QUARANTINED": "Being scanned",
+      "VALIDATED": "Checked",
+      "STORED": "Stored",
+      "PROCESSING": "Processing",
+      "PROCESSED": "Processed",
+      "PROCESSING_FAILED": "Processing failed",
+      "REJECTED": "Rejected",
+      "SUPERSEDED": "Replaced"
+    },
+    "factStatus": {
+      "EXTRACTED_CANDIDATE": "Extracted",
+      "CORROBORATED": "Corroborated",
+      "CONFLICTED": "Conflicting",
+      "REVIEW_REQUIRED": "Needs review",
+      "LAWYER_CONFIRMED": "Lawyer confirmed",
+      "LOCKED_FOR_FORM": "Locked for form",
+      "SUPERSEDED": "Replaced"
+    },
+    "preflightCode": {
+      "UNRESOLVED_REQUIRED_FIELD": "Required field unresolved",
+      "FIELD_CONFLICTED": "Field has conflicting sources",
+      "FORM_STALE": "Form is stale",
+      "OPEN_BLOCKING_ISSUE": "Blocking issue open",
+      "OPEN_STATUTORY_BLOCKER": "Statutory blocker open",
+      "OPEN_HIGH_RISK_ISSUE": "High-risk issue open",
+      "CRITICAL_FACT_UNCONFIRMED": "Critical fact unconfirmed",
+      "CHECKLIST_REQUIREMENT_BLOCKING": "Checklist requirement blocking",
+      "UNACKNOWLEDGED_WARNING_ISSUE": "Warning not acknowledged",
+      "TEMPLATE_NOT_VALIDATED": "Template not validated",
+      "SOURCE_REVERIFICATION_REQUIRED": "Source needs re-verification",
+      "UNRESOLVED_OPTIONAL_FIELD": "Optional field unresolved",
+      "FIELD_AWAITING_CONFIRMATION": "Field awaiting confirmation",
+      "TEMPLATE_SOURCE_DEFECT": "Template source defect"
+    },
+    "boundaryStatus": {
+      "CANDIDATE": "Candidate",
+      "REVIEW_REQUIRED": "Review required",
+      "CONFIRMED": "Confirmed"
+    }
   }
 }

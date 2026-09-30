@@ -12,10 +12,11 @@ import {
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { ApiError, apiErrorMessage, isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { getForm, markFormStale, recordFieldDecision, runPreflight } from "@/lib/api/drafts";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { gazetteFormFor } from "@/lib/gazette-forms";
+import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import { applyDemoDecision, DemoDecisionRefused, demoGazetteForm } from "@/lib/gazette-forms/demo-forms";
 import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -92,7 +93,7 @@ function DraftEditorScreenContent({ matterId, source }: { matterId: string; sour
     (cause: unknown, fallback: string) => {
       if (cause instanceof DemoDecisionRefused) return tGazette(`refused.${cause.code}`);
       if (cause instanceof ApiError && cause.status === 409) return t("conflictError");
-      if (cause instanceof ApiError) return cause.message;
+      if (cause instanceof ApiError) return apiErrorMessage(cause, fallback);
       return fallback;
     },
     [t, tGazette],
@@ -393,12 +394,13 @@ function PreflightStatus({ label, ready, note }: { label: string; ready: boolean
 
 function PreflightItem({ item, form }: { item: ApiPreflightItem; form: ApiGeneratedForm }) {
   const tRoot = useTranslations();
+  const codeLabel = useEnumLabel("enums.preflightCode");
   const subject = item.subjectId ? form.fields.find((field) => field.fieldId === item.subjectId) : undefined;
   return (
     <li className="border-amber bg-amber-bg/50 flex gap-3 rounded border p-3 text-sm">
       <TriangleAlert className="text-amber-text mt-0.5 size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
       <div>
-        <div className="font-semibold">{subject ? tRoot(subject.labelKey) : item.code}</div>
+        <div className="font-semibold">{subject ? tRoot(subject.labelKey) : codeLabel(item.code)}</div>
         <div className="text-muted-ink mt-1">{tRoot(item.explanationKey)}</div>
       </div>
     </li>
@@ -443,7 +445,10 @@ function LegacyDemoDraft({ matterId, draftId }: { matterId: string; draftId: str
       {draft ? (
         <div className="border-border bg-surface m-6 max-w-4xl rounded-card border p-6 shadow-card">
           <h1 className="text-2xl font-semibold">{draft.title}</h1>
-          <p className="text-muted-ink mt-2">{t("noDrafts")}</p>
+          <p className="text-muted-ink mt-2">{t("legacyDraftNotice")}</p>
+          <Link href={`/matters/${matterId}/drafts`} className="mt-4 inline-block">
+            <Button>{t("backToDrafts")}</Button>
+          </Link>
         </div>
       ) : (
         <div className="border-red bg-red-bg text-red m-6 flex gap-3 rounded border p-6 text-sm">

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { gazetteFormFor, listSlots } from "@/lib/gazette-forms";
+import { listSlots, type GazetteForm } from "@/lib/gazette-forms";
 import { cn } from "@/lib/utils";
 import { GazetteContext, type GazetteContextValue } from "./gazette-context";
 
@@ -13,9 +13,8 @@ const GazetteDocument = dynamic(() => import("./gazette-document"), { ssr: false
  * Development-only review aid: the printed gazette pages beside the Tiptap
  * rendering, drawn plain (dotted blanks, no values), for layout comparison.
  */
-export function GazetteCompare({ templateId }: { templateId: string }) {
+export function GazetteCompare({ gazette }: { gazette: GazetteForm }) {
   const t = useTranslations("gazette");
-  const gazette = gazetteFormFor(templateId)!;
   const [plain, setPlain] = useState(true);
   const slots = useMemo(
     () => Object.fromEntries(listSlots(gazette.document).map((slot) => [slot.id, slot])),
@@ -47,7 +46,7 @@ export function GazetteCompare({ templateId }: { templateId: string }) {
         <div className="space-y-4" data-compare-source>
           {gazette.pages.map((page) => (
             // eslint-disable-next-line @next/next/no-img-element -- dev-only page image served by a route handler.
-            <img key={page} src={`/dev/gazette-page/${page}`} alt={page} width={794} className="bg-surface block w-[794px]" />
+            <img key={page} src={`/dev/gazette-page/${gazette.language}/${page}`} alt={page} width={794} className="bg-surface block w-[794px]" />
           ))}
         </div>
         <div className={cn("border-border-strong self-start border")} data-compare-render>

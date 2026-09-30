@@ -149,6 +149,8 @@ function MatterTable({
                   month: "short",
                   year: "numeric",
                   timeZone: "Asia/Colombo",
+                  calendar: "gregory",
+                  numberingSystem: "latn",
                 }).format(new Date(matter.updatedAt))}
               </td>
               <td className="px-3">
