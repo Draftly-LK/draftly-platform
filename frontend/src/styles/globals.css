@@ -65,6 +65,18 @@ a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 table { font-variant-numeric: tabular-nums; }
 
+/* Dropdowns draw their own chevron so it sits inside the (pill) border with
+   room to breathe; the browser's arrow hugs the right edge. The :not() chain
+   lifts specificity above a px-* utility, which would otherwise zero the gap. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23566377' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-position: right 0.9rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+}
+
 /* Inside a matter the matter header already carries the title band and the
    language control, so a tab's own page header steps down a level. */
 [data-matter-header] ~ main [data-page-locale] { display: none; }

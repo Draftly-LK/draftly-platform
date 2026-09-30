@@ -628,7 +628,7 @@ function IssueDecisionModal({
               onChange={(e) =>
                 onTargetStateChange(e.target.value as IssueState | "")
               }
-              className="border-border-strong bg-surface mt-1 w-full rounded border p-2"
+              className="border-border-strong bg-surface mt-1 w-full rounded-control border p-2"
             >
               <option value="">{t("selectState")}</option>
               {issue.permittedStates.map((state) => (
@@ -693,7 +693,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-border-strong bg-surface rounded border px-2 py-1 text-sm"
+        className="border-border-strong bg-surface rounded-control border px-2 py-1 text-sm"
       >
         {options.map((option) => (
           <option key={option} value={option}>

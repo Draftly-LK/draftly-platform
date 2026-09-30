@@ -251,7 +251,7 @@ function DashboardFlow({
                 <p className="text-muted-ink mt-1 text-sm">{target.body}</p>
                 <Link
                   href={target.href}
-                  className="border-forest bg-forest mt-3 inline-flex min-h-10 items-center gap-2 rounded border px-3 py-2 font-medium text-white"
+                  className="border-forest bg-forest mt-3 inline-flex min-h-10 items-center gap-2 rounded-control border px-3 py-2 font-medium text-white"
                 >
                   {t("continue")}
                   <ArrowRight className="size-4" strokeWidth={1.5} />

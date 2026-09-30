@@ -154,7 +154,7 @@ function MatterHeaderShell({
         </span>
         <div className="min-w-0 flex-1">
           <div className="text-muted-ink flex flex-wrap items-center gap-2 text-xs">
-            <span className="bg-gold-soft text-gold-strong rounded px-1.5 py-0.5 font-semibold tracking-wide">
+            <span className="bg-gold-soft text-gold-strong rounded-control px-1.5 py-0.5 font-semibold tracking-wide">
               {t("regime")}
             </span>
             <span className="truncate">{data.subtitleKey ? tRoot(data.subtitleKey) : data.subtitleFallback}</span>
@@ -174,7 +174,7 @@ function MatterHeaderShell({
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2 self-center">
           <IconButton label={t("menu")}>
             <MoreHorizontal className="size-5" strokeWidth={1.5} />
           </IconButton>

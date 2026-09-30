@@ -75,7 +75,7 @@ function TextField({
   multiline?: boolean;
 }) {
   const shared =
-    "border-border focus-visible:outline-ring bg-surface mt-1 w-full rounded-[6px] border px-3 py-2 text-sm";
+    "border-border focus-visible:outline-ring bg-surface mt-1 w-full rounded-control border px-3 py-2 text-sm";
   return (
     <label className="block">
       <span className="flex items-baseline justify-between gap-2">
@@ -242,14 +242,14 @@ export function OnboardingScreen() {
             <button
               type="submit"
               disabled={saving || !canSubmit}
-              className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-control px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? t("submitting") : t("submit")}
             </button>
             <SignOutButton redirectUrl="/sign-in">
               <button
                 type="button"
-                className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-[6px] border px-3 py-2 text-sm"
+                className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control border px-3 py-2 text-sm"
               >
                 {t("signOut")}
               </button>

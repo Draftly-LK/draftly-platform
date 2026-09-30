@@ -17,7 +17,7 @@ export async function HelpScreen() {
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="divide-border mx-auto max-w-4xl divide-y p-6">
+      <div className="divide-border max-w-3xl divide-y p-6">
         {items.map(({ title, body, icon: Icon }) => (
           <section
             key={title}
@@ -30,7 +30,7 @@ export async function HelpScreen() {
             </div>
           </section>
         ))}
-        <button className="border-border-strong bg-surface hover:bg-hover-bg mt-6 min-h-10 rounded border px-3 font-medium">
+        <button className="border-border-strong bg-surface hover:bg-hover-bg mt-6 min-h-10 rounded-control border px-3 font-medium">
           {t("contact")}
         </button>
       </div>

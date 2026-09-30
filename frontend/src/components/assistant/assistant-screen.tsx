@@ -256,7 +256,7 @@ export function AssistantScreen() {
                     {claim.citations.map((item, index) => (
                       <button
                         key={item.id}
-                        className={`inline-flex min-h-9 items-center gap-2 rounded border px-3 text-sm ${citation?.id === item.id ? "border-teal bg-teal-bg text-teal" : "border-border-strong hover:bg-hover-bg"}`}
+                        className={`inline-flex min-h-9 items-center gap-2 rounded-control border px-3 text-sm ${citation?.id === item.id ? "border-teal bg-teal-bg text-teal" : "border-border-strong hover:bg-hover-bg"}`}
                         onClick={() => {
                           setCitation(item);
                           setEvidenceOpen(true);

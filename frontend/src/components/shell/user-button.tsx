@@ -23,17 +23,27 @@ function clerkDisplayName(user: {
 }): string {
   const full = user.fullName?.trim();
   if (full) return full;
-  const parts = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  const parts = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   if (parts) return parts;
   return user.username?.trim() ?? "";
 }
 
+function firstNameOf(user: Parameters<typeof clerkDisplayName>[0]): string {
+  return user.firstName?.trim() || clerkDisplayName(user).split(" ")[0] || "";
+}
+
 function ProfileLink({
   name,
+  firstName,
   label,
   imageUrl,
 }: {
   name: string;
+  /** Shown under the avatar; the text colour follows the header it sits in. */
+  firstName?: string;
   label: string;
   imageUrl?: string | null;
 }) {
@@ -42,7 +52,7 @@ function ProfileLink({
       href="/profile"
       aria-label={label}
       title={name.trim() || label}
-      className="hover:bg-hover-bg focus-visible:outline-ring inline-flex size-10 items-center justify-center rounded-full"
+      className="hover:bg-hover-bg focus-visible:outline-ring inline-flex min-w-10 flex-col items-center justify-center gap-1.5 rounded px-1.5 py-1"
     >
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- Clerk CDN
@@ -58,8 +68,17 @@ function ProfileLink({
           {name.trim() ? (
             getInitials(name)
           ) : (
-            <CircleUserRound aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            <CircleUserRound
+              aria-hidden="true"
+              className="size-5"
+              strokeWidth={1.5}
+            />
           )}
+        </span>
+      )}
+      {firstName && (
+        <span className="max-w-20 truncate text-xs font-medium leading-4">
+          {firstName}
         </span>
       )}
     </Link>
@@ -75,6 +94,7 @@ function ClerkHeaderProfile() {
       <Show when="signed-in">
         <ProfileLink
           name={user ? clerkDisplayName(user) : ""}
+          firstName={user ? firstNameOf(user) : ""}
           label={t("myProfile")}
           imageUrl={user?.imageUrl}
         />
@@ -82,7 +102,7 @@ function ClerkHeaderProfile() {
       <Show when="signed-out">
         <Link
           href="/sign-in"
-          className="text-forest hover:bg-hover-bg focus-visible:outline-ring inline-flex rounded-[6px] px-2 py-1.5 text-sm font-medium"
+          className="text-forest hover:bg-hover-bg focus-visible:outline-ring rounded-control inline-flex px-2 py-1.5 text-sm font-medium"
         >
           {t("signIn")}
         </Link>

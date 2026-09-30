@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { ProvisionGate } from "@/components/auth/provision-gate";
 import { IntlProvider } from "@/components/shell/intl-provider";
+import { NavigationProgress } from "@/components/shell/navigation-progress";
 import { UserButtonProvider } from "@/components/shell/user-button";
 import { isAuthBypassEnabled } from "@/lib/auth/bypass";
 import { isClerkConfigured } from "@/lib/auth/clerk";
@@ -71,6 +72,7 @@ export default async function RootLayout({
         >
           {/* Resolved here, on the server: AUTH_BYPASS and CLERK_SECRET_KEY
               are undefined in the browser, where most screens render. */}
+          <NavigationProgress />
           <UserButtonProvider demoMode={isAuthBypassEnabled() || !isClerkConfigured()}>
             {body}
           </UserButtonProvider>

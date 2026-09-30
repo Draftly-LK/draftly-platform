@@ -45,14 +45,17 @@ export default {
       outlineColor: {
         ring: "var(--ring)"
       },
-      borderRadius: { DEFAULT: "6px", dialog: "8px", card: "10px" },
+      borderRadius: { DEFAULT: "12px", dialog: "16px", card: "16px", control: "9999px" },
       keyframes: {
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
-        "rise-in": { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "none" } }
+        "rise-in": { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "none" } },
+        // Page-change bar: fast at first, then creeping towards 90% until the page lands.
+        "nav-progress": { from: { width: "0%" }, "20%": { width: "45%" }, to: { width: "90%" } }
       },
       animation: {
         "fade-in": "fade-in 250ms ease-out both",
-        "rise-in": "rise-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both"
+        "rise-in": "rise-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both",
+        "nav-progress": "nav-progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) both"
       },
       boxShadow: {
         popover: "var(--shadow-popover)",
