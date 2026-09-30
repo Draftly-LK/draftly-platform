@@ -3,7 +3,6 @@ import {
   CalendarClock,
   FilePlus2,
   MessageSquareText,
-  Workflow,
 } from "lucide-react";
 import { getFormatter, getTranslations } from "next-intl/server";
 import Link from "next/link";
@@ -12,6 +11,7 @@ import { CommonWorkflows } from "@/components/home/common-workflows";
 import { PracticeSnapshot } from "@/components/home/practice-snapshot";
 import { RecentMatters } from "@/components/home/recent-matters";
 import { AppShell } from "@/components/shell/app-shell";
+import { HeaderUserButton } from "@/components/shell/user-button";
 
 export async function HomeScreen() {
   const t = await getTranslations("home");
@@ -32,12 +32,6 @@ export async function HomeScreen() {
       body: t("askBody"),
       icon: MessageSquareText,
     },
-    {
-      href: "/workflows",
-      title: t("workflowTitle"),
-      body: t("workflowBody"),
-      icon: Workflow,
-    },
   ];
   return (
     <AppShell>
@@ -45,6 +39,10 @@ export async function HomeScreen() {
         aria-labelledby="home-title"
         className="bg-navy-900 relative isolate overflow-hidden border-b-2 border-gold text-white"
       >
+        {/* Home has no page header, so the profile button sits in the hero. */}
+        <div className="absolute right-4 top-4 z-10 sm:right-6">
+          <HeaderUserButton />
+        </div>
         <div className="grid items-end gap-8 px-6 pb-9 pt-8 lg:grid-cols-[minmax(0,1fr)_440px] lg:px-10">
           <div className="animate-rise-in">
             <p className="text-gold text-xs font-semibold uppercase tracking-[0.12em]">{t("eyebrow")}</p>
@@ -80,7 +78,7 @@ export async function HomeScreen() {
           <h2 id="command-title" className="text-xl font-semibold">
             {t("commandTitle")}
           </h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
             {actions.map(({ href, title, body, icon: Icon }) => (
               <Link
                 href={href}

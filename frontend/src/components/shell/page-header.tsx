@@ -1,6 +1,9 @@
+import { HeaderUserButton } from "./user-button";
+
 /**
  * Page title band shared by every workspace screen: an optional eyebrow, the
- * title in the display serif, a one-line description, and actions on the right.
+ * title in the display serif, a one-line description, and actions on the right,
+ * ending with the profile button so the header is the only bar above the page.
  */
 export function PageHeader({
   title,
@@ -15,7 +18,8 @@ export function PageHeader({
 }) {
   return (
     <div data-page-header className="border-border bg-surface border-b">
-      <div className="flex flex-wrap items-end gap-4 px-6 pb-5 pt-7">
+      {/* pl-16 below md keeps the title clear of the fixed mobile menu button. */}
+      <div className="flex flex-wrap items-end gap-4 pb-5 pl-16 pr-6 pt-7 md:pl-6">
         <div className="min-w-0 flex-1">
           {eyebrow && (
             <p className="text-gold-strong mb-1 text-xs font-semibold uppercase tracking-[0.1em]">
@@ -27,6 +31,7 @@ export function PageHeader({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {action}
+          <HeaderUserButton />
         </div>
       </div>
     </div>

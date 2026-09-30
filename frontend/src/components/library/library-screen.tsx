@@ -11,16 +11,32 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
-import { isApiEnabled } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { listLegalSources } from "@/lib/api/library";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { LegalSourceSummary, LegalSourceType } from "@/types";
 
 type SourceFilter = "all" | LegalSourceType;
 
+/**
+ * `useTokenProvider` calls Clerk's `useAuth`, which requires a `ClerkProvider`.
+ * The offline demo runs without one, so the hook lives in a component that is
+ * only mounted when the backend is configured. Offline, no request is made, so
+ * the token provider is never called.
+ */
 export function LibraryScreen() {
-  const t = useTranslations("library");
+  return isApiEnabled() ? <ApiBoundLibraryScreen /> : <LibraryFlow getToken={offlineToken} />;
+}
+
+const offlineToken: TokenProvider = () => Promise.resolve(null);
+
+function ApiBoundLibraryScreen() {
   const getToken = useTokenProvider();
+  return <LibraryFlow getToken={getToken} />;
+}
+
+function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
+  const t = useTranslations("library");
   const [sources, setSources] = useState<LegalSourceSummary[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<SourceFilter>("all");

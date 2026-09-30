@@ -24,15 +24,9 @@ export function CommonWorkflows() {
 
   return (
     <section aria-labelledby="common-workflows-title">
-      <div className="flex items-end justify-between gap-4">
-        <h2 id="common-workflows-title" className="text-xl font-semibold">
-          {t("commonWorkflowsTitle")}
-        </h2>
-        <Link href="/workflows" className="text-teal inline-flex items-center gap-1 text-sm font-medium hover:underline">
-          {t("viewAllWorkflows")}
-          <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
-        </Link>
-      </div>
+      <h2 id="common-workflows-title" className="text-xl font-semibold">
+        {t("commonWorkflowsTitle")}
+      </h2>
       <p className="text-muted-ink mt-1 max-w-3xl text-sm">{t("commonWorkflowsBody")}</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {workflows.map(({ subtype, family, available }) => {

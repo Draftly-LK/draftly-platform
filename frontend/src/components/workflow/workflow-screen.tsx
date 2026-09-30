@@ -29,13 +29,7 @@ type StepObjectiveKey =
   | "decisionObjective";
 type RuleKey = "identityRule" | "titleRule" | "encumbranceRule";
 
-export function WorkflowScreen({
-  matterId,
-  standalone = false,
-}: {
-  matterId: string;
-  standalone?: boolean;
-}) {
+export function WorkflowScreen({ matterId }: { matterId: string }) {
   const t = useTranslations("workflow");
   const workflows = useDemoStore((state) => state.workflows);
   const completeStep = useDemoStore((state) => state.completeStep);
@@ -288,11 +282,7 @@ export function WorkflowScreen({
       </div>
     </>
   );
-  return standalone ? (
-    <AppShell>{content}</AppShell>
-  ) : (
-    <AppShell matterId={matterId}>{content}</AppShell>
-  );
+  return <AppShell matterId={matterId}>{content}</AppShell>;
 }
 
 function Section({
