@@ -252,7 +252,7 @@ function FactRow({
       <td className="px-3 font-medium">{tRoot(field.labelKey)}</td>
       <td className="px-3 max-w-64 truncate text-sm">{field.displayValue}</td>
       <td className="px-3 text-sm">
-        <span className="text-muted-ink">{t("formSection", { section: field.sectionKey })}</span>
+        <span className="text-muted-ink">{tRoot(field.sectionKey)}</span>
       </td>
       <td className="px-3 text-sm">{field.factVersion ?? "—"}</td>
       <td className="px-3">
@@ -264,7 +264,7 @@ function FactRow({
             <StatusBadge icon="warning" label={t("awaitingConfirmation")} />
           )}
           {field.reviewedBy && (
-            <span className="text-muted-ink text-xs">{t("reviewedByLabel", { reviewer: field.reviewedBy })}</span>
+            <span className="text-muted-ink text-xs">{t("reviewedByLawyer")}</span>
           )}
         </div>
       </td>

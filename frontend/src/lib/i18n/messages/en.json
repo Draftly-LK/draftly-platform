@@ -453,7 +453,8 @@
     "decisionError": "Could not save this change. Try again.",
     "closeReview": "Close",
     "reviewFact": "Review or correct",
-    "viewFact": "View"
+    "viewFact": "View",
+    "reviewedByLawyer": "Reviewed by a lawyer"
   },
   "sections": {
     "parcel": "Land parcel particulars",
