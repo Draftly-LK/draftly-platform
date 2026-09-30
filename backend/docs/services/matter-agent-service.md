@@ -58,6 +58,8 @@ lifecycle, and non-authoritative matter working notes.
 ## Summary
 
 Build a new matter_agent_service that gives every matter exactly one durable chat session.
+Users may start a clean conversation segment inside that session; closing a segment never
+deletes or rewrites its messages, so the complete transcript remains auditable.
 It orchestrates existing Draftly services through typed, server-side tools while preserving
 tenant isolation, lawyer verification, approvals, audit history, and deterministic gates.
 
@@ -86,13 +88,17 @@ bootstrap wiring, billing entitlements, API docs, and service-definition tests.
 
 Persist:
 
-- agent_sessions: unique constraint on user_id + matter_id, model/prompt versions, state and
-  timestamps.
+- agent_sessions: unique constraint on user_id + matter_id, model/prompt versions, state,
+  active conversation segment and timestamps.
 
-- agent_messages: the authoritative transcript. Session and matter keys, a monotonic
+- agent_conversations: durable segments beneath the session. Starting a new conversation
+  closes the prior segment and creates a new active segment without deleting history.
+
+- agent_messages: the authoritative transcript. Session, conversation and matter keys, a monotonic
   per-session sequence number, role, full message content, created-at timestamp, content
   hash, the originating agent job, and nullable references to the tool call or confirmation
-  that produced it. Unique on (session_id, sequence). Chat content lives here and nowhere
+  that produced it, plus structured citations to authoritative Draftly records. Unique on
+  (session_id, sequence). Chat content lives here and nowhere
   else.
 
 - agent_jobs: queued/running/succeeded/failed state and correlation IDs.
@@ -554,7 +560,12 @@ Add /matters/[id]/assistant and a Matter Assistant navigation tab.
 
 The screen contains:
 
-- One fixed matter thread—no “new conversation” control.
+- One durable matter session with a visible active conversation. “New conversation” closes
+  the visible segment and preserves the prior transcript in audit history.
+- Chronological compact messages, a sticky composer, and a live matter-context rail backed
+  by the existing document, fact, checklist, issue, and draft APIs.
+- Claim-level citations resolved only from record IDs returned by executed tools; citation
+  links open the authoritative review surface.
 - Streaming messages and reconnect state.
 - Visible tool-call status and resulting Draftly resource links.
 - Inline action cards with impact, evidence, confirm and reject controls.
@@ -589,12 +600,14 @@ classes—never prompts, OCR, candidate values or personal data.
 Backend gates as of 2026-08-31: 999 tests pass (6 skipped), ruff, ruff format,
 mypy strict on 307 files, single Alembic head, `uv lock --check` clean.
 
-Seven endpoints are live:
+Nine endpoints are live:
 
 ```text
 GET  /api/v1/matters/{id}/agent
 GET  /api/v1/matters/{id}/agent/messages
 POST /api/v1/matters/{id}/agent/messages
+GET  /api/v1/matters/{id}/agent/conversations
+POST /api/v1/matters/{id}/agent/conversations
 GET  /api/v1/agent-jobs/{jobId}
 GET  /api/v1/agent-jobs/{jobId}/events          resumable SSE, polling retained
 POST /api/v1/matters/{id}/agent/actions/{id}/confirm
@@ -644,9 +657,9 @@ consistency or satisfaction even holding `checklist.administer`.
 
 ### Still outstanding
 
-- **Frontend `/matters/[id]/assistant`** — not started. The
-  frontend-to-worker-to-tool-to-Neon flow has therefore **not** been exercised
-  end to end.
+- **Frontend `/matters/[id]/assistant`** — implemented as a responsive assistant workspace
+  with a chronological transcript, persistent composer, live matter context, source
+  citations, conversation reset with preserved history, and bilingual copy.
 - **Memory lifecycle** — `memory.initialize`, `memory.sync`, `memory.rebuild`
   and `memory.reconcile-scopes` are registered in `jobs-and-workers.md` and in
   `services.yaml`, but not implemented. `NullMemoryPort` is the default, so the

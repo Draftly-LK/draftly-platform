@@ -107,6 +107,7 @@ class ReadChecklistStateTool(_BaseTool):
         return ToolResult(
             summary=f"{len(items)} checklist items, {len(blocking)} blocking approval.",
             payload=data,
+            resource_refs=tuple(str(item.get("itemId")) for item in items if item.get("itemId")),
         )
 
 
@@ -138,7 +139,13 @@ class ReadDocumentStatusTool(_BaseTool):
             user_id=invocation.actor_id, matter_id=invocation.matter_id
         )
         sources = data.get("sourceFiles", [])
-        return ToolResult(summary=f"{len(sources)} source files on this matter.", payload=data)
+        return ToolResult(
+            summary=f"{len(sources)} source files on this matter.",
+            payload=data,
+            resource_refs=tuple(
+                str(item.get("sourceFileId")) for item in sources if item.get("sourceFileId")
+            ),
+        )
 
 
 class ReadDocumentExtractionTool(_BaseTool):
@@ -167,7 +174,10 @@ class ReadDocumentExtractionTool(_BaseTool):
                 "All unverified until a lawyer approves them."
             ),
             payload=data,
-            resource_refs=(document_id,),
+            resource_refs=(
+                document_id,
+                *(str(item.get("candidateId")) for item in candidates if item.get("candidateId")),
+            ),
         )
 
 
@@ -246,6 +256,7 @@ class ReadVerifiedFactsTool(_BaseTool):
         return ToolResult(
             summary=f"{len(facts)} verified facts. These are the only values a draft may use.",
             payload=data,
+            resource_refs=tuple(str(item.get("factId")) for item in facts if item.get("factId")),
         )
 
 
@@ -269,7 +280,11 @@ class ReadDraftPreflightTool(_BaseTool):
             user_id=invocation.actor_id, matter_id=invocation.matter_id
         )
         forms = data.get("forms", [])
-        return ToolResult(summary=f"{len(forms)} working forms on this matter.", payload=data)
+        return ToolResult(
+            summary=f"{len(forms)} working forms on this matter.",
+            payload=data,
+            resource_refs=tuple(str(item.get("formId")) for item in forms if item.get("formId")),
+        )
 
 
 # ── Memory ───────────────────────────────────────────────────────────────────
@@ -339,4 +354,12 @@ class ListMatterInventoryTool(_BaseTool):
                 "Parcel records are not modelled in this release."
             ),
             payload=data,
+            resource_refs=tuple(
+                str(item.get("partyId")) for item in data.get("parties", []) if item.get("partyId")
+            )
+            + tuple(
+                str(item.get("sourceFileId"))
+                for item in data.get("documents", [])
+                if item.get("sourceFileId")
+            ),
         )
