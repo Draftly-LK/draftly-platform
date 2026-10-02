@@ -46,12 +46,12 @@ export async function HistoryScreen() {
           </label>
           <input
             id="history-search"
-            className="border-border-strong bg-surface h-10 min-w-64 flex-1 rounded border px-3"
+            className="border-border-strong bg-surface h-10 min-w-64 flex-1 rounded-control border px-3"
             placeholder={t("search")}
           />
           <select
             aria-label={t("allArtifacts")}
-            className="border-border-strong bg-surface h-10 rounded border px-3"
+            className="border-border-strong bg-surface h-10 rounded-control border px-3"
           >
             <option>{t("allArtifacts")}</option>
             <option>{t("matters")}</option>

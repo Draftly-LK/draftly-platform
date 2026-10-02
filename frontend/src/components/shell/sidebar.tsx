@@ -9,7 +9,6 @@ import {
   Library,
   SearchCheck,
   Menu,
-  Plus,
   Settings,
   X,
 } from "lucide-react";
@@ -69,7 +68,7 @@ export function Sidebar() {
         data-app-chrome
         className={`bg-navy-950 text-on-dark fixed inset-y-0 left-0 z-20 flex w-[244px] flex-col border-r border-white/5 p-3 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="flex h-12 items-center gap-3 px-2">
+        <div className="flex h-12 items-center gap-3 px-2 py-2 box-content">
           <BrandMark tone="white" className="size-8 shrink-0" />
           <div className="min-w-0 flex-1">
             <div className="font-display text-[22px] font-semibold leading-none text-white">
@@ -87,15 +86,10 @@ export function Sidebar() {
             <X className="size-5" />
           </IconButton>
         </div>
-        <div className="mt-4 space-y-2">
+        {/* Creating a matter starts from the Home banner and the Matters
+            page; a second gold button here read as a duplicate. */}
+        <div className="mt-3">
           <CommandPalette tone="dark" />
-          <Link
-            href="/new"
-            className="bg-gold text-navy-950 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded px-3 py-2 font-semibold hover:brightness-105"
-          >
-            <Plus className="size-4" strokeWidth={1.5} />
-            {t("create")}
-          </Link>
         </div>
         <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
           <nav className="space-y-0.5" aria-label={t("workspace")}>
@@ -107,7 +101,9 @@ export function Sidebar() {
                   href={href}
                   onClick={() => setOpen(false)}
                   aria-current={active ? "page" : undefined}
-                  className={`relative flex min-h-10 items-center gap-3 rounded px-3 ${active ? "bg-white/10 font-medium text-white before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-full before:bg-gold" : "text-on-dark-muted hover:bg-white/5 hover:text-white"}`}
+                  // Square on the left, where the gold marker runs the full
+                  // height; rounded on the right only.
+                  className={`relative flex min-h-10 items-center gap-3 rounded-r rounded-l-none px-3 ${active ? "bg-white/10 font-medium text-white before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-gold" : "text-on-dark-muted hover:bg-white/5 hover:text-white"}`}
                 >
                   <Icon className="size-5" strokeWidth={1.5} />
                   {label}

@@ -152,13 +152,13 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <Link
                 href={`/matters/${matterId}/drafts`}
-                className="border-border-strong bg-surface hover:bg-hover-bg rounded border px-3 py-2 text-sm font-medium"
+                className="border-border-strong bg-surface hover:bg-hover-bg rounded-control border px-3 py-2 text-sm font-medium"
               >
                 {t("generateFormLink")}
               </Link>
               <Link
                 href={`/matters/${matterId}/checks`}
-                className="border-border-strong bg-surface hover:bg-hover-bg rounded border px-3 py-2 text-sm font-medium"
+                className="border-border-strong bg-surface hover:bg-hover-bg rounded-control border px-3 py-2 text-sm font-medium"
               >
                 {t("runChecksLink")}
               </Link>

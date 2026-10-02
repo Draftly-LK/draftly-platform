@@ -186,7 +186,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                       </td>
                       <td className="px-4">
                         <Link
-                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded border px-3"
+                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
                           href={`/matters/${matterId}/drafts/${draft.id}`}
                         >
                           {t("open")}
@@ -274,7 +274,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                       <td className="px-4 text-sm">{formattedDate}</td>
                       <td className="px-4">
                         <Link
-                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded border px-3"
+                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
                           href={`/matters/${matterId}/drafts/${form.id}`}
                         >
                           {t("open")}
@@ -329,7 +329,7 @@ function DemoGazetteForms({ matterId }: { matterId: string }) {
             <span className="font-medium">{tRoot(form.titleKey)}</span>
             <span className="text-muted-ink text-sm">{t("formNumber", { number: form.formNumber })}</span>
             <Link
-              className="border-border-strong hover:bg-hover-bg ml-auto inline-flex min-h-8 items-center gap-2 rounded border px-3"
+              className="border-border-strong hover:bg-hover-bg ml-auto inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
               href={`/matters/${matterId}/drafts/${form.id}`}
             >
               {t("open")}

@@ -13,13 +13,13 @@ export function SettingsScreen() {
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="mx-auto max-w-3xl p-6">
+      <div className="max-w-3xl p-6">
         <section className="border-border border-b py-5">
           <h2 className="text-2xl font-semibold">{t("profile")}</h2>
           <p className="text-muted-ink mt-2 text-sm">{t("profileHint")}</p>
           <Link
             href="/profile"
-            className="bg-forest hover:bg-forest/90 focus-visible:outline-ring mt-3 inline-flex rounded-[6px] px-3 py-2 text-sm text-white"
+            className="bg-forest hover:bg-forest/90 focus-visible:outline-ring mt-3 inline-flex rounded-control px-3 py-2 text-sm text-white"
           >
             {t("openProfile")}
           </Link>

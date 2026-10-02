@@ -11,7 +11,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "disabled:border-border disabled:bg-disabled-bg disabled:text-disabled-fg inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded border px-3.5 py-2 font-medium disabled:cursor-not-allowed disabled:shadow-none",
+        "disabled:border-border disabled:bg-disabled-bg disabled:text-disabled-fg inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-control border px-3.5 py-2 font-medium disabled:cursor-not-allowed disabled:shadow-none",
         variant === "primary" &&
           "border-forest bg-forest shadow-card text-white hover:bg-navy-800",
         variant === "secondary" &&

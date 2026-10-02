@@ -58,14 +58,14 @@ export function CommandPalette({
           <button
             className={
               tone === "dark"
-                ? "border-border-on-dark text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-2 rounded border bg-white/5 px-3 text-left text-sm hover:bg-white/10"
-                : "border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-2 rounded border px-3 text-left text-sm"
+                ? "border-border-on-dark text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-2 rounded-control border bg-white/5 px-3 text-left text-sm hover:bg-white/10"
+                : "border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-2 rounded-control border px-3 text-left text-sm"
             }
           >
             <Search className="size-4" strokeWidth={1.5} />
             <span className="min-w-0 flex-1 truncate">{t("search")}</span>
             <kbd
-              className={`shrink-0 rounded border px-1 font-sans text-[10px] leading-4 ${tone === "dark" ? "border-border-on-dark" : "border-border"}`}
+              className={`shrink-0 rounded-full border px-1.5 font-sans text-[10px] leading-4 ${tone === "dark" ? "border-border-on-dark" : "border-border"}`}
             >
               {t("searchShortcut")}
             </kbd>

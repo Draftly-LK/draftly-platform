@@ -53,7 +53,7 @@ export function BillingScreen() {
     <AppShell>
       {isApiEnabled() ? <SubscriptionLoader onLoad={setSubscription} /> : null}
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="max-w-6xl space-y-8 p-6">
+      <div className="space-y-8 p-6">
         <section className="border-border bg-surface rounded-card border p-6 shadow-card">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -170,7 +170,7 @@ export function BillingScreen() {
           <p className="text-muted-ink mt-1 text-sm">{t("helpBody")}</p>
           <Link
             href="/help"
-            className="border-border-strong bg-surface hover:bg-hover-bg mt-4 inline-flex min-h-10 items-center justify-center rounded border px-3 py-2 font-medium"
+            className="border-border-strong bg-surface hover:bg-hover-bg mt-4 inline-flex min-h-10 items-center justify-center rounded-control border px-3 py-2 font-medium"
           >
             {t("contactTeam")}
           </Link>
@@ -270,7 +270,7 @@ function PlanCard({ plan }: { plan: PlanKey }) {
       {plan === "advanced" ? (
         <Link
           href="/help"
-          className="border-border-strong bg-surface hover:bg-hover-bg mt-5 inline-flex min-h-10 items-center justify-center rounded border px-3 py-2 font-medium"
+          className="border-border-strong bg-surface hover:bg-hover-bg mt-5 inline-flex min-h-10 items-center justify-center rounded-control border px-3 py-2 font-medium"
         >
           {t("contactUs")}
         </Link>

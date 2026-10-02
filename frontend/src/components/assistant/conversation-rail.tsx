@@ -167,7 +167,7 @@ export function ConversationRail({
             </Button>
             <label className="block">
               <span className="sr-only">{t("searchConversations")}</span>
-              <span className="border-border bg-canvas focus-within:border-border-strong focus-within:bg-surface flex min-h-9 items-center gap-2 rounded border px-3">
+              <span className="border-border bg-canvas focus-within:border-border-strong focus-within:bg-surface flex min-h-9 items-center gap-2 rounded-control border px-3">
                 <Search
                   className="text-muted-ink size-4 shrink-0"
                   strokeWidth={1.5}
@@ -190,7 +190,7 @@ export function ConversationRail({
                     aria-label={t("clearSearch")}
                     title={t("clearSearch")}
                     onClick={() => setQuery("")}
-                    className="text-muted-ink hover:text-ink rounded"
+                    className="text-muted-ink hover:text-ink rounded-control"
                   >
                     <X className="size-4" strokeWidth={1.5} />
                   </button>

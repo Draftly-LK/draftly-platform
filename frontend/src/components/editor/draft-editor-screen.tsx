@@ -295,7 +295,7 @@ function DraftEditorScreenContent({ matterId, source }: { matterId: string; sour
           {form.preflight.approvalReady && (
             <Link
               href={`/matters/${matterId}/drafts/${form.id}/approval`}
-              className="border-forest bg-forest inline-flex min-h-10 items-center gap-2 rounded border px-3 py-2 font-medium text-white hover:brightness-90"
+              className="border-forest bg-forest inline-flex min-h-10 items-center gap-2 rounded-control border px-3 py-2 font-medium text-white hover:brightness-90"
             >
               <Check className="size-4" strokeWidth={1.5} aria-hidden="true" />
               {t("approveForm")}
@@ -317,7 +317,7 @@ function DraftEditorScreenContent({ matterId, source }: { matterId: string; sour
             placeholder={t("markStaleReason")}
             value={staleReason}
             onChange={(event) => setStaleReason(event.target.value)}
-            className="border-border-strong bg-surface min-w-0 flex-1 rounded border px-3 py-2 text-sm"
+            className="border-border-strong bg-surface min-w-0 flex-1 rounded-control border px-3 py-2 text-sm"
           />
           <Button onClick={() => void handleMarkStale()} disabled={markingStale}>
             {markingStale ? (

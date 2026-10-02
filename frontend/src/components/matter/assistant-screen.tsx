@@ -486,7 +486,7 @@ function MessageRow({
                 <button
                   key={`${message.id}-${citation.sourceId}`}
                   type="button"
-                  className="border-border-strong bg-surface text-teal focus-visible:outline-ring rounded border px-2 py-1 text-xs focus-visible:outline-2"
+                  className="border-border-strong bg-surface text-teal focus-visible:outline-ring rounded-control border px-2 py-1 text-xs focus-visible:outline-2"
                   onClick={() => onCitation(citation)}
                 >
                   [{index + 1}] {citation.label}
@@ -609,7 +609,7 @@ function EmptyThread({
           <button
             key={suggestion}
             type="button"
-            className="border-border-strong bg-surface hover:bg-hover-bg rounded border px-3 py-2 text-sm"
+            className="border-border-strong bg-surface hover:bg-hover-bg rounded-control border px-3 py-2 text-sm"
             onClick={() => onSelect(suggestion)}
           >
             {suggestion}

@@ -175,7 +175,7 @@ function ApiBoundProvisionGate({ children }: { children: React.ReactNode }) {
           <p className="text-muted-ink mt-2 text-sm">{t("errorBody")}</p>
           <button
             type="button"
-            className="bg-forest hover:bg-forest/90 focus-visible:outline-ring mt-4 rounded-[6px] px-4 py-2 text-sm text-white"
+            className="bg-forest hover:bg-forest/90 focus-visible:outline-ring mt-4 rounded-control px-4 py-2 text-sm text-white"
             onClick={refreshProvisioning}
           >
             {t("retry")}

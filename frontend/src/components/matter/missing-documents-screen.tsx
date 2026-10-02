@@ -136,7 +136,7 @@ function ApiBoundMissingDocumentsScreen({ matterId }: { matterId: string }) {
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <Link
                 href={`/matters/${matterId}/documents`}
-                className="border-border-strong bg-surface hover:bg-hover-bg rounded border px-3 py-2 text-sm font-medium"
+                className="border-border-strong bg-surface hover:bg-hover-bg rounded-control border px-3 py-2 text-sm font-medium"
               >
                 {t("uploadDocuments")}
               </Link>
@@ -173,13 +173,13 @@ function ApiBoundMissingDocumentsScreen({ matterId }: { matterId: string }) {
         <div className="mt-6 flex flex-wrap gap-2">
           <Link
             href={`/matters/${matterId}/documents`}
-            className="border-border-strong bg-surface hover:bg-hover-bg rounded border px-3 py-2 text-sm font-medium"
+            className="border-border-strong bg-surface hover:bg-hover-bg rounded-control border px-3 py-2 text-sm font-medium"
           >
             {t("uploadDocuments")}
           </Link>
           <Link
             href={`/matters/${matterId}/checks`}
-            className="border-border-strong bg-surface hover:bg-hover-bg rounded border px-3 py-2 text-sm font-medium"
+            className="border-border-strong bg-surface hover:bg-hover-bg rounded-control border px-3 py-2 text-sm font-medium"
           >
             {t("viewAllIssues")}
           </Link>

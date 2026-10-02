@@ -559,7 +559,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <label className="mt-6 block font-medium">
               {t("matterReference")}
               <input
-                className="border-border-strong bg-surface mt-1 h-11 w-full rounded border px-3"
+                className="border-border-strong bg-surface mt-1 h-11 w-full rounded-control border px-3"
                 value={reference}
                 placeholder={t("matterPlaceholder")}
                 onChange={(event) => setReference(event.target.value)}
@@ -568,7 +568,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <label className="mt-4 block font-medium">
               {t("clientReference")}
               <input
-                className="border-border-strong bg-surface mt-1 h-11 w-full rounded border px-3"
+                className="border-border-strong bg-surface mt-1 h-11 w-full rounded-control border px-3"
                 value={clientReference}
                 placeholder={t("clientPlaceholder")}
                 onChange={(event) => setClientReference(event.target.value)}
@@ -1137,7 +1137,7 @@ function ChoiceButton({
       aria-pressed={multi ? undefined : selected}
       onClick={onSelect}
       className={cn(
-        "inline-flex min-h-10 items-center gap-2 rounded border px-3 py-2 text-left font-medium",
+        "inline-flex min-h-10 items-center gap-2 rounded-control border px-3 py-2 text-left font-medium",
         selected
           ? "border-forest bg-selected-bg text-forest"
           : "border-border-strong bg-surface hover:bg-hover-bg",
@@ -1474,7 +1474,7 @@ function UploadFileRow({
         title={t("remove")}
         disabled={disabled || entry.state === "uploading"}
         onClick={onRemove}
-        className="text-muted-ink hover:bg-hover-bg hover:text-ink focus-visible:outline-ring grid size-9 shrink-0 place-items-center rounded disabled:cursor-not-allowed disabled:opacity-50"
+        className="text-muted-ink hover:bg-hover-bg hover:text-ink focus-visible:outline-ring grid size-9 shrink-0 place-items-center rounded-control disabled:cursor-not-allowed disabled:opacity-50"
       >
         <X className="size-4" strokeWidth={1.5} aria-hidden="true" />
       </button>
