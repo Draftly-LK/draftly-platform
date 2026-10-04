@@ -232,7 +232,20 @@
     "notSelected": "Not selected",
     "loading": "Loading matters…",
     "loadFailed": "Matters could not be loaded.",
-    "empty": "No matters yet."
+    "empty": "No matters yet.",
+    "loadFailedHelp": "Check your connection and try again. If it keeps failing, tell your administrator.",
+    "retry": "Try again",
+    "emptyTitle": "No matters yet",
+    "emptyBody": "Create a matter to start examining a title.",
+    "emptyAction": "Create a matter",
+    "noMatchTitle": "No matters match this filter",
+    "noMatch": "Try another filter, or show every matter.",
+    "showAll": "Show all matters",
+    "filterLabel": "Filter matters by status",
+    "filterAll": "All",
+    "filterOpen": "Open",
+    "filterReview": "To review",
+    "filterDrafting": "In drafting"
   },
   "overview": {
     "activeFunction": "Active function",
@@ -592,7 +605,9 @@
     "createFailed": "The conversation could not be created.",
     "sendFailed": "The question could not be submitted. Your text remains in the composer.",
     "branchFailed": "The branch could not be created.",
-    "notEnabled": "Legal research is not enabled for your account yet. Ask your Draftly administrator to activate your plan, then try again."
+    "notEnabled": "Legal research is not enabled for your account yet. Ask your Draftly administrator to activate your plan, then try again.",
+    "loadingConversations": "Loading conversations",
+    "retry": "Try again"
   },
   "assistant": {
     "title": "Matter assistant",
@@ -885,7 +900,11 @@
     "liveSession": "Live session",
     "historical": "Seeded history",
     "noEvents": "No matching activity",
-    "open": "Open"
+    "open": "Open",
+    "noResultsTitle": "Nothing matches your search",
+    "noResultsBody": "Try a different word, or choose All artifacts.",
+    "clearSearch": "Clear search",
+    "noEventsBody": "Actions on your matters appear here as you work."
   },
   "newMatter": {
     "imageAlt": "Synthetic notarial documents and survey plan on a quiet worktable",
@@ -1099,7 +1118,13 @@
     "verified": "Verified",
     "candidate": "Candidate — do not rely",
     "open": "Open source",
-    "corpusNotice": "Catalogue metadata comes from the pinned corpus release. Use the official-source link to inspect the published document."
+    "corpusNotice": "Catalogue metadata comes from the pinned corpus release. Use the official-source link to inspect the published document.",
+    "offlineTitle": "Legal sources need a server connection",
+    "offlineBody": "This workspace is running offline with sample data, so the legal corpus is not available. Connect it to the Draftly server to browse the Acts and amendments.",
+    "retry": "Try again",
+    "loadFailedHelp": "Check your connection and try again. If it keeps failing, tell your administrator.",
+    "noResultsHelp": "Try a different word, or clear the search and the filter.",
+    "clearFilters": "Clear search and filter"
   },
   "settings": {
     "title": "Settings",

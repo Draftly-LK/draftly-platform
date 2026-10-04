@@ -125,15 +125,15 @@ describe("UpcomingObligations", () => {
 });
 
 describe("Dashboard", () => {
-  it("has exactly one gold button when there is data, and the counts open Matters", () => {
+  it("has exactly one gold button when there is data, and each count opens its filtered list", () => {
     const { container } = renderWithIntl(<Dashboard obligations={[]} />);
     expect(container.querySelectorAll(".bg-gold")).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Create a matter/ }).className).toContain("bg-gold");
     expect(screen.getByRole("link", { name: /Ask a legal question/ })).toBeTruthy();
     expect(screen.getByText("To review")).toBeTruthy();
-    for (const link of screen.getAllByRole("link", { name: /Open matters|To review|In drafting/ })) {
-      expect(link.getAttribute("href")).toBe("/matters");
-    }
+    expect(screen.getByRole("link", { name: /Open matters/ }).getAttribute("href")).toBe("/matters?status=open");
+    expect(screen.getByRole("link", { name: /To review/ }).getAttribute("href")).toBe("/matters?status=review");
+    expect(screen.getByRole("link", { name: /In drafting/ }).getAttribute("href")).toBe("/matters?status=drafting");
   });
 
   it("offers planned workflows as a quiet, unfocusable Coming soon line", () => {

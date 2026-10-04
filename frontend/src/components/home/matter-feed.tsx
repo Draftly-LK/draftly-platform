@@ -3,9 +3,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { isApiEnabled } from "@/lib/api/client";
 import { useRecentMatters } from "@/lib/api/use-recent-matters";
-import { FIXED_NOW, matters as demoMatters } from "@/lib/mocks";
+import { FIXED_NOW } from "@/lib/mocks";
+import { useDemoStore } from "@/lib/store";
+import type { Matter, MatterStatus } from "@/types";
 import { migrateLegacyMatterType } from "@/lib/rta/taxonomy";
-import type { ApiRtaMatter } from "@/types/rta";
+import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
 
 export interface Feed {
   matters: ApiRtaMatter[];
@@ -13,16 +15,31 @@ export interface Feed {
   failed: boolean;
 }
 
-/** The offline demo's fixture matters in the API's shape. */
-export function demoMatterFeed(): ApiRtaMatter[] {
-  return demoMatters.map(
+/** The demo's coarse status on the API's state vocabulary, so filters and counts work the same offline. */
+export function demoMatterState(status: MatterStatus): RtaMatterState {
+  switch (status) {
+    case "in-review":
+    case "blocked":
+      return "REVIEW_REQUIRED";
+    case "ready-to-draft":
+      return "READY_TO_DRAFT";
+    case "closed":
+      return "CLOSED";
+    default:
+      return "EVIDENCE_COLLECTION";
+  }
+}
+
+/** The offline demo's matters in the API's shape. */
+export function demoMatterFeed(matters: readonly Matter[]): ApiRtaMatter[] {
+  return matters.map(
     (matter) =>
       ({
         id: matter.id,
         reference: matter.reference,
         clientReference: matter.parties.map((party) => party.nameToken).join(" / "),
         subtypeId: matter.subtypeId ?? migrateLegacyMatterType(matter.type)?.subtypeId ?? null,
-        state: matter.status === "in-review" ? "REVIEW_REQUIRED" : "APPROVED",
+        state: demoMatterState(matter.status),
         updatedAt: matter.updatedAt,
       }) as ApiRtaMatter,
   );
@@ -34,11 +51,12 @@ export function demoMatterFeed(): ApiRtaMatter[] {
  * only ever called in API mode.
  */
 export function MatterFeed({ children }: { children: (feed: Feed) => ReactNode }) {
-  return isApiEnabled() ? (
-    <ApiFeed>{children}</ApiFeed>
-  ) : (
-    <>{children({ matters: demoMatterFeed(), loading: false, failed: false })}</>
-  );
+  return isApiEnabled() ? <ApiFeed>{children}</ApiFeed> : <DemoFeed>{children}</DemoFeed>;
+}
+
+function DemoFeed({ children }: { children: (feed: Feed) => ReactNode }) {
+  const matters = useDemoStore((state) => state.matters);
+  return <>{children({ matters: demoMatterFeed(matters), loading: false, failed: false })}</>;
 }
 
 function ApiFeed({ children }: { children: (feed: Feed) => ReactNode }) {

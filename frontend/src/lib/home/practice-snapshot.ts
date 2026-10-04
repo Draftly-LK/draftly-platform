@@ -29,3 +29,29 @@ export function summarizeMatters(states: readonly RtaMatterState[]): PracticeSna
     { open: 0, needsReview: 0, drafting: 0 },
   );
 }
+
+/** The Matters list's `?status=` values, one per count on the dashboard. */
+export const STATUS_FILTERS = ["open", "review", "drafting"] as const;
+export type StatusFilter = (typeof STATUS_FILTERS)[number];
+
+/** Reads `?status=`; anything unrecognised means no filter. */
+export function parseStatusFilter(value: string | null | undefined): StatusFilter | null {
+  return (STATUS_FILTERS as readonly string[]).includes(value ?? "") ? (value as StatusFilter) : null;
+}
+
+/** The same predicates `summarizeMatters` counts with, so a count and its list always agree. */
+export function matchesStatusFilter(state: RtaMatterState, filter: StatusFilter): boolean {
+  switch (filter) {
+    case "open":
+      return !FINISHED.has(state);
+    case "review":
+      return NEEDS_REVIEW.has(state);
+    case "drafting":
+      return DRAFTING.has(state);
+  }
+}
+
+/** `/matters?status=review` for a filter, `/matters` for none. */
+export function mattersHref(filter: StatusFilter | null): string {
+  return filter ? `/matters?status=${filter}` : "/matters";
+}

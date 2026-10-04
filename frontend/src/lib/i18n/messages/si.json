@@ -232,7 +232,20 @@
     "notSelected": "Not selected",
     "loading": "Loading matters…",
     "loadFailed": "Matters could not be loaded.",
-    "empty": "No matters yet."
+    "empty": "No matters yet.",
+    "loadFailedHelp": "ඔබේ සම්බන්ධතාව පරීක්ෂා කර නැවත උත්සාහ කරන්න. එය දිගටම අසාර්ථක නම් ඔබේ පරිපාලකයාට දන්වන්න.",
+    "retry": "නැවත උත්සාහ කරන්න",
+    "emptyTitle": "තවම කාරණා නැත",
+    "emptyBody": "හිමිකම පරීක්ෂා කිරීම ආරම්භ කිරීමට කාරණාවක් සාදන්න.",
+    "emptyAction": "කාරණාවක් සාදන්න",
+    "noMatchTitle": "මෙම පෙරහනට ගැළපෙන කාරණා නැත",
+    "noMatch": "වෙනත් පෙරහනක් උත්සාහ කරන්න, නැතහොත් සියලු කාරණා පෙන්වන්න.",
+    "showAll": "සියලු කාරණා පෙන්වන්න",
+    "filterLabel": "තත්ත්වය අනුව කාරණා පෙරන්න",
+    "filterAll": "සියල්ල",
+    "filterOpen": "විවෘත",
+    "filterReview": "සමාලෝචනයට",
+    "filterDrafting": "කෙටුම්පත් කරමින්"
   },
   "overview": {
     "activeFunction": "Active function",
@@ -592,7 +605,9 @@
     "createFailed": "සංවාදය සෑදිය නොහැකි විය.",
     "sendFailed": "ප්‍රශ්නය යැවිය නොහැකි විය. ඔබේ පෙළ තවමත් මෙහි ඇත.",
     "branchFailed": "නව ශාඛාව සෑදිය නොහැකි විය.",
-    "notEnabled": "ඔබගේ ගිණුම සඳහා නීති පර්යේෂණය තවම සක්‍රිය කර නැත. ඔබගේ Draftly පරිපාලක හරහා ඔබගේ සැලැස්ම සක්‍රිය කරවා ගෙන නැවත උත්සාහ කරන්න."
+    "notEnabled": "ඔබගේ ගිණුම සඳහා නීති පර්යේෂණය තවම සක්‍රිය කර නැත. ඔබගේ Draftly පරිපාලක හරහා ඔබගේ සැලැස්ම සක්‍රිය කරවා ගෙන නැවත උත්සාහ කරන්න.",
+    "loadingConversations": "සංවාද පූරණය වෙමින්",
+    "retry": "නැවත උත්සාහ කරන්න"
   },
   "assistant": {
     "title": "කාරණා සහායක",
@@ -885,7 +900,11 @@
     "liveSession": "Live session",
     "historical": "Seeded history",
     "noEvents": "No matching activity",
-    "open": "Open"
+    "open": "Open",
+    "noResultsTitle": "ඔබේ සෙවුමට ගැළපෙන කිසිවක් නැත",
+    "noResultsBody": "වෙනත් වචනයක් උත්සාහ කරන්න, නැතහොත් සියලු අයිතම තෝරන්න.",
+    "clearSearch": "සෙවුම ඉවත් කරන්න",
+    "noEventsBody": "ඔබ වැඩ කරන විට ඔබේ කාරණා පිළිබඳ ක්‍රියා මෙහි පෙනේ."
   },
   "newMatter": {
     "imageAlt": "Synthetic notarial documents and survey plan on a quiet worktable",
@@ -1099,7 +1118,13 @@
     "verified": "Verified",
     "candidate": "Candidate — do not rely",
     "open": "Open source",
-    "corpusNotice": "Catalogue metadata comes from the pinned corpus release. Use the official-source link to inspect the published document."
+    "corpusNotice": "Catalogue metadata comes from the pinned corpus release. Use the official-source link to inspect the published document.",
+    "offlineTitle": "නීතිමය මූලාශ්‍රවලට සේවාදායක සම්බන්ධතාවක් අවශ්‍යයි",
+    "offlineBody": "මෙම වැඩබිම නියැදි දත්ත සමඟ නොබැඳිව ක්‍රියාත්මක වන බැවින් නීතිමය සංග්‍රහය නොමැත. පනත් සහ සංශෝධන බැලීමට එය Draftly සේවාදායකයට සම්බන්ධ කරන්න.",
+    "retry": "නැවත උත්සාහ කරන්න",
+    "loadFailedHelp": "ඔබේ සම්බන්ධතාව පරීක්ෂා කර නැවත උත්සාහ කරන්න. එය දිගටම අසාර්ථක නම් ඔබේ පරිපාලකයාට දන්වන්න.",
+    "noResultsHelp": "වෙනත් වචනයක් උත්සාහ කරන්න, නැතහොත් සෙවුම සහ පෙරහන ඉවත් කරන්න.",
+    "clearFilters": "සෙවුම සහ පෙරහන ඉවත් කරන්න"
   },
   "settings": {
     "title": "Settings",

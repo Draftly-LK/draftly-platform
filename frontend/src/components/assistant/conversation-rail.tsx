@@ -155,7 +155,7 @@ export function ConversationRail({
           <div className="space-y-2 px-4">
             <Button
               type="button"
-              variant="primary"
+              variant="secondary"
               onClick={() => {
                 onCreate();
                 closeIfOverlay();

@@ -1,26 +1,18 @@
 "use client";
 
-import { CircleCheck, CircleDashed, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { ListRow, rowLinkClass } from "@/components/ui/list-row";
 import { StatusChip } from "@/components/ui/status-chip";
 import { buttonClass } from "@/components/ui/button";
-import { activityIsRecent, dayMonth, needsReview, sortForDashboard, stateTone, type StatusTone } from "@/lib/home/dashboard";
+import { statusToneIcons } from "@/components/matter/status-tone-icons";
+import { activityIsRecent, dayMonth, needsReview, sortForDashboard, stateTone } from "@/lib/home/dashboard";
 import { getSubtype } from "@/lib/rta/taxonomy";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
 import type { Feed } from "./matter-feed";
 import { cn } from "@/lib/utils";
 
 const ROW_LIMIT = 8;
-
-const toneIcons = {
-  warning: TriangleAlert,
-  success: CircleCheck,
-  info: CircleDashed,
-  neutral: CircleDashed,
-  danger: TriangleAlert,
-} as const satisfies Record<StatusTone, typeof CircleDashed>;
 
 const COLUMNS =
   "grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.1fr)_11rem_6.5rem_8rem]";
@@ -68,7 +60,7 @@ export function RecentMatters({ feed, now }: { feed: Feed; now: Date | null }) {
         {rows.map((matter) => {
           const review = needsReview(matter.state);
           const tone = stateTone(matter.state);
-          const Icon = toneIcons[tone];
+          const Icon = statusToneIcons[tone];
           const labelKey = matter.subtypeId ? getSubtype(matter.subtypeId)?.labelKey : undefined;
           const showReference =
             matter.clientReference && matter.clientReference.trim().toLocaleLowerCase() !== matter.reference.trim().toLocaleLowerCase();
