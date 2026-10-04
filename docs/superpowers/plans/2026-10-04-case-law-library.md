@@ -39,20 +39,20 @@ is recorded. Use only synthetic content in tests and screen-review evidence.
 
 ## Task 2: Case catalogue, reader and fact-pattern search
 
-- [ ] Write failing frontend boundary and interaction tests against Task 1's
+- [x] Write failing frontend boundary and interaction tests against Task 1's
   contract, then implement typed API accessors and separate case models.
-- [ ] Add a Case law tab to Legal sources. Browse every imported judgment with
+- [x] Add a Case law tab to Legal sources. Browse every imported judgment with
   name/citation search, court-collection and year filters, and cursor navigation.
-- [ ] Open a judgment in a dedicated navigable reader with metadata, source link,
+- [x] Open a judgment in a dedicated navigable reader with metadata, source link,
   verification and extraction warnings. Render text safely and preserve breaks.
   Metadata-only records explain that full text awaits display approval.
-- [ ] Add a standalone fact-pattern search with up to eight cited results,
+- [x] Add a standalone fact-pattern search with up to eight cited results,
   excerpts, matching signals, optional-channel degradation, explicit no-results
   and retryable failure states. Search results outside the reader corpus use
   source links. Keep assistant APIs and behavior unchanged.
-- [ ] Localize English/Sinhala controls and states; review responsive and keyboard
+- [x] Localize English/Sinhala controls and states; review responsive and keyboard
   behavior, and save synthetic review evidence under docs/review/case-law.
-- [ ] Run frontend tests, typecheck, lint and build. Update affected service and
+- [x] Run frontend tests, typecheck, lint and build. Update affected service and
   deployment documentation with the implemented contract and release limits.
 
 ## Task 3: Integration, review and PR
@@ -61,7 +61,7 @@ is recorded. Use only synthetic content in tests and screen-review evidence.
   7,439 LKCA plus 2,162 LKSC records, IDs, text fidelity and filters.
 - [x] Verify API-to-engine integration, full-text gating, search/reader joins,
   unavailable-engine and dense-only outcomes, and idempotent quota use.
-- [ ] Run all available backend/frontend quality gates and Markdown lint.
+- [x] Run all available backend/frontend quality gates and Markdown lint.
 - [ ] Review the whole change, fix material findings, and recheck changed paths.
 - [ ] Push dev/codex/case-law-library and open a PR targeting main, with test
   evidence and explicit display-approval and optional-embedding requirements.
