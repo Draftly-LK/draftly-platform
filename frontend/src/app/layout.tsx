@@ -7,7 +7,7 @@ import { IntlProvider } from "@/components/shell/intl-provider";
 import { NavigationProgress } from "@/components/shell/navigation-progress";
 import { UserButtonProvider } from "@/components/shell/user-button";
 import { isAuthBypassEnabled } from "@/lib/auth/bypass";
-import { isClerkConfigured } from "@/lib/auth/clerk";
+import { hasClerkPublishableKey, isClerkConfigured } from "@/lib/auth/clerk";
 import "@/styles/globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -48,12 +48,17 @@ export default async function RootLayout({
   const messages = await getMessages();
   // ProvisionGate renders translated copy on its blocking-error state, so it
   // has to sit inside IntlProvider — not the other way around.
-  const body = isClerkConfigured() ? (
+  //
+  // The provider follows the public key alone, as `useTokenProvider` does: a
+  // Docker build inlines the publishable key but gets CLERK_SECRET_KEY only at
+  // run time, and prerendering a screen that calls `useAuth` without a
+  // provider fails the build.
+  const body = hasClerkPublishableKey() ? (
     <ClerkProvider afterSignOutUrl="/sign-in">
       {/* Inside ClerkProvider: it reads the session to know when to run.
           Wraps the tree so first-time users reach onboarding before any
           workspace screen paints. */}
-      <ProvisionGate>{children}</ProvisionGate>
+      {isClerkConfigured() ? <ProvisionGate>{children}</ProvisionGate> : children}
     </ClerkProvider>
   ) : (
     children
