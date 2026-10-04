@@ -20,16 +20,16 @@ review are in [sinhala-review.md](sinhala-review.md).
 
 ## Files changed
 
-`106` files against the branch base, `6177ea6f78990ba12450621f1979ec1d80a96ceb`. By area:
+`136` files against the branch base, `6177ea6f78990ba12450621f1979ec1d80a96ceb`. By area:
 
-- **Page screens (matter, assistant, library, activity, support and others)**: 30
-- **Screenshots and reports (docs/review/ui-refine)**: 16
+- **Screenshots and reports (docs/review/ui-refine)**: 42
+- **Page screens (matter, assistant, library, activity, support and others)**: 31
 - **Shared components (components/ui)**: 16
 - **Dashboard (components/home, lib/home)**: 14
 - **Sign-in, sign-up, Clerk (components/auth, app/sign-*, lib/auth, layout)**: 10
 - **App shell (components/shell)**: 8
-- **Tokens and config (globals.css, tailwind, next config, utils)**: 4
-- **Other**: 4
+- **Other**: 6
+- **Tokens and config (globals.css, tailwind, next config, utils)**: 5
 - **Strings (en.json, si.json)**: 2
 - **CLAUDE.md**: 1
 - **E2E specs**: 1
