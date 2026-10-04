@@ -95,6 +95,25 @@ Missing or malformed approval leaves full text closed. Keep the approval file ou
 of source control; update it through the deployment's reviewed configuration.
 The backend derives the actor header from authentication.
 
+Compose does not automatically pass arbitrary `.env` values into retrieval.
+After approval, an operator can use a private override file to mount the manifest:
+
+```yaml
+services:
+  retrieval:
+    environment:
+      CASE_DISPLAY_APPROVAL_FILE: /run/draftly/case-display-approval.json
+    volumes:
+      - type: bind
+        source: ${CASE_DISPLAY_APPROVAL_HOST_PATH:?set reviewed manifest path}
+        target: /run/draftly/case-display-approval.json
+        read_only: true
+```
+
+Keep the host manifest outside the checkout. Pass the override alongside the
+chosen Compose stack with `-f`; the default stack remains metadata-only. Optional
+dense settings also belong in retrieval's explicit environment override.
+
 Dense search requires an embedding-enabled image, a runtime provider key,
 `DRAFTLY_CASE_DENSE_ENABLED=1` and a recorded `DRAFTLY_CASE_DENSE_APPROVAL` in the
 retrieval container. The default image makes no embedding calls. Native provider

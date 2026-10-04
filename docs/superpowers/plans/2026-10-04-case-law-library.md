@@ -17,24 +17,24 @@ is recorded. Use only synthetic content in tests and screen-review evidence.
 
 ## Task 1: Frozen corpus and backend interfaces
 
-- [ ] Write failing tests for import fidelity, policy filtering, pagination,
+- [x] Write failing tests for import fidelity, policy filtering, pagination,
   HTTP failure handling, corroboration, and metering/idempotency.
-- [ ] Build a catalogue from the two supplied judgment JSONL files, preserving
+- [x] Build a catalogue from the two supplied judgment JSONL files, preserving
   original parsed text, collection, deciding court, citation, dates, provenance,
   extraction warnings and stable IDs. Prefix IDs with commonlii- to join search.
-- [ ] Package the corpus into the existing private retrieval image with a
+- [x] Package the corpus into the existing private retrieval image with a
   versioned manifest and input checksums; never read research paths at runtime.
-- [ ] Add versioned internal catalogue and search interfaces. Reuse existing
+- [x] Add versioned internal catalogue and search interfaces. Reuse existing
   conveyancing BM25, graph, optional dense, RRF and corroboration behavior.
-- [ ] Add authenticated GET /api/v1/library/cases and /cases/{caseId}, and
+- [x] Add authenticated GET /api/v1/library/cases and /cases/{caseId}, and
   POST /api/v1/research/cases/search. Return signed cursor pagination with
   default 25, year descending and stable ID. Expose corpus version and coverage.
-- [ ] Separate unknown/unavailable corpus errors from valid no-similar-cases;
+- [x] Separate unknown/unavailable corpus errors from valid no-similar-cases;
   enforce research.enabled and research_queries.monthly with replay safety.
   Record privacy-safe audits. Dense remains opt-in under provider approval.
-- [ ] Preserve the current statute endpoints; keep routers thin with application
+- [x] Preserve the current statute endpoints; keep routers thin with application
   services and ports. Generate the OpenAPI contract after API changes.
-- [ ] Run backend checks and importer tests; document the exact frontend contract
+- [x] Run backend checks and importer tests; document the exact frontend contract
   and local/deployment startup in the task report.
 
 ## Task 2: Case catalogue, reader and fact-pattern search
@@ -57,9 +57,9 @@ is recorded. Use only synthetic content in tests and screen-review evidence.
 
 ## Task 3: Integration, review and PR
 
-- [ ] Import the actual collection into an ignored local artifact and check
+- [x] Import the actual collection into an ignored local artifact and check
   7,439 LKCA plus 2,162 LKSC records, IDs, text fidelity and filters.
-- [ ] Verify API-to-engine integration, full-text gating, search/reader joins,
+- [x] Verify API-to-engine integration, full-text gating, search/reader joins,
   unavailable-engine and dense-only outcomes, and idempotent quota use.
 - [ ] Run all available backend/frontend quality gates and Markdown lint.
 - [ ] Review the whole change, fix material findings, and recheck changed paths.
