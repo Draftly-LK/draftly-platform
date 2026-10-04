@@ -13,7 +13,7 @@ export function AppShell({
   return (
     <div className="bg-canvas min-h-screen">
       <Sidebar />
-      <div className="min-w-0 md:pl-[244px]">
+      <div className="min-w-0 md:pl-[var(--sidebar-width)]">
         {matterId && <MatterHeader matterId={matterId} />}
         <main className="min-w-0">{children}</main>
       </div>

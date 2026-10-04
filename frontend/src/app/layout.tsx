@@ -8,6 +8,7 @@ import { NavigationProgress } from "@/components/shell/navigation-progress";
 import { UserButtonProvider } from "@/components/shell/user-button";
 import { isAuthBypassEnabled } from "@/lib/auth/bypass";
 import { hasClerkPublishableKey, isClerkConfigured } from "@/lib/auth/clerk";
+import { draftlyClerkLocalization } from "@/lib/auth/clerk-localization";
 import "@/styles/globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -46,6 +47,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const tAuth = await getTranslations("auth");
   // ProvisionGate renders translated copy on its blocking-error state, so it
   // has to sit inside IntlProvider — not the other way around.
   //
@@ -54,7 +56,7 @@ export default async function RootLayout({
   // run time, and prerendering a screen that calls `useAuth` without a
   // provider fails the build.
   const body = hasClerkPublishableKey() ? (
-    <ClerkProvider afterSignOutUrl="/sign-in">
+    <ClerkProvider afterSignOutUrl="/sign-in" localization={draftlyClerkLocalization(tAuth)}>
       {/* Inside ClerkProvider: it reads the session to know when to run.
           Wraps the tree so first-time users reach onboarding before any
           workspace screen paints. */}

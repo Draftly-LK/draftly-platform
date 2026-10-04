@@ -19,7 +19,11 @@
     "signUpTitle": "Create your Draftly account",
     "signUpBody": "Continue with a connected account, or register with your email address and password.",
     "myProfile": "My profile",
-    "otpSentNotice": "A verification code has been sent to your email address."
+    "otpSentNotice": "A verification code has been sent to your email address.",
+    "brandName": "Draftly",
+    "brandLine": "Drafting and matter management for Registration of Title practice.",
+    "continueWith": "Continue with {provider}",
+    "or": "or"
   },
   "profile": {
     "title": "Profile",

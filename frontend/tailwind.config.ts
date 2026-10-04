@@ -26,6 +26,7 @@ export default {
         success: "var(--success)",
         "success-bg": "var(--success-bg)",
         "gold-hover": "var(--gold-hover)",
+        "amber-on-dark": "var(--amber-on-dark)",
         "ring-on-dark": "var(--ring-on-dark)",
         canvas: "var(--canvas)",
         surface: "var(--surface)",

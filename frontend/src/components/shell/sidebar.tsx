@@ -85,7 +85,7 @@ export function Sidebar() {
       <aside
         data-app-chrome
         data-surface="inverse"
-        className={`bg-navy-950 text-on-dark fixed inset-y-0 left-0 z-20 flex w-[244px] flex-col border-r border-white/5 p-3 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        className={`bg-navy-950 text-on-dark fixed inset-y-0 left-0 z-20 flex w-[var(--sidebar-width)] flex-col border-r border-white/5 p-3 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-12 items-center gap-3 px-2 py-2 box-content">
           <BrandMark tone="white" className="size-8 shrink-0" />
