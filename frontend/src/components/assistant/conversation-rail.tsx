@@ -139,7 +139,7 @@ export function ConversationRail({
       >
         <div className="flex min-h-0 flex-1 flex-col lg:sticky lg:top-0 lg:max-h-screen lg:flex-none">
           <div className="flex items-center gap-2 px-4 pb-2 pt-3">
-            <h2 className="text-muted-ink min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wide">
+            <h2 className="text-muted-ink min-w-0 flex-1 truncate text-xs font-semibold">
               {t("conversations")}
             </h2>
             <IconButton

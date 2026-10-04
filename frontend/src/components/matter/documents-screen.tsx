@@ -106,15 +106,15 @@ function DocumentsFlow({
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
         {/* Summary bar */}
-        <div className="border-border bg-surface mb-6 flex flex-wrap gap-4 rounded-card border p-4 shadow-card">
+        <div className="border-border bg-surface mb-6 flex flex-wrap gap-4 rounded-card border p-4">
           <div>
-            <p className="text-muted-ink text-xs font-semibold uppercase">
+            <p className="text-muted-ink text-xs font-semibold">
               {t("totalDocuments", { count: inbox.documents.length })}
             </p>
             <p className="text-2xl font-semibold">{inbox.documents.length}</p>
           </div>
           <div>
-            <p className="text-muted-ink text-xs font-semibold uppercase">
+            <p className="text-muted-ink text-xs font-semibold">
               {t("boundaryReview", { count: inbox.boundaryReviewDocumentIds.length })}
             </p>
             <p className="text-2xl font-semibold">
@@ -122,7 +122,7 @@ function DocumentsFlow({
             </p>
           </div>
           <div>
-            <p className="text-muted-ink text-xs font-semibold uppercase">
+            <p className="text-muted-ink text-xs font-semibold">
               {t("classificationReview", {
                 count: inbox.classificationReviewDocumentIds.length,
               })}
@@ -132,7 +132,7 @@ function DocumentsFlow({
             </p>
           </div>
           <div>
-            <p className="text-muted-ink text-xs font-semibold uppercase">
+            <p className="text-muted-ink text-xs font-semibold">
               {t("unidentified", { count: inbox.unidentifiedDocumentIds.length })}
             </p>
             <p className="text-2xl font-semibold">
@@ -140,7 +140,7 @@ function DocumentsFlow({
             </p>
           </div>
           <div>
-            <p className="text-muted-ink text-xs font-semibold uppercase">
+            <p className="text-muted-ink text-xs font-semibold">
               {t("unprocessed", { count: inbox.unprocessedSourceFileIds.length })}
             </p>
             <p className="text-2xl font-semibold">
@@ -174,10 +174,10 @@ function DocumentsFlow({
         {/* Detected documents table */}
         {inbox.documents.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-muted-ink mb-3 text-xs font-semibold uppercase">
+            <h2 className="text-muted-ink mb-3 text-xs font-semibold">
               {t("documentTable")}
             </h2>
-            <div className="border-border bg-surface overflow-hidden rounded-card border shadow-card">
+            <div className="border-border bg-surface overflow-hidden rounded-card border">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[800px] border-collapse text-left">
                   <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
@@ -255,10 +255,10 @@ function DocumentsFlow({
         {/* Source files section */}
         {inbox.sourceFiles.length > 0 && (
           <section>
-            <h2 className="text-muted-ink mb-3 text-xs font-semibold uppercase">
+            <h2 className="text-muted-ink mb-3 text-xs font-semibold">
               {t("sourceFilesSection")}
             </h2>
-            <div className="border-border bg-surface overflow-hidden rounded-card border shadow-card">
+            <div className="border-border bg-surface overflow-hidden rounded-card border">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px] border-collapse text-left text-sm">
                   <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
@@ -311,7 +311,7 @@ function DocumentsUnavailable({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border bg-surface rounded-card border p-6 shadow-card">
+        <div className="border-border bg-surface rounded-card border p-6">
           <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
           <p className="mt-2 text-sm">{t("backendNotConfigured")}</p>
         </div>

@@ -197,8 +197,8 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
       <div className="p-6">
         {/* Gates Summary Bar */}
         {gates && (
-          <section className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
-            <h2 className="text-xs font-semibold uppercase text-muted-ink">
+          <section className="mb-6 rounded-card border border-border bg-surface p-4">
+            <h2 className="text-xs font-semibold text-muted-ink">
               {t("gateSummary")}
             </h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -431,7 +431,7 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
           {checks.map((check) => (
             <div
               key={check.id}
-              className="border-border bg-surface rounded-card shadow-card border p-4"
+              className="border-border bg-surface rounded-card border p-4"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 space-y-2">

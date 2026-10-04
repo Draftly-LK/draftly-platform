@@ -54,10 +54,10 @@ export function BillingScreen() {
       {isApiEnabled() ? <SubscriptionLoader onLoad={setSubscription} /> : null}
       <PageHeader title={t("title")} description={t("description")} />
       <div className="space-y-8 p-6">
-        <section className="border-border bg-surface rounded-card border p-6 shadow-card">
+        <section className="border-border bg-surface rounded-card border p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-muted-ink text-xs font-semibold uppercase">
+              <p className="text-muted-ink text-xs font-semibold">
                 {t("currentAccess")}
               </p>
               <h2 className="mt-1 text-2xl font-semibold">{t("pilotName")}</h2>
@@ -124,7 +124,7 @@ export function BillingScreen() {
             ))}
           </div>
 
-          <div className="border-border bg-surface mt-5 rounded-card border p-5 shadow-card">
+          <div className="border-border bg-surface mt-5 rounded-card border p-5">
             <div className="flex gap-3">
               <ShieldCheck
                 className="text-forest mt-0.5 size-5 shrink-0"
@@ -148,14 +148,14 @@ export function BillingScreen() {
             {t("currentBilling")}
           </h2>
           <div className="mt-4 grid gap-5 md:grid-cols-2">
-            <div className="border-border bg-surface rounded-card border p-6 shadow-card">
+            <div className="border-border bg-surface rounded-card border p-6">
               <CreditCard className="text-forest size-6" strokeWidth={1.5} />
               <h3 className="mt-4 text-xl font-semibold">
                 {t("paymentMethod")}
               </h3>
               <p className="text-muted-ink mt-2 text-sm">{t("paymentBody")}</p>
             </div>
-            <div className="border-border bg-surface rounded-card border p-6 shadow-card">
+            <div className="border-border bg-surface rounded-card border p-6">
               <ReceiptText className="text-forest size-6" strokeWidth={1.5} />
               <h3 className="mt-4 text-xl font-semibold">
                 {t("billingHistory")}
@@ -204,7 +204,7 @@ function SubscriptionLoader({
 function AccessDetail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-muted-ink text-xs font-semibold uppercase">
+      <dt className="text-muted-ink text-xs font-semibold">
         {label}
       </dt>
       <dd className="mt-1 text-lg font-semibold">{value}</dd>
@@ -226,12 +226,12 @@ function PlanCard({ plan }: { plan: PlanKey }) {
   return (
     <article
       className={cn(
-        "bg-surface flex h-full flex-col rounded-card border p-5 shadow-card",
+        "bg-surface flex h-full flex-col rounded-card border p-5",
         recommended ? "border-forest" : "border-border-strong",
       )}
     >
       <div className="flex min-h-7 items-start justify-between gap-3">
-        <p className="text-muted-ink text-xs font-semibold uppercase">
+        <p className="text-muted-ink text-xs font-semibold">
           {t(`${plan}.eyebrow`)}
         </p>
         {recommended ? (

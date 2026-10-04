@@ -66,15 +66,16 @@ export function Sidebar() {
       )}
       <aside
         data-app-chrome
+        data-surface="inverse"
         className={`bg-navy-950 text-on-dark fixed inset-y-0 left-0 z-20 flex w-[244px] flex-col border-r border-white/5 p-3 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-12 items-center gap-3 px-2 py-2 box-content">
           <BrandMark tone="white" className="size-8 shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="font-display text-[22px] font-semibold leading-none text-white">
+            <div className="font-display text-xl font-semibold leading-none text-white">
               {app("name")}
             </div>
-            <div className="text-on-dark-muted mt-1 truncate text-[11px] font-medium uppercase tracking-[0.08em]">
+            <div className="text-on-dark-muted mt-1 truncate text-xs font-medium">
               {t("workspace")}
             </div>
           </div>
@@ -112,7 +113,7 @@ export function Sidebar() {
             })}
           </nav>
           <div className="mt-6 border-t border-white/10 pt-4">
-            <div className="text-on-dark-muted px-3 text-[11px] font-semibold uppercase tracking-[0.08em]">
+            <div className="text-on-dark-muted px-3 text-xs font-semibold">
               {t("recentMatters")}
             </div>
             {isApiEnabled() ? (

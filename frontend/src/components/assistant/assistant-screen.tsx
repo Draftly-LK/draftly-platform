@@ -205,7 +205,7 @@ export function AssistantScreen() {
                       <MessageCircleQuestion className="size-5" strokeWidth={1.5} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-muted-ink text-xs font-semibold uppercase">
+                      <div className="text-muted-ink text-xs font-semibold">
                         {t("you")}
                       </div>
                       <p className="mt-1 leading-7">{text}</p>
@@ -248,7 +248,7 @@ export function AssistantScreen() {
             <div className="divide-border divide-y">
               {grounded.claims.map((claim, claimIndex) => (
                 <article key={claim.id} className="p-5">
-                  <div className="text-muted-ink text-xs font-semibold uppercase">
+                  <div className="text-muted-ink text-xs font-semibold">
                     {t("questionPart", { number: claimIndex + 1 })}
                   </div>
                   <p className="mt-2 text-base leading-7">{claim.text}</p>
@@ -313,8 +313,8 @@ export function AssistantScreen() {
             <h2 className="text-2xl font-semibold">{t("evidence")}</h2>
             {citation ? (
               <>
-                <div className="border-border bg-surface mt-4 rounded-card border p-4 shadow-card">
-                  <div className="text-teal text-xs font-semibold uppercase">
+                <div className="border-border bg-surface mt-4 rounded-card border p-4">
+                  <div className="text-forest text-xs font-semibold">
                     {t("exactText")}
                   </div>
                   <p className="font-heading mt-2 text-lg leading-7">
@@ -325,8 +325,8 @@ export function AssistantScreen() {
                     {t("page", { page: citation.evidence.page })}
                   </div>
                 </div>
-                <div className="border-border bg-surface mt-4 rounded-card border p-4 shadow-card">
-                  <div className="text-muted-ink text-xs font-semibold uppercase">
+                <div className="border-border bg-surface mt-4 rounded-card border p-4">
+                  <div className="text-muted-ink text-xs font-semibold">
                     {t("authority")}
                   </div>
                   <div className="font-heading mt-2 text-xl font-semibold">

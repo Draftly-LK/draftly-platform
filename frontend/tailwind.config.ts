@@ -3,8 +3,24 @@ import type { Config } from "tailwindcss";
 export default {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
+    // The type scale is closed: 12, 13, 14, 16, 18, 20, 24, 30px. Anything
+    // else (text-4xl, text-[17px]) fails to compile into a size on purpose.
+    fontSize: {
+      xs: ["12px", { lineHeight: "16px" }],
+      compact: ["13px", { lineHeight: "20px" }],
+      sm: ["14px", { lineHeight: "20px" }],
+      base: ["16px", { lineHeight: "24px" }],
+      lg: ["18px", { lineHeight: "26px" }],
+      xl: ["20px", { lineHeight: "28px" }],
+      "2xl": ["24px", { lineHeight: "32px" }],
+      "3xl": ["30px", { lineHeight: "38px" }]
+    },
     extend: {
       colors: {
+        success: "var(--success)",
+        "success-bg": "var(--success-bg)",
+        "gold-hover": "var(--gold-hover)",
+        "ring-on-dark": "var(--ring-on-dark)",
         canvas: "var(--canvas)",
         surface: "var(--surface)",
         ink: "var(--ink)",
@@ -43,26 +59,21 @@ export default {
         display: ["var(--font-serif)", "var(--font-noto-serif-si)", "Georgia", "serif"]
       },
       outlineColor: {
-        ring: "var(--ring)"
+        ring: "var(--ring)",
+        "ring-on-dark": "var(--ring-on-dark)"
       },
       borderRadius: { DEFAULT: "12px", dialog: "16px", card: "16px", control: "9999px" },
       keyframes: {
-        "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
-        "rise-in": { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "none" } },
         // Page-change bar: fast at first, then creeping towards 90% until the page lands.
         "nav-progress": { from: { width: "0%" }, "20%": { width: "45%" }, to: { width: "90%" } }
       },
       animation: {
-        "fade-in": "fade-in 250ms ease-out both",
-        "rise-in": "rise-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both",
         "nav-progress": "nav-progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) both"
       },
       boxShadow: {
         popover: "var(--shadow-popover)",
         dialog: "var(--shadow-dialog)",
-        toast: "var(--shadow-toast)",
-        card: "var(--shadow-card)",
-        raised: "var(--shadow-raised)"
+        toast: "var(--shadow-toast)"
       }
     }
   },

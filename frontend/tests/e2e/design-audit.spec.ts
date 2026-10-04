@@ -15,7 +15,7 @@ const expectedTokens = {
   "--amber-text": "#784405",
   "--red": "#a43d45",
   "--selected-bg": "#eaf0f8",
-  "--ring": "#176b75",
+  "--ring": "#1b3358",
   "--navy-950": "#0b1628",
   "--gold": "#c69436",
   "--gold-strong": "#74510f",
@@ -73,9 +73,9 @@ test("every route conforms to the Draftly visual system", async ({
       const shadowViolations = [...document.querySelectorAll("body *")]
         .filter(visible)
         .filter((element) => {
-          // Elevation comes only from the named shadow tokens (card, raised,
-          // popover); anything else is an unreviewed shadow.
-          const permittedElevation = ["shadow-card", "shadow-raised", "shadow-popover"].some(
+          // Elevation comes only from the named shadow tokens (popover, dialog,
+          // toast); anything else is an unreviewed shadow.
+          const permittedElevation = ["shadow-popover", "shadow-dialog", "shadow-toast"].some(
             (token) =>
               element.classList.contains(token) ||
               element.classList.contains(`hover:${token}`),

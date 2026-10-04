@@ -87,7 +87,7 @@ function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
       <main className="p-6">
-        <div className="border-border bg-surface divide-border grid divide-y rounded-card border shadow-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+        <div className="border-border bg-surface divide-border grid divide-y rounded-card border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           <Count label={t("all")} value={sources.length} />
           <Count label={t("statutes")} value={statuteCount} />
           <Count label={t("amendments")} value={amendmentCount} />
@@ -165,7 +165,7 @@ function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
                       </p>
                     </div>
                     <a
-                      className="text-teal focus-visible:outline-ring inline-flex items-center gap-1 text-sm font-semibold hover:underline"
+                      className="text-forest focus-visible:outline-ring inline-flex items-center gap-1 text-sm font-semibold hover:underline"
                       href={source.sourceUrl}
                       target="_blank"
                       rel="noreferrer"

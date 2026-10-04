@@ -65,7 +65,7 @@ export async function HistoryScreen() {
             <Link
               key={href}
               href={href}
-              className="border-border bg-surface hover:bg-hover-bg flex min-h-20 items-center gap-4 rounded-card border p-4 shadow-card"
+              className="border-border bg-surface hover:bg-hover-bg flex min-h-20 items-center gap-4 rounded-card border p-4"
             >
               <Icon className="text-forest size-5" strokeWidth={1.5} />
               <span className="min-w-0 flex-1">
@@ -74,11 +74,11 @@ export async function HistoryScreen() {
                 </span>
                 <span className="text-muted-ink text-xs">{type}</span>
               </span>
-              <span className="text-teal font-medium">{t("open")}</span>
+              <span className="text-forest font-medium">{t("open")}</span>
             </Link>
           ))}
         </section>
-        <section className="border-border bg-surface mt-6 rounded-card border p-6 shadow-card">
+        <section className="border-border bg-surface mt-6 rounded-card border p-6">
           <ActivityTimeline />
         </section>
       </div>

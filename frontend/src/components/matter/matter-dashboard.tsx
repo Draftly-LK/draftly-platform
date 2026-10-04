@@ -224,10 +224,10 @@ function DashboardFlow({
   return (
     <AppShell matterId={matterId}>
       <div className="p-6">
-        <section className="border-border bg-surface rounded-card shadow-card overflow-hidden border">
+        <section className="border-border bg-surface rounded-card overflow-hidden border">
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_1.2fr]">
             <div>
-              <div className="text-muted-ink text-xs font-semibold uppercase">
+              <div className="text-muted-ink text-xs font-semibold">
                 {t("instrument")}
               </div>
               <h2 className="mt-1 text-3xl font-semibold">
@@ -244,7 +244,7 @@ function DashboardFlow({
                 </div>
               </dl>
               <div className="border-gold bg-canvas mt-5 rounded border-l-[3px] p-4">
-                <div className="text-forest text-xs font-semibold uppercase">
+                <div className="text-forest text-xs font-semibold">
                   {t("nextAction")}
                 </div>
                 <div className="font-heading mt-1 text-xl font-semibold">{target.title}</div>
@@ -259,7 +259,7 @@ function DashboardFlow({
               </div>
             </div>
             <div>
-              <div className="text-muted-ink text-xs font-semibold uppercase">
+              <div className="text-muted-ink text-xs font-semibold">
                 {t("checklistProgress")}
               </div>
               {checklist === null ? (
@@ -282,13 +282,13 @@ function DashboardFlow({
             </div>
           </div>
         </section>
-        <section className="border-border bg-surface rounded-card shadow-card mt-6 overflow-hidden border">
+        <section className="border-border bg-surface rounded-card mt-6 overflow-hidden border">
           <div className="flex items-start gap-3 border-b border-border px-5 py-4">
             <div className="bg-selected-bg text-forest grid size-9 shrink-0 place-items-center rounded">
               <Sparkles className="size-5" strokeWidth={1.5} aria-hidden="true" />
             </div>
             <div>
-              <div className="text-muted-ink text-xs font-semibold uppercase">
+              <div className="text-muted-ink text-xs font-semibold">
                 {t("agentLabel")}
               </div>
               <h2 className="font-heading text-xl font-semibold">
@@ -343,7 +343,7 @@ function DashboardFlow({
             <p className="text-muted-ink flex-1 text-xs">{t("summaryNotice")}</p>
             <Link
               href={`/matters/${matterId}/assistant`}
-              className="text-teal inline-flex min-h-10 items-center gap-2 font-medium hover:underline"
+              className="text-forest inline-flex min-h-10 items-center gap-2 font-medium hover:underline"
             >
               {t("openAssistant")}
               <ArrowRight className="size-4" strokeWidth={1.5} />
@@ -374,7 +374,7 @@ function DashboardFlow({
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-surface min-h-24 p-4">
-      <dt className="text-muted-ink text-xs font-semibold uppercase">{label}</dt>
+      <dt className="text-muted-ink text-xs font-semibold">{label}</dt>
       <dd className="mt-2 text-sm leading-6">{value}</dd>
     </div>
   );

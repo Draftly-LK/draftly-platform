@@ -19,7 +19,10 @@
   --amber-text: #784405;
   --red: #a43d45;
   --selected-bg: #eaf0f8;
-  --ring: #176b75;
+  /* Focus: navy on light surfaces, gold on navy (data-surface="inverse").
+     Navy is 11.6:1 on the canvas; gold is 5.2-6.6:1 on the navy ramp. */
+  --ring: #1b3358;
+  --ring-on-dark: #c69436;
   --hover-bg: #eef2f7;
   --active-bg: #e2e8f0;
   --disabled-fg: #929dac;
@@ -35,6 +38,29 @@
   --gold: #c69436;
   --gold-strong: #74510f;
   --gold-soft: #f6eedc;
+  /* Gold fills carry navy text (6.6:1). White on gold is 2.7:1 and fails. */
+  --gold-hover: #b78628;
+  /* Success was the one status hue the palette lacked. */
+  --success: #1f6b3a;
+  --success-bg: #e4f1e8;
+  /* Semantic names. They alias the values above, so each value is defined
+     once and components may use either name. */
+  --bg: var(--canvas);
+  --surface-inverse: var(--navy-900);
+  --text-primary: var(--ink);
+  --text-secondary: var(--muted-ink);
+  --text-muted: var(--muted-ink);
+  --text-on-inverse: var(--on-dark);
+  --accent: var(--gold);
+  --accent-hover: var(--gold-hover);
+  --accent-subtle: var(--gold-soft);
+  --focus-ring: var(--ring);
+  --warning: var(--amber-text);
+  --warning-bg: var(--amber-bg);
+  --danger: var(--red);
+  --danger-bg: var(--red-bg);
+  --info: var(--teal);
+  --info-bg: var(--teal-bg);
   /* On-dark surface. The first-run hero sits on a photograph, and without
      these every dark surface reaches for literal white.
      Composed from the tokens above rather than written as fixed hexes, so
@@ -44,8 +70,6 @@
   --panel-dark: color-mix(in srgb, var(--ink) 72%, transparent);
   --border-on-dark: color-mix(in srgb, var(--canvas) 22%, transparent);
   --scrim: color-mix(in srgb, var(--ink) 55%, transparent);
-  --shadow-card: 0 1px 2px rgb(15 27 46 / 0.05), 0 1px 1px rgb(15 27 46 / 0.03);
-  --shadow-raised: 0 10px 24px -12px rgb(15 27 46 / 0.22), 0 2px 6px rgb(15 27 46 / 0.06);
   --shadow-popover: 0 8px 24px rgb(15 27 46 / 0.12);
   --shadow-dialog: 0 16px 48px rgb(15 27 46 / 0.16);
   --shadow-toast: 0 6px 20px rgb(15 27 46 / 0.14);
@@ -59,11 +83,12 @@ html[lang="si"] body { line-height: 1.75; }
 h1, h2, h3, .font-heading { font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; }
 h1, h2, h3 { letter-spacing: -0.01em; }
 .font-display { font-family: var(--font-serif), var(--font-noto-serif-si), Georgia, serif; letter-spacing: -0.015em; }
-a, button { transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
+a, button { transition: color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out; }
 button, input, textarea, select { font: inherit; letter-spacing: 0; }
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-table { font-variant-numeric: tabular-nums; }
+[data-surface="inverse"] :focus-visible, [data-surface="inverse"]:focus-visible { outline-color: var(--ring-on-dark); }
+table, time { font-variant-numeric: tabular-nums; }
 
 /* Dropdowns draw their own chevron so it sits inside the (pill) border with
    room to breathe; the browser's arrow hugs the right edge. The :not() chain

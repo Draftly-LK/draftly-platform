@@ -118,7 +118,7 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
               const grounded = message.role === "assistant" && !insufficient;
               return (
                 <article key={message.id} className={`rounded border p-4 ${message.role === "user" ? "border-border-strong bg-surface ml-auto max-w-[85%]" : insufficient ? "border-border-strong bg-surface border-l-2" : "border-teal bg-teal-bg border-l-2"}`}>
-                  <div className={`${message.role === "assistant" ? "text-ink" : "text-muted-ink"} mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase`}>
+                  <div className={`${message.role === "assistant" ? "text-ink" : "text-muted-ink"} mb-1 flex items-center gap-1.5 text-xs font-semibold`}>
                     {insufficient && <Search className="size-3.5" strokeWidth={1.5} />}
                     {message.role === "user" ? t("you") : insufficient ? t("noMatch") : t("answer")}
                   </div>

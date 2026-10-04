@@ -86,7 +86,7 @@ export function NavigationProgress() {
       className={`pointer-events-none fixed inset-x-0 top-0 z-50 transition-opacity duration-300 ${done ? "opacity-0" : "opacity-100"}`}
     >
       <div
-        className={`bg-gold h-[3px] shadow-[0_0_8px_var(--gold)] ${
+        className={`bg-gold h-[3px] ${
           done
             ? "w-full transition-[width] duration-200 ease-out"
             : "animate-nav-progress w-[90%]"

@@ -39,7 +39,7 @@ function SnapshotPanel({
       aria-labelledby="snapshot-title"
       className="rounded-card border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm"
     >
-      <h2 id="snapshot-title" className="text-on-dark-muted text-xs font-semibold uppercase tracking-[0.1em]">
+      <h2 id="snapshot-title" className="text-on-dark-muted text-xs font-semibold">
         {t("title")}
       </h2>
       <dl className="mt-4 grid grid-cols-3 gap-3">
@@ -49,7 +49,7 @@ function SnapshotPanel({
               <Icon className="mt-px size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
               <span>{t(key)}</span>
             </dt>
-            <dd className="font-display mt-2 text-[32px] font-semibold leading-none text-white tabular-nums">
+            <dd className="font-display mt-2 text-3xl font-semibold leading-none text-white tabular-nums">
               {value ?? "—"}
             </dd>
           </div>

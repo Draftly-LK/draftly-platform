@@ -485,11 +485,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                   motion preference, so branching on it in render made the
                   server and client markup disagree (hydration error). The
                   reduced-motion rule in globals.css switches this off. */}
-              <div className="animate-fade-in max-w-xl">
-                <div className="text-gold text-sm font-semibold uppercase tracking-[0.12em]">
+              <div className="max-w-xl">
+                <div className="text-gold text-sm font-semibold">
                   {t("entryEyebrow")}
                 </div>
-                <h1 className="font-display text-on-dark mt-3 text-6xl font-semibold sm:text-7xl">
+                <h1 className="font-display text-on-dark mt-3 text-3xl font-semibold">
                   {t("entryTitle")}
                 </h1>
                 <p className="text-on-dark-muted mt-4 max-w-lg text-lg leading-8">
@@ -548,13 +548,13 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
         </div>
       </header>
       <div className="mx-auto max-w-3xl p-6 sm:p-10">
-        <div className="text-muted-ink text-xs font-semibold uppercase">
+        <div className="text-muted-ink text-xs font-semibold">
           {t("stepOf", { current: step, total: TOTAL_STEPS })}
         </div>
 
         {step === 1 && (
           <section className="mt-3">
-            <h1 className="text-4xl font-semibold">{t("metadataTitle")}</h1>
+            <h1 className="text-3xl font-semibold">{t("metadataTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("metadataBody")}</p>
             <label className="mt-6 block font-medium">
               {t("matterReference")}
@@ -595,7 +595,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
         {step === 2 && (
           <section className="mt-3">
-            <h1 className="text-4xl font-semibold">{t("titleSystemTitle")}</h1>
+            <h1 className="text-3xl font-semibold">{t("titleSystemTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("q01Prompt")}</p>
             <div className="mt-6 flex flex-wrap gap-2">
               {TRI_STATE_ANSWERS.map((answer) => (
@@ -637,9 +637,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
         {step === 3 && (
           <section className="mt-3">
-            <h1 className="text-4xl font-semibold">{t("familyTitle")}</h1>
+            <h1 className="text-3xl font-semibold">{t("familyTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("q02Prompt")}</p>
-            <h2 className="text-muted-ink mt-6 text-xs font-semibold uppercase">
+            <h2 className="text-muted-ink mt-6 text-xs font-semibold">
               {t("familyTransactionsHeading")}
             </h2>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -656,7 +656,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                 />
               ))}
             </div>
-            <h2 className="text-muted-ink border-border mt-8 border-t pt-6 text-xs font-semibold uppercase">
+            <h2 className="text-muted-ink border-border mt-8 border-t pt-6 text-xs font-semibold">
               {t("familyStatutoryHeading")}
             </h2>
             <p className="text-muted-ink mt-1 text-sm">
@@ -678,7 +678,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                   />
                 ))}
             </div>
-            <h2 className="text-muted-ink border-border mt-8 border-t pt-6 text-xs font-semibold uppercase">
+            <h2 className="text-muted-ink border-border mt-8 border-t pt-6 text-xs font-semibold">
               {t("familyOtherHeading")}
             </h2>
             <div className="mt-2">
@@ -703,7 +703,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
         {step === 4 && (
           <section className="mt-3">
-            <h1 className="text-4xl font-semibold">{t("subtypeTitle")}</h1>
+            <h1 className="text-3xl font-semibold">{t("subtypeTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("subtypeBody")}</p>
             <ul className="mt-6 grid gap-2">
               {subtypes.map((subtype) => (
@@ -725,7 +725,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               ))}
             </ul>
             {needsDeclaredBasis && (
-              <div className="border-border bg-surface mt-6 rounded-card border p-4 shadow-card">
+              <div className="border-border bg-surface mt-6 rounded-card border p-4">
                 <label className="block font-medium">
                   {t("legalBasisLabel")}
                   <span className="text-muted-ink block text-sm font-normal">
@@ -758,7 +758,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
         {step === 5 && (
           <section className="mt-3">
-            <h1 className="text-4xl font-semibold">{t("routingTitle")}</h1>
+            <h1 className="text-3xl font-semibold">{t("routingTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("routingBody")}</p>
 
             <QuestionBlock prompt={t("q03Prompt")}>
@@ -814,11 +814,11 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
         {step === 6 && (
           <section className="mt-3">
-            <h1 className="text-4xl font-semibold">{t("checklistTitle")}</h1>
+            <h1 className="text-3xl font-semibold">{t("checklistTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("checklistBody")}</p>
 
             {getToken === null && (
-              <div className="border-border bg-surface mt-6 rounded-card border p-4 shadow-card">
+              <div className="border-border bg-surface mt-6 rounded-card border p-4">
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
                   <AlertCircle
                     className="size-5"
@@ -878,7 +878,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                 {/* A compiled checklist runs to ~150 requirements. Listing them
                     all at once buries the shape of the matter, so the groups
                     collapse to counts and open on demand. */}
-                <div className="border-border bg-surface mt-6 rounded-card border p-4 shadow-card">
+                <div className="border-border bg-surface mt-6 rounded-card border p-4">
                   <p className="font-medium">
                     {t("checklistSummary", {
                       total: snapshot.items.length,
@@ -912,7 +912,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                     the useful part; the rows themselves are work for the matter,
                     not reading for the wizard. */}
                 <details className="mt-4">
-                  <summary className="hover:bg-hover-bg text-teal flex min-h-11 cursor-pointer items-center gap-2 font-medium">
+                  <summary className="hover:bg-hover-bg text-forest flex min-h-11 cursor-pointer items-center gap-2 font-medium">
                     <ChevronRight
                       className="size-4 shrink-0 transition-transform [details[open]_&]:rotate-90"
                       strokeWidth={1.5}
@@ -934,7 +934,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                         // Closed by default. The counts above already say what is
                         // in the checklist; opening all four at once is ~150 rows
                         // and buries the shape of the matter.
-                        className="border-border bg-surface mt-4 overflow-hidden rounded-card border shadow-card"
+                        className="border-border bg-surface mt-4 overflow-hidden rounded-card border"
                       >
                         <summary className="hover:bg-hover-bg flex min-h-12 cursor-pointer items-center gap-3 px-4 py-3">
                           <ChevronRight
@@ -973,9 +973,9 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
         {step === 7 && (
           <section className="mt-3">
-            <h1 className="text-4xl font-semibold">{t("uploadTitle")}</h1>
+            <h1 className="text-3xl font-semibold">{t("uploadTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("uploadBody")}</p>
-            <label className="border-border bg-surface hover:bg-hover-bg mt-6 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-card border border-dashed p-6 text-center shadow-card">
+            <label className="border-border bg-surface hover:bg-hover-bg mt-6 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-card border border-dashed p-6 text-center">
               <Upload
                 className="text-forest size-6"
                 strokeWidth={1.5}
@@ -1006,7 +1006,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <p className="text-muted-ink mt-3 text-sm">{t("uploadLimits")}</p>
             <RequiredDocuments snapshot={snapshot} />
             {files.length > 0 && (
-              <div className="border-border bg-surface mt-5 overflow-hidden rounded-card border shadow-card">
+              <div className="border-border bg-surface mt-5 overflow-hidden rounded-card border">
                 <div className="border-border bg-selected-bg flex items-center justify-between gap-4 border-b px-4 py-3">
                   <h2 className="font-semibold">{t("selectedDocumentsTitle")}</h2>
                   <span className="text-muted-ink text-sm tabular-nums">
@@ -1313,7 +1313,7 @@ function ScopePanel({
 
       {statutory.length > 0 && (
         <>
-          <h3 className="text-red mt-3 text-xs font-semibold uppercase">
+          <h3 className="text-red mt-3 text-xs font-semibold">
             {t("stopConditions")}
           </h3>
           <ul className="mt-1 list-disc pl-5 text-sm">

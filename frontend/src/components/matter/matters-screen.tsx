@@ -32,7 +32,7 @@ export function MattersScreen() {
         action={
           <Link
             href="/new"
-            className="border-forest bg-forest shadow-card rounded-control mr-4 inline-flex min-h-10 items-center gap-2 border px-4 py-2 font-medium text-white hover:bg-navy-800"
+            className="border-forest bg-forest rounded-control mr-4 inline-flex min-h-10 items-center gap-2 border px-4 py-2 font-medium text-white hover:bg-navy-800"
           >
             <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
             {tShell("create")}
@@ -40,7 +40,7 @@ export function MattersScreen() {
         }
       />
       <div className="p-6">
-        <div className="border-border bg-surface overflow-x-auto rounded-card border shadow-card">
+        <div className="border-border bg-surface overflow-x-auto rounded-card border">
           {isApiEnabled() ? <ApiMatterTable /> : <DemoMatterTable />}
         </div>
       </div>
@@ -137,7 +137,7 @@ function MatterTable({
               <td className="font-heading px-4 text-base font-semibold">
                 <Link
                   href={`/matters/${matter.id}`}
-                  className="hover:text-teal"
+                  className="hover:text-forest"
                 >
                   {matter.reference}
                 </Link>

@@ -80,7 +80,7 @@ function TextField({
     <label className="block">
       <span className="flex items-baseline justify-between gap-2">
         <span className="text-muted-ink text-xs">{label}</span>
-        <span className="text-muted-ink text-[11px]">{mark}</span>
+        <span className="text-muted-ink text-xs">{mark}</span>
       </span>
       {multiline ? (
         <textarea

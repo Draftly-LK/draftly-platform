@@ -107,7 +107,7 @@ function ApiBoundMissingDocumentsScreen({ matterId }: { matterId: string }) {
       <AppShell matterId={matterId}>
         <PageHeader title={t("title")} description={t("description")} />
         <div className="p-6">
-          <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
+          <div className="border-border bg-surface rounded-card border p-6 text-center">
             <FileQuestion
               className="mx-auto size-12 text-muted-ink"
               strokeWidth={1.5}
@@ -154,7 +154,7 @@ function ApiBoundMissingDocumentsScreen({ matterId }: { matterId: string }) {
         <h2 className="text-lg font-semibold">{t("issuesList")}</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[1000px] border-collapse text-sm">
-            <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs font-semibold uppercase">
+            <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs font-semibold">
               <tr className="border-border h-10 border-b">
                 <th className="px-3 text-left">Issue</th>
                 <th className="px-3 text-left">{t("issueSeverity")}</th>
@@ -254,7 +254,7 @@ function OfflineMissingDocumentsScreen({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
+        <div className="border-border bg-surface rounded-card border p-6 text-center">
           <FileQuestion
             className="mx-auto size-12 text-muted-ink"
             strokeWidth={1.5}

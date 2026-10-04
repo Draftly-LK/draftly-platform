@@ -23,6 +23,7 @@ export async function HomeScreen() {
     <AppShell>
       <section
         aria-labelledby="home-title"
+        data-surface="inverse"
         className="bg-navy-900 border-gold relative isolate overflow-hidden border-b-2 text-white"
       >
         {/* Home has no page header, so the profile button sits where the page
@@ -35,17 +36,17 @@ export async function HomeScreen() {
           <HeaderUserButton />
         </div>
         <div className="grid items-end gap-8 px-6 pb-9 pt-24 md:pt-8 lg:pt-7 lg:grid-cols-[minmax(0,1fr)_440px] lg:pr-28">
-          <div className="animate-rise-in">
-            <p className="text-gold text-xs font-semibold uppercase tracking-[0.12em]">
+          <div>
+            <p className="text-gold text-xs font-semibold">
               {t("eyebrow")}
             </p>
             <h1
               id="home-title"
-              className="font-display mt-3 text-[44px] font-semibold leading-[1.05] sm:text-[52px]"
+              className="font-display mt-3 text-3xl font-semibold leading-[1.05]"
             >
               {t("title")}
             </h1>
-            <p className="text-on-dark-muted mt-3 max-w-xl text-[17px]">
+            <p className="text-on-dark-muted mt-3 max-w-xl text-lg">
               {t("description")}
             </p>
             {/* Equal-width buttons: auto-cols-fr sizes both columns to the
@@ -53,7 +54,7 @@ export async function HomeScreen() {
             <div className="mt-7 grid gap-3 sm:inline-grid sm:auto-cols-fr sm:grid-flow-col">
               <Link
                 href="/new"
-                className="bg-gold text-navy-950 rounded-control inline-flex min-h-11 items-center justify-center gap-2 px-4 font-semibold hover:brightness-105"
+                className="bg-gold text-navy-950 rounded-control inline-flex min-h-11 items-center justify-center gap-2 px-4 font-semibold hover:bg-gold-hover"
               >
                 <FilePlus2
                   className="size-4"
@@ -75,7 +76,7 @@ export async function HomeScreen() {
               </Link>
             </div>
           </div>
-          <div className="animate-rise-in space-y-3 [animation-delay:80ms] lg:self-start">
+          <div className="space-y-3 lg:self-start">
             <PracticeSnapshot />
           </div>
         </div>
@@ -92,7 +93,7 @@ export async function HomeScreen() {
               </h2>
               <Link
                 href="/matters"
-                className="text-teal inline-flex items-center gap-1 text-sm font-medium hover:underline"
+                className="text-forest inline-flex items-center gap-1 text-sm font-medium hover:underline"
               >
                 {t("viewAll")}
                 <ArrowRight
@@ -102,7 +103,7 @@ export async function HomeScreen() {
                 />
               </Link>
             </div>
-            <div className="rounded-card border-border bg-surface shadow-card mt-4 overflow-hidden border">
+            <div className="rounded-card border-border bg-surface mt-4 overflow-hidden border">
               <RecentMatters />
             </div>
           </section>
@@ -111,7 +112,7 @@ export async function HomeScreen() {
               <h2 id="obligations-title" className="text-xl font-semibold">
                 {t("obligationsTitle")}
               </h2>
-              <ol className="rounded-card border-border bg-surface shadow-card divide-border mt-4 divide-y overflow-hidden border">
+              <ol className="rounded-card border-border bg-surface divide-border mt-4 divide-y overflow-hidden border">
                 {obligations.map((obligation) => (
                   <li
                     key={obligation.id}

@@ -190,7 +190,7 @@ function DraftEditorScreenContent({ matterId, source }: { matterId: string; sour
   return (
     <AppShell matterId={matterId}>
       <header className="border-border bg-surface border-b px-6 py-4">
-        <h1 className="font-display text-[26px] font-semibold leading-tight">{tRoot(form.titleKey)}</h1>
+        <h1 className="font-display text-2xl font-semibold leading-tight">{tRoot(form.titleKey)}</h1>
         <div className="text-muted-ink mt-2 flex flex-wrap items-center gap-2 text-sm">
           <span>{t("formNumber", { number: form.formNumber })}</span>
           <span aria-hidden="true">·</span>
@@ -377,7 +377,7 @@ function FieldList({
 function PreflightStatus({ label, ready, note }: { label: string; ready: boolean; note?: string }) {
   const t = useTranslations("draft");
   return (
-    <div className="border-border bg-surface rounded-card border p-4 shadow-card">
+    <div className="border-border bg-surface rounded-card border p-4">
       <div className="flex items-center gap-2">
         {ready ? (
           <CheckCircle2 className="text-forest size-5" strokeWidth={1.5} aria-hidden="true" />
@@ -443,7 +443,7 @@ function LegacyDemoDraft({ matterId, draftId }: { matterId: string; draftId: str
   return (
     <AppShell matterId={matterId}>
       {draft ? (
-        <div className="border-border bg-surface m-6 max-w-4xl rounded-card border p-6 shadow-card">
+        <div className="border-border bg-surface m-6 max-w-4xl rounded-card border p-6">
           <h1 className="text-2xl font-semibold">{draft.title}</h1>
           <p className="text-muted-ink mt-2">{t("legacyDraftNotice")}</p>
           <Link href={`/matters/${matterId}/drafts`} className="mt-4 inline-block">

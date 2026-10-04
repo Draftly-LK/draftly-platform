@@ -98,7 +98,7 @@ export function WorkflowScreen({ matterId }: { matterId: string }) {
         <main className="bg-surface min-w-0">
           <header className="border-border flex items-start gap-3 border-b px-6 py-5">
             <div className="min-w-0 flex-1">
-              <div className="text-muted-ink text-xs font-semibold uppercase">
+              <div className="text-muted-ink text-xs font-semibold">
                 {t("stepCount", {
                   current: selected.order,
                   total: workflow.steps.length,
@@ -171,7 +171,7 @@ export function WorkflowScreen({ matterId }: { matterId: string }) {
                   </Button>
                 </div>
                 <div className="border-border mt-4 border-t pt-3">
-                  <div className="text-muted-ink text-xs font-semibold uppercase">
+                  <div className="text-muted-ink text-xs font-semibold">
                     {t("sourceExcerpt")}
                   </div>
                   <p className="font-heading mt-1 text-lg">
@@ -270,7 +270,7 @@ export function WorkflowScreen({ matterId }: { matterId: string }) {
             <p className="text-muted-ink mt-2 text-sm">{t("assistantBody")}</p>
             <Button className="mt-4 w-full">{t("ask")}</Button>
             <div className="border-border-strong bg-surface mt-5 rounded border p-3">
-              <div className="text-muted-ink text-xs font-semibold uppercase">
+              <div className="text-muted-ink text-xs font-semibold">
                 {t("authority")}
               </div>
               <div className="mt-1 font-medium">

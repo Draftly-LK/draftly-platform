@@ -66,7 +66,7 @@ export function CommonWorkflows() {
             <Link
               key={subtype.id}
               href="/new"
-              className={`${cardBase} bg-surface shadow-card hover:border-border-strong hover:shadow-raised group transition-shadow`}
+              className={`${cardBase} bg-surface hover:border-border-strong hover:group transition-shadow`}
             >
               {card}
             </Link>

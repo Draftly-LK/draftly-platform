@@ -165,7 +165,7 @@ function MatterHeaderShell({
               </>
             )}
           </div>
-          <h1 className="font-display mt-1 truncate text-[28px] font-semibold leading-tight tabular-nums">
+          <h1 className="font-display mt-1 truncate text-3xl font-semibold leading-tight tabular-nums">
             {data.reference}
           </h1>
           {updatedAt && (
