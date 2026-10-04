@@ -28,6 +28,7 @@ export function Menu({
   align = "left",
   side = "bottom",
   triggerClassName,
+  rootClassName,
 }: {
   /** Accessible name of the trigger button. */
   label: string;
@@ -36,6 +37,7 @@ export function Menu({
   align?: "left" | "right";
   side?: "bottom" | "top";
   triggerClassName?: string;
+  rootClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -86,7 +88,7 @@ export function Menu({
     );
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className={cn("relative", rootClassName)}>
       <button
         ref={triggerRef}
         type="button"

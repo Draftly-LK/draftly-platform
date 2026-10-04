@@ -21,6 +21,7 @@ import { useRecentMatters } from "@/lib/api/use-recent-matters";
 import { useDemoStore } from "@/lib/store";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { IconButton } from "@/components/ui/icon-button";
+import { AccountMenu } from "./account-menu";
 import { CommandPalette } from "./command-palette";
 
 export function Sidebar() {
@@ -38,14 +39,31 @@ export function Sidebar() {
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
-  const links = [
-    { href: "/", label: t("home"), icon: Home },
-    { href: "/matters", label: t("matters"), icon: FileStack },
-    { href: "/library", label: t("library"), icon: Library },
-    { href: "/research", label: t("research"), icon: SearchCheck },
-    { href: "/history", label: t("history"), icon: Clock3 },
-    { href: "/billing", label: t("billing"), icon: CreditCard },
+  const groups = [
+    {
+      key: "work",
+      label: t("groupWork"),
+      links: [
+        { href: "/", label: t("home"), icon: Home },
+        { href: "/matters", label: t("matters"), icon: FileStack },
+        { href: "/history", label: t("history"), icon: Clock3 },
+      ],
+    },
+    {
+      key: "knowledge",
+      label: t("groupKnowledge"),
+      links: [
+        { href: "/library", label: t("library"), icon: Library },
+        { href: "/research", label: t("research"), icon: SearchCheck },
+      ],
+    },
   ];
+  const footerLinks = [
+    { href: "/billing", label: t("billing"), icon: CreditCard },
+    { href: "/settings", label: t("settings"), icon: Settings },
+    { href: "/help", label: t("help"), icon: CircleHelp },
+  ];
+  const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
   return (
     <>
       <div className="fixed left-3 top-3 z-20 md:hidden">
@@ -93,52 +111,28 @@ export function Sidebar() {
           <CommandPalette tone="dark" />
         </div>
         <div className="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
-          <nav className="space-y-0.5" aria-label={t("workspace")}>
-            {links.map(({ href, label, icon: Icon }) => {
-              const active = pathname === href || (href !== "/" && pathname.startsWith(href));
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setOpen(false)}
-                  aria-current={active ? "page" : undefined}
-                  // Square on the left, where the gold marker runs the full
-                  // height; rounded on the right only.
-                  className={`relative flex min-h-10 items-center gap-3 rounded-r rounded-l-none px-3 ${active ? "bg-white/10 font-medium text-white before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-gold" : "text-on-dark-muted hover:bg-white/5 hover:text-white"}`}
-                >
-                  <Icon className="size-5" strokeWidth={1.5} />
-                  {label}
-                </Link>
-              );
-            })}
+          <nav aria-label={t("workspace")} className="space-y-5">
+            {groups.map((group) => (
+              <div key={group.key}>
+                <div className="text-on-dark-muted mb-1 px-3 text-xs font-medium">{group.label}</div>
+                <div className="space-y-0.5">
+                  {group.links.map((link) => (
+                    <NavLink key={link.href} {...link} active={isActive(link.href)} onNavigate={() => setOpen(false)} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </nav>
-          <div className="mt-6 border-t border-white/10 pt-4">
-            <div className="text-on-dark-muted px-3 text-xs font-semibold">
-              {t("recentMatters")}
-            </div>
-            {isApiEnabled() ? (
-              <ApiRecentMatterLinks />
-            ) : (
-              <RecentMatterLinks matters={matters.slice(0, 2)} />
-            )}
-          </div>
+          {isApiEnabled() ? <ApiRecentMatters /> : <RecentMatters matters={matters} />}
         </div>
         <div className="shrink-0 border-t border-white/10 pt-3">
-          <div className="space-y-0.5">
-            <Link
-              className="text-on-dark-muted flex min-h-10 items-center gap-3 rounded px-3 hover:bg-white/5 hover:text-white"
-              href="/settings"
-            >
-              <Settings className="size-5" strokeWidth={1.5} />
-              {t("settings")}
-            </Link>
-            <Link
-              className="text-on-dark-muted flex min-h-10 items-center gap-3 rounded px-3 hover:bg-white/5 hover:text-white"
-              href="/help"
-            >
-              <CircleHelp className="size-5" strokeWidth={1.5} />
-              {t("help")}
-            </Link>
+          <nav aria-label={t("account")} className="space-y-0.5">
+            {footerLinks.map((link) => (
+              <NavLink key={link.href} {...link} active={isActive(link.href)} onNavigate={() => setOpen(false)} />
+            ))}
+          </nav>
+          <div className="mt-2 border-t border-white/10 pt-2">
+            <AccountMenu />
           </div>
         </div>
       </aside>
@@ -146,40 +140,66 @@ export function Sidebar() {
   );
 }
 
-function ApiRecentMatterLinks() {
-  const { matters, loading, failed } = useRecentMatters();
-  const t = useTranslations("shell");
-  if (loading) {
-    return (
-      <p className="text-on-dark-muted px-3 py-2 text-xs">{t("recentLoading")}</p>
-    );
-  }
-  if (failed) {
-    return (
-      <p className="px-3 py-2 text-red-bg text-xs">{t("recentLoadFailed")}</p>
-    );
-  }
-  if (matters.length === 0) {
-    return (
-      <p className="text-on-dark-muted px-3 py-2 text-xs">{t("recentEmpty")}</p>
-    );
-  }
-  return <RecentMatterLinks matters={matters.slice(0, 2)} />;
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  icon: typeof Home;
+  active: boolean;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      // Square on the left, where the 3px gold marker runs the full height;
+      // rounded on the right only. The active fill is a light veil, not a block.
+      className={`relative flex min-h-10 items-center gap-3 rounded-r rounded-l-none px-3 text-sm ${active ? "bg-white/[0.07] font-medium text-white before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-gold" : "text-on-dark-muted hover:bg-white/5 hover:text-white"}`}
+    >
+      <Icon aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.5} />
+      {label}
+    </Link>
+  );
 }
 
-function RecentMatterLinks({
+/** Up to five recent matters; nothing at all when there are none (Home already says so). */
+function ApiRecentMatters() {
+  const { matters, failed } = useRecentMatters();
+  const t = useTranslations("shell");
+  if (failed) {
+    return <p className="mt-6 px-3 text-xs text-red-bg">{t("recentLoadFailed")}</p>;
+  }
+  return <RecentMatters matters={matters} />;
+}
+
+function RecentMatters({
   matters,
 }: {
-  matters: readonly { id: string; reference: string }[];
+  matters: readonly { id: string; reference: string; clientReference?: string | null }[];
 }) {
-  return matters.map((matter) => (
-    <Link
-      key={matter.id}
-      href={`/matters/${matter.id}`}
-      className="text-on-dark-muted mt-1 flex items-center gap-2 truncate rounded px-3 py-2 text-sm tabular-nums hover:bg-white/5 hover:text-white"
-    >
-      <span className="bg-gold size-1.5 shrink-0 rounded-full opacity-80" aria-hidden="true" />
-      <span className="truncate">{matter.reference}</span>
-    </Link>
-  ));
+  const t = useTranslations("shell");
+  if (matters.length === 0) return null;
+  return (
+    <div className="mt-6 border-t border-white/10 pt-4">
+      <div className="text-on-dark-muted mb-1 px-3 text-xs font-medium">{t("recentMatters")}</div>
+      {matters.slice(0, 5).map((matter) => (
+        <Link
+          key={matter.id}
+          href={`/matters/${matter.id}`}
+          className="text-on-dark-muted flex min-h-9 items-baseline gap-2 rounded px-3 py-1.5 text-sm hover:bg-white/5 hover:text-white"
+        >
+          <span className="shrink-0 tabular-nums">{matter.reference}</span>
+          {matter.clientReference && matter.clientReference.trim() !== matter.reference.trim() ? (
+            <span className="truncate text-xs opacity-70">{matter.clientReference}</span>
+          ) : null}
+        </Link>
+      ))}
+    </div>
+  );
 }

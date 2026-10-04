@@ -96,7 +96,11 @@
     "commands": "Commands",
     "goHome": "Go to home",
     "openAssistant": "Open assistant",
-    "openMatter": "Open matter"
+    "openMatter": "Open matter",
+    "groupWork": "Work",
+    "groupKnowledge": "Knowledge",
+    "account": "Account",
+    "accountMenu": "Account menu"
   },
   "matterNav": {
     "overview": "Overview",

@@ -13,7 +13,6 @@ import { familyLabelKey, subtypeLabelKey } from "@/lib/rta/taxonomy";
 import { useDemoStore } from "@/lib/store";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
 import { STAGE_ORDER, stageForState } from "./matter-stage";
-import { HeaderUserButton } from "./user-button";
 
 const NAV_TABS = [
   "overview",
@@ -178,7 +177,6 @@ function MatterHeaderShell({
           <IconButton label={t("menu")}>
             <MoreHorizontal className="size-5" strokeWidth={1.5} />
           </IconButton>
-          <HeaderUserButton />
         </div>
       </div>
       {data.state && <MatterStageStepper state={data.state} />}

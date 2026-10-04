@@ -11,7 +11,6 @@ import { CommonWorkflows } from "@/components/home/common-workflows";
 import { PracticeSnapshot } from "@/components/home/practice-snapshot";
 import { RecentMatters } from "@/components/home/recent-matters";
 import { AppShell } from "@/components/shell/app-shell";
-import { HeaderUserButton } from "@/components/shell/user-button";
 
 export async function HomeScreen() {
   const t = await getTranslations("home");
@@ -26,16 +25,7 @@ export async function HomeScreen() {
         data-surface="inverse"
         className="bg-navy-900 border-gold relative isolate overflow-hidden border-b-2 text-white"
       >
-        {/* Home has no page header, so the profile button sits where the page
-            header puts it on every other screen: top-right, 24px in. The grid
-            keeps clear of it (right padding on wide screens, top padding on
-            narrow ones) so it never covers the practice snapshot. On wide
-            screens the snapshot's top edge lines up with the photo's (lg:pt-7
-            = top-6 plus the button's 4px padding). */}
-        <div className="absolute right-6 top-6 z-10 [&_a:hover]:bg-white/10">
-          <HeaderUserButton />
-        </div>
-        <div className="grid items-end gap-8 px-6 pb-9 pt-24 md:pt-8 lg:pt-7 lg:grid-cols-[minmax(0,1fr)_440px] lg:pr-28">
+        <div className="grid items-end gap-8 px-6 pb-9 pt-16 md:pt-8 lg:grid-cols-[minmax(0,1fr)_440px]">
           <div>
             <p className="text-gold text-xs font-semibold">
               {t("eyebrow")}

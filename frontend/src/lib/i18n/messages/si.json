@@ -96,7 +96,11 @@
     "commands": "Commands",
     "goHome": "Go to home",
     "openAssistant": "Open assistant",
-    "openMatter": "Open matter"
+    "openMatter": "Open matter",
+    "groupWork": "වැඩ",
+    "groupKnowledge": "දැනුම",
+    "account": "ගිණුම",
+    "accountMenu": "ගිණුම් මෙනුව"
   },
   "matterNav": {
     "overview": "Overview",

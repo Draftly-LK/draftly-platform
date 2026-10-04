@@ -1,19 +1,25 @@
 import type { Config } from "tailwindcss";
 
+// Sizes are px at 1x. The Sinhala locale sets --type-scale (larger glyphs, since
+// Noto Sinhala marks are small) and --lh-scale (taller lines for stacked marks)
+// in globals.css; English leaves both unset, so it renders exactly as written.
+const px = (size: number) => `calc(${size}px * var(--type-scale, 1))`;
+const lh = (size: number) => `calc(${size}px * var(--type-scale, 1) * var(--lh-scale, 1))`;
+
 export default {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     // The type scale is closed: 12, 13, 14, 16, 18, 20, 24, 30px. Anything
     // else (text-4xl, text-[17px]) fails to compile into a size on purpose.
     fontSize: {
-      xs: ["12px", { lineHeight: "16px" }],
-      compact: ["13px", { lineHeight: "20px" }],
-      sm: ["14px", { lineHeight: "20px" }],
-      base: ["16px", { lineHeight: "24px" }],
-      lg: ["18px", { lineHeight: "26px" }],
-      xl: ["20px", { lineHeight: "28px" }],
-      "2xl": ["24px", { lineHeight: "32px" }],
-      "3xl": ["30px", { lineHeight: "38px" }]
+      xs: [px(12), { lineHeight: lh(16) }],
+      compact: [px(13), { lineHeight: lh(20) }],
+      sm: [px(14), { lineHeight: lh(20) }],
+      base: [px(16), { lineHeight: lh(24) }],
+      lg: [px(18), { lineHeight: lh(26) }],
+      xl: [px(20), { lineHeight: lh(28) }],
+      "2xl": [px(24), { lineHeight: lh(32) }],
+      "3xl": [px(30), { lineHeight: lh(38) }]
     },
     extend: {
       colors: {

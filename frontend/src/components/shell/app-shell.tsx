@@ -8,8 +8,8 @@ export function AppShell({
   children: React.ReactNode;
   matterId?: string;
 }) {
-  // No separate top bar: the profile button sits at the right end of each
-  // page or matter header, so the header is the only bar above the content.
+  // No separate top bar: the page or matter header is the only bar above the
+  // content, and the account menu lives in the sidebar footer.
   return (
     <div className="bg-canvas min-h-screen">
       <Sidebar />

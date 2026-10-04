@@ -58,7 +58,7 @@ export function CommandPalette({
           <button
             className={
               tone === "dark"
-                ? "border-border-on-dark text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-1.5 rounded-control border bg-white/5 px-3 text-left text-sm hover:bg-white/10"
+                ? "text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-1.5 rounded-control border border-transparent bg-white/[0.04] px-3 text-left text-sm hover:bg-white/[0.08]"
                 : "border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-1.5 rounded-control border px-3 text-left text-sm"
             }
           >

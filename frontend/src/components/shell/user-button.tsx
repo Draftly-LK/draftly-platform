@@ -1,12 +1,8 @@
 "use client";
 
-import { Show, useUser } from "@clerk/nextjs";
-import { CircleUserRound } from "lucide-react";
-import { useTranslations } from "next-intl";
-import Link from "next/link";
 import { createContext, use } from "react";
 
-function getInitials(name: string): string {
+export function getInitials(name: string): string {
   return name
     .split(" ")
     .filter(Boolean)
@@ -15,7 +11,7 @@ function getInitials(name: string): string {
     .join("");
 }
 
-function clerkDisplayName(user: {
+export function clerkDisplayName(user: {
   fullName: string | null;
   firstName: string | null;
   lastName: string | null;
@@ -31,98 +27,10 @@ function clerkDisplayName(user: {
   return user.username?.trim() ?? "";
 }
 
-function firstNameOf(user: Parameters<typeof clerkDisplayName>[0]): string {
-  return user.firstName?.trim() || clerkDisplayName(user).split(" ")[0] || "";
-}
-
-function ProfileLink({
-  name,
-  firstName,
-  label,
-  imageUrl,
-}: {
-  name: string;
-  /** Shown under the avatar; the text colour follows the header it sits in. */
-  firstName?: string;
-  label: string;
-  imageUrl?: string | null;
-}) {
-  return (
-    <Link
-      href="/profile"
-      aria-label={label}
-      title={name.trim() || label}
-      className="hover:bg-hover-bg focus-visible:outline-ring inline-flex min-w-10 flex-col items-center justify-center gap-1.5 rounded px-1.5 py-1"
-    >
-      {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- Clerk CDN
-        <img
-          src={imageUrl}
-          alt=""
-          width={36}
-          height={36}
-          className="ring-forest/30 size-9 rounded-full object-cover ring-2"
-        />
-      ) : (
-        <span className="bg-forest grid size-9 place-items-center rounded-full text-sm font-semibold text-white">
-          {name.trim() ? (
-            getInitials(name)
-          ) : (
-            <CircleUserRound
-              aria-hidden="true"
-              className="size-5"
-              strokeWidth={1.5}
-            />
-          )}
-        </span>
-      )}
-      {firstName && (
-        <span className="max-w-20 truncate text-xs font-medium leading-4">
-          {firstName}
-        </span>
-      )}
-    </Link>
-  );
-}
-
-function ClerkHeaderProfile() {
-  const t = useTranslations("auth");
-  const { user } = useUser();
-
-  return (
-    <>
-      <Show when="signed-in">
-        <ProfileLink
-          name={user ? clerkDisplayName(user) : ""}
-          firstName={user ? firstNameOf(user) : ""}
-          label={t("myProfile")}
-          imageUrl={user?.imageUrl}
-        />
-      </Show>
-      <Show when="signed-out">
-        <Link
-          href="/sign-in"
-          className="text-forest hover:bg-hover-bg focus-visible:outline-ring rounded-control inline-flex px-2 py-1.5 text-sm font-medium"
-        >
-          {t("signIn")}
-        </Link>
-      </Show>
-    </>
-  );
-}
-
-function DemoHeaderProfile() {
-  const t = useTranslations("auth");
-  return <ProfileLink name="" label={t("myProfile")} />;
-}
-
-export function UserButton({ demoMode = false }: { demoMode?: boolean }) {
-  return demoMode ? <DemoHeaderProfile /> : <ClerkHeaderProfile />;
-}
-
 /**
  * Demo mode depends on server-only env vars, so the root layout resolves it and
- * page headers (server or client) read it from here.
+ * the account menu (and anything else that must not call Clerk hooks) reads it
+ * from here.
  */
 // Defaults to demo: with no provider above (tests, isolated renders) there is
 // no ClerkProvider either, and the Clerk hooks would throw.
@@ -138,12 +46,6 @@ export function UserButtonProvider({
   return <DemoModeContext value={demoMode}>{children}</DemoModeContext>;
 }
 
-/** The profile button for the right end of a page or matter header. */
-export function HeaderUserButton() {
-  // data-no-print: the old top bar hid it in print via data-app-chrome.
-  return (
-    <span data-no-print className="inline-flex">
-      <UserButton demoMode={use(DemoModeContext)} />
-    </span>
-  );
+export function useDemoMode(): boolean {
+  return use(DemoModeContext);
 }

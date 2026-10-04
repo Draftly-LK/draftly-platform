@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
@@ -12,7 +13,9 @@ import { Menu } from "@/components/ui/menu";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { StatusChip } from "@/components/ui/status-chip";
 
+// Development reference only: a production build answers 404 (as dev/gazette does).
 export default async function KitchenSinkPage() {
+  if (process.env.NODE_ENV === "production") notFound();
   const t = await getTranslations("kitchen");
   return (
     <AppShell>
