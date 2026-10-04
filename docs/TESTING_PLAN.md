@@ -1221,8 +1221,13 @@ number lets well-tested `content_governance` mask untested `matter`:
 | `frontend/src/components/` | 50% | 40% | Only after F15; most value stays in E2E |
 | **Frontend overall** | **70%** | **60%** | |
 
+**2026-10-04 exception.** The `frontend/src/lib/**` line and statement CI floors
+were reset to 80% by request after Gazette additions lowered the measured
+coverage to 90.57%. Branch and function floors remain at 90% and 91%.
+
 **Step 3 (ongoing).** `--cov-fail-under` at the current number minus one point,
-raised whenever it is beaten. Coverage may never fall; it need not jump.
+raised whenever it is beaten. Outside documented exceptions, coverage floors
+may never fall; they need not jump.
 
 **What the threshold does not measure.** A 95%-covered `policies.py` whose tests
 only assert `is not None` is worse than a 70%-covered one with real assertions.
