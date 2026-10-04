@@ -94,7 +94,7 @@ function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <label className="border-border-strong bg-surface flex h-10 min-w-64 flex-1 items-center gap-2 rounded-control border px-3">
+          <label className="border-border-control bg-surface focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring flex h-10 min-w-64 flex-1 items-center gap-2 rounded-control border px-3">
             <Search className="text-muted-ink size-4" strokeWidth={1.5} />
             <span className="sr-only">{t("search")}</span>
             <input
@@ -106,7 +106,7 @@ function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
           </label>
           <select
             aria-label={t("filterLabel")}
-            className="border-border-strong bg-surface h-10 rounded-control border px-3"
+            className="border-border-control bg-surface h-10 rounded-control border px-3"
             value={filter}
             onChange={(event) =>
               setFilter(event.target.value as SourceFilter)

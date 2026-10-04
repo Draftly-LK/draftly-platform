@@ -162,7 +162,7 @@ export function AssistantScreen() {
             </div>
           </section>
           <form
-            className="border-border-strong bg-surface shadow-popover mt-5 rounded border p-3"
+            className="border-border-control bg-surface shadow-popover mt-5 rounded border p-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
             onSubmit={(event) => {
               event.preventDefault();
               submit();

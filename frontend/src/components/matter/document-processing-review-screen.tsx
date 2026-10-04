@@ -283,7 +283,7 @@ function DocumentProcessingReviewFlow({
                   <label className="text-sm font-medium">
                     {humanizeMessageKey(field.key)}
                     <input
-                      className="border-border-strong mt-1 w-full rounded-control border px-3 py-2"
+                      className="border-border-control mt-1 w-full rounded-control border px-3 py-2"
                       value={edits[field.id] ?? ""}
                       onChange={(event) =>
                         setEdits((current) => ({

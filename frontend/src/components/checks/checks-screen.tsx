@@ -473,7 +473,7 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
               {t("reason")}
               <textarea
                 ref={reasonInputRef}
-                className="border-border-strong mt-1 min-h-28 w-full rounded border p-3"
+                className="border-border-control mt-1 min-h-28 w-full rounded border p-3"
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
               />
@@ -628,7 +628,7 @@ function IssueDecisionModal({
               onChange={(e) =>
                 onTargetStateChange(e.target.value as IssueState | "")
               }
-              className="border-border-strong bg-surface mt-1 w-full rounded-control border p-2"
+              className="border-border-control bg-surface mt-1 w-full rounded-control border p-2"
             >
               <option value="">{t("selectState")}</option>
               {issue.permittedStates.map((state) => (
@@ -646,7 +646,7 @@ function IssueDecisionModal({
               {t("reason")}
               <textarea
                 ref={reasonInputRef}
-                className="border-border-strong mt-1 min-h-24 w-full rounded border p-2"
+                className="border-border-control mt-1 min-h-24 w-full rounded border p-2"
                 value={reason}
                 onChange={(e) => onReasonChange(e.target.value)}
                 placeholder={t("reasonPlaceholder")}
@@ -693,7 +693,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-border-strong bg-surface rounded-control border px-2 py-1 text-sm"
+        className="border-border-control bg-surface rounded-control border px-2 py-1 text-sm"
       >
         {options.map((option) => (
           <option key={option} value={option}>

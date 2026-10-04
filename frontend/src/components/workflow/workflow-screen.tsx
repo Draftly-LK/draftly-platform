@@ -217,7 +217,7 @@ export function WorkflowScreen({ matterId }: { matterId: string }) {
               <label className="block font-medium">
                 {t("note")}
                 <textarea
-                  className="border-border-strong mt-1 min-h-24 w-full rounded border p-3"
+                  className="border-border-control mt-1 min-h-24 w-full rounded border p-3"
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                 />

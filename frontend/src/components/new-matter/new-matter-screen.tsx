@@ -527,7 +527,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                     />
                   </div>
                 </div>
-                <Button variant="accent" onClick={() => setStep(1)}>
+                <Button variant="primary" onClick={() => setStep(1)}>
                   {t("continue")}
                   <ArrowRight className="size-4" strokeWidth={1.5} />
                 </Button>
@@ -559,7 +559,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <label className="mt-6 block font-medium">
               {t("matterReference")}
               <input
-                className="border-border-strong bg-surface mt-1 h-11 w-full rounded-control border px-3"
+                className="border-border-control bg-surface mt-1 h-11 w-full rounded-control border px-3"
                 value={reference}
                 placeholder={t("matterPlaceholder")}
                 onChange={(event) => setReference(event.target.value)}
@@ -568,7 +568,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <label className="mt-4 block font-medium">
               {t("clientReference")}
               <input
-                className="border-border-strong bg-surface mt-1 h-11 w-full rounded-control border px-3"
+                className="border-border-control bg-surface mt-1 h-11 w-full rounded-control border px-3"
                 value={clientReference}
                 placeholder={t("clientPlaceholder")}
                 onChange={(event) => setClientReference(event.target.value)}
@@ -733,7 +733,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                   </span>
                   <textarea
                     required
-                    className="border-border-strong bg-surface mt-2 min-h-28 w-full rounded border p-3"
+                    className="border-border-control bg-surface mt-2 min-h-28 w-full rounded border p-3"
                     value={declaredLegalBasis}
                     onChange={(event) =>
                       setDeclaredLegalBasis(event.target.value)

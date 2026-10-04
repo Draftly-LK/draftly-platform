@@ -264,7 +264,7 @@ function ClassificationReviewFlow({
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
                   disabled={saving}
-                  className="border-border-strong bg-surface mt-2 min-h-10 w-full rounded-control border px-3 py-2"
+                  className="border-border-control bg-surface mt-2 min-h-10 w-full rounded-control border px-3 py-2"
                 >
                   <option value="">{t("chooseClass")}</option>
                   {classes.map((cls) => (

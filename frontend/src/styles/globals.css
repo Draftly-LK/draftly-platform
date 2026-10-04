@@ -12,12 +12,16 @@
   --muted-ink: #566377;
   --border: #dce2ea;
   --border-strong: #a7b3c2;
+  /* Boundary of an input, select or textarea: 3.3-3.6:1 on surface, canvas and
+     hover fills (WCAG 1.4.11). --border-strong is 2.1:1 and stays decorative. */
+  --border-control: #7b8899;
   --forest: #1b3358;
   --soft-green: #e7eef8;
   --teal: #176b75;
   --amber: #9c5b0b;
   --amber-text: #784405;
   --red: #a43d45;
+  --red-hover: #8b323a;
   --selected-bg: #eaf0f8;
   /* Focus: navy on light surfaces, gold on navy (data-surface="inverse").
      Navy is 11.6:1 on the canvas; gold is 5.2-6.6:1 on the navy ramp. */
@@ -77,7 +81,7 @@
 
 * { box-sizing: border-box; }
 html { background: var(--canvas); font-optical-sizing: auto; }
-body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; font-size: 15px; line-height: 1.5; letter-spacing: 0; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; font-size: 14px; line-height: 1.5; letter-spacing: 0; }
 html[lang="si"] body { line-height: 1.75; }
 ::selection { background: var(--soft-green); }
 h1, h2, h3, .font-heading { font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; }

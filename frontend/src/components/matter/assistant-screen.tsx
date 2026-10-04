@@ -544,7 +544,7 @@ function Composer({
 }) {
   return (
     <form
-      className="border-border-strong bg-surface shadow-popover sticky bottom-3 mb-3 rounded border p-3"
+      className="border-border-control bg-surface shadow-popover sticky bottom-3 mb-3 rounded border p-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();

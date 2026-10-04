@@ -167,7 +167,7 @@ export function ConversationRail({
             </Button>
             <label className="block">
               <span className="sr-only">{t("searchConversations")}</span>
-              <span className="border-border bg-canvas focus-within:border-border-strong focus-within:bg-surface flex min-h-9 items-center gap-2 rounded-control border px-3">
+              <span className="border-border-control bg-canvas focus-within:bg-surface focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring flex min-h-9 items-center gap-2 rounded-control border px-3">
                 <Search
                   className="text-muted-ink size-4 shrink-0"
                   strokeWidth={1.5}

@@ -27,6 +27,8 @@ export default {
         "muted-ink": "var(--muted-ink)",
         border: "var(--border)",
         "border-strong": "var(--border-strong)",
+        "border-control": "var(--border-control)",
+        "red-hover": "var(--red-hover)",
         forest: "var(--forest)",
         "soft-green": "var(--soft-green)",
         teal: "var(--teal)",

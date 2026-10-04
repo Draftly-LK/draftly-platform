@@ -280,7 +280,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                   <select
                     value={selectedFormId}
                     onChange={(e) => setSelectedFormId(e.target.value)}
-                    className="border-border-strong bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
+                    className="border-border-control bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
                   >
                     <option value="">{t("chooseForm")}</option>
                     {availableForms.map((form) => (
@@ -395,7 +395,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                   <select
                     value={eventType}
                     onChange={(e) => setEventType(e.target.value as RegistrationEventType)}
-                    className="border-border-strong bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
+                    className="border-border-control bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
                   >
                     {(["ATTESTED", "PRESENTED", "DAY_BOOK_ENTERED", "REGISTERED", "REFUSED"] as RegistrationEventType[]).map(
                       (type) => (
@@ -413,7 +413,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     type="date"
                     value={eventDate}
                     onChange={(e) => setEventDate(e.target.value)}
-                    className="border-border-strong bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
+                    className="border-border-control bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
                   />
                 </div>
 
@@ -424,7 +424,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     value={dayBookReference}
                     onChange={(e) => setDayBookReference(e.target.value)}
                     placeholder={t("optional")}
-                    className="border-border-strong bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
+                    className="border-border-control bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
                   />
                 </div>
 
@@ -435,7 +435,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     value={registryOffice}
                     onChange={(e) => setRegistryOffice(e.target.value)}
                     placeholder={t("optional")}
-                    className="border-border-strong bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
+                    className="border-border-control bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
                   />
                 </div>
 
@@ -445,7 +445,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     value={resultNote}
                     onChange={(e) => setResultNote(e.target.value)}
                     placeholder={t("optional")}
-                    className="border-border-strong bg-surface mt-2 w-full rounded border px-3 py-2 text-sm"
+                    className="border-border-control bg-surface mt-2 w-full rounded border px-3 py-2 text-sm"
                     rows={3}
                   />
                 </div>

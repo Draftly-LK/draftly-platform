@@ -81,8 +81,13 @@ and the relevant plans under `backend/docs/services/`.
 
 - Tokens exactly as specced in `docs/plan.md` §Design system — including the
   derived tokens (`amber-text #784405`, `border-strong #A7B3C2`,
-  `selected-bg #EAF0F7`, teal `:focus-visible` ring). No zinc/slate grays.
-- Radius 6 px (8 px dialogs). 40–44 px table rows. No card shadows in the
+  `selected-bg #EAF0F7`, `border-control #7B8899` for input borders). Focus is a
+  2 px ring with offset: navy `#1B3358` on light surfaces, gold `#C69436` on
+  navy (`data-surface="inverse"`). Gold fills carry navy text, never white.
+  No zinc/slate grays.
+- Radius as built, not as first specced: buttons, inputs and chips are pills
+  (`rounded-control`), panels and cards 12–16 px (`rounded`, `rounded-card`),
+  dialogs 16 px. 40–44 px table rows. No card shadows in the
   workspace. Icons 16 px/1.5-stroke in tables, 20 px toolbar, 24 px empty
   states.
 - Fonts: IBM Plex Sans + Noto Sans Sinhala (headings and UI/body), via

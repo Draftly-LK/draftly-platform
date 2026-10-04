@@ -317,7 +317,7 @@ function DraftEditorScreenContent({ matterId, source }: { matterId: string; sour
             placeholder={t("markStaleReason")}
             value={staleReason}
             onChange={(event) => setStaleReason(event.target.value)}
-            className="border-border-strong bg-surface min-w-0 flex-1 rounded-control border px-3 py-2 text-sm"
+            className="border-border-control bg-surface min-w-0 flex-1 rounded-control border px-3 py-2 text-sm"
           />
           <Button onClick={() => void handleMarkStale()} disabled={markingStale}>
             {markingStale ? (
