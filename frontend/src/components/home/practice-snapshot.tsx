@@ -1,61 +1,55 @@
 "use client";
 
-import { FilePenLine, FolderOpen, UserRoundCheck } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { isApiEnabled } from "@/lib/api/client";
-import { useRecentMatters } from "@/lib/api/use-recent-matters";
-import { summarizeMatters, type PracticeSnapshot as Snapshot } from "@/lib/home/practice-snapshot";
-import type { ApiRtaMatter } from "@/types/rta";
-import { demoMatterFeed } from "./recent-matters";
+import Link from "next/link";
+import { Divider } from "@/components/ui/divider";
+import { cn } from "@/lib/utils";
+import { summarizeMatters } from "@/lib/home/practice-snapshot";
+import type { Feed } from "./matter-feed";
 
-/** The hero's at-a-glance counts, from the same feed as "Recent matters". */
-export function PracticeSnapshot() {
-  return isApiEnabled() ? <ApiPracticeSnapshot /> : <SnapshotPanel matters={demoMatterFeed()} loading={false} />;
-}
-
-function ApiPracticeSnapshot() {
-  const { matters, loading, failed } = useRecentMatters();
-  return <SnapshotPanel matters={matters} loading={loading} failed={failed} />;
-}
-
-function SnapshotPanel({
-  matters,
-  loading,
-  failed = false,
-}: {
-  matters: ApiRtaMatter[];
-  loading: boolean;
-  failed?: boolean;
-}) {
+/**
+ * Three counts in one row, on the navy header. The number is the strongest
+ * element; "To review" turns gold (with an icon) only while it is above zero,
+ * and zeros are muted. Each count opens the Matters list.
+ */
+// TODO: link each count to the Matters list filtered by that state once the
+// list supports a filter; today all three open the unfiltered list.
+export function PracticeMetrics({ feed }: { feed: Feed }) {
   const t = useTranslations("home.snapshot");
-  const summary: Snapshot | null = loading || failed ? null : summarizeMatters(matters.map((matter) => matter.state));
-  const stats = [
-    { key: "open", icon: FolderOpen, value: summary?.open },
-    { key: "needsReview", icon: UserRoundCheck, value: summary?.needsReview },
-    { key: "drafting", icon: FilePenLine, value: summary?.drafting },
+  const summary = feed.loading || feed.failed ? null : summarizeMatters(feed.matters.map((matter) => matter.state));
+  const metrics = [
+    { key: "open", value: summary?.open, flag: false },
+    { key: "needsReview", value: summary?.needsReview, flag: (summary?.needsReview ?? 0) > 0 },
+    { key: "drafting", value: summary?.drafting, flag: false },
   ] as const;
   return (
-    <section
-      aria-labelledby="snapshot-title"
-      className="rounded-card border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm"
-    >
-      <h2 id="snapshot-title" className="text-on-dark-muted text-xs font-semibold">
-        {t("title")}
-      </h2>
-      <dl className="mt-4 grid grid-cols-3 gap-3">
-        {stats.map(({ key, icon: Icon, value }) => (
-          <div key={key} className="rounded border border-white/10 bg-white/[0.03] p-3">
-            <dt className="text-on-dark-muted flex min-h-8 items-start gap-1.5 text-xs leading-snug">
-              <Icon className="mt-px size-4 shrink-0" strokeWidth={1.5} aria-hidden="true" />
-              <span>{t(key)}</span>
-            </dt>
-            <dd className="font-display mt-2 text-3xl font-semibold leading-none text-white tabular-nums">
-              {value ?? "—"}
-            </dd>
+    <section aria-label={t("title")}>
+      <dl className="flex items-stretch">
+        {metrics.map(({ key, value, flag }, index) => (
+          <div key={key} className="flex items-stretch">
+            {index > 0 ? <Divider vertical className="bg-white/15" /> : null}
+            <Link
+              href="/matters"
+              className="block rounded px-5 py-1 first:pl-0 hover:bg-white/5"
+            >
+              <dt className="flex items-center gap-1.5 whitespace-nowrap text-xs text-on-dark-muted">
+                {flag ? <TriangleAlert aria-hidden="true" className="size-4 text-gold" strokeWidth={1.5} /> : null}
+                {t(key)}
+              </dt>
+              <dd
+                className={cn(
+                  "mt-0.5 text-3xl font-semibold tabular-nums leading-none",
+                  flag ? "text-gold" : value ? "text-white" : "text-on-dark-muted",
+                )}
+              >
+                {value ?? "—"}
+              </dd>
+            </Link>
           </div>
         ))}
       </dl>
-      {failed && <p className="text-red-bg mt-3 text-xs">{t("failed")}</p>}
+      {feed.failed ? <p className="mt-2 text-xs text-red-bg">{t("failed")}</p> : null}
     </section>
   );
 }

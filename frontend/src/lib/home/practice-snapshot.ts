@@ -12,7 +12,7 @@ export interface PracticeSnapshot {
 }
 
 const FINISHED: ReadonlySet<RtaMatterState> = new Set(["REGISTERED", "CLOSED", "CANCELLED"]);
-const NEEDS_REVIEW: ReadonlySet<RtaMatterState> = new Set([
+export const NEEDS_REVIEW: ReadonlySet<RtaMatterState> = new Set([
   "REVIEW_REQUIRED",
   "LEGAL_REVIEW",
   "APPROVAL_PENDING",

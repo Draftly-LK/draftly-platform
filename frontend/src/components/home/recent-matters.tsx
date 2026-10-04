@@ -1,122 +1,103 @@
 "use client";
 
-import { ArrowRight, CircleAlert, CircleDashed, FileText } from "lucide-react";
+import { CircleCheck, CircleDashed, TriangleAlert } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { isApiEnabled } from "@/lib/api/client";
-import { useRecentMatters } from "@/lib/api/use-recent-matters";
-import { matters as demoMatters } from "@/lib/mocks";
+import { ListRow, rowLinkClass } from "@/components/ui/list-row";
+import { StatusChip } from "@/components/ui/status-chip";
+import { buttonClass } from "@/components/ui/button";
+import { activityIsRecent, dayMonth, needsReview, sortForDashboard, stateTone, type StatusTone } from "@/lib/home/dashboard";
+import { getSubtype } from "@/lib/rta/taxonomy";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
+import type { Feed } from "./matter-feed";
+import { cn } from "@/lib/utils";
 
-const REVIEW_STATES: ReadonlySet<RtaMatterState> = new Set([
-  "REVIEW_REQUIRED",
-  "LEGAL_REVIEW",
-  "APPROVAL_PENDING",
-]);
+const ROW_LIMIT = 8;
 
-export function RecentMatters() {
-  return isApiEnabled() ? <ApiRecentMatters /> : <DemoRecentMatters />;
-}
+const toneIcons = {
+  warning: TriangleAlert,
+  success: CircleCheck,
+  info: CircleDashed,
+  neutral: CircleDashed,
+  danger: TriangleAlert,
+} as const satisfies Record<StatusTone, typeof CircleDashed>;
 
-function ApiRecentMatters() {
-  const result = useRecentMatters();
-  return (
-    <RecentMatterRows
-      matters={result.matters.slice(0, 5)}
-      loading={result.loading}
-      failed={result.failed}
-    />
-  );
-}
+const COLUMNS =
+  "grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.1fr)_11rem_6.5rem_8rem]";
 
-/** The offline demo's fixture matters in the API's shape. */
-export function demoMatterFeed(): ApiRtaMatter[] {
-  return demoMatters.map(
-    (matter) =>
-      ({
-        id: matter.id,
-        reference: matter.reference,
-        clientReference: matter.parties
-          .map((party) => party.nameToken)
-          .join(" / "),
-        state: matter.status === "in-review" ? "REVIEW_REQUIRED" : "APPROVED",
-        updatedAt: matter.updatedAt,
-      }) as ApiRtaMatter,
-  );
-}
-
-function DemoRecentMatters() {
-  return <RecentMatterRows matters={demoMatterFeed()} loading={false} failed={false} />;
-}
-
-function RecentMatterRows({
-  matters,
-  loading,
-  failed,
-}: {
-  matters: ApiRtaMatter[];
-  loading: boolean;
-  failed: boolean;
-}) {
+/**
+ * A list, not cards: matter, instrument, status, last activity, next action.
+ * Review-required matters sort first and carry a gold-free warning accent. The
+ * next action is the row's one link; its stretched hit area makes the whole row
+ * clickable while keeping a single tab stop.
+ */
+// TODO: a per-matter next action and a property description are not in the
+// matter feed yet; the action is derived from the state and the second line
+// shows the reference.
+export function RecentMatters({ feed, now }: { feed: Feed; now: Date | null }) {
   const t = useTranslations("home");
+  const tRoot = useTranslations();
   const stateLabel = useTranslations("matterNav.stateLabel");
   const format = useFormatter();
 
-  if (loading) {
-    return <p className="text-muted-ink p-4 text-sm">{t("recentLoading")}</p>;
-  }
-  if (failed) {
-    return <p className="text-red p-4 text-sm">{t("recentLoadFailed")}</p>;
-  }
-  if (matters.length === 0) {
-    return <p className="text-muted-ink p-4 text-sm">{t("recentEmpty")}</p>;
-  }
+  if (feed.loading) return <p className="p-4 text-sm text-muted-ink">{t("recentLoading")}</p>;
+  if (feed.failed) return <p className="p-4 text-sm text-red">{t("recentLoadFailed")}</p>;
 
-  return matters.map((matter) => {
-    const needsReview = REVIEW_STATES.has(matter.state as RtaMatterState);
-    const StatusIcon = needsReview ? CircleAlert : CircleDashed;
-    return (
-      <Link
-        href={`/matters/${matter.id}`}
-        key={matter.id}
-        className="border-border hover:bg-hover-bg group grid min-h-[72px] grid-cols-[auto_1fr_auto] items-center gap-4 border-b px-4 last:border-b-0 md:grid-cols-[auto_1.4fr_1fr_auto]"
+  const rows = sortForDashboard(feed.matters).slice(0, ROW_LIMIT);
+
+  const activity = (matter: ApiRtaMatter) => {
+    const date = new Date(matter.updatedAt);
+    return now && activityIsRecent(matter.updatedAt, now)
+      ? format.relativeTime(date, now)
+      : dayMonth(format, date);
+  };
+
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        className={cn(COLUMNS, "hidden gap-x-4 border-b border-border bg-canvas px-4 py-2 text-xs font-medium text-muted-ink md:grid")}
       >
-        <span className="bg-selected-bg text-forest grid size-10 place-items-center rounded-lg">
-          <FileText className="size-5" strokeWidth={1.5} aria-hidden="true" />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate font-semibold tabular-nums">{matter.reference}</span>
-          {matter.clientReference &&
-            matter.clientReference.trim().toLocaleLowerCase() !==
-              matter.reference.trim().toLocaleLowerCase() && (
-              <span className="text-muted-ink block truncate text-xs">{matter.clientReference}</span>
-            )}
-        </span>
-        <span className="hidden md:block">
-          <span className="sr-only">{t("status")}: </span>
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${needsReview ? "border-amber bg-amber-bg text-amber-text" : "border-border-strong text-ink"}`}
-          >
-            <StatusIcon className="size-4" strokeWidth={1.5} aria-hidden="true" />
-            {stateLabel(matter.state as RtaMatterState)}
-          </span>
-        </span>
-        <span className="text-muted-ink flex items-center gap-2 text-right text-xs">
-          {t("lastActivity", {
-            date: format.dateTime(new Date(matter.updatedAt), {
-              day: "numeric",
-              month: "short",
-              calendar: "gregory",
-              numberingSystem: "latn",
-            }),
-          })}
-          <ArrowRight
-            className="group-hover:text-forest size-4 transition-transform group-hover:translate-x-0.5"
-            strokeWidth={1.5}
-            aria-hidden="true"
-          />
-        </span>
-      </Link>
-    );
-  });
+        <span>{t("colMatter")}</span>
+        <span>{t("colInstrument")}</span>
+        <span>{t("colStatus")}</span>
+        <span>{t("colActivity")}</span>
+        <span>{t("colNext")}</span>
+      </div>
+      <ul>
+        {rows.map((matter) => {
+          const review = needsReview(matter.state);
+          const tone = stateTone(matter.state);
+          const Icon = toneIcons[tone];
+          const labelKey = matter.subtypeId ? getSubtype(matter.subtypeId)?.labelKey : undefined;
+          const showReference =
+            matter.clientReference && matter.clientReference.trim().toLocaleLowerCase() !== matter.reference.trim().toLocaleLowerCase();
+          return (
+            <ListRow key={matter.id} accent={review ? "warning" : undefined} className={cn(COLUMNS, "gap-x-4")}>
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{showReference ? matter.clientReference : matter.reference}</span>
+                {showReference ? (
+                  <span className="block truncate text-xs tabular-nums text-muted-ink">{matter.reference}</span>
+                ) : null}
+              </span>
+              <span className="hidden truncate text-sm md:block">{labelKey ? tRoot(labelKey) : "—"}</span>
+              <span className="hidden md:block">
+                <StatusChip tone={tone} icon={Icon} className="whitespace-nowrap">
+                  {stateLabel(matter.state as RtaMatterState)}
+                </StatusChip>
+              </span>
+              <span className="hidden text-sm tabular-nums text-muted-ink md:block">{activity(matter)}</span>
+              <Link
+                href={`/matters/${matter.id}`}
+                className={cn(buttonClass("ghost", "sm"), rowLinkClass, "justify-self-end whitespace-nowrap")}
+              >
+                {review ? t("nextReview") : t("nextOpen")}
+                <span className="sr-only">{matter.reference}</span>
+              </Link>
+            </ListRow>
+          );
+        })}
+      </ul>
+    </>
+  );
 }
