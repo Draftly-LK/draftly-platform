@@ -1,10 +1,10 @@
 "use client";
 
 import { Show, useClerk, useUser } from "@clerk/nextjs";
-import { ChevronsUpDown, CircleUserRound, CreditCard, LogOut, Settings, UserRound } from "lucide-react";
+import { ChevronsUpDown, CircleHelp, CircleUserRound, CreditCard, LogOut, Settings, UserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { Menu, type MenuItem } from "@/components/ui/menu";
+import { Menu, type MenuDivider, type MenuItem } from "@/components/ui/menu";
 import { clerkDisplayName, getInitials, useDemoMode } from "./user-button";
 
 function Avatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
@@ -22,7 +22,7 @@ function Avatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) 
   );
 }
 
-function AccountMenuView({
+export function AccountMenuView({
   name,
   imageUrl,
   onSignOut,
@@ -35,11 +35,18 @@ function AccountMenuView({
   const t = useTranslations("shell");
   const auth = useTranslations("auth");
   const profile = useTranslations("profile");
-  const items: MenuItem[] = [
+  const items: (MenuItem | MenuDivider)[] = [
     { key: "profile", label: auth("myProfile"), icon: UserRound, href: "/profile" },
     { key: "settings", label: t("settings"), icon: Settings, href: "/settings" },
     { key: "billing", label: t("billing"), icon: CreditCard, href: "/billing" },
-    ...(onSignOut ? [{ key: "sign-out", label: profile("signOut"), icon: LogOut, onSelect: onSignOut }] : []),
+    { key: "help", label: t("help"), icon: CircleHelp, href: "/help" },
+    // Sign out only exists with a real session; offline there is nothing to end.
+    ...(onSignOut
+      ? [
+          { key: "divider", divider: true as const },
+          { key: "sign-out", label: profile("signOut"), icon: LogOut, onSelect: onSignOut },
+        ]
+      : []),
   ];
   return (
     <Menu

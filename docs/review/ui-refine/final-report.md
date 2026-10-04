@@ -1,4 +1,4 @@
-# Draftly UI refinement: final report
+﻿# Draftly UI refinement: final report
 
 Branch `platform/ui-refine-praveen`, brief `DRAFTLY_UI_REFINEMENT.md`. This is a
 presentation-layer change: no business logic, data fetching, API routes,
@@ -17,6 +17,7 @@ review are in [sinhala-review.md](sinhala-review.md).
 | 5. Sign-in and sign-up | Split screen, shared Clerk appearance built on tokens. |
 | 6. Consistency | Matters URL filters, skeletons, empty and error states on six pages. |
 | 7. Responsive and accessibility | Drawer below 1024px, stacked rows, axe audit at three widths. |
+| Follow-up | Billing, Settings and Help moved into the account menu (Profile, Settings, Billing, Help, divider, Sign out); themed thin scrollbars without arrow buttons. |
 
 ## Files changed
 
@@ -47,7 +48,7 @@ decision: controls are pills (`rounded-control`), containers 16px
 :root {
   /* "Trust & authority" palette (docs/review/ui-refresh): authority navy with a
      restrained gold accent, cool neutral canvas, status hues unchanged.
-     Asserted by tests/e2e/design-audit.spec.ts — change both together. */
+     Asserted by tests/e2e/design-audit.spec.ts â€” change both together. */
   --canvas: #f3f5f8;
   --surface: #ffffff;
   --ink: #0f1b2e;

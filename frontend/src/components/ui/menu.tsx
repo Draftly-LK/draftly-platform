@@ -16,6 +16,12 @@ export interface MenuItem {
   tone?: "default" | "danger";
 }
 
+/** A thin rule between groups of items. Not focusable and skipped by arrow keys. */
+export interface MenuDivider {
+  key: string;
+  divider: true;
+}
+
 /**
  * A button that opens a short list of actions. Keyboard: Enter / Space / ArrowDown
  * open it and focus the first item; Arrow keys, Home and End move; Escape closes
@@ -33,7 +39,7 @@ export function Menu({
   /** Accessible name of the trigger button. */
   label: string;
   trigger: ReactNode;
-  items: MenuItem[];
+  items: (MenuItem | MenuDivider)[];
   align?: "left" | "right";
   side?: "bottom" | "top";
   triggerClassName?: string;
@@ -120,7 +126,11 @@ export function Menu({
             side === "top" ? "bottom-full mb-1" : "top-full mt-1",
           )}
         >
-          {items.map(({ key, label: itemLabel, icon: Icon, href, onSelect, tone }) => {
+          {items.map((entry) => {
+            if ("divider" in entry) {
+              return <div key={entry.key} role="separator" className="my-1 border-t border-border" />;
+            }
+            const { key, label: itemLabel, icon: Icon, href, onSelect, tone } = entry;
             const content = (
               <>
                 {Icon ? <Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} /> : null}

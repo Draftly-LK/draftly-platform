@@ -1,15 +1,12 @@
 "use client";
 
 import {
-  CircleHelp,
   Clock3,
-  CreditCard,
   FileStack,
   Home,
   Library,
   SearchCheck,
   Menu,
-  Settings,
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -95,11 +92,6 @@ export function Sidebar() {
       ],
     },
   ];
-  const footerLinks = [
-    { href: "/billing", label: t("billing"), icon: CreditCard },
-    { href: "/settings", label: t("settings"), icon: Settings },
-    { href: "/help", label: t("help"), icon: CircleHelp },
-  ];
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
   return (
     <>
@@ -168,14 +160,7 @@ export function Sidebar() {
           {isApiEnabled() ? <ApiRecentMatters /> : <RecentMatters matters={matters} />}
         </div>
         <div className="shrink-0 border-t border-white/10 pt-3">
-          <nav aria-label={t("account")} className="space-y-0.5">
-            {footerLinks.map((link) => (
-              <NavLink key={link.href} {...link} active={isActive(link.href)} onNavigate={() => setOpen(false)} />
-            ))}
-          </nav>
-          <div className="mt-2 border-t border-white/10 pt-2">
-            <AccountMenu />
-          </div>
+          <AccountMenu />
         </div>
       </aside>
     </>
