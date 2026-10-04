@@ -786,6 +786,355 @@
         "title": "CandidateFieldRead",
         "type": "object"
       },
+      "CaseCoverageRead": {
+        "additionalProperties": false,
+        "properties": {
+          "catalogueRecords": {
+            "minimum": 0.0,
+            "title": "Cataloguerecords",
+            "type": "integer"
+          },
+          "collections": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Collections",
+            "type": "object"
+          },
+          "maxYear": {
+            "anyOf": [
+              {
+                "maximum": 2200.0,
+                "minimum": 1700.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxyear"
+          },
+          "minYear": {
+            "anyOf": [
+              {
+                "maximum": 2200.0,
+                "minimum": 1700.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minyear"
+          },
+          "readerOverlapRecords": {
+            "minimum": 0.0,
+            "title": "Readeroverlaprecords",
+            "type": "integer"
+          },
+          "retrievalRecords": {
+            "minimum": 0.0,
+            "title": "Retrievalrecords",
+            "type": "integer"
+          },
+          "retrievalScope": {
+            "const": "conveyancing-only",
+            "title": "Retrievalscope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalogueRecords",
+          "retrievalRecords",
+          "readerOverlapRecords",
+          "collections",
+          "minYear",
+          "maxYear",
+          "retrievalScope"
+        ],
+        "title": "CaseCoverageRead",
+        "type": "object"
+      },
+      "CaseDetailRead": {
+        "additionalProperties": false,
+        "properties": {
+          "corpusVersion": {
+            "minLength": 1,
+            "title": "Corpusversion",
+            "type": "string"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/CaseCoverageRead"
+          },
+          "item": {
+            "$ref": "#/components/schemas/CaseRecordRead"
+          }
+        },
+        "required": [
+          "corpusVersion",
+          "coverage",
+          "item"
+        ],
+        "title": "CaseDetailRead",
+        "type": "object"
+      },
+      "CaseListRead": {
+        "additionalProperties": false,
+        "properties": {
+          "corpusVersion": {
+            "title": "Corpusversion",
+            "type": "string"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/CaseCoverageRead"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CaseRecordRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
+          }
+        },
+        "required": [
+          "corpusVersion",
+          "coverage",
+          "items",
+          "page"
+        ],
+        "title": "CaseListRead",
+        "type": "object"
+      },
+      "CaseRecordRead": {
+        "additionalProperties": false,
+        "properties": {
+          "citation": {
+            "title": "Citation",
+            "type": "string"
+          },
+          "collection": {
+            "enum": [
+              "LKCA",
+              "LKSC"
+            ],
+            "title": "Collection",
+            "type": "string"
+          },
+          "decidingCourt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decidingcourt"
+          },
+          "decisionDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decisiondate"
+          },
+          "displayApprovalReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayapprovalreference"
+          },
+          "displayPolicy": {
+            "enum": [
+              "metadata-only",
+              "full-text"
+            ],
+            "title": "Displaypolicy",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "provenance": {
+            "const": "commonlii-parsed",
+            "title": "Provenance",
+            "type": "string"
+          },
+          "qualityWarnings": {
+            "items": {
+              "enum": [
+                "encoding-errors",
+                "missing-pages",
+                "malformed-tags",
+                "deciding-court-unparsed"
+              ],
+              "type": "string"
+            },
+            "title": "Qualitywarnings",
+            "type": "array"
+          },
+          "reportSeries": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reportseries"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "textSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Textsha256",
+            "type": "string"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "verificationState": {
+            "const": "parsed-unverified",
+            "title": "Verificationstate",
+            "type": "string"
+          },
+          "year": {
+            "maximum": 2200.0,
+            "minimum": 1700.0,
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "citation",
+          "collection",
+          "decidingCourt",
+          "year",
+          "decisionDate",
+          "reportSeries",
+          "sourceUrl",
+          "provenance",
+          "verificationState",
+          "qualityWarnings",
+          "displayPolicy",
+          "textSha256",
+          "text",
+          "displayApprovalReference"
+        ],
+        "title": "CaseRecordRead",
+        "type": "object"
+      },
+      "CaseSearchRead": {
+        "additionalProperties": false,
+        "properties": {
+          "corpusVersion": {
+            "minLength": 1,
+            "title": "Corpusversion",
+            "type": "string"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/CaseCoverageRead"
+          },
+          "degradedChannels": {
+            "items": {
+              "const": "dense",
+              "type": "string"
+            },
+            "title": "Degradedchannels",
+            "type": "array"
+          },
+          "denseStatus": {
+            "enum": [
+              "disabled",
+              "unavailable",
+              "enabled-status-unknown"
+            ],
+            "title": "Densestatus",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SimilarCaseRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "outcome": {
+            "enum": [
+              "similar_cases_found",
+              "no_similar_cases"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "corpusVersion",
+          "coverage",
+          "items",
+          "outcome",
+          "degradedChannels",
+          "denseStatus"
+        ],
+        "title": "CaseSearchRead",
+        "type": "object"
+      },
+      "CaseSearchRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "default": 8,
+            "maximum": 25.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 8000,
+            "minLength": 1,
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "title": "CaseSearchRequest",
+        "type": "object"
+      },
       "CddAssessmentReadSchema": {
         "properties": {
           "assessedAt": {
@@ -7290,6 +7639,79 @@
         "title": "SetRoleRequest",
         "type": "object"
       },
+      "SimilarCaseRead": {
+        "additionalProperties": false,
+        "properties": {
+          "case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseRecordRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "citation": {
+            "title": "Citation",
+            "type": "string"
+          },
+          "excerpt": {
+            "maxLength": 900,
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "matchedSignals": {
+            "items": {
+              "enum": [
+                "lexical",
+                "graph",
+                "dense"
+              ],
+              "type": "string"
+            },
+            "title": "Matchedsignals",
+            "type": "array"
+          },
+          "readerAvailable": {
+            "title": "Readeravailable",
+            "type": "boolean"
+          },
+          "score": {
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "case",
+          "id",
+          "title",
+          "citation",
+          "sourceUrl",
+          "score",
+          "matchedSignals",
+          "readerAvailable",
+          "excerpt"
+        ],
+        "title": "SimilarCaseRead",
+        "type": "object"
+      },
       "SourceFileListRead": {
         "properties": {
           "items": {
@@ -10641,6 +11063,192 @@
           }
         ],
         "summary": "Browse Library",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/api/v1/library/cases": {
+      "get": {
+        "operationId": "browse_cases_api_v1_library_cases_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Query"
+            }
+          },
+          {
+            "in": "query",
+            "name": "collection",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "LKCA",
+                    "LKSC"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Collection"
+            }
+          },
+          {
+            "in": "query",
+            "name": "court",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Court"
+            }
+          },
+          {
+            "in": "query",
+            "name": "year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 2200,
+                  "minimum": 1700,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Year"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseListRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Browse Cases",
+        "tags": [
+          "library"
+        ]
+      }
+    },
+    "/api/v1/library/cases/{case_id}": {
+      "get": {
+        "operationId": "read_case_api_v1_library_cases__case_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseDetailRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Case",
         "tags": [
           "library"
         ]
@@ -14906,6 +15514,71 @@
           }
         ],
         "summary": "Record Action",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/cases/search": {
+      "post": {
+        "operationId": "search_cases_api_v1_research_cases_search_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseSearchRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Search Cases",
         "tags": [
           "research"
         ]

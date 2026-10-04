@@ -45,6 +45,9 @@ COPY data/processed/docs/case-law data/processed/docs/case-law
 COPY data/processed/legal-case-index/case_topic_links.csv data/processed/legal-case-index/
 COPY data/commonlii/parsed/LKCA/judgments.jsonl data/commonlii/parsed/LKCA/
 COPY data/commonlii/parsed/LKSC/judgments.jsonl data/commonlii/parsed/LKSC/
+COPY --from=deploy case_catalogue.py ./
+RUN python case_catalogue.py --lkca data/commonlii/parsed/LKCA/judgments.jsonl \
+    --lksc data/commonlii/parsed/LKSC/judgments.jsonl --output data/case-catalogue/cases.sqlite
 COPY scripts/case-law-statute-linking/output/resolved_links.csv \
      scripts/case-law-statute-linking/output/statute_index.csv \
      scripts/case-law-statute-linking/output/
@@ -60,6 +63,7 @@ RUN --mount=type=secret,id=gemini_api_key,required=false \
     fi; \
     python -m draftly.retrieval build $flags; \
     python -m draftly.case_retrieval build $flags; \
+    python -c 'from pathlib import Path; from case_catalogue import record_coverage; from draftly.case_retrieval.index import build_index; record_coverage(Path("data/case-catalogue/cases.sqlite"), Path(build_index().db_path))'; \
     rm -f data/processed/retrieval-indexes/*/build.lock; \
     python -c 'import json; \
 from draftly.retrieval.corpus import corpus_fingerprint as s, load_statute_documents as d; \
@@ -70,6 +74,7 @@ json.dump({"statutes": s(d()), "cases": c(r())}, open("data/processed/retrieval-
 FROM base AS runtime
 RUN useradd --system --uid 10001 --no-create-home draftly
 COPY --from=builder /app/data/processed/retrieval-indexes data/processed/retrieval-indexes
+COPY --from=builder /app/data/case-catalogue data/case-catalogue
 # Read per request by /topics, /sources, /search, /similar-cases and the case graph.
 COPY data/processed/documents.csv data/processed/source-registry.csv \
      data/processed/topics.csv data/processed/topic-sources.csv \
@@ -78,6 +83,7 @@ COPY scripts/case-law-statute-linking/output/resolved_links.csv \
      scripts/case-law-statute-linking/output/statute_index.csv \
      scripts/case-law-statute-linking/output/
 COPY --from=deploy serve_frozen.py ./
+COPY --from=deploy case_catalogue.py case_api.py ./
 ENV DRAFTLY_INDEX_FROZEN=1
 USER draftly
 EXPOSE 8000

@@ -312,6 +312,14 @@ checkout, not yet from a signed corpus release manifest.
 This stack is for V0 (synthetic and approved pilot data). It does not change the
 Production V1 gates in the environments table.
 
+The case-library extension (2026-10-04) builds an additional immutable SQLite
+catalogue from the LKCA/LKSC parsed JSONL inputs, with a versioned checksum
+manifest and frozen retrieval coverage. It exposes a private versioned HTTP
+interface; no runtime research path or platform database table is required.
+Full text requires a separately mounted actor- and checksum-scoped display
+approval. [Case-library configuration](../../docs/case-law-library.md) describes
+the mount and optional dense-channel settings.
+
 ## Summary
 
 | Concern | V0 | V1 production |

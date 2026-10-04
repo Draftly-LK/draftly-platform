@@ -247,6 +247,17 @@ are verified.
 
 ### 6.3 Case law
 
+The case-library extension imports parsed LKCA/LKSC metadata into a frozen,
+versioned catalogue with input checksums and extraction warnings. This metadata
+is explicitly unverified and is not presented as independently verified source
+authority. The extension does not change restricted-research permissions.
+
+Full judgment display is a separate record-level policy. It requires the written
+approval reference, the exact text checksum, and the approved authenticated
+audience. The default remains metadata-only with source link; missing, mismatched
+or inapplicable approval cannot expose text. No bulk-download or export path is
+added. See [the implementation](../../../docs/case-law-library.md).
+
 V0 indexes the CommonLII-derived NLR/SLR and court collection for restricted
 internal research. The research engine may search the text, retrieve grounded
 passages, construct a citation graph, and compose an answer.

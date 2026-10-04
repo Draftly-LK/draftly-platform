@@ -46,4 +46,9 @@ case_index.index_build_lock = contextlib.nullcontext
 # Imported last on purpose: the app must load after the patches above.
 from draftly.retrieval.api import app
 
+from case_api import install_dense_gate, router
+
+install_dense_gate()
+app.include_router(router)
+
 __all__ = ["app"]
