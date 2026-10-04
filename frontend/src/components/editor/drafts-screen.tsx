@@ -2,10 +2,11 @@
 
 import { AlertCircle, ArrowRight, FilePlus2, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { subtypeLabelKey } from "@/lib/rta/taxonomy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { generateForm, listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
@@ -98,7 +99,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
       setForms(formsResult.items);
       setMatter(matterResult);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("loadError"));
+      setError(apiErrorMessage(cause, t("loadError")));
     } finally {
       setLoading(false);
     }
@@ -123,7 +124,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
       const newForm = await generateForm(getToken, matterId);
       router.push(`/matters/${matterId}/drafts/${newForm.id}`);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("generationError"));
+      setError(apiErrorMessage(cause, t("generationError")));
       setGenerating(false);
     }
   }, [getToken, matterId, isDemoMode, router, t]);
@@ -145,11 +146,11 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
         />
         <div className="p-6">
           {demoDrafts.length === 0 ? (
-            <div className="border-border-strong bg-surface rounded border p-6 text-center">
+            <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
               <p className="text-muted-ink">{t("noDrafts")}</p>
             </div>
           ) : (
-            <div className="border-border-strong bg-surface overflow-x-auto rounded border">
+            <div className="border-border bg-surface overflow-x-auto rounded-card border shadow-card">
               <table className="w-full min-w-[900px] border-collapse whitespace-nowrap text-left">
                 <thead className="bg-canvas text-muted-ink text-xs">
                   <tr className="border-border h-10 border-b">
@@ -185,7 +186,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                       </td>
                       <td className="px-4">
                         <Link
-                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded border px-3"
+                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
                           href={`/matters/${matterId}/drafts/${draft.id}`}
                         >
                           {t("open")}
@@ -235,11 +236,11 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
             {t("loading")}
           </div>
         ) : forms.length === 0 ? (
-          <div className="border-border-strong bg-surface rounded border p-6 text-center">
+          <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
             <p className="text-muted-ink">{t("noDrafts")}</p>
           </div>
         ) : (
-          <div className="border-border-strong bg-surface overflow-x-auto rounded border">
+          <div className="border-border bg-surface overflow-x-auto rounded-card border shadow-card">
             <table className="w-full min-w-[900px] border-collapse whitespace-nowrap text-left">
               <thead className="bg-canvas text-muted-ink text-xs">
                 <tr className="border-border h-10 border-b">
@@ -259,7 +260,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                       key={form.id}
                       className="border-border h-11 border-b last:border-b-0"
                     >
-                      <td className="px-4">{tRoot(matter?.subtypeId ? `rta.subtype.${matter.subtypeId}` : "label.form")}</td>
+                      <td className="px-4">{tRoot((matter?.subtypeId ? subtypeLabelKey(matter.subtypeId) : undefined) ?? "label.form")}</td>
                       <td className="px-4 tabular-nums">v{form.formVersion}</td>
                       <td className="px-4">
                         <span className={cn(
@@ -273,7 +274,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                       <td className="px-4 text-sm">{formattedDate}</td>
                       <td className="px-4">
                         <Link
-                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded border px-3"
+                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
                           href={`/matters/${matterId}/drafts/${form.id}`}
                         >
                           {t("open")}
@@ -328,7 +329,7 @@ function DemoGazetteForms({ matterId }: { matterId: string }) {
             <span className="font-medium">{tRoot(form.titleKey)}</span>
             <span className="text-muted-ink text-sm">{t("formNumber", { number: form.formNumber })}</span>
             <Link
-              className="border-border-strong hover:bg-hover-bg ml-auto inline-flex min-h-8 items-center gap-2 rounded border px-3"
+              className="border-border-strong hover:bg-hover-bg ml-auto inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
               href={`/matters/${matterId}/drafts/${form.id}`}
             >
               {t("open")}

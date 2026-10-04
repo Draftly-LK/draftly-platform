@@ -101,7 +101,7 @@ export const GzGrid = Node.create({
   group: "block",
   content: "gzLine+",
   addAttributes() {
-    return { cols: { default: 2 }, variant: { default: "fields" } };
+    return { cols: { default: 2 }, variant: { default: "fields" }, rows: { default: null } };
   },
   parseHTML: () => [{ tag: "div[data-gz-grid]" }],
   renderHTML({ node, HTMLAttributes }) {
@@ -109,8 +109,9 @@ export const GzGrid = Node.create({
       "div",
       mergeAttributes(HTMLAttributes, {
         "data-gz-grid": node.attrs.variant === "signatures" ? "signatures" : "fields",
+        ...(node.attrs.rows ? { "data-gz-flow": "column" } : {}),
         class: "gz-grid",
-        style: `--gz-cols: ${Number(node.attrs.cols) || 2}`,
+        style: `--gz-cols: ${Number(node.attrs.cols) || 2}${node.attrs.rows ? `; --gz-rows: ${Number(node.attrs.rows)}` : ""}`,
       }),
       0,
     ];

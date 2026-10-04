@@ -9,12 +9,13 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { ApiError, isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { createApproval, listApprovals } from "@/lib/api/approvals";
 import { getForm } from "@/lib/api/drafts";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
+import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import type { ApiApprovalList, ApiGeneratedForm } from "@/types/rta";
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,8 @@ function ApprovalScreenContent({
 }: ApprovalScreenContentProps) {
   const t = useTranslations("approval");
   const tRoot = useTranslations();
+  const format = useFormatter();
+  const codeLabel = useEnumLabel("enums.approvalGateCode");
 
   const [form, setForm] = useState<ApiGeneratedForm | null>(null);
   const [approvalList, setApprovalList] = useState<ApiApprovalList | null>(null);
@@ -87,7 +90,7 @@ function ApprovalScreenContent({
       setForm(formResult);
       setApprovalList(approvalsResult);
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.message : t("loadError"));
+      setError(apiErrorMessage(cause, t("loadError")));
     } finally {
       setLoading(false);
     }
@@ -120,13 +123,13 @@ function ApprovalScreenContent({
     } catch (cause) {
       if (cause instanceof ApiError) {
         if (cause.status === 403) {
-          setError("You are not authorized to approve this form.");
+          setError(t("errorForbidden"));
         } else if (cause.status === 404) {
-          setError("Form or approval gate not found.");
+          setError(t("errorNotFound"));
         } else if (cause.status === 422) {
-          setError("The approval gate has changed. Please refresh and try again.");
+          setError(t("conflictError"));
         } else {
-          setError(cause.message);
+          setError(apiErrorMessage(cause, t("approveError")));
         }
       } else {
         setError(t("approveError"));
@@ -184,7 +187,7 @@ function ApprovalScreenContent({
           <h2 className="mb-4 text-lg font-semibold">{t("gateTitle")}</h2>
 
           {/* Approval ready status */}
-          <div className="mb-6 rounded border border-border-strong bg-surface p-4">
+          <div className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
             <div className="flex items-center gap-3">
               {gate.approvalReady ? (
                 <CheckCircle2 className="size-5 text-forest" strokeWidth={1.5} aria-hidden="true" />
@@ -198,11 +201,11 @@ function ApprovalScreenContent({
           {/* Blocking items */}
           {gate.blocking.length > 0 && (
             <div className="mb-6">
-              <h3 className="mb-3 font-semibold text-red">Blocking issues</h3>
+              <h3 className="mb-3 font-semibold text-red">{t("blockingTitle")}</h3>
               <ul className="space-y-2">
                 {gate.blocking.map((item) => (
                   <div
-                    key={item.code}
+                    key={item.id}
                     className="flex gap-3 rounded border border-red bg-red-bg p-3 text-sm"
                   >
                     <TriangleAlert
@@ -211,8 +214,10 @@ function ApprovalScreenContent({
                       aria-hidden="true"
                     />
                     <div>
-                      <div className="font-semibold">{item.code}</div>
-                      <div className="text-muted-ink mt-1">{tRoot(item.explanationKey)}</div>
+                      <div className="font-semibold">{codeLabel(item.code)}</div>
+                      {tRoot.has(item.explanationKey) && (
+                        <div className="text-muted-ink mt-1">{tRoot(item.explanationKey)}</div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -223,11 +228,11 @@ function ApprovalScreenContent({
           {/* Warnings */}
           {gate.warnings.length > 0 && (
             <div className="mb-6">
-              <h3 className="mb-3 font-semibold text-amber-text">Warnings</h3>
+              <h3 className="mb-3 font-semibold text-amber-text">{t("warningsTitle")}</h3>
               <ul className="space-y-2">
                 {gate.warnings.map((item) => (
                   <div
-                    key={item.code}
+                    key={item.id}
                     className="flex gap-3 rounded border border-amber bg-amber-bg p-3 text-sm"
                   >
                     <TriangleAlert
@@ -236,8 +241,10 @@ function ApprovalScreenContent({
                       aria-hidden="true"
                     />
                     <div>
-                      <div className="font-semibold">{item.code}</div>
-                      <div className="text-muted-ink mt-1">{tRoot(item.explanationKey)}</div>
+                      <div className="font-semibold">{codeLabel(item.code)}</div>
+                      {tRoot.has(item.explanationKey) && (
+                        <div className="text-muted-ink mt-1">{tRoot(item.explanationKey)}</div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -250,18 +257,18 @@ function ApprovalScreenContent({
             <div>
               {!gate.approvalReady && (
                 <p className="text-muted-ink mb-4 text-sm">
-                  Resolve blocking issues in the{" "}
+                  {t("resolveBefore")}{" "}
                   <Link
                     href={`/matters/${matterId}/drafts/${form.id}`}
                     className="underline hover:text-ink"
                   >
-                    form detail screen
-                  </Link>
-                  {" "}before approving.
+                    {t("resolveLink")}
+                  </Link>{" "}
+                  {t("resolveAfter")}
                 </p>
               )}
               {showDeclaration ? (
-                <div className="rounded border border-border-strong bg-surface p-4">
+                <div className="rounded-card border border-border bg-surface p-4 shadow-card">
                   <div className="mb-4 max-w-2xl space-y-3">
                     <label className="flex items-start gap-3">
                       <input
@@ -287,7 +294,7 @@ function ApprovalScreenContent({
                       {approving ? t("approvingButton") : t("approveButton")}
                     </Button>
                     <Button onClick={() => setShowDeclaration(false)}>
-                      Cancel
+                      {t("cancel")}
                     </Button>
                   </div>
                 </div>
@@ -313,26 +320,24 @@ function ApprovalScreenContent({
               {approvalList.items.map((approval) => (
                 <div
                   key={approval.id}
-                  className="flex items-start gap-4 rounded border border-border-strong bg-surface p-4 text-sm"
+                  className="flex items-start gap-4 rounded-card border border-border bg-surface p-4 text-sm shadow-card"
                 >
                   <div className="flex-1">
-                    <div className="font-semibold">{approval.approverId}</div>
+                    <div className="font-semibold">{t("approver")}</div>
                     <div className="text-muted-ink text-xs">
-                      {t("approvedAt")}: {new Date(approval.createdAt).toLocaleDateString()}
+                      {t("approvedAt")}: {format.dateTime(new Date(approval.createdAt), { dateStyle: "medium" })}
                     </div>
-                    <div className="text-muted-ink text-xs">
-                      {t("approvalVersion")}: {approval.declarationVersion}
-                    </div>
+
                     {approval.revokedByApprovalId && (
                       <div className="text-amber-text text-xs">
-                        {t("revokedBy")}: {approval.revokedByApprovalId}
+                        {t("revokedBy")}
                       </div>
                     )}
                   </div>
                   {approval.id === approvalList.currentApprovalId && !approval.revokedByApprovalId && (
                     <span className="inline-flex min-h-6 items-center gap-1 rounded-full border border-forest bg-soft-green px-2 text-xs font-semibold text-forest">
                       <Check className="size-4" strokeWidth={1.5} aria-hidden="true" />
-                      Current
+                      {t("current")}
                     </span>
                   )}
                 </div>
@@ -347,9 +352,9 @@ function ApprovalScreenContent({
             <div className="flex gap-3 rounded border border-forest bg-soft-green p-4">
               <CheckCircle2 className="size-5 text-forest shrink-0" strokeWidth={1.5} aria-hidden="true" />
               <div>
-                <h3 className="font-semibold text-forest">Form approved</h3>
+                <h3 className="font-semibold text-forest">{t("formApproved")}</h3>
                 <p className="text-muted-ink mt-1 text-sm">
-                  The form is now ready for export and registration tracking.
+                  {t("formApprovedBody")}
                 </p>
                 <Link href={`/matters/${matterId}/exports`} className="mt-3 inline-block">
                   <Button variant="primary">
@@ -371,11 +376,12 @@ function DemoApprovalContent({
   matterId: string;
   draftId: string;
 }) {
+  const t = useTranslations("approval");
   return (
     <AppShell matterId={matterId}>
-      <div className="rounded border border-border-strong bg-surface p-6">
-        <h1 className="text-2xl font-semibold">Approval</h1>
-        <p className="text-muted-ink mt-2 text-sm">Demo mode: approval screen not available</p>
+      <div className="rounded-card border border-border bg-surface p-6 shadow-card">
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <p className="text-muted-ink mt-2 text-sm">{t("demoUnavailable")}</p>
       </div>
     </AppShell>
   );

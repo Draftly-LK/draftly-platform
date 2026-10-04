@@ -185,7 +185,7 @@ export function GazetteWorkspace({
                 type="button"
                 aria-pressed={mode === candidate}
                 className={cn(
-                  "inline-flex min-h-9 items-center gap-2 rounded px-3 text-sm font-medium",
+                  "inline-flex min-h-9 items-center gap-2 rounded-control px-3 text-sm font-medium",
                   mode === candidate ? "bg-selected-bg text-forest" : "hover:bg-hover-bg",
                 )}
                 onClick={() => setMode(candidate)}

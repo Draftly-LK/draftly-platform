@@ -150,7 +150,7 @@ function ProfilePhoto({
           />
           <button
             type="button"
-            className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-[6px] border px-3 py-2 text-sm"
+            className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control border px-3 py-2 text-sm"
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
           >
@@ -189,7 +189,7 @@ function Field({
       <label className="block">
         <span className="text-muted-ink text-xs">{label}</span>
         <textarea
-          className="border-border focus-visible:outline-ring mt-1 w-full rounded-[6px] border bg-surface px-3 py-2 text-sm"
+          className="border-border focus-visible:outline-ring mt-1 w-full rounded border bg-surface px-3 py-2 text-sm"
           rows={2}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
@@ -201,7 +201,7 @@ function Field({
     <label className="block">
       <span className="text-muted-ink text-xs">{label}</span>
       <input
-        className="border-border focus-visible:outline-ring mt-1 w-full rounded-[6px] border bg-surface px-3 py-2 text-sm"
+        className="border-border focus-visible:outline-ring mt-1 w-full rounded-control border bg-surface px-3 py-2 text-sm"
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
       />
@@ -300,7 +300,7 @@ function ProfileBody({
             {!editing ? (
               <button
                 type="button"
-                className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white"
+                className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-control px-3 py-2 text-sm text-white"
                 onClick={startEdit}
               >
                 {t("edit")}
@@ -309,7 +309,7 @@ function ProfileBody({
               <>
                 <button
                   type="button"
-                  className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-[6px] px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-control px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={saving}
                   onClick={() => void save()}
                 >
@@ -317,7 +317,7 @@ function ProfileBody({
                 </button>
                 <button
                   type="button"
-                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-[6px] border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={saving}
                   onClick={cancelEdit}
                 >
@@ -329,7 +329,7 @@ function ProfileBody({
               <SignOutButton redirectUrl="/sign-in">
                 <button
                   type="button"
-                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-[6px] border px-3 py-2 text-sm"
+                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control border px-3 py-2 text-sm"
                 >
                   {t("signOut")}
                 </button>
@@ -499,7 +499,7 @@ function ApiPersistedProfile({
         </p>
         <button
           type="button"
-          className="border-border hover:bg-hover-bg focus-visible:outline-ring mt-3 rounded-[6px] border px-3 py-2 text-sm"
+          className="border-border hover:bg-hover-bg focus-visible:outline-ring mt-3 rounded-control border px-3 py-2 text-sm"
           onClick={loadProfile}
         >
           {tApp("retry")}
@@ -598,7 +598,7 @@ export function ProfileScreen({
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="mx-auto max-w-3xl p-6">
+      <div className="max-w-3xl p-6">
         {clerkEnabled ? <ClerkProfileBody apiEnabled={apiEnabled} /> : <DemoProfileBody />}
         <p className="text-muted-ink border-border border-t pt-4 text-xs">
           <Link href="/settings" className="text-forest underline">

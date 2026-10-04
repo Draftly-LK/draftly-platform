@@ -4,6 +4,7 @@ import { Show, useUser } from "@clerk/nextjs";
 import { CircleUserRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { createContext, use } from "react";
 
 function getInitials(name: string): string {
   return name
@@ -22,17 +23,27 @@ function clerkDisplayName(user: {
 }): string {
   const full = user.fullName?.trim();
   if (full) return full;
-  const parts = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  const parts = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   if (parts) return parts;
   return user.username?.trim() ?? "";
 }
 
+function firstNameOf(user: Parameters<typeof clerkDisplayName>[0]): string {
+  return user.firstName?.trim() || clerkDisplayName(user).split(" ")[0] || "";
+}
+
 function ProfileLink({
   name,
+  firstName,
   label,
   imageUrl,
 }: {
   name: string;
+  /** Shown under the avatar; the text colour follows the header it sits in. */
+  firstName?: string;
   label: string;
   imageUrl?: string | null;
 }) {
@@ -41,7 +52,7 @@ function ProfileLink({
       href="/profile"
       aria-label={label}
       title={name.trim() || label}
-      className="hover:bg-hover-bg focus-visible:outline-ring inline-flex size-10 items-center justify-center rounded-full"
+      className="hover:bg-hover-bg focus-visible:outline-ring inline-flex min-w-10 flex-col items-center justify-center gap-1.5 rounded px-1.5 py-1"
     >
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- Clerk CDN
@@ -57,8 +68,17 @@ function ProfileLink({
           {name.trim() ? (
             getInitials(name)
           ) : (
-            <CircleUserRound aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            <CircleUserRound
+              aria-hidden="true"
+              className="size-5"
+              strokeWidth={1.5}
+            />
           )}
+        </span>
+      )}
+      {firstName && (
+        <span className="max-w-20 truncate text-xs font-medium leading-4">
+          {firstName}
         </span>
       )}
     </Link>
@@ -74,6 +94,7 @@ function ClerkHeaderProfile() {
       <Show when="signed-in">
         <ProfileLink
           name={user ? clerkDisplayName(user) : ""}
+          firstName={user ? firstNameOf(user) : ""}
           label={t("myProfile")}
           imageUrl={user?.imageUrl}
         />
@@ -81,7 +102,7 @@ function ClerkHeaderProfile() {
       <Show when="signed-out">
         <Link
           href="/sign-in"
-          className="text-forest hover:bg-hover-bg focus-visible:outline-ring inline-flex rounded-[6px] px-2 py-1.5 text-sm font-medium"
+          className="text-forest hover:bg-hover-bg focus-visible:outline-ring rounded-control inline-flex px-2 py-1.5 text-sm font-medium"
         >
           {t("signIn")}
         </Link>
@@ -97,4 +118,32 @@ function DemoHeaderProfile() {
 
 export function UserButton({ demoMode = false }: { demoMode?: boolean }) {
   return demoMode ? <DemoHeaderProfile /> : <ClerkHeaderProfile />;
+}
+
+/**
+ * Demo mode depends on server-only env vars, so the root layout resolves it and
+ * page headers (server or client) read it from here.
+ */
+// Defaults to demo: with no provider above (tests, isolated renders) there is
+// no ClerkProvider either, and the Clerk hooks would throw.
+const DemoModeContext = createContext(true);
+
+export function UserButtonProvider({
+  demoMode,
+  children,
+}: {
+  demoMode: boolean;
+  children: React.ReactNode;
+}) {
+  return <DemoModeContext value={demoMode}>{children}</DemoModeContext>;
+}
+
+/** The profile button for the right end of a page or matter header. */
+export function HeaderUserButton() {
+  // data-no-print: the old top bar hid it in print via data-app-chrome.
+  return (
+    <span data-no-print className="inline-flex">
+      <UserButton demoMode={use(DemoModeContext)} />
+    </span>
+  );
 }

@@ -8,15 +8,31 @@ import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { createResearchConversation, branchResearchMessage, listResearchConversations, listResearchMessages, sendResearchMessage } from "@/lib/api/research";
-import { ApiError, isApiEnabled } from "@/lib/api/client";
+import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { AssistantScope, ResearchConversation, ResearchMessage } from "@/types";
 
 const LIBRARY_SCOPE: AssistantScope = { type: "library", labelKey: "research.scope.library" };
 
+/**
+ * `useTokenProvider` calls Clerk's `useAuth`, which requires a `ClerkProvider`.
+ * The offline demo runs without one, so the hook lives in a component that is
+ * only mounted when the backend is configured. Offline, no request is made, so
+ * the token provider is never called.
+ */
 export function ResearchScreen() {
-  const t = useTranslations("research");
+  return isApiEnabled() ? <ApiBoundResearchScreen /> : <ResearchFlow getToken={offlineToken} />;
+}
+
+const offlineToken: TokenProvider = () => Promise.resolve(null);
+
+function ApiBoundResearchScreen() {
   const getToken = useTokenProvider();
+  return <ResearchFlow getToken={getToken} />;
+}
+
+function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
+  const t = useTranslations("research");
   const [conversations, setConversations] = useState<ResearchConversation[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
   const [messages, setMessages] = useState<ResearchMessage[]>([]);
@@ -48,7 +64,8 @@ export function ResearchScreen() {
   }, [explain, getToken, selectedId, t]);
 
   async function createConversation() {
-    if (!apiEnabled) { setError(t("apiUnavailable")); return; }
+    // Offline, the page already shows the api-unavailable notice.
+    if (!apiEnabled) return;
     setBusy(true); setError(undefined);
     try {
       const created = await createResearchConversation(getToken, LIBRARY_SCOPE);
@@ -85,7 +102,7 @@ export function ResearchScreen() {
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="grid min-h-[calc(100vh-105px)] min-[1024px]:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="relative grid min-h-[calc(100vh-105px)] lg:grid-cols-[auto_minmax(0,1fr)]">
         <ConversationRail conversations={conversations} selectedId={selectedId ?? ""} onSelect={setSelectedId} onCreate={() => void createConversation()} />
         <main className="mx-auto flex w-full max-w-4xl flex-col p-4 md:p-6">
           <div className="border-border-strong bg-surface rounded border px-4 py-3 text-sm">

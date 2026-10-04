@@ -1282,6 +1282,45 @@
         "title": "CheckoutRequest",
         "type": "object"
       },
+      "CitationRead": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locator"
+          },
+          "sourceId": {
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "sourceType": {
+            "title": "Sourcetype",
+            "type": "string"
+          },
+          "verificationStatus": {
+            "title": "Verificationstatus",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "sourceType",
+          "label",
+          "verificationStatus"
+        ],
+        "title": "CitationRead",
+        "type": "object"
+      },
       "ClassificationDecisionRequest": {
         "additionalProperties": false,
         "description": "Controlled class id only (§12.4), plus an optional lawyer note.",
@@ -1401,7 +1440,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ConversationRead"
+              "$ref": "#/components/schemas/src__modules__research__api__schemas__ConversationRead"
             },
             "title": "Items",
             "type": "array"
@@ -1411,45 +1450,6 @@
           "items"
         ],
         "title": "ConversationListRead",
-        "type": "object"
-      },
-      "ConversationRead": {
-        "properties": {
-          "activeBranchId": {
-            "title": "Activebranchid",
-            "type": "string"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "title": "Createdat",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "scope": {
-            "$ref": "#/components/schemas/ScopeRead"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "updatedAt": {
-            "format": "date-time",
-            "title": "Updatedat",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "title",
-          "scope",
-          "activeBranchId",
-          "createdAt",
-          "updatedAt"
-        ],
-        "title": "ConversationRead",
         "type": "object"
       },
       "CreateAttestationRequest": {
@@ -7219,6 +7219,17 @@
       "SessionRead": {
         "description": "The matter's single session. There is never a second one.",
         "properties": {
+          "activeConversationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activeconversationid"
+          },
           "createdAt": {
             "format": "date-time",
             "title": "Createdat",
@@ -8158,6 +8169,40 @@
         "title": "PageInfo",
         "type": "object"
       },
+      "src__modules__matter_agent__api__schemas__ConversationRead": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "active",
+              "closed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "ConversationRead",
+        "type": "object"
+      },
       "src__modules__matter_agent__api__schemas__JobRead": {
         "description": "The job envelope from ``api-conventions.md`` §6.\n\n``dead_letter`` is included: a turn that exhausts its attempts is a visible\nstate, not a log line.",
         "properties": {
@@ -8228,9 +8273,27 @@
       "src__modules__matter_agent__api__schemas__MessageRead": {
         "description": "One transcript row, read from Neon.",
         "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/CitationRead"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
           "content": {
             "title": "Content",
             "type": "string"
+          },
+          "conversationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversationid"
           },
           "createdAt": {
             "format": "date-time",
@@ -8330,6 +8393,45 @@
           "content"
         ],
         "title": "SendMessageRequest",
+        "type": "object"
+      },
+      "src__modules__research__api__schemas__ConversationRead": {
+        "properties": {
+          "activeBranchId": {
+            "title": "Activebranchid",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScopeRead"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "scope",
+          "activeBranchId",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "ConversationRead",
         "type": "object"
       },
       "src__modules__research__api__schemas__JobRead": {
@@ -10916,6 +11018,102 @@
           }
         ],
         "summary": "Reject Action",
+        "tags": [
+          "matter-agent"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/agent/conversations": {
+      "get": {
+        "operationId": "list_conversations_api_v1_matters__matter_id__agent_conversations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__ConversationRead"
+                  },
+                  "title": "Response List Conversations Api V1 Matters  Matter Id  Agent Conversations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Conversations",
+        "tags": [
+          "matter-agent"
+        ]
+      },
+      "post": {
+        "operationId": "start_conversation_api_v1_matters__matter_id__agent_conversations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__ConversationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Start Conversation",
         "tags": [
           "matter-agent"
         ]
@@ -14784,7 +14982,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ConversationRead"
+                  "$ref": "#/components/schemas/src__modules__research__api__schemas__ConversationRead"
                 }
               }
             },

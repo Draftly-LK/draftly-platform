@@ -122,8 +122,8 @@ export function AssistantScreen() {
         {announcement}
       </div>
       <div
-        className={`grid min-h-[calc(100vh-105px)] min-[1024px]:grid-cols-[260px_minmax(0,1fr)] ${
-          evidenceOpen ? "min-[1280px]:grid-cols-[260px_minmax(0,1fr)_380px]" : ""
+        className={`relative grid min-h-[calc(100vh-105px)] lg:grid-cols-[auto_minmax(0,1fr)] ${
+          evidenceOpen ? "min-[1280px]:grid-cols-[auto_minmax(0,1fr)_380px]" : ""
         }`}
       >
         <ConversationRail
@@ -256,7 +256,7 @@ export function AssistantScreen() {
                     {claim.citations.map((item, index) => (
                       <button
                         key={item.id}
-                        className={`inline-flex min-h-9 items-center gap-2 rounded border px-3 text-sm ${citation?.id === item.id ? "border-teal bg-teal-bg text-teal" : "border-border-strong hover:bg-hover-bg"}`}
+                        className={`inline-flex min-h-9 items-center gap-2 rounded-control border px-3 text-sm ${citation?.id === item.id ? "border-teal bg-teal-bg text-teal" : "border-border-strong hover:bg-hover-bg"}`}
                         onClick={() => {
                           setCitation(item);
                           setEvidenceOpen(true);
@@ -313,7 +313,7 @@ export function AssistantScreen() {
             <h2 className="text-2xl font-semibold">{t("evidence")}</h2>
             {citation ? (
               <>
-                <div className="border-border-strong bg-surface mt-4 rounded border p-4">
+                <div className="border-border bg-surface mt-4 rounded-card border p-4 shadow-card">
                   <div className="text-teal text-xs font-semibold uppercase">
                     {t("exactText")}
                   </div>
@@ -325,7 +325,7 @@ export function AssistantScreen() {
                     {t("page", { page: citation.evidence.page })}
                   </div>
                 </div>
-                <div className="border-border-strong bg-surface mt-4 rounded border p-4">
+                <div className="border-border bg-surface mt-4 rounded-card border p-4 shadow-card">
                   <div className="text-muted-ink text-xs font-semibold uppercase">
                     {t("authority")}
                   </div>

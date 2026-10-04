@@ -59,7 +59,6 @@ services:
     restart: unless-stopped
     environment:
       CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
-      MULTILINGUAL_LANGUAGE_SUPPORT: ${MULTILINGUAL_LANGUAGE_SUPPORT:-true}
       NODE_OPTIONS: --max-old-space-size=192
     expose:
       - "3000"

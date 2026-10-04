@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, CircleDashed } from "lucide-react";
+import { ArrowRight, CircleDashed, Plus } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { AppShell } from "@/components/shell/app-shell";
@@ -22,12 +22,25 @@ interface MatterRow {
 
 export function MattersScreen() {
   const t = useTranslations("matters");
+  const tShell = useTranslations("shell");
 
   return (
     <AppShell>
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        action={
+          <Link
+            href="/new"
+            className="border-forest bg-forest shadow-card rounded-control mr-4 inline-flex min-h-10 items-center gap-2 border px-4 py-2 font-medium text-white hover:bg-navy-800"
+          >
+            <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
+            {tShell("create")}
+          </Link>
+        }
+      />
       <div className="p-6">
-        <div className="border-border-strong bg-surface overflow-x-auto rounded border">
+        <div className="border-border bg-surface overflow-x-auto rounded-card border shadow-card">
           {isApiEnabled() ? <ApiMatterTable /> : <DemoMatterTable />}
         </div>
       </div>
@@ -149,6 +162,8 @@ function MatterTable({
                   month: "short",
                   year: "numeric",
                   timeZone: "Asia/Colombo",
+                  calendar: "gregory",
+                  numberingSystem: "latn",
                 }).format(new Date(matter.updatedAt))}
               </td>
               <td className="px-3">
@@ -157,7 +172,7 @@ function MatterTable({
                     reference: matter.reference,
                   })}
                   href={`/matters/${matter.id}`}
-                  className="hover:bg-active-bg grid size-9 place-items-center rounded"
+                  className="hover:bg-active-bg grid size-9 place-items-center rounded-control"
                 >
                   <ArrowRight
                     aria-hidden="true"

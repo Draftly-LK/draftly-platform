@@ -1,13 +1,13 @@
 "use client";
 
 import { AlertCircle, ArrowLeft, Check, LoaderCircle } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import {
   getDocumentInbox,
   recordBoundaryDecision,
@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/documents";
 import { getRtaDocumentClasses } from "@/lib/api/rta";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
+import { humanizeMessageKey } from "@/lib/i18n/humanize";
 import type { ApiDetectedDocument } from "@/types/rta";
 import type { ApiRtaDocumentClass } from "@/lib/api/rta";
 
@@ -69,6 +70,10 @@ function ClassificationReviewFlow({
   documentId: string;
 }) {
   const t = useTranslations("classificationReview");
+  const tRoot = useTranslations();
+  const format = useFormatter();
+  const textFor = (key: string, fallbackId: string) =>
+    tRoot.has(key) ? tRoot(key) : humanizeMessageKey(fallbackId.split(".").pop() ?? fallbackId);
 
   const [document, setDocument] = useState<ApiDetectedDocument | null>(null);
   const [classes, setClasses] = useState<ApiRtaDocumentClass[]>([]);
@@ -92,7 +97,7 @@ function ClassificationReviewFlow({
         if (!cancelled) {
           const doc = inbox.documents.find((d) => d.id === documentId);
           if (!doc) {
-            setError("Document not found");
+            setError(t("documentNotFound"));
             return;
           }
           setDocument(doc);
@@ -102,7 +107,7 @@ function ClassificationReviewFlow({
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
-          setError(cause instanceof ApiError ? cause.message : t("error"));
+          setError(apiErrorMessage(cause, t("error")));
         }
       })
       .finally(() => {
@@ -131,7 +136,7 @@ function ClassificationReviewFlow({
       // Update local state
       setDocument(updated);
     } catch (cause: unknown) {
-      const message = cause instanceof ApiError ? cause.message : t("error");
+      const message = apiErrorMessage(cause, t("error"));
       setError(message);
     } finally {
       setSaving(false);
@@ -162,7 +167,7 @@ function ClassificationReviewFlow({
       // Update local state
       setDocument(updated);
     } catch (cause: unknown) {
-      const message = cause instanceof ApiError ? cause.message : t("error");
+      const message = apiErrorMessage(cause, t("error"));
       setError(message);
     } finally {
       setSaving(false);
@@ -224,7 +229,7 @@ function ClassificationReviewFlow({
 
         <div className="mx-auto max-w-2xl">
           {/* Document fragments display */}
-          <section className="border-border-strong bg-surface mb-6 rounded border p-4">
+          <section className="border-border bg-surface mb-6 rounded-card border p-4 shadow-card">
             <h2 className="mb-3 font-semibold">{t("documentFragments")}</h2>
             <ul className="divide-border divide-y">
               {document.fragments.map((fragment) => (
@@ -237,10 +242,11 @@ function ClassificationReviewFlow({
                   </p>
                   <p className="text-muted-ink text-sm">
                     {fragment.boundaryConfidence !== null
-                      ? `${t("boundaryConfidence")}: ${(
-                          fragment.boundaryConfidence * 100
-                        ).toFixed(0)}%`
-                      : t("boundaryConfidence") + ": Lawyer-confirmed"}
+                      ? `${t("boundaryConfidence")}: ${format.number(
+                          fragment.boundaryConfidence,
+                          { style: "percent", maximumFractionDigits: 0 },
+                        )}`
+                      : `${t("boundaryConfidence")}: ${t("lawyerConfirmed")}`}
                   </p>
                 </li>
               ))}
@@ -248,7 +254,7 @@ function ClassificationReviewFlow({
           </section>
 
           {/* Classification section */}
-          <section className="border-border-strong bg-surface mb-6 rounded border p-4">
+          <section className="border-border bg-surface mb-6 rounded-card border p-4 shadow-card">
             <h2 className="mb-3 font-semibold">{t("classificationStatus")}</h2>
 
             <div className="mb-4">
@@ -258,12 +264,12 @@ function ClassificationReviewFlow({
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
                   disabled={saving}
-                  className="border-border-strong bg-surface mt-2 min-h-10 w-full rounded border px-3 py-2"
+                  className="border-border-strong bg-surface mt-2 min-h-10 w-full rounded-control border px-3 py-2"
                 >
-                  <option value="">Choose a class...</option>
+                  <option value="">{t("chooseClass")}</option>
                   {classes.map((cls) => (
                     <option key={cls.id} value={cls.id}>
-                      {cls.id.split(".").pop() || cls.id}
+                      {textFor(cls.labelKey, cls.id)}
                     </option>
                   ))}
                 </select>
@@ -272,8 +278,10 @@ function ClassificationReviewFlow({
 
             {selectedClass && (
               <div className="border-border-strong bg-canvas mb-4 rounded border p-3 text-sm">
-                <p className="font-medium">{selectedClass.labelKey}</p>
-                <p className="text-muted-ink mt-1">{selectedClass.descriptionKey}</p>
+                <p className="font-medium">{textFor(selectedClass.labelKey, selectedClass.id)}</p>
+                {tRoot.has(selectedClass.descriptionKey) && (
+                  <p className="text-muted-ink mt-1">{tRoot(selectedClass.descriptionKey)}</p>
+                )}
               </div>
             )}
 
@@ -285,7 +293,7 @@ function ClassificationReviewFlow({
               {saving ? (
                 <>
                   <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} />
-                  Saving...
+                  {t("saving")}
                 </>
               ) : (
                 <>
@@ -298,7 +306,7 @@ function ClassificationReviewFlow({
 
           {/* Boundary section */}
           {document.boundaryStatus !== "CONFIRMED" && (
-            <section className="border-border-strong bg-surface mb-6 rounded border p-4">
+            <section className="border-border bg-surface mb-6 rounded-card border p-4 shadow-card">
               <h2 className="mb-3 font-semibold">{t("boundaryActions")}</h2>
               <p className="text-muted-ink mb-4 text-sm">
                 {t("confirmBoundary")}
@@ -307,7 +315,7 @@ function ClassificationReviewFlow({
                 {saving ? (
                   <>
                     <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} />
-                    Saving...
+                    {t("saving")}
                   </>
                 ) : (
                   <>
@@ -340,9 +348,9 @@ function ClassificationReviewUnavailable({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border-strong bg-surface rounded border p-6">
+        <div className="border-border bg-surface rounded-card border p-6 shadow-card">
           <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
-          <p className="mt-2 text-sm">Backend not configured.</p>
+          <p className="mt-2 text-sm">{t("backendNotConfigured")}</p>
         </div>
       </div>
     </AppShell>

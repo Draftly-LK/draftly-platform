@@ -2,20 +2,23 @@ import { expect, test } from "@playwright/test";
 import { inventoryRoutes } from "./routes";
 
 const expectedTokens = {
-  "--canvas": "#f4f6f8",
+  "--canvas": "#f3f5f8",
   "--surface": "#ffffff",
-  "--ink": "#172033",
-  "--muted-ink": "#5f6b7a",
-  "--border": "#d7dee7",
+  "--ink": "#0f1b2e",
+  "--muted-ink": "#566377",
+  "--border": "#dce2ea",
   "--border-strong": "#a7b3c2",
-  "--forest": "#203a5f",
-  "--soft-green": "#e6edf6",
+  "--forest": "#1b3358",
+  "--soft-green": "#e7eef8",
   "--teal": "#176b75",
   "--amber": "#9c5b0b",
   "--amber-text": "#784405",
   "--red": "#a43d45",
-  "--selected-bg": "#eaf0f7",
+  "--selected-bg": "#eaf0f8",
   "--ring": "#176b75",
+  "--navy-950": "#0b1628",
+  "--gold": "#c69436",
+  "--gold-strong": "#74510f",
 } as const;
 
 test("every route conforms to the Draftly visual system", async ({
@@ -70,11 +73,16 @@ test("every route conforms to the Draftly visual system", async ({
       const shadowViolations = [...document.querySelectorAll("body *")]
         .filter(visible)
         .filter((element) => {
-          const permittedRaisedComposer =
-            element.classList.contains("shadow-popover");
+          // Elevation comes only from the named shadow tokens (card, raised,
+          // popover); anything else is an unreviewed shadow.
+          const permittedElevation = ["shadow-card", "shadow-raised", "shadow-popover"].some(
+            (token) =>
+              element.classList.contains(token) ||
+              element.classList.contains(`hover:${token}`),
+          );
           return (
             getComputedStyle(element).boxShadow !== "none" &&
-            !permittedRaisedComposer
+            !permittedElevation
           );
         }).length;
       const iconViolations = [...document.querySelectorAll("svg.lucide")]
@@ -120,13 +128,14 @@ test("every route conforms to the Draftly visual system", async ({
       };
     }, expectedTokens);
 
-    expect(probe.canvas, route).toBe("rgb(244, 246, 248)");
+    expect(probe.canvas, route).toBe("rgb(243, 245, 248)");
     expect(probe.overflow, route).toBeLessThanOrEqual(0);
     expect(["0px", "normal"], route).toContain(probe.letterSpacing);
     expect(probe.bodyFont, route).toContain("IBM Plex Sans");
     expect(probe.bodyFont, route).toContain("Noto Sans Sinhala");
-    expect(probe.headingFont, route).toContain("IBM Plex Sans");
-    expect(probe.headingFont, route).toContain("Noto Sans Sinhala");
+    // Page titles set in the display serif; section headings in Plex. Either
+    // way the Sinhala counterpart of the same face follows it.
+    expect(probe.headingFont, route).toMatch(/Source Serif 4[\s\S]*Noto Serif Sinhala|IBM Plex Sans[\s\S]*Noto Sans Sinhala/);
     expect(probe.tokens, route).toEqual(expectedTokens);
     expect(probe.radiusViolations, route).toEqual([]);
     expect(probe.gradientViolations, route).toBe(0);

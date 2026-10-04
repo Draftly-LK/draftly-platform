@@ -222,3 +222,14 @@ export async function apiFetchBlob(
   if (!response.ok) throw await toApiError(response);
   return response.blob();
 }
+
+/**
+ * Text to show for a failed request. A missing backend configuration is a
+ * deployment detail (it names an environment variable), so users get the
+ * caller's translated fallback instead; other API errors keep the server's
+ * message.
+ */
+export function apiErrorMessage(cause: unknown, fallback: string): string {
+  if (!(cause instanceof ApiError)) return fallback;
+  return cause.code === "api_not_configured" ? fallback : cause.message;
+}

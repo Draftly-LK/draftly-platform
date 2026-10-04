@@ -11,16 +11,32 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
-import { isApiEnabled } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { listLegalSources } from "@/lib/api/library";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { LegalSourceSummary, LegalSourceType } from "@/types";
 
 type SourceFilter = "all" | LegalSourceType;
 
+/**
+ * `useTokenProvider` calls Clerk's `useAuth`, which requires a `ClerkProvider`.
+ * The offline demo runs without one, so the hook lives in a component that is
+ * only mounted when the backend is configured. Offline, no request is made, so
+ * the token provider is never called.
+ */
 export function LibraryScreen() {
-  const t = useTranslations("library");
+  return isApiEnabled() ? <ApiBoundLibraryScreen /> : <LibraryFlow getToken={offlineToken} />;
+}
+
+const offlineToken: TokenProvider = () => Promise.resolve(null);
+
+function ApiBoundLibraryScreen() {
   const getToken = useTokenProvider();
+  return <LibraryFlow getToken={getToken} />;
+}
+
+function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
+  const t = useTranslations("library");
   const [sources, setSources] = useState<LegalSourceSummary[]>([]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<SourceFilter>("all");
@@ -70,15 +86,15 @@ export function LibraryScreen() {
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <main className="p-4 md:p-6">
-        <div className="border-border-strong bg-surface grid gap-4 rounded border p-4 sm:grid-cols-3">
+      <main className="p-6">
+        <div className="border-border bg-surface divide-border grid divide-y rounded-card border shadow-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           <Count label={t("all")} value={sources.length} />
           <Count label={t("statutes")} value={statuteCount} />
           <Count label={t("amendments")} value={amendmentCount} />
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <label className="border-border-strong bg-surface flex h-10 min-w-64 flex-1 items-center gap-2 rounded border px-3">
+          <label className="border-border-strong bg-surface flex h-10 min-w-64 flex-1 items-center gap-2 rounded-control border px-3">
             <Search className="text-muted-ink size-4" strokeWidth={1.5} />
             <span className="sr-only">{t("search")}</span>
             <input
@@ -90,7 +106,7 @@ export function LibraryScreen() {
           </label>
           <select
             aria-label={t("filterLabel")}
-            className="border-border-strong bg-surface h-10 rounded border px-3"
+            className="border-border-strong bg-surface h-10 rounded-control border px-3"
             value={filter}
             onChange={(event) =>
               setFilter(event.target.value as SourceFilter)
@@ -142,7 +158,7 @@ export function LibraryScreen() {
                         {source.type === "amendment"
                           ? t("amendment")
                           : t("statute")}{" "}
-                        · {source.reference} · {source.id}
+                        · {source.reference}
                       </p>
                       <p className="text-muted-ink mt-1 text-xs">
                         {t("sectionCount", { count: source.sectionCount })}
@@ -176,9 +192,10 @@ export function LibraryScreen() {
   );
 }
 
+/** One figure, centred in its third of the summary card. */
 function Count({ label, value }: { label: string; value: number }) {
   return (
-    <div>
+    <div className="px-4 py-5 text-center">
       <div className="font-heading text-3xl font-semibold tabular-nums">
         {value}
       </div>

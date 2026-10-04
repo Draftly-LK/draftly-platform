@@ -45,10 +45,9 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { LocaleToggle } from "@/components/shell/locale-toggle";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { Button } from "@/components/ui/button";
-import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
+import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import {
   compileChecklist,
   confirmSubtype,
@@ -247,7 +246,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
 
   const describeError = useCallback(
     (cause: unknown) =>
-      cause instanceof ApiError ? cause.message : t("genericError"),
+      apiErrorMessage(cause, t("genericError")),
     [t],
   );
 
@@ -466,11 +465,8 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
       <main className="bg-canvas min-h-screen">
         <header className="absolute inset-x-0 top-0 z-10 flex h-16 items-center gap-3 px-6">
           <BrandMark tone="white" className="size-9 shrink-0" priority />
-          <div className="font-heading text-on-dark text-3xl font-semibold">
+          <div className="font-display text-on-dark text-3xl font-semibold">
             {t("entryTitle")}
-          </div>
-          <div className="ml-auto">
-            <LocaleToggle />
           </div>
         </header>
         <section className="relative min-h-screen overflow-hidden pt-16">
@@ -490,10 +486,10 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                   server and client markup disagree (hydration error). The
                   reduced-motion rule in globals.css switches this off. */}
               <div className="animate-fade-in max-w-xl">
-                <div className="text-soft-green text-sm font-semibold uppercase">
+                <div className="text-gold text-sm font-semibold uppercase tracking-[0.12em]">
                   {t("entryEyebrow")}
                 </div>
-                <h1 className="text-on-dark mt-2 text-6xl font-semibold sm:text-7xl">
+                <h1 className="font-display text-on-dark mt-3 text-6xl font-semibold sm:text-7xl">
                   {t("entryTitle")}
                 </h1>
                 <p className="text-on-dark-muted mt-4 max-w-lg text-lg leading-8">
@@ -531,7 +527,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                     />
                   </div>
                 </div>
-                <Button variant="primary" onClick={() => setStep(1)}>
+                <Button variant="accent" onClick={() => setStep(1)}>
                   {t("continue")}
                   <ArrowRight className="size-4" strokeWidth={1.5} />
                 </Button>
@@ -550,9 +546,6 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
         <div className="font-heading text-2xl font-semibold">
           {t("entryTitle")}
         </div>
-        <div className="ml-auto">
-          <LocaleToggle />
-        </div>
       </header>
       <div className="mx-auto max-w-3xl p-6 sm:p-10">
         <div className="text-muted-ink text-xs font-semibold uppercase">
@@ -566,7 +559,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <label className="mt-6 block font-medium">
               {t("matterReference")}
               <input
-                className="border-border-strong bg-surface mt-1 h-11 w-full rounded border px-3"
+                className="border-border-strong bg-surface mt-1 h-11 w-full rounded-control border px-3"
                 value={reference}
                 placeholder={t("matterPlaceholder")}
                 onChange={(event) => setReference(event.target.value)}
@@ -575,7 +568,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <label className="mt-4 block font-medium">
               {t("clientReference")}
               <input
-                className="border-border-strong bg-surface mt-1 h-11 w-full rounded border px-3"
+                className="border-border-strong bg-surface mt-1 h-11 w-full rounded-control border px-3"
                 value={clientReference}
                 placeholder={t("clientPlaceholder")}
                 onChange={(event) => setClientReference(event.target.value)}
@@ -732,7 +725,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               ))}
             </ul>
             {needsDeclaredBasis && (
-              <div className="border-border-strong bg-surface mt-6 rounded border p-4">
+              <div className="border-border bg-surface mt-6 rounded-card border p-4 shadow-card">
                 <label className="block font-medium">
                   {t("legalBasisLabel")}
                   <span className="text-muted-ink block text-sm font-normal">
@@ -825,7 +818,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <p className="text-muted-ink mt-2">{t("checklistBody")}</p>
 
             {getToken === null && (
-              <div className="border-border-strong bg-surface mt-6 rounded border p-4">
+              <div className="border-border bg-surface mt-6 rounded-card border p-4 shadow-card">
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
                   <AlertCircle
                     className="size-5"
@@ -885,7 +878,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                 {/* A compiled checklist runs to ~150 requirements. Listing them
                     all at once buries the shape of the matter, so the groups
                     collapse to counts and open on demand. */}
-                <div className="border-border-strong bg-surface mt-6 rounded border p-4">
+                <div className="border-border bg-surface mt-6 rounded-card border p-4 shadow-card">
                   <p className="font-medium">
                     {t("checklistSummary", {
                       total: snapshot.items.length,
@@ -941,7 +934,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
                         // Closed by default. The counts above already say what is
                         // in the checklist; opening all four at once is ~150 rows
                         // and buries the shape of the matter.
-                        className="border-border-strong bg-surface mt-4 overflow-hidden rounded border"
+                        className="border-border bg-surface mt-4 overflow-hidden rounded-card border shadow-card"
                       >
                         <summary className="hover:bg-hover-bg flex min-h-12 cursor-pointer items-center gap-3 px-4 py-3">
                           <ChevronRight
@@ -982,7 +975,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
           <section className="mt-3">
             <h1 className="text-4xl font-semibold">{t("uploadTitle")}</h1>
             <p className="text-muted-ink mt-2">{t("uploadBody")}</p>
-            <label className="border-border-strong bg-surface hover:bg-hover-bg mt-6 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded border border-dashed p-6 text-center">
+            <label className="border-border bg-surface hover:bg-hover-bg mt-6 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-card border border-dashed p-6 text-center shadow-card">
               <Upload
                 className="text-forest size-6"
                 strokeWidth={1.5}
@@ -1013,7 +1006,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
             <p className="text-muted-ink mt-3 text-sm">{t("uploadLimits")}</p>
             <RequiredDocuments snapshot={snapshot} />
             {files.length > 0 && (
-              <div className="border-border-strong bg-surface mt-5 overflow-hidden rounded border">
+              <div className="border-border bg-surface mt-5 overflow-hidden rounded-card border shadow-card">
                 <div className="border-border bg-selected-bg flex items-center justify-between gap-4 border-b px-4 py-3">
                   <h2 className="font-semibold">{t("selectedDocumentsTitle")}</h2>
                   <span className="text-muted-ink text-sm tabular-nums">
@@ -1144,7 +1137,7 @@ function ChoiceButton({
       aria-pressed={multi ? undefined : selected}
       onClick={onSelect}
       className={cn(
-        "inline-flex min-h-10 items-center gap-2 rounded border px-3 py-2 text-left font-medium",
+        "inline-flex min-h-10 items-center gap-2 rounded-control border px-3 py-2 text-left font-medium",
         selected
           ? "border-forest bg-selected-bg text-forest"
           : "border-border-strong bg-surface hover:bg-hover-bg",
@@ -1481,7 +1474,7 @@ function UploadFileRow({
         title={t("remove")}
         disabled={disabled || entry.state === "uploading"}
         onClick={onRemove}
-        className="text-muted-ink hover:bg-hover-bg hover:text-ink focus-visible:outline-ring grid size-9 shrink-0 place-items-center rounded disabled:cursor-not-allowed disabled:opacity-50"
+        className="text-muted-ink hover:bg-hover-bg hover:text-ink focus-visible:outline-ring grid size-9 shrink-0 place-items-center rounded-control disabled:cursor-not-allowed disabled:opacity-50"
       >
         <X className="size-4" strokeWidth={1.5} aria-hidden="true" />
       </button>

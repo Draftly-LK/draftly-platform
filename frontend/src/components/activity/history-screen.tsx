@@ -46,12 +46,12 @@ export async function HistoryScreen() {
           </label>
           <input
             id="history-search"
-            className="border-border-strong bg-surface h-10 min-w-64 flex-1 rounded border px-3"
+            className="border-border-strong bg-surface h-10 min-w-64 flex-1 rounded-control border px-3"
             placeholder={t("search")}
           />
           <select
             aria-label={t("allArtifacts")}
-            className="border-border-strong bg-surface h-10 rounded border px-3"
+            className="border-border-strong bg-surface h-10 rounded-control border px-3"
           >
             <option>{t("allArtifacts")}</option>
             <option>{t("matters")}</option>
@@ -65,7 +65,7 @@ export async function HistoryScreen() {
             <Link
               key={href}
               href={href}
-              className="border-border-strong bg-surface hover:bg-hover-bg flex min-h-20 items-center gap-4 rounded border p-4"
+              className="border-border bg-surface hover:bg-hover-bg flex min-h-20 items-center gap-4 rounded-card border p-4 shadow-card"
             >
               <Icon className="text-forest size-5" strokeWidth={1.5} />
               <span className="min-w-0 flex-1">
@@ -78,7 +78,7 @@ export async function HistoryScreen() {
             </Link>
           ))}
         </section>
-        <section className="border-border-strong bg-surface mt-6 rounded border p-6">
+        <section className="border-border bg-surface mt-6 rounded-card border p-6 shadow-card">
           <ActivityTimeline />
         </section>
       </div>

@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { listIssues } from "@/lib/api/checks";
-import { ApiError, type TokenProvider } from "@/lib/api/client";
+import { type TokenProvider, apiErrorMessage } from "@/lib/api/client";
 import { getDocumentInbox } from "@/lib/api/documents";
 import { listForms } from "@/lib/api/drafts";
 import { listMatterFacts } from "@/lib/api/facts";
@@ -108,7 +108,7 @@ function DashboardFlow({
           setData({ matter, checklist, inbox, openIssues, forms, facts });
       })
       .catch((cause: unknown) => {
-        if (!cancelled) setError(cause instanceof ApiError ? cause.message : t("loadFailed"));
+        if (!cancelled) setError(apiErrorMessage(cause, t("loadFailed")));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -224,7 +224,7 @@ function DashboardFlow({
   return (
     <AppShell matterId={matterId}>
       <div className="p-6">
-        <section className="border-border-strong bg-surface rounded border">
+        <section className="border-border bg-surface rounded-card shadow-card overflow-hidden border">
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_1.2fr]">
             <div>
               <div className="text-muted-ink text-xs font-semibold uppercase">
@@ -236,14 +236,14 @@ function DashboardFlow({
               <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm">
                 <div>
                   <dt className="text-muted-ink text-xs">{t("matterState")}</dt>
-                  <dd className="font-medium">{t(`state.${matter.state}`)}</dd>
+                  <dd className="font-medium">{tNav(`stateLabel.${matter.state}`)}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-ink text-xs">{t("scope")}</dt>
                   <dd className="font-medium">{t(`automation.${matter.automationScope}`)}</dd>
                 </div>
               </dl>
-              <div className="border-forest bg-selected-bg mt-5 rounded border-l-2 p-4">
+              <div className="border-gold bg-canvas mt-5 rounded border-l-[3px] p-4">
                 <div className="text-forest text-xs font-semibold uppercase">
                   {t("nextAction")}
                 </div>
@@ -251,7 +251,7 @@ function DashboardFlow({
                 <p className="text-muted-ink mt-1 text-sm">{target.body}</p>
                 <Link
                   href={target.href}
-                  className="border-forest bg-forest mt-3 inline-flex min-h-10 items-center gap-2 rounded border px-3 py-2 font-medium text-white"
+                  className="border-forest bg-forest mt-3 inline-flex min-h-10 items-center gap-2 rounded-control border px-3 py-2 font-medium text-white"
                 >
                   {t("continue")}
                   <ArrowRight className="size-4" strokeWidth={1.5} />
@@ -282,7 +282,7 @@ function DashboardFlow({
             </div>
           </div>
         </section>
-        <section className="border-border-strong bg-surface mt-6 rounded border">
+        <section className="border-border bg-surface rounded-card shadow-card mt-6 overflow-hidden border">
           <div className="flex items-start gap-3 border-b border-border px-5 py-4">
             <div className="bg-selected-bg text-forest grid size-9 shrink-0 place-items-center rounded">
               <Sparkles className="size-5" strokeWidth={1.5} aria-hidden="true" />
@@ -297,7 +297,7 @@ function DashboardFlow({
               <p className="text-muted-ink mt-1 text-sm">
                 {t("summaryStatus", {
                   instrument: instrumentLabel,
-                  state: t(`state.${matter.state}`),
+                  state: tNav(`stateLabel.${matter.state}`),
                 })}
               </p>
             </div>

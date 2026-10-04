@@ -91,7 +91,7 @@ function DemoOverviewScreen({ matterId }: { matterId: string }) {
   return (
     <AppShell matterId={matterId}>
       <div className="p-6">
-        <section className="border-border-strong bg-surface rounded border">
+        <section className="border-border bg-surface rounded-card shadow-card overflow-hidden border">
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_1.2fr]">
             <div>
               <div className="text-muted-ink text-xs font-semibold uppercase">
@@ -100,7 +100,7 @@ function DemoOverviewScreen({ matterId }: { matterId: string }) {
               <h2 className="mt-1 text-3xl font-semibold">
                 {t("examination")}
               </h2>
-              <div className="border-forest bg-selected-bg mt-5 rounded border-l-2 p-4">
+              <div className="border-gold bg-canvas mt-5 rounded border-l-[3px] p-4">
                 <div className="text-forest text-xs font-semibold uppercase">
                   {t("nextAction")}
                 </div>
@@ -109,7 +109,7 @@ function DemoOverviewScreen({ matterId }: { matterId: string }) {
                 </div>
                 <Link
                   href={`/matters/${matterId}/facts`}
-                  className="border-forest bg-forest mt-3 inline-flex min-h-10 items-center gap-2 rounded border px-3 py-2 font-medium text-white"
+                  className="border-forest bg-forest mt-3 inline-flex min-h-10 items-center gap-2 rounded-control border px-3 py-2 font-medium text-white"
                 >
                   {t("continue")}
                   <ArrowRight className="size-4" strokeWidth={1.5} />
@@ -189,7 +189,7 @@ function MatterNotInWorkspace({ matterId }: { matterId: string }) {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl p-6">
-        <div className="border-border-strong bg-surface rounded border p-6">
+        <div className="border-border bg-surface rounded-card border p-6 shadow-card">
           <h1 className="text-2xl font-semibold">{t("notLoadedTitle")}</h1>
           <p className="text-muted-ink mt-2">{t("notLoadedBody")}</p>
           <p className="text-muted-ink mt-4 font-mono text-xs">{matterId}</p>

@@ -31,6 +31,22 @@ class SessionRead(_CamelModel):
     prompt_version: str
     created_at: datetime
     updated_at: datetime
+    active_conversation_id: str | None = None
+
+
+class ConversationRead(_CamelModel):
+    id: str
+    state: Literal["active", "closed"]
+    created_at: datetime
+    updated_at: datetime
+
+
+class CitationRead(_CamelModel):
+    source_id: str
+    source_type: str
+    label: str
+    verification_status: str
+    locator: str | None = None
 
 
 class MessageRead(_CamelModel):
@@ -43,6 +59,8 @@ class MessageRead(_CamelModel):
     created_at: datetime
     job_id: str | None = None
     pending_action_id: str | None = None
+    conversation_id: str | None = None
+    citations: list[CitationRead] = Field(default_factory=list)
 
 
 class PageInfo(_CamelModel):

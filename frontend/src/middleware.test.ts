@@ -117,6 +117,7 @@ describe("middleware gate order: bypass → fail closed → public route → pro
     "/sign-in/factor-one",
     "/sign-up",
     "/clerk-not-configured",
+    "/animations/gavel-ascii.json",
   ])("does not demand a session on the public route %s", async (path) => {
     configureClerk();
 
@@ -150,6 +151,7 @@ describe("middleware matcher", () => {
     "/sign-in",
     "/api/v1/me",
     "/exports/manifest.json",
+    "/animations/gavel-ascii.json",
   ])("runs on %s", (path) => {
     expect(runsOn(path)).toBe(true);
   });
