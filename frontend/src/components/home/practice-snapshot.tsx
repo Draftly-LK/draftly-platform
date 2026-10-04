@@ -24,30 +24,31 @@ export function PracticeMetrics({ feed }: { feed: Feed }) {
   ] as const satisfies readonly { key: string; filter: StatusFilter; value: number | undefined; flag: boolean }[];
   return (
     <section aria-label={t("title")}>
-      <dl className="flex items-stretch">
+      <ul className="grid grid-cols-2 gap-x-6 gap-y-3 md:flex md:items-stretch md:gap-0">
         {metrics.map(({ key, filter, value, flag }, index) => (
-          <div key={key} className="flex items-stretch">
-            {index > 0 ? <Divider vertical className="bg-white/15" /> : null}
+          <li key={key} className="flex items-stretch">
+            {index > 0 ? <Divider vertical className="hidden bg-white/15 md:block" /> : null}
             <Link
               href={mattersHref(filter)}
-              className="block rounded px-5 py-1 first:pl-0 hover:bg-white/5"
+              className="block rounded py-1 hover:bg-white/5 md:px-5 md:first:pl-0"
             >
-              <dt className="flex items-center gap-1.5 whitespace-nowrap text-xs text-on-dark-muted">
+              <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-on-dark-muted">
                 {flag ? <TriangleAlert aria-hidden="true" className="size-4 text-amber-on-dark" strokeWidth={1.5} /> : null}
                 {t(key)}
-              </dt>
-              <dd
+              </span>
+              <span
                 className={cn(
+                  "block",
                   "mt-0.5 text-3xl font-semibold tabular-nums leading-none",
                   flag ? "text-amber-on-dark" : value ? "text-white" : "text-on-dark-muted",
                 )}
               >
                 {value ?? "—"}
-              </dd>
+              </span>
             </Link>
-          </div>
+          </li>
         ))}
-      </dl>
+      </ul>
       {feed.failed ? <p className="mt-2 text-xs text-red-bg">{t("failed")}</p> : null}
     </section>
   );

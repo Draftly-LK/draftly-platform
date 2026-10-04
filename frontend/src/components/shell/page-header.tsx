@@ -15,8 +15,8 @@ export function PageHeader({
 }) {
   return (
     <div data-page-header className="border-border bg-surface border-b">
-      {/* pl-16 below md keeps the title clear of the fixed mobile menu button. */}
-      <div className="flex flex-wrap items-center gap-4 py-6 pl-16 pr-6 md:pl-6">
+      {/* pl-16 below lg keeps the title clear of the fixed mobile menu button. */}
+      <div className="flex flex-wrap items-center gap-4 py-6 pl-16 pr-6 lg:pl-6">
         <div className="min-w-0 flex-1">
           {eyebrow && (
             <p className="text-gold-strong mb-1 text-xs font-semibold">

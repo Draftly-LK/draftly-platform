@@ -146,8 +146,8 @@ function MatterHeaderShell({
 
   return (
     <header data-matter-header className="border-border bg-surface border-b">
-      {/* pl-16 below md keeps the title clear of the fixed mobile menu button. */}
-      <div className="flex items-start gap-4 pb-3 pl-16 pr-6 pt-5 md:pl-6">
+      {/* pl-16 below lg keeps the title clear of the fixed mobile menu button. */}
+      <div className="flex items-start gap-4 pb-3 pl-16 pr-6 pt-5 lg:pl-6">
         <span className="bg-navy-900 text-gold hidden size-12 shrink-0 place-items-center rounded-lg sm:grid" aria-hidden="true">
           <FileText className="size-6" strokeWidth={1.5} />
         </span>

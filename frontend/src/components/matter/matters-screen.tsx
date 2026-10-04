@@ -12,7 +12,7 @@ import { Button, buttonClass } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
-import { rowLinkClass, tableRowClass } from "@/components/ui/list-row";
+import { ListRow, rowLinkClass, tableRowClass } from "@/components/ui/list-row";
 import { RowsSkeleton } from "@/components/ui/skeleton";
 import { StatusChip } from "@/components/ui/status-chip";
 import { dayMonth, stateTone } from "@/lib/home/dashboard";
@@ -133,7 +133,7 @@ function FilterTabs({ active, counts }: { active: StatusFilter | null; counts: R
             key={key ?? "all"}
             href={mattersHref(key)}
             aria-current={selected ? "true" : undefined}
-            className={cn(buttonClass("secondary", "sm"), selected && "border-forest bg-selected-bg font-semibold")}
+            className={cn(buttonClass("secondary"), selected && "border-forest bg-selected-bg font-semibold")}
           >
             {label}
             <span className="tabular-nums text-muted-ink">{count}</span>
@@ -150,8 +150,39 @@ function MatterTable({ rows }: { rows: Feed["matters"] }) {
   const stateLabel = useTranslations("matterNav.stateLabel");
   const format = useFormatter();
 
+  const updatedLabel = (iso: string) => {
+    const date = new Date(iso);
+    return `${dayMonth(format, date, "Asia/Colombo")} ${format.dateTime(date, { year: "numeric", timeZone: "Asia/Colombo", numberingSystem: "latn" })}`;
+  };
+
   return (
-    <Card pad="none" className="overflow-x-auto">
+    <>
+    {/* Phones: stacked rows (name, status, date) in place of the five-column table. */}
+    <Card pad="none" className="lg:hidden">
+      <ul>
+        {rows.map((matter) => {
+          const tone = stateTone(matter.state);
+          return (
+            <ListRow key={matter.id} className="items-start py-3">
+              <div className="min-w-0 flex-1">
+                <Link href={`/matters/${matter.id}`} className={cn(rowLinkClass, "flex min-h-10 items-center font-semibold tabular-nums")}>
+                  {matter.reference}
+                  <span className="sr-only"> {t("openMatter", { reference: matter.reference })}</span>
+                </Link>
+                {matter.clientReference ? <span className="block truncate text-sm text-muted-ink">{matter.clientReference}</span> : null}
+                <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <StatusChip tone={tone} icon={statusToneIcons[tone]} className="whitespace-nowrap">
+                    {stateLabel(matter.state as RtaMatterState)}
+                  </StatusChip>
+                  <span className="text-xs tabular-nums text-muted-ink">{updatedLabel(matter.updatedAt)}</span>
+                </span>
+              </div>
+            </ListRow>
+          );
+        })}
+      </ul>
+    </Card>
+    <Card pad="none" className="hidden overflow-x-auto lg:block">
       <table className="w-full min-w-[760px] border-collapse text-left">
         <thead className="sticky top-0 z-10 bg-canvas text-xs text-muted-ink">
           <tr className="h-10 border-b border-border">
@@ -166,7 +197,6 @@ function MatterTable({ rows }: { rows: Feed["matters"] }) {
           {rows.map((matter) => {
             const tone = stateTone(matter.state);
             const labelKey = matter.subtypeId ? subtypeLabelKey(matter.subtypeId) : undefined;
-            const updated = new Date(matter.updatedAt);
             return (
               <tr key={matter.id} className={cn(tableRowClass, "relative h-12")}>
                 <td className="px-4">
@@ -183,7 +213,7 @@ function MatterTable({ rows }: { rows: Feed["matters"] }) {
                   </StatusChip>
                 </td>
                 <td className="whitespace-nowrap px-4 text-sm tabular-nums text-muted-ink">
-                  {dayMonth(format, updated, "Asia/Colombo")} {format.dateTime(updated, { year: "numeric", timeZone: "Asia/Colombo", numberingSystem: "latn" })}
+                  {updatedLabel(matter.updatedAt)}
                 </td>
               </tr>
             );
@@ -191,5 +221,6 @@ function MatterTable({ rows }: { rows: Feed["matters"] }) {
         </tbody>
       </table>
     </Card>
+    </>
   );
 }

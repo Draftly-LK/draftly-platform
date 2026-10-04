@@ -42,7 +42,7 @@ function DashboardView({ feed, obligations }: { feed: Feed; obligations: readonl
   return (
     <>
       <section aria-labelledby="home-title" data-surface="inverse" className="bg-navy-900 text-white">
-        <div className={cn(CONTENT, "flex flex-wrap items-center gap-x-8 gap-y-5 px-6 py-8 pl-16 md:pl-6")}>
+        <div className={cn(CONTENT, "flex flex-wrap items-center gap-x-8 gap-y-5 px-6 py-8 pl-16 lg:pl-6")}>
           <div className="min-w-0 flex-1 basis-72">
             <Greeting />
             <p className="mt-1 min-h-6 text-base text-on-dark-muted">{context}</p>

@@ -6,6 +6,7 @@ import { SignOutButton, useUser } from "@clerk/nextjs";
 import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
+import { Button } from "@/components/ui/button";
 import { getMe, updateMe } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
@@ -298,41 +299,23 @@ function ProfileBody({
           </div>
           <div className="flex flex-wrap gap-2">
             {!editing ? (
-              <button
-                type="button"
-                className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-control px-3 py-2 text-sm text-white"
-                onClick={startEdit}
-              >
+              <Button type="button" onClick={startEdit}>
                 {t("edit")}
-              </button>
+              </Button>
             ) : (
               <>
-                <button
-                  type="button"
-                  className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-control px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={saving}
-                  onClick={() => void save()}
-                >
+                {/* The one gold button while editing. */}
+                <Button type="button" variant="primary" loading={saving} onClick={() => void save()}>
                   {saving ? t("saving") : t("save")}
-                </button>
-                <button
-                  type="button"
-                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={saving}
-                  onClick={cancelEdit}
-                >
+                </Button>
+                <Button type="button" disabled={saving} onClick={cancelEdit}>
                   {t("cancel")}
-                </button>
+                </Button>
               </>
             )}
             {identity.showSignOut && (
               <SignOutButton redirectUrl="/sign-in">
-                <button
-                  type="button"
-                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control border px-3 py-2 text-sm"
-                >
-                  {t("signOut")}
-                </button>
+                <Button type="button">{t("signOut")}</Button>
               </SignOutButton>
             )}
           </div>

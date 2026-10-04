@@ -15,9 +15,10 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isApiEnabled } from "@/lib/api/client";
 import { useRecentMatters } from "@/lib/api/use-recent-matters";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { useDemoStore } from "@/lib/store";
 import { BrandMark } from "@/components/ui/brand-mark";
 import { IconButton } from "@/components/ui/icon-button";
@@ -30,15 +31,51 @@ export function Sidebar() {
   const pathname = usePathname();
   const matters = useDemoStore((state) => state.matters);
   const [open, setOpen] = useState(false);
+  // From 1024px the sidebar is a fixed rail; below that it is a drawer.
+  const desktop = useMediaQuery("(min-width: 1024px)");
+  const drawer = desktop === false;
+  const asideRef = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLDivElement>(null);
+  const wasOpen = useRef(false);
 
+  // Drawer behaviour: Escape closes, Tab stays inside, focus moves in on open
+  // and returns to the menu button on close.
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      if (wasOpen.current) openerRef.current?.querySelector("button")?.focus();
+      wasOpen.current = false;
+      return;
+    }
+    wasOpen.current = true;
+    asideRef.current?.querySelector<HTMLElement>("[data-drawer-close]")?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab" || !asideRef.current) return;
+      const focusable = Array.from(
+        asideRef.current.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), [tabindex]:not([tabindex='-1'])"),
+      );
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
+
+  // Leaving drawer width with the drawer open must not strand it open.
+  useEffect(() => {
+    if (desktop) setOpen(false);
+  }, [desktop]);
   const groups = [
     {
       key: "work",
@@ -66,7 +103,7 @@ export function Sidebar() {
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
   return (
     <>
-      <div className="fixed left-3 top-3 z-20 md:hidden">
+      <div ref={openerRef} className="fixed left-3 top-3 z-20 lg:hidden">
         <IconButton
           label={t("openNavigation")}
           className="border-border-strong bg-surface"
@@ -78,14 +115,18 @@ export function Sidebar() {
       {open && (
         <button
           aria-label={t("close")}
-          className="bg-ink/25 fixed inset-0 z-20 md:hidden"
+          className="bg-ink/25 fixed inset-0 z-20 lg:hidden"
           onClick={() => setOpen(false)}
         />
       )}
       <aside
+        ref={asideRef}
         data-app-chrome
         data-surface="inverse"
-        className={`bg-navy-950 text-on-dark fixed inset-y-0 left-0 z-20 flex w-[var(--sidebar-width)] flex-col border-r border-white/5 p-3 transition-transform md:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        // Closed, the drawer is off-screen and must not be reachable by keyboard.
+        inert={drawer && !open ? true : undefined}
+        {...(drawer && open ? { role: "dialog", "aria-modal": true, "aria-label": t("workspace") } : {})}
+        className={`bg-navy-950 text-on-dark fixed inset-y-0 left-0 z-20 flex w-[var(--sidebar-width)] flex-col border-r border-white/5 p-3 transition-transform lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-12 items-center gap-3 px-2 py-2 box-content">
           <BrandMark tone="white" className="size-8 shrink-0" />
@@ -99,7 +140,8 @@ export function Sidebar() {
           </div>
           <IconButton
             label={t("close")}
-            className="text-on-dark hover:bg-white/10 md:hidden"
+            data-drawer-close
+            className="text-on-dark hover:bg-white/10 lg:hidden"
             onClick={() => setOpen(false)}
           >
             <X className="size-5" />
@@ -192,7 +234,7 @@ function RecentMatters({
         <Link
           key={matter.id}
           href={`/matters/${matter.id}`}
-          className="text-on-dark-muted flex min-h-9 items-baseline gap-2 rounded px-3 py-1.5 text-sm hover:bg-white/5 hover:text-white"
+          className="text-on-dark-muted flex min-h-10 items-baseline gap-2 rounded px-3 py-2 text-sm hover:bg-white/5 hover:text-white"
         >
           <span className="shrink-0 tabular-nums">{matter.reference}</span>
           {matter.clientReference && matter.clientReference.trim() !== matter.reference.trim() ? (

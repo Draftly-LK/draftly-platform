@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 const ROW_LIMIT = 8;
 
 const COLUMNS =
-  "grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1.5fr)_minmax(0,1.1fr)_11rem_6.5rem_8rem]";
+  "grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.1fr)_11rem_6.5rem_8rem]";
 
 /**
  * A list, not cards: matter, instrument, status, last activity, next action.
@@ -48,7 +48,7 @@ export function RecentMatters({ feed, now }: { feed: Feed; now: Date | null }) {
     <>
       <div
         aria-hidden="true"
-        className={cn(COLUMNS, "hidden gap-x-4 border-b border-border bg-canvas px-4 py-2 text-xs font-medium text-muted-ink md:grid")}
+        className={cn(COLUMNS, "hidden gap-x-4 border-b border-border bg-canvas px-4 py-2 text-xs font-medium text-muted-ink lg:grid")}
       >
         <span>{t("colMatter")}</span>
         <span>{t("colInstrument")}</span>
@@ -71,17 +71,23 @@ export function RecentMatters({ feed, now }: { feed: Feed; now: Date | null }) {
                 {showReference ? (
                   <span className="block truncate text-xs tabular-nums text-muted-ink">{matter.reference}</span>
                 ) : null}
+                {/* Phones drop the Status column, so the chip sits under the name. */}
+                <span className="mt-1.5 block lg:hidden">
+                  <StatusChip tone={tone} icon={Icon} className="whitespace-nowrap">
+                    {stateLabel(matter.state as RtaMatterState)}
+                  </StatusChip>
+                </span>
               </span>
-              <span className="hidden truncate text-sm md:block">{labelKey ? tRoot(labelKey) : "—"}</span>
-              <span className="hidden md:block">
+              <span className="hidden truncate text-sm lg:block">{labelKey ? tRoot(labelKey) : "—"}</span>
+              <span className="hidden lg:block">
                 <StatusChip tone={tone} icon={Icon} className="whitespace-nowrap">
                   {stateLabel(matter.state as RtaMatterState)}
                 </StatusChip>
               </span>
-              <span className="hidden text-sm tabular-nums text-muted-ink md:block">{activity(matter)}</span>
+              <span className="hidden truncate text-sm tabular-nums text-muted-ink lg:block">{activity(matter)}</span>
               <Link
                 href={`/matters/${matter.id}`}
-                className={cn(buttonClass("ghost", "sm"), rowLinkClass, "justify-self-end whitespace-nowrap")}
+                className={cn(buttonClass("ghost"), rowLinkClass, "max-w-full justify-self-end overflow-hidden text-ellipsis whitespace-nowrap")}
               >
                 {review ? t("nextReview") : t("nextOpen")}
                 <span className="sr-only">{matter.reference}</span>
