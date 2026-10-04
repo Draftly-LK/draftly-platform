@@ -63,6 +63,8 @@ is recorded. Use only synthetic content in tests and screen-review evidence.
   unavailable-engine and dense-only outcomes, and idempotent quota use.
 - [x] Run all available backend/frontend quality gates and Markdown lint.
 - [x] Review the whole change, fix material findings, and recheck changed paths.
-- [ ] Push dev/codex/case-law-library and open a PR targeting main, with test
+- [x] Push dev/codex/case-law-library and open a PR targeting main, with test
   evidence and explicit display-approval and optional-embedding requirements.
   Do not merge or deploy.
+
+PR: [#53](https://github.com/Draftly-LK/draftly-platform/pull/53), targeting main.
