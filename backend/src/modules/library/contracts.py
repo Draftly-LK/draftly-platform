@@ -10,15 +10,19 @@ from src.modules.library.domain.cases import (
     CaseList,
     CaseRecord,
 )
+from src.modules.library.wire_contracts import CaseCoverageRead, CaseRecordRead, CaseWire
 
 __all__ = [
     "CaseCataloguePort",
     "CaseCorpusUnavailableError",
     "CaseCoverage",
+    "CaseCoverageRead",
     "CaseDetail",
     "CaseFilters",
     "CaseList",
     "CaseRecord",
+    "CaseRecordRead",
+    "CaseWire",
 ]
 
 

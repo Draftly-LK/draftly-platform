@@ -216,6 +216,13 @@ OCR, research, rendering, or notification job therefore cannot consume quota
 twice. Quota checks and reservations are atomic to prevent concurrent requests
 from overspending the same remaining allowance.
 
+`reserve_usage`, `consume_usage`, and `release_usage` acquire the usage
+repository's user-wide transaction lock before reading ledger or aggregate
+state. PostgreSQL holds this advisory lock through the caller's transaction
+commit or rollback; repeated acquisition in that same transaction is safe.
+Different idempotency keys and different quota consumers share the lock for
+one user. Product-specific request locks do not replace this billing lock.
+
 When exact usage is unknown before work starts, reserve a conservative amount,
 then finalize actual usage or release the reservation. For example, document
 upload may reserve the validated page count before starting OCR.

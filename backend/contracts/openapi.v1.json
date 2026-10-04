@@ -15526,18 +15526,10 @@
           {
             "in": "header",
             "name": "Idempotency-Key",
-            "required": false,
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 255,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Idempotency-Key"
+              "maxLength": 255,
+              "type": "string"
             }
           }
         ],

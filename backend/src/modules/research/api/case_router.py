@@ -30,12 +30,27 @@ def get_case_research_service(
     )
 
 
-@router.post("/search", response_model=CaseSearchRead)
+@router.post(
+    "/search",
+    response_model=CaseSearchRead,
+    openapi_extra={
+        "parameters": [
+            {
+                "name": "Idempotency-Key",
+                "in": "header",
+                "required": True,
+                "schema": {"type": "string", "maxLength": 255},
+            }
+        ]
+    },
+)
 async def search_cases(
     body: CaseSearchRequest,
     ctx: Annotated[RequestContext, Depends(get_request_context)],
     service: Annotated[CaseResearchService, Depends(get_case_research_service)],
-    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key", max_length=255)] = None,
+    idempotency_key: Annotated[
+        str | None, Header(alias="Idempotency-Key", max_length=255, include_in_schema=False)
+    ] = None,
 ) -> CaseSearchRead:
     return CaseSearchRead.model_validate(
         await service.search(ctx, body.query, limit=body.limit, key=idempotency_key)

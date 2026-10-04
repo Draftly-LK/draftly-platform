@@ -4,12 +4,11 @@ from fastapi import APIRouter, Depends, Query
 
 from src.api.deps import get_request_context
 from src.modules.library.api.case_schemas import (
-    CaseCoverageRead,
     CaseDetailRead,
     CaseListRead,
-    CaseRecordRead,
 )
 from src.modules.library.application.cases import CaseLibraryService
+from src.modules.library.contracts import CaseCoverageRead, CaseRecordRead
 from src.modules.library.domain.cases import CaseFilters
 from src.modules.library.infrastructure.case_http import HttpCaseAdapter
 from src.platform.config import get_settings

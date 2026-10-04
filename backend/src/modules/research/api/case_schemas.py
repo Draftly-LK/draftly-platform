@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from src.modules.library.api.case_schemas import CaseCoverageRead, CaseRecordRead, CaseWire
+from src.modules.library.contracts import CaseCoverageRead, CaseRecordRead, CaseWire
 from src.modules.research.domain.cases import CaseSearchResult, SimilarCase
 
 

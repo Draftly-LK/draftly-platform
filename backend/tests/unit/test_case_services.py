@@ -319,3 +319,28 @@ async def test_real_app_case_route_precedes_statute_dynamic_route_and_requires_a
         )
         assert response.status_code == 200
         assert response.json()["outcome"] == "no_similar_cases"
+
+
+async def test_required_key_contract_preserves_missing_key_error_envelope():
+    from src.api.deps import get_request_context
+    from src.main import create_app
+    from src.modules.research.api.case_router import get_case_research_service
+
+    app = create_app()
+    post = app.openapi()["paths"]["/api/v1/research/cases/search"]["post"]
+    headers = [
+        parameter
+        for parameter in post.get("parameters", [])
+        if parameter["name"] == "Idempotency-Key"
+    ]
+    assert len(headers) == 1 and headers[0]["required"] is True
+    app.dependency_overrides[get_request_context] = lambda: CTX
+    app.dependency_overrides[get_case_research_service] = lambda: CaseResearchService(None, None)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://api"
+    ) as client:
+        response = await client.post(
+            "/api/v1/research/cases/search", json={"query": "Synthetic facts"}
+        )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "idempotency_key_required"
