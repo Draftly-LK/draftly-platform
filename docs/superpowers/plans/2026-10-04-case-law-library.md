@@ -62,7 +62,7 @@ is recorded. Use only synthetic content in tests and screen-review evidence.
 - [x] Verify API-to-engine integration, full-text gating, search/reader joins,
   unavailable-engine and dense-only outcomes, and idempotent quota use.
 - [x] Run all available backend/frontend quality gates and Markdown lint.
-- [ ] Review the whole change, fix material findings, and recheck changed paths.
+- [x] Review the whole change, fix material findings, and recheck changed paths.
 - [ ] Push dev/codex/case-law-library and open a PR targeting main, with test
   evidence and explicit display-approval and optional-embedding requirements.
   Do not merge or deploy.
