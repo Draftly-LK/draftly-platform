@@ -9,8 +9,6 @@ const twMerge = extendTailwindMerge({
     // `text-compact` is a font size (13px); without this it is mistaken for a text colour.
     classGroups: {
       "font-size": [{ text: ["compact"] }],
-      // Custom gradients are background images, not colours, so they sit beside bg-primary-pressed.
-      "bg-image": [{ bg: ["primary-gradient", "primary-gradient-hover"] }],
     },
   },
 });

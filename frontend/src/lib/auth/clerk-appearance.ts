@@ -63,20 +63,23 @@ export const draftlyAppearance: Appearance = {
     },
     headerTitle: { fontFamily: FONT, fontSize: "1.25rem", fontWeight: 600, color: "var(--ink)" },
     headerSubtitle: { fontSize: "0.875rem", color: "var(--muted-ink)" },
-    // The primary action, in the shared primary style (see Button): a vertical gold gradient, a 1px
-    // border and a top highlight, navy ink (white on gold is 2.7:1). Clerk cannot fade a gradient,
-    // so its hover swaps to the lighter gradient at once.
+    // Shared light primary action, matching Button.
     formButtonPrimary: {
       ...control,
-      backgroundColor: "var(--primary-pressed) !important",
-      backgroundImage: "linear-gradient(to bottom, var(--primary-top), var(--primary-bottom)) !important",
+      backgroundColor: "var(--primary-bg) !important",
+      backgroundImage: "var(--primary-gradient) !important",
       border: "1px solid var(--primary-border) !important",
       color: "var(--primary-ink) !important",
       fontWeight: 600,
-      boxShadow: "var(--primary-highlight) !important",
+      boxShadow: "none !important",
+      padding: "0.5rem 1rem",
+      transition: "background-color 150ms",
+      "& svg": { color: "var(--primary-icon)", width: "1rem", height: "1rem" },
       "&::before, &::after": { display: "none" },
-      "&:hover": { backgroundImage: "linear-gradient(to bottom, var(--primary-hover-top), var(--primary-hover-bottom)) !important" },
-      "&:active": { backgroundImage: "none !important", boxShadow: "none !important" },
+      "&:hover": { backgroundColor: "var(--primary-hover) !important", backgroundImage: "linear-gradient(135deg, var(--primary-hover), var(--primary-end)) !important" },
+      "&:active": { backgroundColor: "var(--primary-pressed) !important", backgroundImage: "none !important" },
+      "&:disabled": { backgroundImage: "none !important", backgroundColor: "var(--disabled-bg) !important", borderColor: "var(--border) !important", color: "var(--disabled-fg) !important", "& svg": { color: "var(--disabled-fg)" } },
+      "@media (prefers-reduced-motion: reduce)": { transition: "none" },
       "&:focus-visible": { outline: "2px solid var(--ring)", outlineOffset: "2px" },
     },
     // Provider buttons: quiet secondary actions, one height, a visible focus ring.

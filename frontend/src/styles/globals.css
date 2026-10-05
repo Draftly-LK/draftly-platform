@@ -46,18 +46,15 @@
   --gold-soft: #f6eedc;
   /* Gold fills carry navy text (6.6:1). White on gold is 2.7:1 and fails. */
   --gold-hover: #b78628;
-  /* The primary button, the only gradient allowed on a control: a subtle vertical
-     gold gradient with a 1px border that reads the same on navy and on white
-     (3.4 to 4.3:1 against both) and a 1px top highlight. Navy ink is 5.5:1 on the
-     darkest state and 9.1:1 on the lightest. */
-  --primary-top: #d6a84d;
-  --primary-bottom: #be8d31;
-  --primary-border: #a87a26;
-  --primary-hover-top: #ddb15a;
-  --primary-hover-bottom: #c69436;
-  --primary-pressed: #b5862c;
+  /* Slightly translucent white-to-amber primary action. */
+  --primary-bg: rgb(249 232 198 / 0.96);
+  --primary-end: rgb(237 205 147 / 0.96);
+  --primary-gradient: linear-gradient(135deg, var(--primary-bg), var(--primary-end));
+  --primary-hover: #f5deb0;
+  --primary-pressed: #f9edc8;
+  --primary-border: #ad7b24;
+  --primary-icon: #95651c;
   --primary-ink: var(--navy-950);
-  --primary-highlight: inset 0 1px 0 rgb(255 255 255 / 0.35);
   /* Success was the one status hue the palette lacked. */
   --success: #1f6b3a;
   --success-bg: #e4f1e8;
@@ -182,4 +179,41 @@ select:not([multiple]):not([size]) {
   [data-print-surface] { border: 0 !important; box-shadow: none !important; }
   [data-fact-chip]::after { content: " [source: " attr(data-source) "]"; font-size: 9pt; }
   section { break-inside: avoid; }
+}
+
+/* Keep the gradient on the shared primary action; disabled controls stay neutral. */
+@layer utilities {
+  .primary-action {
+    background-image: var(--primary-gradient);
+  }
+  .primary-action:hover {
+    background-image: linear-gradient(135deg, var(--primary-hover), var(--primary-end));
+  }
+  .primary-action:active, .primary-action:disabled {
+    background-image: none;
+  }
+}
+
+/* Header responds to its available width, including the desktop sidebar. */
+.dashboard-header { container-type: inline-size; }
+.dashboard-header-content { display: grid; grid-template-columns: minmax(0, 1fr); }
+.dashboard-greeting { padding-left: 40px; }
+.dashboard-summary { white-space: nowrap; font-size: 14px; }
+.dashboard-count { font-size: 22px; }
+.dashboard-metrics a > span:first-child { font-size: 12px; line-height: 18px; }
+.dashboard-metrics { width: 100%; }
+.dashboard-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dashboard-action { min-width: 0; min-height: 36px; height: 36px; padding: 0 12px; white-space: nowrap; }
+.dashboard-actions[data-fit="labels"] svg { display: none; }
+.dashboard-actions[data-fit="stack"] { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); }
+.dashboard-actions[data-fit="stack"] svg { display: none; }
+@container (min-width: 1100px) {
+  .dashboard-header-content { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+  .dashboard-greeting { padding-left: 0; }
+  .dashboard-summary { font-size: 16px; }
+  .dashboard-count { font-size: 30px; }
+  .dashboard-metrics { width: auto; }
+  .dashboard-metrics a { padding-inline: 20px; }
+  .dashboard-actions { min-width: 396px; }
+  .dashboard-action { min-height: 40px; height: 40px; padding-inline: 16px; }
 }

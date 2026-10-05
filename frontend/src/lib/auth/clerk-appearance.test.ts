@@ -17,13 +17,14 @@ describe("draftlyAppearance", () => {
     expect(json.toLowerCase()).not.toMatch(/purple|violet|#6c47ff|#7c3aed/);
   });
 
-  it("makes the primary button the shared primary style: gradient, border, highlight and navy ink, never white", () => {
+  it("makes the primary button the shared primary style: light fill, amber outline and icons, navy ink", () => {
     const primary = JSON.stringify((draftlyAppearance.elements as Record<string, unknown>).formButtonPrimary);
-    expect(primary).toContain("var(--primary-top)");
-    expect(primary).toContain("var(--primary-bottom)");
-    expect(primary).toContain("var(--primary-hover-top)");
+    expect(primary).toContain("var(--primary-bg)");
+    expect(primary).toContain("var(--primary-hover)");
+    expect(primary).toContain("var(--primary-pressed)");
+    expect(primary).toContain("var(--primary-icon)");
     expect(primary).toContain("var(--primary-border)");
-    expect(primary).toContain("var(--primary-highlight)");
+    expect(primary).toContain("var(--primary-gradient)");
     expect(primary).toContain("var(--primary-ink)");
     expect(primary).not.toContain("#fff");
   });

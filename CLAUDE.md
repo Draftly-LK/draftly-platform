@@ -92,17 +92,19 @@ and the relevant plans under `backend/docs/services/`.
   tiled (`components/shell/navy-backdrop.tsx`). The sidebar edge has no border
   line, only the soft `--shadow-sidebar`. Text on it must keep 4.5:1 on the
   lightest part of the gradient.
-- Primary (gold) buttons are one style, the `primary` variant of `Button` (or
-  `buttonClass("primary")` on a link), never hand-styled: a pill with a subtle
-  vertical gradient `--primary-top` `#D6A84D` to `--primary-bottom` `#BE8D31`, a
-  1 px `--primary-border` `#A87A26` border (so it reads the same on navy and on
-  white), an inset top highlight `rgba(255,255,255,0.35)`, and navy `#0B1628`
-  text and icon. Hover fades to `#DDB15A` to `#C69436` over 150 ms; pressed is
-  flat `#B5862C` with no highlight. One height, padding, font size and 16 px icon
-  for every primary. "Create a matter" with the `FilePlus2` icon is the one
-  label for starting a matter (`CreateMatterLink`). At most one per screen.
-- The navy backdrop and the primary button are the only allowed gradients. No
-  other gradients or decorative backgrounds.
+- Primary buttons use one shared light style: `Button`'s `primary` variant or
+  `buttonClass("primary")` on links. Cream `--primary-bg rgb(249 232 198 / 0.96)`, navy text,
+  a 1 px amber `--primary-border #AD7B24` outline and 16 px amber icons
+  (`--primary-icon #95651C`). Hover is cream `#F5DEB0`; pressed is `#F9EDC8`.
+  Background transitions take 150 ms and respect reduced motion. A subtle 135-degree gradient ends at amber `rgb(237 205 147 / 0.96)`.
+  No highlight. Disabled controls use neutral tokens, including their icons.
+  Clerk primary actions share these tokens. Every primary has the same height,
+  padding and font size. "Create a matter" uses `CreateMatterLink` and
+  `FilePlus2`, at most once per screen; its minimum width is 192 px outside the compact dashboard header.
+  Compact dashboard actions share the available width at 36 px tall; hide
+  icons before stacking when the measured labels cannot fit.
+- The navy backdrop and shared primary button are the only allowed gradients. No other gradients or
+  decorative backgrounds.
 - Sidebar: from 1024px it collapses to a 72 px icon rail. The toggle is a 32 px
   round button on the sidebar's right edge, level with the logo, with a 40 px hit
   area. It is rendered in the app shell, outside the sidebar's clipping

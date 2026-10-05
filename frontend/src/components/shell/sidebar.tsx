@@ -98,10 +98,11 @@ export function Sidebar() {
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
   return (
     <>
-      <div ref={openerRef} className="fixed left-3 top-3 z-20 lg:hidden">
+      <div ref={openerRef} className="fixed left-3 top-8 z-20 lg:hidden">
         <IconButton
           label={t("openNavigation")}
-          className="border-border-strong bg-surface"
+          data-surface={pathname === "/" ? "inverse" : undefined}
+          className={pathname === "/" ? "size-10 border-transparent bg-transparent text-white hover:border-transparent hover:bg-white/[0.08] active:bg-white/[0.12] [@media(pointer:coarse)]:size-10" : "border-border-strong bg-surface"}
           onClick={() => setOpen(true)}
         >
           <Menu className="size-5" strokeWidth={1.5} />

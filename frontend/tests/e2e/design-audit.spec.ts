@@ -19,6 +19,11 @@ const expectedTokens = {
   "--navy-950": "#0b1628",
   "--gold": "#c69436",
   "--gold-strong": "#74510f",
+  "--primary-bg": "rgb(249 232 198 / 0.96)",
+  "--primary-border": "#ad7b24",
+  "--primary-icon": "#95651c",
+  "--primary-hover": "#f5deb0",
+  "--primary-pressed": "#f9edc8",
 } as const;
 
 test("every route conforms to the Draftly visual system", async ({
@@ -69,8 +74,7 @@ test("every route conforms to the Draftly visual system", async ({
       // parcel texture are an <svg data-navy-backdrop>, a reviewed exception.
       const gradientViolations = [...document.querySelectorAll("body *")]
         .filter(visible)
-        // The one gradient on a control: the primary button (bg-primary-gradient).
-        .filter((element) => !element.classList.contains("bg-primary-gradient"))
+        .filter((element) => !element.classList.contains("primary-action"))
         .filter((element) =>
           getComputedStyle(element).backgroundImage.includes("gradient"),
         ).length;
@@ -80,7 +84,7 @@ test("every route conforms to the Draftly visual system", async ({
           // Elevation comes only from the named shadow tokens (popover, dialog,
           // toast, and the sidebar's lift over the header); anything else is an
           // unreviewed shadow.
-          const permittedElevation = ["shadow-popover", "shadow-dialog", "shadow-toast", "shadow-sidebar", "shadow-primary"].some(
+          const permittedElevation = ["shadow-popover", "shadow-dialog", "shadow-toast", "shadow-sidebar"].some(
             (token) =>
               element.classList.contains(token) ||
               element.classList.contains(`hover:${token}`),

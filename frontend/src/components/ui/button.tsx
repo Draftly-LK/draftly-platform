@@ -8,16 +8,10 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
 export type ButtonSize = "md" | "sm";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  // The one gold action on a screen. A subtle vertical gradient with a 1px border and a
-  // top highlight, navy ink (white on gold is 2.7:1). The hover gradient fades in on a
-  // ::before (a gradient cannot be transitioned directly); pressed is flat with no highlight.
-  // Every value is a token (globals.css). Same size and icon size everywhere (see buttonClass).
+  // Shared softly tinted primary action: navy label, amber boundary and icon.
   primary: [
-    "relative isolate border-primary-border bg-primary-pressed bg-primary-gradient font-semibold text-primary-ink shadow-primary",
-    "before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-primary-gradient-hover before:opacity-0 before:transition-opacity before:duration-150 hover:before:opacity-100",
-    "active:bg-none active:shadow-none active:before:opacity-0",
-    "disabled:bg-none disabled:shadow-none disabled:before:hidden",
-    "[&_svg]:size-4 [&_svg]:shrink-0",
+    "primary-action border-primary-border bg-primary-bg font-semibold text-primary-ink transition-colors duration-150 hover:bg-primary-hover active:bg-primary-pressed motion-reduce:transition-none",
+    "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-primary-icon disabled:[&_svg]:text-disabled-fg",
   ].join(" "),
   secondary:
     "border-border-strong bg-surface text-ink hover:bg-hover-bg active:bg-active-bg aria-pressed:bg-selected-bg",

@@ -15,37 +15,58 @@ const contrast = (a: string, b: string) => {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
 
+// Composite translucent gradient endpoints onto each supported backdrop.
+const blend = (foreground: string, background: string) => "#" + rgb(foreground)
+  .map((value, index) => Math.round(value * 0.96 + (rgb(background)[index] ?? 0) * 0.04).toString(16).padStart(2, "0"))
+  .join("");
+
 describe("primary button tokens", () => {
   it("are defined once with the specified values", () => {
-    expect(token("primary-top")).toBe("#d6a84d");
-    expect(token("primary-bottom")).toBe("#be8d31");
-    expect(token("primary-border")).toBe("#a87a26");
-    expect(token("primary-hover-top")).toBe("#ddb15a");
-    expect(token("primary-hover-bottom")).toBe("#c69436");
-    expect(token("primary-pressed")).toBe("#b5862c");
+    expect(token("primary-bg")).toBe("rgb(249 232 198 / 0.96)");
+    expect(token("primary-end")).toBe("rgb(237 205 147 / 0.96)");
+    expect(token("primary-hover")).toBe("#f5deb0");
+    expect(token("primary-pressed")).toBe("#f9edc8");
+    expect(token("primary-border")).toBe("#ad7b24");
+    expect(token("primary-icon")).toBe("#95651c");
     expect(token("primary-ink")).toBe("var(--navy-950)");
     expect(token("navy-950")).toBe("#0b1628");
-    expect(token("primary-highlight")).toBe("inset 0 1px 0 rgb(255 255 255 / 0.35)");
   });
 
-  it("navy ink passes 4.5:1 on every part of the gradient, the lightest and the darkest included", () => {
+  it("navy ink passes 4.5:1 on every primary state", () => {
     const ink = token("navy-950") as string;
-    for (const name of ["primary-top", "primary-bottom", "primary-hover-top", "primary-hover-bottom", "primary-pressed"]) {
+    for (const name of ["primary-hover", "primary-pressed"]) {
       expect(contrast(ink, token(name) as string), name).toBeGreaterThanOrEqual(4.5);
     }
   });
 
-  it("the border reads at 3:1 against white, the canvas and both navies, so the button looks the same on each", () => {
+  it("the outline and icon pass 3:1 on every state and surrounding surface", () => {
     const border = token("primary-border") as string;
-    for (const surface of ["#ffffff", "#f3f5f8", "#0f1f38", "#1b3156"]) {
-      expect(contrast(border, surface), surface).toBeGreaterThanOrEqual(3);
+    for (const surface of ["#ffffff", "#f3f5f8", "#f5deb0", "#f9edc8", "#0f1f38", "#1b3156"]) {
+      if (!surface.startsWith("#0f") && !surface.startsWith("#1b")) {
+        expect(contrast(token("primary-icon") as string, surface), surface).toBeGreaterThanOrEqual(3);
+      }
+      // The border separates the control from its surrounding page, not its fill.
+      if (["#ffffff", "#f3f5f8", "#0f1f38", "#1b3156"].includes(surface)) {
+        expect(contrast(border, surface), surface).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it("translucent gradient endpoints retain text and icon contrast on light and navy surfaces", () => {
+    for (const backdrop of ["#ffffff", "#f3f5f8", "#0f1f38", "#1b3156"]) {
+      for (const endpoint of ["#f9e8c6", "#edcd93"]) {
+        const surface = blend(endpoint, backdrop);
+        expect(contrast(token("navy-950") as string, surface)).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(token("primary-icon") as string, surface)).toBeGreaterThanOrEqual(3);
+      }
     }
   });
 
   it("the Tailwind theme exposes them and no component hard-codes the gold hexes", () => {
     const tailwind = readFileSync(join(__dirname, "../../tailwind.config.ts"), "utf8");
-    expect(tailwind).toContain('"primary-gradient": "linear-gradient(to bottom, var(--primary-top), var(--primary-bottom))"');
-    expect(tailwind).toContain('"primary-gradient-hover": "linear-gradient(to bottom, var(--primary-hover-top), var(--primary-hover-bottom))"');
+    expect(tailwind).toContain('"primary-bg": "var(--primary-bg)"');
+    expect(tailwind).toContain('"primary-icon": "var(--primary-icon)"');
+    expect(tailwind).not.toContain("primary-gradient");
     const button = readFileSync(join(__dirname, "../components/ui/button.tsx"), "utf8");
     expect(button).not.toMatch(/#[0-9a-fA-F]{6}/);
   });

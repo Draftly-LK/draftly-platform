@@ -15,15 +15,15 @@ import { SectionHeader } from "./section-header";
 import { StatusChip } from "./status-chip";
 
 describe("Button", () => {
-  it("primary is the one shared style: gradient, 1px border, top highlight, navy ink, never white", () => {
+  it("primary is the one shared style: white fill, amber outline and icon, navy ink", () => {
     renderWithIntl(<Button variant="primary">Save</Button>);
     const classes = screen.getByRole("button", { name: "Save" }).className.split(" ");
-    for (const token of ["bg-primary-gradient", "bg-primary-pressed", "border-primary-border", "shadow-primary", "text-primary-ink", "rounded-control", "font-semibold"]) {
+    for (const token of ["bg-primary-bg", "border-primary-border", "[&_svg]:text-primary-icon", "text-primary-ink", "rounded-control", "font-semibold"]) {
       expect(classes, token).toContain(token);
     }
     expect(classes).not.toContain("text-white");
-    // Hover fades a lighter gradient in over 150ms; pressed is flat with no highlight; disabled drops all of it.
-    for (const token of ["before:bg-primary-gradient-hover", "before:transition-opacity", "before:duration-150", "hover:before:opacity-100", "active:bg-none", "active:shadow-none", "disabled:bg-none", "disabled:shadow-none"]) {
+    // Hover and pressed stay light; disabled icons use the neutral foreground.
+    for (const token of ["hover:bg-primary-hover", "active:bg-primary-pressed", "transition-colors", "duration-150", "motion-reduce:transition-none", "disabled:[&_svg]:text-disabled-fg"]) {
       expect(classes, token).toContain(token);
     }
   });
@@ -44,7 +44,7 @@ describe("Button", () => {
     expect(first.className).toContain("[&_svg]:size-4");
   });
 
-  it("only primary carries the gradient; secondary, ghost and destructive stay flat", () => {
+  it("secondary, ghost and destructive stay flat", () => {
     renderWithIntl(
       <>
         <Button>s</Button>

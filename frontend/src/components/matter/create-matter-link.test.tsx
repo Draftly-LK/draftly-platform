@@ -9,7 +9,7 @@ describe("CreateMatterLink", () => {
     const { container } = renderWithIntl(<CreateMatterLink />);
     const link = screen.getByRole("link", { name: "Create a matter" });
     expect(link.getAttribute("href")).toBe("/new");
-    expect(link.className).toContain("bg-primary-gradient");
+    expect(link.className).toContain("bg-primary-bg");
     expect(link.className).toContain("min-h-10");
     expect(link.className).toContain("min-w-48");
     expect(container.querySelector("svg.lucide-file-plus2")).not.toBeNull();

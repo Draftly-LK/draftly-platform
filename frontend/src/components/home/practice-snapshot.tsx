@@ -23,20 +23,20 @@ export function PracticeMetrics({ feed }: { feed: Feed }) {
     { key: "drafting", filter: "drafting", value: summary?.drafting, flag: false },
   ] as const satisfies readonly { key: string; filter: StatusFilter; value: number | undefined; flag: boolean }[];
   return (
-    <section aria-label={t("title")}>
-      <ul className="grid grid-cols-2 gap-x-6 gap-y-3 md:flex md:items-stretch md:gap-0">
+    <section className="dashboard-metrics" aria-label={t("title")}>
+      <ul className="grid grid-cols-3 items-stretch gap-0">
         {metrics.map(({ key, filter, value, flag }, index) => (
-          <li key={key} className="flex items-stretch">
-            {index > 0 ? <Divider vertical className="hidden bg-white/15 md:block" /> : null}
+          <li key={key} className="flex min-w-0 items-stretch">
+            {index > 0 ? <Divider vertical className="bg-white/15" /> : null}
             <Link
               href={mattersHref(filter)}
-              className="flex flex-col items-center rounded py-1 text-center hover:bg-white/5 md:px-5"
+              className="flex w-full min-w-0 flex-col items-center rounded px-2 py-1 text-center hover:bg-white/5"
             >
               <span className={cn("whitespace-nowrap text-xs", flag ? "text-amber-on-dark" : "text-on-dark-muted")}>{t(key)}</span>
               <span
                 className={cn(
                   "block",
-                  "mt-0.5 text-3xl font-semibold tabular-nums leading-none",
+                  "dashboard-count mt-0.5 text-3xl font-semibold tabular-nums leading-none",
                   flag ? "text-amber-on-dark" : value ? "text-white" : "text-on-dark-muted",
                 )}
               >
