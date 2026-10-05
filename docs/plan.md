@@ -803,8 +803,9 @@ Obligations use the existing 14-day horizon and urgency rules in a compact
 vertical timeline. No calendar action is shown because no such route exists.
 Live workflow tiles retain their catalogue availability and Gazette references,
 with a document motif and visible Start action. Planned workflows appear as
-smaller, non-interactive items without hover elevation. The first-run panel
-reuses the same workflow tiles, without empty matter or deadline containers.
+smaller, non-interactive items without hover elevation. Empty accounts retain the same counts, header actions, matter queue, obligations
+section, and workflow tiles. Counts show zero and the queue uses an empty message;
+no demo matters are substituted for production account data.
 
 Styles are scoped to `[data-home-body]` in `dashboard-body.css`; typography,
 header, sidebar and shared button tokens are unchanged. By explicit design

@@ -1,0 +1,98 @@
+[
+  {
+    "empty": false,
+    "width": 1440,
+    "overflow": false,
+    "headings": [
+      "Recent matters",
+      "Upcoming obligations",
+      "Common workflows"
+    ],
+    "actions": 2,
+    "counts": 3
+  },
+  {
+    "empty": false,
+    "width": 768,
+    "overflow": false,
+    "headings": [
+      "Recent matters",
+      "Upcoming obligations",
+      "Common workflows"
+    ],
+    "actions": 2,
+    "counts": 3
+  },
+  {
+    "empty": false,
+    "width": 390,
+    "overflow": false,
+    "headings": [
+      "Recent matters",
+      "Upcoming obligations",
+      "Common workflows"
+    ],
+    "actions": 2,
+    "counts": 3
+  },
+  {
+    "empty": false,
+    "width": 360,
+    "overflow": false,
+    "headings": [
+      "Recent matters",
+      "Upcoming obligations",
+      "Common workflows"
+    ],
+    "actions": 2,
+    "counts": 3
+  },
+  {
+    "empty": true,
+    "width": 1440,
+    "overflow": false,
+    "headings": [
+      "Recent matters",
+      "Upcoming obligations",
+      "Common workflows"
+    ],
+    "actions": 2,
+    "counts": 3
+  },
+  {
+    "empty": true,
+    "width": 768,
+    "overflow": false,
+    "headings": [
+      "Recent matters",
+      "Upcoming obligations",
+      "Common workflows"
+    ],
+    "actions": 2,
+    "counts": 3
+  },
+  {
+    "empty": true,
+    "width": 390,
+    "overflow": false,
+    "headings": [
+      "Recent matters",
+      "Upcoming obligations",
+      "Common workflows"
+    ],
+    "actions": 2,
+    "counts": 3
+  },
+  {
+    "empty": true,
+    "width": 360,
+    "overflow": false,
+    "headings": [
+      "Recent matters",
+      "Upcoming obligations",
+      "Common workflows"
+    ],
+    "actions": 2,
+    "counts": 3
+  }
+]

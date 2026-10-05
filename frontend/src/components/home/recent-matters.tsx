@@ -34,6 +34,7 @@ export function RecentMatters({ feed, now }: { feed: Feed; now: Date | null }) {
   if (feed.failed) return <p className="p-4 text-sm text-red">{t("recentLoadFailed")}</p>;
 
   const rows = sortForDashboard(feed.matters).slice(0, ROW_LIMIT);
+  if (rows.length === 0) return <p className="p-4 text-sm text-muted-ink">{t("recentEmpty")}</p>;
 
   const activity = (matter: ApiRtaMatter) => {
     const date = new Date(matter.updatedAt);
