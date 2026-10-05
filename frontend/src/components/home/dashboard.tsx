@@ -6,19 +6,14 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CreateMatterLink } from "@/components/matter/create-matter-link";
 import { buttonClass } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { SectionHeader } from "@/components/ui/section-header";
 import { summarizeMatters } from "@/lib/home/practice-snapshot";
 import { cn } from "@/lib/utils";
 import type { Obligation } from "@/types/obligation";
-import { CommonWorkflows } from "./common-workflows";
-import { FirstRunPanel } from "./first-run-panel";
 import { NavyBackdrop } from "@/components/shell/navy-backdrop";
 import { Greeting } from "./greeting";
+import { DashboardBody } from "./dashboard-body";
 import { MatterFeed, useDashboardNow, type Feed } from "./matter-feed";
 import { PracticeMetrics } from "./practice-snapshot";
-import { RecentMatters } from "./recent-matters";
-import { UpcomingObligations } from "./upcoming-obligations";
 
 /** Content width: tables and grids do not stretch across a wide monitor. */
 const CONTENT = "mx-auto w-full max-w-[1240px]";
@@ -100,35 +95,7 @@ function DashboardView({ feed, obligations }: { feed: Feed; obligations: readonl
         </div>
       </section>
 
-      <div className={cn(CONTENT, "space-y-10 px-6 py-8")}>
-        {firstRun ? (
-          <FirstRunPanel />
-        ) : (
-          <>
-            <div className="grid items-start gap-8 min-[1360px]:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-              <section aria-labelledby="recent-title" className="min-w-0">
-                <SectionHeader
-                  id="recent-title"
-                  title={t("recentTitle")}
-                  action={
-                    <Link href="/matters" className="font-medium text-forest hover:underline">
-                      {t("viewAll")}
-                    </Link>
-                  }
-                />
-                <Card pad="none" className="overflow-hidden">
-                  <RecentMatters feed={feed} now={now} />
-                </Card>
-              </section>
-              <section aria-labelledby="obligations-title" className="min-w-0">
-                <SectionHeader id="obligations-title" title={t("obligationsTitle")} />
-                <UpcomingObligations obligations={obligations} feed={feed} now={now} />
-              </section>
-            </div>
-            <CommonWorkflows />
-          </>
-        )}
-      </div>
+      <DashboardBody feed={feed} obligations={obligations} now={now} firstRun={firstRun} />
     </>
   );
 }

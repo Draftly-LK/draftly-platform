@@ -17,20 +17,29 @@ export async function HelpScreen() {
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="divide-border max-w-3xl divide-y p-6">
-        {items.map(({ title, body, icon: Icon }) => (
-          <section
-            key={title}
-            className="grid gap-4 py-6 sm:grid-cols-[40px_1fr]"
-          >
-            <Icon className="text-forest size-6" strokeWidth={1.5} />
-            <div>
-              <h2 className="text-2xl font-semibold">{title}</h2>
-              <p className="text-muted-ink mt-2">{body}</p>
-            </div>
-          </section>
-        ))}
-        <button className="border-border-strong bg-surface hover:bg-hover-bg mt-6 min-h-10 rounded-control border px-3 font-medium">
+      <div className="mx-auto w-full max-w-[1240px] p-6">
+        <div className="divide-border divide-y">
+          {items.map(({ title, body, icon: Icon }) => (
+            <section
+              key={title}
+              className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 py-4 first:pt-0"
+            >
+              <Icon
+                className="text-forest mt-1 size-5"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
+              <div>
+                <h2 className="text-lg font-semibold">{title}</h2>
+                <p className="text-muted-ink mt-1 max-w-3xl text-sm">{body}</p>
+              </div>
+            </section>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="border-border-strong bg-surface hover:bg-hover-bg rounded-control mt-4 min-h-10 border px-3 font-medium"
+        >
           {t("contact")}
         </button>
       </div>

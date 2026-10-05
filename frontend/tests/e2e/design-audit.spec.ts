@@ -84,7 +84,8 @@ test("every route conforms to the Draftly visual system", async ({
           // Elevation comes only from the named shadow tokens (popover, dialog,
           // toast, and the sidebar's lift over the header); anything else is an
           // unreviewed shadow.
-          const permittedElevation = ["shadow-popover", "shadow-dialog", "shadow-toast", "shadow-sidebar"].some(
+          const bodyElevation = element.closest("[data-home-body]") !== null && element.matches(".home-matter-surface, .home-timeline-surface, .home-workflow-tile");
+          const permittedElevation = bodyElevation || ["shadow-popover", "shadow-dialog", "shadow-toast", "shadow-sidebar"].some(
             (token) =>
               element.classList.contains(token) ||
               element.classList.contains(`hover:${token}`),

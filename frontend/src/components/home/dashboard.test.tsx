@@ -16,6 +16,7 @@ vi.mock("@/lib/api/client", async (importOriginal) => {
 vi.mock("@/lib/api/use-recent-matters", () => ({ useRecentMatters: () => mocks.feed }));
 
 import { Dashboard } from "./dashboard";
+import { DashboardBody } from "./dashboard-body";
 import { RecentMatters } from "./recent-matters";
 import { UpcomingObligations } from "./upcoming-obligations";
 
@@ -185,5 +186,37 @@ describe("Dashboard", () => {
     mocks.feed = feedOf([matter({ state: "REVIEW_REQUIRED" }), matter({ id: "m2", state: "LEGAL_REVIEW" })]);
     renderWithIntl(<Dashboard obligations={[]} />);
     expect(screen.getByText("2 matters need your review")).toBeTruthy();
+  });
+});
+
+
+describe("Dashboard body work queue", () => {
+  it("uses the existing review states for its cue and keeps each next action on the matter route", () => {
+    renderWithIntl(<DashboardBody now={NOW} obligations={[]} firstRun={false} feed={feedOf([
+      matter({ id: "review", state: "LEGAL_REVIEW", reference: "REF-REVIEW" }),
+      matter({ id: "draft", state: "DRAFTING", reference: "REF-DRAFT" }),
+      matter({ id: "hold", state: "LITIGATION_HOLD", reference: "REF-HOLD" }),
+    ])} />);
+    expect(screen.getByText("1 matter needs attention")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Review.*REF-REVIEW/ }).getAttribute("href")).toBe("/matters/review");
+    expect(screen.getByRole("link", { name: /Open.*REF-DRAFT/ }).getAttribute("href")).toBe("/matters/draft");
+    expect(screen.getByRole("link", { name: /Open.*REF-HOLD/ }).getAttribute("href")).toBe("/matters/hold");
+  });
+
+  it("keeps a failed feed distinct from a new user's empty workspace", () => {
+    renderWithIntl(<DashboardBody now={NOW} obligations={[]} firstRun={false} feed={{ matters: [], loading: false, failed: true }} />);
+    expect(screen.getByText("Recent matters could not be loaded.")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Start your first matter" })).toBeNull();
+    expect(screen.queryByText(/matter needs attention/)).toBeNull();
+  });
+
+  it("gives a new user live workflow entries without empty matter or obligation surfaces", () => {
+    renderWithIntl(<DashboardBody now={NOW} obligations={[]} firstRun feed={feedOf([])} />);
+    expect(screen.getByRole("heading", { name: "Start your first matter" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Recent matters" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Upcoming obligations" })).toBeNull();
+    for (const form of ["Gazette Form 8", "Gazette Form 12"]) {
+      expect(screen.getByRole("link", { name: new RegExp(form) }).getAttribute("href")).toBe("/new");
+    }
   });
 });

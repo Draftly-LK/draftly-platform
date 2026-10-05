@@ -35,8 +35,8 @@ export function UpcomingObligations({
   if (items.length === 0) return <p className="text-sm text-muted-ink">{t("obligationsEmpty")}</p>;
 
   return (
-    <Card pad="none">
-      <ol>
+    <Card pad="none" className="home-timeline-surface">
+      <ol className="home-timeline">
         {items.map((obligation) => {
           const days = daysUntil(obligation.dueDate, now);
           const tone = dueTone(days);
@@ -44,14 +44,14 @@ export function UpcomingObligations({
           const Icon = tone === "danger" ? CircleAlert : tone === "warning" ? TriangleAlert : CalendarClock;
           const reference = referenceFor.get(obligation.matterId);
           return (
-            <ListRow key={obligation.id} className="min-h-16 items-start">
-              <Icon aria-hidden="true" className={cn("mt-0.5 size-5 shrink-0", TONE_TEXT[tone])} strokeWidth={1.5} />
+            <ListRow key={obligation.id} className="home-deadline-row min-h-16 items-start">
+              <span aria-hidden="true" className={cn("home-timeline-node", tone === "danger" ? "bg-red-bg" : tone === "warning" ? "bg-amber-bg" : "bg-selected-bg")}><Icon aria-hidden="true" className={cn("size-4", TONE_TEXT[tone])} strokeWidth={1.5} /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">
+                <span className="block text-sm font-semibold">
                   {to(obligation.labelKey.split(".").at(-1) as "monthlyList" | "licenseRenewal" | "lawyerReview")}
                 </span>
-                {reference ? <span className="block text-xs tabular-nums text-muted-ink">{reference}</span> : null}
-                <span className={cn("block text-xs font-medium tabular-nums", TONE_TEXT[tone])}>
+                {reference ? <span className="mt-1 block break-words font-mono text-xs text-muted-ink">{reference}</span> : null}
+                <span className={cn("home-due-label mt-2 inline-flex text-xs font-semibold tabular-nums", TONE_TEXT[tone])}>
                   {label.kind === "overdue"
                     ? t("dueOverdue", { days: label.days })
                     : label.kind === "today"

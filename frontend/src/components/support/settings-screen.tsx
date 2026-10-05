@@ -14,14 +14,11 @@ export function SettingsScreen() {
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="mx-auto w-full max-w-3xl p-6">
-        <section className="border-border border-b py-5">
+      <div className="mx-auto w-full max-w-[1240px] p-6">
+        <section className="border-border border-b pb-5">
           <h2 className="text-xl font-semibold">{t("profile")}</h2>
           <p className="text-muted-ink mt-2 text-sm">{t("profileHint")}</p>
-          <Link
-            href="/profile"
-            className={`${buttonClass("secondary")} mt-3`}
-          >
+          <Link href="/profile" className={`${buttonClass("secondary")} mt-3`}>
             {t("openProfile")}
           </Link>
         </section>

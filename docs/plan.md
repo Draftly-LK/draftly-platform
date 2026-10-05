@@ -788,3 +788,27 @@ fonts load: hide icons before stacking both actions full width, creation first.
 On larger headers, keep the desktop row and 40 px actions. The drawer opener
 on the dashboard has a 40 px transparent target, white lines, an 8% white hover
 and the inverse gold focus ring, aligned with the greeting's first line.
+
+### Homepage body: legal work queue (October 2026)
+
+The homepage body is separate from its frozen header and sidebar. Below the
+header, recent matters and upcoming obligations use an 8/4 grid at 880 px of
+available body width (700 px on desktop), stacking in that order on narrower surfaces. The content
+width stays capped at 1240 px. Matter rows retain the existing sorting, eight-row
+limit, state chips, timestamps and routes; document-style titles and a visible
+next action replace the table presentation. A small contextual review cue uses
+the existing review predicate, without another statistics section.
+
+Obligations use the existing 14-day horizon and urgency rules in a compact
+vertical timeline. No calendar action is shown because no such route exists.
+Live workflow tiles retain their catalogue availability and Gazette references,
+with a document motif and visible Start action. Planned workflows appear as
+smaller, non-interactive items without hover elevation. The first-run panel
+reuses the same workflow tiles, without empty matter or deadline containers.
+
+Styles are scoped to `[data-home-body]` in `dashboard-body.css`; typography,
+header, sidebar and shared button tokens are unchanged. By explicit design
+request, grouped body surfaces and live workflow tiles have a local ambient
+shadow (2 px / 8 px at 3.5% navy) and 12 px radii. Workflow hover moves 2 px and
+strengthens the border, respecting reduced motion. These are body-only
+exceptions to the earlier no-workspace-shadow rule.

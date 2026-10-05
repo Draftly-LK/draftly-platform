@@ -153,6 +153,15 @@
     "assistantTab": "සහායක"
   },
   "home": {
+    "body": {
+      "resume": "Continue where you left off",
+      "dueNext": "What needs your attention next",
+      "needsAttention": "{count, plural, one {# matter needs attention} other {# matters need attention}}",
+      "updated": "Updated",
+      "start": "Start",
+      "available": "Available to start",
+      "planned": "Planned workflows"
+    },
     "title": "Good morning",
     "description": "Resume a matter or start a scoped notarial task.",
     "createTitle": "Create a matter",

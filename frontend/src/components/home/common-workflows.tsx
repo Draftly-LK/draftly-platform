@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftRight, FileCheck2, FileText, Gift, Handshake, KeyRound, Landmark, type LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowLeftRight, FileCheck2, FileText, Gift, Handshake, KeyRound, Landmark, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -42,15 +42,20 @@ export function WorkflowCard({ workflow }: { workflow: RtaWorkflow }) {
   return (
     <Link
       href="/new"
-      className="flex min-h-32 flex-col gap-1 rounded-card border border-border bg-surface p-5 hover:border-border-strong hover:bg-hover-bg"
+      className="home-workflow-tile rounded-card border border-border bg-surface"
     >
-      <Icon aria-hidden="true" className="mb-2 size-5 text-forest" strokeWidth={1.5} />
-      <span className="font-heading text-lg font-semibold">{tRoot(workflow.subtype.labelKey)}</span>
+      <span className="home-workflow-top">
+        <span aria-hidden="true" className="home-workflow-document"><Icon className="size-5" strokeWidth={1.5} /></span>
+        <span className="home-form-reference text-xs text-muted-ink">
+          {form === null ? tWorkflow("noGazetteForm") : tWorkflow("gazetteForm", { number: form })}
+        </span>
+      </span>
+      <span className="home-workflow-title font-display text-lg font-semibold">{tRoot(workflow.subtype.labelKey)}</span>
       {(DESCRIPTION_KEYS as readonly string[]).includes(key) ? (
-        <span className="text-sm text-muted-ink">{t(`workflowDescription.${key as DescriptionKey}`)}</span>
+        <span className="home-workflow-description text-sm text-muted-ink">{t(`workflowDescription.${key as DescriptionKey}`)}</span>
       ) : null}
-      <span className="mt-auto pt-2 text-xs text-muted-ink">
-        {form === null ? tWorkflow("noGazetteForm") : tWorkflow("gazetteForm", { number: form })}
+      <span className="home-workflow-start inline-flex items-center gap-2 text-sm font-semibold text-forest">
+        {t("body.start")} <ArrowRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
       </span>
     </Link>
   );
@@ -69,30 +74,33 @@ export function CommonWorkflows() {
   if (available.length === 0 && planned.length === 0) return null;
 
   return (
-    <section aria-labelledby="common-workflows-title">
-      <SectionHeader id="common-workflows-title" title={t("commonWorkflowsTitle")} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <section aria-labelledby="common-workflows-title" className="home-workflows">
+      <SectionHeader id="common-workflows-title" title={t("commonWorkflowsTitle")} className="home-section-heading" />
+      <div className="home-live-workflows grid gap-4 sm:grid-cols-2">
         {available.map((workflow) => (
           <WorkflowCard key={workflow.subtype.id} workflow={workflow} />
         ))}
       </div>
       {planned.length > 0 ? (
-        <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm text-muted-ink">
-          <h3 className="font-medium">{t("comingSoon")}</h3>
-          <ul className="flex flex-wrap gap-x-6 gap-y-1">
-            {planned.map((workflow) => (
-              <li key={workflow.subtype.id} className="cursor-default">
-                {/* A planned instrument is a disabled link: announced as unavailable, never focusable. */}
-                <span role="link" aria-disabled="true">
-                  {tRoot(workflow.subtype.labelKey)}
-                  {workflow.subtype.gazetteFormNumber !== null ? (
-                    <span className="ml-2 text-xs">{tWorkflow("gazetteForm", { number: workflow.subtype.gazetteFormNumber })}</span>
-                  ) : null}
+        <section aria-labelledby="coming-soon-title" className="home-planned-workflows">
+          <h3 id="coming-soon-title" className="mb-3 text-sm font-semibold text-muted-ink">{t("comingSoon")}</h3>
+          <ul className="home-planned-grid" aria-label={t("body.planned")}>
+            {planned.map((workflow) => {
+              const Icon = ICONS[slug(workflow)] ?? FileText;
+              return <li key={workflow.subtype.id} className="home-planned-item cursor-default">
+                <span role="link" aria-disabled="true" className="flex items-center gap-3">
+                  <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-ink" strokeWidth={1.5} />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-muted-ink">{tRoot(workflow.subtype.labelKey)}</span>
+                    {workflow.subtype.gazetteFormNumber !== null ? (
+                      <span className="mt-1 block text-xs text-muted-ink">{tWorkflow("gazetteForm", { number: workflow.subtype.gazetteFormNumber })}</span>
+                    ) : null}
+                  </span>
                 </span>
-              </li>
-            ))}
+              </li>;
+            })}
           </ul>
-        </div>
+        </section>
       ) : null}
     </section>
   );
