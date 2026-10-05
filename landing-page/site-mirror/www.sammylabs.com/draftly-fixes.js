@@ -288,6 +288,7 @@
     replaceWorkspaceMock();
     replaceResearchMock();
     fixSentenceSpacing();
+    syncNavTheme();
     raiseContrast();
   }
 
@@ -448,11 +449,13 @@
   function syncNavTheme() {
     navFrame = 0;
     const bar = document.querySelector('.fixed.top-0.left-0.right-0');
-    const label = bar?.querySelector('nav a > span, nav span');
-    if (!bar || !label) return;
-    const [r, g, b] = (getComputedStyle(label).color.match(/[\d.]+/g) ?? []).map(Number);
-    const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-    bar.setAttribute('data-draftly-nav', luminance > 0.6 ? 'dark' : 'light');
+    const nav = [...(bar?.querySelectorAll('nav') ?? [])].find((element) => element.getBoundingClientRect().width > 0);
+    const backdrop = nav?.parentElement?.querySelector('.backdrop-blur-xl');
+    if (!bar || !backdrop) return;
+    // React owns this background state. Contrast repairs can rewrite label
+    // colours, so reading text here would feed those repairs back into theme.
+    const light = luminance(channels(backdrop.style.backgroundColor)) > 0.5;
+    bar.setAttribute('data-draftly-nav', light ? 'light' : 'dark');
   }
   // Switching the audience tabs (or returning to the page) makes React
   // re-render the cards from their original data, so watch that section only.
