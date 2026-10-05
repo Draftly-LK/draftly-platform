@@ -50,6 +50,8 @@
   /* Semantic names. They alias the values above, so each value is defined
      once and components may use either name. */
   --bg: var(--canvas);
+  /* The one navy for every navy surface: sidebar, drawer, dashboard header and
+     sign-in panel, so they meet without a seam. */
   --surface-inverse: var(--navy-900);
   --text-primary: var(--ink);
   --text-secondary: var(--muted-ink);

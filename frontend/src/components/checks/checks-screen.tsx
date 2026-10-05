@@ -454,7 +454,7 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
 
       {resolution && (
         <div
-          className="bg-ink/25 fixed inset-0 z-40 grid place-items-center p-4"
+          className="bg-scrim fixed inset-0 z-40 grid place-items-center p-4"
           role="presentation"
           onKeyDown={(event) => {
             if (event.key === "Escape") setResolution(undefined);
@@ -603,7 +603,7 @@ function IssueDecisionModal({
 
   return (
     <div
-      className="bg-ink/25 fixed inset-0 z-40 grid place-items-center p-4"
+      className="bg-scrim fixed inset-0 z-40 grid place-items-center p-4"
       role="presentation"
       onKeyDown={(event) => {
         if (event.key === "Escape") onCancel();

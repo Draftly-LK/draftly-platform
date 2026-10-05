@@ -119,7 +119,7 @@ export function ConversationRail({
           type="button"
           aria-label={t("collapseConversations")}
           tabIndex={-1}
-          className="bg-ink/25 absolute inset-0 z-10 lg:hidden"
+          className="bg-scrim absolute inset-0 z-10 lg:hidden"
           onClick={() => setCollapsed(true)}
         />
       )}

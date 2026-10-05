@@ -73,7 +73,7 @@ export function CommandPalette({
         )}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="bg-ink/25 fixed inset-0 z-40" />
+        <Dialog.Overlay className="bg-scrim fixed inset-0 z-40" />
         <Dialog.Content
           aria-describedby={undefined}
           className="rounded-dialog border-border-strong bg-surface shadow-dialog fixed left-1/2 top-[14vh] z-40 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 border p-2"

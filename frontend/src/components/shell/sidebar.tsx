@@ -107,7 +107,7 @@ export function Sidebar() {
       {open && (
         <button
           aria-label={t("close")}
-          className="bg-ink/25 fixed inset-0 z-20 lg:hidden"
+          className="bg-scrim fixed inset-0 z-20 lg:hidden"
           onClick={() => setOpen(false)}
         />
       )}
@@ -118,7 +118,7 @@ export function Sidebar() {
         // Closed, the drawer is off-screen and must not be reachable by keyboard.
         inert={drawer && !open ? true : undefined}
         {...(drawer && open ? { role: "dialog", "aria-modal": true, "aria-label": t("workspace") } : {})}
-        className={`bg-navy-950 text-on-dark fixed inset-y-0 left-0 z-20 flex w-[var(--sidebar-width)] flex-col border-r border-white/5 p-3 transition-transform lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        className={`bg-surface-inverse text-on-dark fixed inset-y-0 left-0 z-20 flex w-[var(--sidebar-width)] flex-col p-3 transition-transform lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="flex h-12 items-center gap-3 px-2 py-2 box-content">
           <BrandMark tone="white" className="size-8 shrink-0" />

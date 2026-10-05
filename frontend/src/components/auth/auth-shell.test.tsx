@@ -22,7 +22,7 @@ describe("AuthShell", () => {
         <p>the form</p>
       </AuthShell>,
     );
-    expect(container.querySelector("aside[data-surface='inverse']")?.className).toContain("bg-navy-900");
+    expect(container.querySelector("aside[data-surface='inverse']")?.className).toContain("bg-surface-inverse");
     expect(screen.getByRole("main").textContent).toContain("the form");
   });
 

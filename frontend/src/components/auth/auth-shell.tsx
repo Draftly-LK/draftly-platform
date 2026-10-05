@@ -12,7 +12,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <aside
         data-surface="inverse"
-        className="flex flex-col justify-center gap-4 bg-navy-900 px-6 py-8 text-white lg:min-h-screen lg:gap-6 lg:px-14 lg:py-12"
+        className="flex flex-col justify-center gap-4 bg-surface-inverse px-6 py-8 text-white lg:min-h-screen lg:gap-6 lg:px-14 lg:py-12"
       >
         <div className="flex items-center gap-3">
           <BrandMark tone="white" className="size-10 shrink-0 lg:size-14" priority />

@@ -1,4 +1,4 @@
-﻿# Draftly UI refinement: final report
+# Draftly UI refinement: final report
 
 Branch `platform/ui-refine-praveen`, brief `DRAFTLY_UI_REFINEMENT.md`. This is a
 presentation-layer change: no business logic, data fetching, API routes,
@@ -138,7 +138,7 @@ when motion is allowed.
 
 Contrast, measured: navy focus ring 11.6:1 on the canvas; gold focus ring
 5.2 to 6.6:1 on the navy ramp; navy text on gold fill 6.6:1 (white on gold is
-2.7:1 and is not used); input border 3.3 to 3.6:1; on-dark amber 8:1 on navy.
+2.7:1 and is not used); input border 3.3 to 3.6:1; on-dark amber 8:1 on navy. Every navy surface (sidebar, drawer, dashboard header, sign-in panel) uses one token, `--surface-inverse` = `#0F1F38`, with no border or gradient between them; on it, menu text is 9.6:1, the search field text 8.6:1, white text on the active veil 13.5:1, and the gold marker and gold focus ring 4.9 to 6.0:1 (3:1 needed).
 
 ## Screenshots
 

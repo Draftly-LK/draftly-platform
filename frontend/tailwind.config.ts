@@ -56,6 +56,7 @@ export default {
         "border-on-dark": "var(--border-on-dark)",
         scrim: "var(--scrim)",
         "navy-950": "var(--navy-950)",
+        "surface-inverse": "var(--surface-inverse)",
         "navy-900": "var(--navy-900)",
         "navy-800": "var(--navy-800)",
         gold: "var(--gold)",
