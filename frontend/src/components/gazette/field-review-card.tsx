@@ -145,7 +145,7 @@ export function FieldReviewCard({
                 {t("correctedValue")}
                 <textarea
                   id={valueId}
-                  className="border-border-strong bg-surface mt-1 block w-full rounded border px-3 py-2 font-normal"
+                  className="border-border-control bg-surface mt-1 block w-full rounded border px-3 py-2 font-normal"
                   rows={2}
                   value={value}
                   onChange={(event) => setValue(event.target.value)}
@@ -156,7 +156,7 @@ export function FieldReviewCard({
               {t("reason")}
               <input
                 id={reasonId}
-                className="border-border-strong bg-surface mt-1 block w-full rounded-control border px-3 py-2 font-normal"
+                className="border-border-control bg-surface mt-1 block w-full rounded-control border px-3 py-2 font-normal"
                 value={reason}
                 placeholder={t("reasonHint")}
                 onChange={(event) => setReason(event.target.value)}

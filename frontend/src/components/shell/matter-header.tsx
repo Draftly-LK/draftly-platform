@@ -13,7 +13,6 @@ import { familyLabelKey, subtypeLabelKey } from "@/lib/rta/taxonomy";
 import { useDemoStore } from "@/lib/store";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
 import { STAGE_ORDER, stageForState } from "./matter-stage";
-import { HeaderUserButton } from "./user-button";
 
 const NAV_TABS = [
   "overview",
@@ -147,9 +146,9 @@ function MatterHeaderShell({
 
   return (
     <header data-matter-header className="border-border bg-surface border-b">
-      {/* pl-16 below md keeps the title clear of the fixed mobile menu button. */}
-      <div className="flex items-start gap-4 pb-3 pl-16 pr-6 pt-5 md:pl-6">
-        <span className="bg-navy-900 text-gold hidden size-12 shrink-0 place-items-center rounded-lg sm:grid" aria-hidden="true">
+      {/* pl-16 below lg keeps the title clear of the fixed mobile menu button. */}
+      <div className="flex items-start gap-4 pb-3 pl-16 pr-6 pt-5 lg:pl-6">
+        <span className="bg-surface-inverse text-gold hidden size-12 shrink-0 place-items-center rounded-lg sm:grid" aria-hidden="true">
           <FileText className="size-6" strokeWidth={1.5} />
         </span>
         <div className="min-w-0 flex-1">
@@ -165,7 +164,7 @@ function MatterHeaderShell({
               </>
             )}
           </div>
-          <h1 className="font-display mt-1 truncate text-[28px] font-semibold leading-tight tabular-nums">
+          <h1 className="font-display mt-1 truncate text-3xl font-semibold leading-tight tabular-nums">
             {data.reference}
           </h1>
           {updatedAt && (
@@ -178,7 +177,6 @@ function MatterHeaderShell({
           <IconButton label={t("menu")}>
             <MoreHorizontal className="size-5" strokeWidth={1.5} />
           </IconButton>
-          <HeaderUserButton />
         </div>
       </div>
       {data.state && <MatterStageStepper state={data.state} />}

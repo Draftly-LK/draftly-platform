@@ -81,9 +81,46 @@ and the relevant plans under `backend/docs/services/`.
 
 - Tokens exactly as specced in `docs/plan.md` §Design system — including the
   derived tokens (`amber-text #784405`, `border-strong #A7B3C2`,
-  `selected-bg #EAF0F7`, teal `:focus-visible` ring). No zinc/slate grays.
-- Radius 6 px (8 px dialogs). 40–44 px table rows. No card shadows in the
-  workspace. Icons 16 px/1.5-stroke in tables, 20 px toolbar, 24 px empty
+  `selected-bg #EAF0F7`, `border-control #7B8899` for input borders). Focus is a
+  2 px ring with offset: navy `#1B3358` on light surfaces, gold `#C69436` on
+  navy (`data-surface="inverse"`). Gold fills carry navy text, never white.
+  No zinc/slate grays.
+- Navy surfaces (sidebar, drawer, dashboard header, sign-in panel) share one
+  backdrop: a diagonal gradient (`#1B3156` top-left, then `#0F1F38`, then
+  `#0B1628`) under a faint "land parcels" texture, white 1 px lines at 7%
+  forming irregular plots, as one inline SVG that scales to fit and is never
+  tiled (`components/shell/navy-backdrop.tsx`). The sidebar edge has no border
+  line, only the soft `--shadow-sidebar`. Text on it must keep 4.5:1 on the
+  lightest part of the gradient.
+- Primary buttons use one shared light style: `Button`'s `primary` variant or
+  `buttonClass("primary")` on links. Cream `--primary-bg rgb(249 232 198 / 0.96)`, navy text,
+  a 1 px amber `--primary-border #AD7B24` outline and 16 px amber icons
+  (`--primary-icon #95651C`). Hover is cream `#F5DEB0`; pressed is `#F9EDC8`.
+  Background transitions take 150 ms and respect reduced motion. A subtle 135-degree gradient ends at amber `rgb(237 205 147 / 0.96)`.
+  No highlight. Disabled controls use neutral tokens, including their icons.
+  Clerk primary actions share these tokens. Every primary has the same height,
+  padding and font size. "Create a matter" uses `CreateMatterLink` and
+  `FilePlus2`, at most once per screen; its minimum width is 192 px outside the compact dashboard header.
+  Compact dashboard actions share the available width at 36 px tall; hide
+  icons before stacking when the measured labels cannot fit.
+- The navy backdrop and shared primary button are the only allowed gradients. No other gradients or
+  decorative backgrounds.
+- Sidebar: from 1024px it collapses to a 72 px icon rail. The toggle is a 32 px
+  round button on the sidebar's right edge, level with the logo, with a 40 px hit
+  area. It is rendered in the app shell, outside the sidebar's clipping
+  container, so it is never cut off. Shortcut Ctrl+\ or Cmd+\ (not Ctrl+B,
+  which is bold in the editor). The choice is the
+  `draftly-sidebar` cookie, read on the server so the first paint is already in
+  the right state; the collapsed look is the `rail:` Tailwind variant keyed on
+  `<html data-sidebar>`. Below 1024px it is a drawer and has no collapsed state.
+  Tooltips and the account popover are drawn in portals because the sidebar
+  clips its contents. Hover on a nav item is white 5%; the active item is white
+  10% plus the gold marker.
+- Radius as built, not as first specced: buttons, inputs and chips are pills
+  (`rounded-control`), panels and cards 12–16 px (`rounded`, `rounded-card`),
+  dialogs 16 px. 40–44 px table rows. No card shadows in the
+  workspace; the one exception is the sidebar's soft lift
+  (`--shadow-sidebar`, 6px 0 16px -8px at 55% navy). Icons 16 px/1.5-stroke in tables, 20 px toolbar, 24 px empty
   states.
 - Fonts: IBM Plex Sans + Noto Sans Sinhala (headings and UI/body), via
   `next/font`. `font-optical-sizing: auto`;

@@ -12,14 +12,23 @@
   --muted-ink: #566377;
   --border: #dce2ea;
   --border-strong: #a7b3c2;
+  /* Boundary of an input, select or textarea: 3.3-3.6:1 on surface, canvas and
+     hover fills (WCAG 1.4.11). --border-strong is 2.1:1 and stays decorative. */
+  --border-control: #7b8899;
+  /* A soft rule that marks an active row (the open command palette's search row): navy at 15%. */
+  --border-active: rgb(15 31 56 / 0.15);
   --forest: #1b3358;
   --soft-green: #e7eef8;
   --teal: #176b75;
   --amber: #9c5b0b;
   --amber-text: #784405;
   --red: #a43d45;
+  --red-hover: #8b323a;
   --selected-bg: #eaf0f8;
-  --ring: #176b75;
+  /* Focus: navy on light surfaces, gold on navy (data-surface="inverse").
+     Navy is 11.6:1 on the canvas; gold is 5.2-6.6:1 on the navy ramp. */
+  --ring: #1b3358;
+  --ring-on-dark: #c69436;
   --hover-bg: #eef2f7;
   --active-bg: #e2e8f0;
   --disabled-fg: #929dac;
@@ -35,6 +44,43 @@
   --gold: #c69436;
   --gold-strong: #74510f;
   --gold-soft: #f6eedc;
+  /* Gold fills carry navy text (6.6:1). White on gold is 2.7:1 and fails. */
+  --gold-hover: #b78628;
+  /* Slightly translucent white-to-amber primary action. */
+  --primary-bg: rgb(249 232 198 / 0.96);
+  --primary-end: rgb(237 205 147 / 0.96);
+  --primary-gradient: linear-gradient(135deg, var(--primary-bg), var(--primary-end));
+  --primary-hover: #f5deb0;
+  --primary-pressed: #f9edc8;
+  --primary-border: #ad7b24;
+  --primary-icon: #95651c;
+  --primary-ink: var(--navy-950);
+  /* Success was the one status hue the palette lacked. */
+  --success: #1f6b3a;
+  --success-bg: #e4f1e8;
+  /* Semantic names. They alias the values above, so each value is defined
+     once and components may use either name. */
+  --bg: var(--canvas);
+  /* The one navy for every navy surface: sidebar, drawer, dashboard header and
+     sign-in panel, so they meet without a seam. */
+  --surface-inverse: var(--navy-900);
+  --text-primary: var(--ink);
+  --text-secondary: var(--muted-ink);
+  --text-muted: var(--muted-ink);
+  --text-on-inverse: var(--on-dark);
+  --accent: var(--gold);
+  --accent-hover: var(--gold-hover);
+  --accent-subtle: var(--gold-soft);
+  --focus-ring: var(--ring);
+  --warning: var(--amber-text);
+  --warning-bg: var(--amber-bg);
+  --danger: var(--red);
+  --danger-bg: var(--red-bg);
+  --info: var(--teal);
+  --info-bg: var(--teal-bg);
+  /* Amber for warnings on navy: --amber-text (2.1:1) is for light surfaces. 8:1 on navy-900. */
+  --amber-on-dark: #f2a541;
+  --sidebar-width: 244px;
   /* On-dark surface. The first-run hero sits on a photograph, and without
      these every dark surface reaches for literal white.
      Composed from the tokens above rather than written as fixed hexes, so
@@ -44,26 +90,66 @@
   --panel-dark: color-mix(in srgb, var(--ink) 72%, transparent);
   --border-on-dark: color-mix(in srgb, var(--canvas) 22%, transparent);
   --scrim: color-mix(in srgb, var(--ink) 55%, transparent);
-  --shadow-card: 0 1px 2px rgb(15 27 46 / 0.05), 0 1px 1px rgb(15 27 46 / 0.03);
-  --shadow-raised: 0 10px 24px -12px rgb(15 27 46 / 0.22), 0 2px 6px rgb(15 27 46 / 0.06);
   --shadow-popover: 0 8px 24px rgb(15 27 46 / 0.12);
   --shadow-dialog: 0 16px 48px rgb(15 27 46 / 0.16);
+  /* The sidebar's lift over the header and the page: 6px right, soft, dark navy at 55%. */
+  --shadow-sidebar: 6px 0 16px -8px rgb(11 22 40 / 0.55);
   --shadow-toast: 0 6px 20px rgb(15 27 46 / 0.14);
 }
 
 * { box-sizing: border-box; }
 html { background: var(--canvas); font-optical-sizing: auto; }
-body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; font-size: 15px; line-height: 1.5; letter-spacing: 0; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; font-size: calc(14px * var(--type-scale, 1)); line-height: 1.5; letter-spacing: 0; }
+/* Sinhala: ~1.14x type (body 16px) and ~1.25x line height (about 1.75 for body-size text). Checked against Noto Sans Sinhala at 12-16px. */
+html[lang="si"] { --type-scale: 1.1428; --lh-scale: 1.25; --sidebar-width: 272px; }
+/* The collapsed icon rail. Desktop only: below 1024px the sidebar is a drawer and ignores it. */
+@media (min-width: 1024px) {
+  html[data-sidebar="collapsed"] { --sidebar-width: 72px; }
+}
 html[lang="si"] body { line-height: 1.75; }
 ::selection { background: var(--soft-green); }
 h1, h2, h3, .font-heading { font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; }
 h1, h2, h3 { letter-spacing: -0.01em; }
 .font-display { font-family: var(--font-serif), var(--font-noto-serif-si), Georgia, serif; letter-spacing: -0.015em; }
-a, button { transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
+a, button { transition: color 150ms ease-out, background-color 150ms ease-out, border-color 150ms ease-out; }
 button, input, textarea, select { font: inherit; letter-spacing: 0; }
 a { color: inherit; text-decoration: none; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-table { font-variant-numeric: tabular-nums; }
+[data-surface="inverse"] :focus-visible, [data-surface="inverse"]:focus-visible { outline-color: var(--ring-on-dark); }
+table, time { font-variant-numeric: tabular-nums; }
+
+/* Scrollbars follow the theme instead of the operating system's. Thin, with a
+   transparent track and no arrow buttons: a soft navy thumb on light areas, a
+   soft white thumb on navy (data-surface="inverse"). */
+:root {
+  --scrollbar-thumb: rgb(15 31 56 / 0.25);
+  --scrollbar-thumb-hover: rgb(15 31 56 / 0.4);
+}
+[data-surface="inverse"] {
+  --scrollbar-thumb: rgb(255 255 255 / 0.2);
+  --scrollbar-thumb-hover: rgb(255 255 255 / 0.35);
+}
+/* Chromium and Safari: when scrollbar-width or scrollbar-color is set they
+   ignore the ::-webkit-scrollbar rules below, and on Windows the standard thin
+   scrollbar keeps its arrow buttons. So the standard properties are applied
+   only where the webkit pseudo-elements do not exist (Firefox, whose thin
+   scrollbar has no arrows). */
+@supports not selector(::-webkit-scrollbar) {
+  html, * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+}
+::-webkit-scrollbar { width: 10px; height: 10px; background: transparent; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--scrollbar-thumb-hover); }
 
 /* Dropdowns draw their own chevron so it sits inside the (pill) border with
    room to breathe; the browser's arrow hugs the right edge. The :not() chain
@@ -93,4 +179,41 @@ select:not([multiple]):not([size]) {
   [data-print-surface] { border: 0 !important; box-shadow: none !important; }
   [data-fact-chip]::after { content: " [source: " attr(data-source) "]"; font-size: 9pt; }
   section { break-inside: avoid; }
+}
+
+/* Keep the gradient on the shared primary action; disabled controls stay neutral. */
+@layer utilities {
+  .primary-action {
+    background-image: var(--primary-gradient);
+  }
+  .primary-action:hover {
+    background-image: linear-gradient(135deg, var(--primary-hover), var(--primary-end));
+  }
+  .primary-action:active, .primary-action:disabled {
+    background-image: none;
+  }
+}
+
+/* Header responds to its available width, including the desktop sidebar. */
+.dashboard-header { container-type: inline-size; }
+.dashboard-header-content { display: grid; grid-template-columns: minmax(0, 1fr); }
+.dashboard-greeting { padding-left: 40px; }
+.dashboard-summary { white-space: nowrap; font-size: 14px; }
+.dashboard-count { font-size: 22px; }
+.dashboard-metrics a > span:first-child { font-size: 12px; line-height: 18px; }
+.dashboard-metrics { width: 100%; }
+.dashboard-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dashboard-action { min-width: 0; min-height: 36px; height: 36px; padding: 0 12px; white-space: nowrap; }
+.dashboard-actions[data-fit="labels"] svg { display: none; }
+.dashboard-actions[data-fit="stack"] { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); }
+.dashboard-actions[data-fit="stack"] svg { display: none; }
+@container (min-width: 1100px) {
+  .dashboard-header-content { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; }
+  .dashboard-greeting { padding-left: 0; }
+  .dashboard-summary { font-size: 16px; }
+  .dashboard-count { font-size: 30px; }
+  .dashboard-metrics { width: auto; }
+  .dashboard-metrics a { padding-inline: 20px; }
+  .dashboard-actions { min-width: 396px; }
+  .dashboard-action { min-height: 40px; height: 40px; padding-inline: 16px; }
 }

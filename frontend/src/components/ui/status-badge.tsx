@@ -33,6 +33,7 @@ import type {
   VerificationState,
 } from "@/types";
 import { cn } from "@/lib/utils";
+import { statusToneClasses, type StatusTone } from "./status-chip";
 
 type Status =
   | VerificationState
@@ -41,33 +42,34 @@ type Status =
   | CheckStatus
   | StepState;
 
-const styles: Record<Status, string> = {
-  unreviewed: "border-border-strong bg-surface text-ink",
-  verified: "border-forest bg-soft-green text-forest",
-  corrected: "border-teal bg-teal-bg text-teal",
-  conflict: "border-amber bg-amber-bg text-amber-text",
-  blocked: "border-red bg-red-bg text-red",
-  UPLOAD_INITIATED: "border-border-strong bg-surface text-ink",
-  QUARANTINED: "border-amber bg-amber-bg text-amber-text",
-  VALIDATED: "border-border-strong bg-surface text-ink",
-  STORED: "border-border-strong bg-surface text-ink",
-  PROCESSING: "border-teal bg-teal-bg text-teal",
-  PROCESSED: "border-forest bg-soft-green text-forest",
-  PROCESSING_FAILED: "border-red bg-red-bg text-red",
-  REJECTED: "border-red bg-red-bg text-red",
-  SUPERSEDED: "border-border-strong bg-disabled-bg text-ink",
-  NOT_REQUIRED: "border-border-strong bg-surface text-muted-ink",
-  UNKNOWN: "border-border-strong bg-surface text-ink",
-  COPY_ONLY: "border-amber bg-amber-bg text-amber-text",
-  ORIGINAL_REPORTED: "border-teal bg-teal-bg text-teal",
-  ORIGINAL_INSPECTED: "border-forest bg-soft-green text-forest",
-  pass: "border-forest bg-soft-green text-forest",
-  warning: "border-amber bg-amber-bg text-amber-text",
-  fail: "border-red bg-red-bg text-red",
-  "needs-review": "border-teal bg-teal-bg text-teal",
-  "not-started": "border-border-strong bg-surface text-muted-ink",
-  "in-progress": "border-teal bg-teal-bg text-teal",
-  complete: "border-forest bg-soft-green text-forest",
+/** Which tone each status takes; the classes live in status-chip.tsx. Every badge still carries an icon and its text. */
+const tones: Record<Status, StatusTone> = {
+  unreviewed: "neutral",
+  verified: "success",
+  corrected: "info",
+  conflict: "warning",
+  blocked: "danger",
+  UPLOAD_INITIATED: "neutral",
+  QUARANTINED: "warning",
+  VALIDATED: "neutral",
+  STORED: "neutral",
+  PROCESSING: "info",
+  PROCESSED: "success",
+  PROCESSING_FAILED: "danger",
+  REJECTED: "danger",
+  SUPERSEDED: "neutral",
+  NOT_REQUIRED: "neutral",
+  UNKNOWN: "neutral",
+  COPY_ONLY: "warning",
+  ORIGINAL_REPORTED: "info",
+  ORIGINAL_INSPECTED: "success",
+  pass: "success",
+  warning: "warning",
+  fail: "danger",
+  "needs-review": "info",
+  "not-started": "neutral",
+  "in-progress": "info",
+  complete: "success",
 };
 
 /** Every badge is icon + text; colour alone never carries the status. */
@@ -153,7 +155,7 @@ export function StatusBadge({
       data-status={status}
       className={cn(
         "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold",
-        styles[status],
+        statusToneClasses[tones[status]],
         className,
       )}
     >

@@ -35,11 +35,12 @@ import {
   caseQualityLabels,
   caseSignalLabels,
 } from "@/lib/i18n/case-labels";
+import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const control =
-  "border-border-strong bg-surface min-h-10 min-w-0 rounded-[6px] border px-3 py-2";
-const button = `${control} inline-flex items-center justify-center gap-2 font-medium hover:bg-hover-bg disabled:cursor-not-allowed disabled:opacity-60`;
+  "border-border-control bg-surface min-h-10 min-w-0 rounded-control border px-3 py-2";
+const button = buttonClass("secondary");
 const icon = "size-4 shrink-0";
 
 function Notice({
@@ -52,7 +53,7 @@ function Notice({
   return (
     <div
       role={alert ? "alert" : undefined}
-      className={`flex items-start gap-2 rounded-[6px] border p-3 text-sm ${alert ? "border-red bg-red-bg text-red" : "border-border bg-canvas text-muted-ink"}`}
+      className={`rounded-card flex items-start gap-2 border p-3 text-sm ${alert ? "border-red bg-red-bg text-red" : "border-border bg-canvas text-muted-ink"}`}
     >
       {alert ? (
         <AlertTriangle aria-hidden="true" className={icon} strokeWidth={1.5} />
@@ -87,7 +88,7 @@ function Coverage({
 }) {
   const t = useTranslations("caseLaw");
   return (
-    <div className="border-border bg-surface space-y-1 rounded-[6px] border p-4 text-sm">
+    <div className="border-border bg-surface rounded-card space-y-1 border p-4 text-sm">
       <p className="font-semibold tabular-nums">
         {coverage.minYear !== null && coverage.maxYear !== null
           ? t("coverage", {
@@ -296,7 +297,7 @@ export function CaseCatalogueFlow({ getToken }: { getToken: TokenProvider }) {
       {!loading && !error && page && (
         <div aria-live="polite" className="space-y-4">
           {page.items.length ? (
-            <div className="divide-border border-border bg-surface divide-y rounded-[6px] border">
+            <div className="divide-border border-border bg-surface rounded-card divide-y border">
               {page.items.map((item) => (
                 <article key={item.id} className="space-y-2 p-4">
                   <h3 className="break-words text-lg font-semibold">
@@ -402,7 +403,7 @@ function SimilarResult({ item }: { item: SimilarCase }) {
         {item.matchedSignals.map((signal) => (
           <span
             key={signal}
-            className="border-border text-muted-ink inline-flex items-center gap-1 rounded-[6px] border px-2 py-1 text-xs"
+            className="border-border text-muted-ink rounded-control inline-flex items-center gap-1 border px-2 py-1 text-xs"
           >
             <Search aria-hidden="true" className="size-3" strokeWidth={1.5} />
             {caseSignalLabels[signal][locale]}
@@ -484,7 +485,7 @@ export function CaseSearchFlow({ getToken }: { getToken: TokenProvider }) {
         <label className="grid gap-1 text-sm font-medium">
           {t("facts")}
           <textarea
-            className={`${control} min-h-28 w-full resize-y`}
+            className={cn(control, "min-h-28 w-full resize-y rounded")}
             maxLength={8000}
             required
             disabled={loading}
@@ -499,7 +500,7 @@ export function CaseSearchFlow({ getToken }: { getToken: TokenProvider }) {
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="submit"
-            className={cn(button, "bg-forest text-surface hover:bg-ink")}
+            className={buttonClass("primary")}
             disabled={loading || !facts.trim()}
           >
             <Search aria-hidden="true" className={icon} strokeWidth={1.5} />
@@ -552,7 +553,7 @@ export function CaseSearchFlow({ getToken }: { getToken: TokenProvider }) {
               <p className="font-medium">
                 {t("resultCount", { count: Math.min(result.items.length, 8) })}
               </p>
-              <div className="divide-border border-border bg-surface divide-y rounded-[6px] border">
+              <div className="divide-border border-border bg-surface rounded-card divide-y border">
                 {result.items.slice(0, 8).map((item) => (
                   <SimilarResult key={item.id} item={item} />
                 ))}
@@ -646,7 +647,7 @@ export function CaseReaderFlow({
       )}
       {item && detail && (
         <>
-          <article className="border-border bg-surface space-y-4 rounded-[6px] border p-5">
+          <article className="border-border bg-surface rounded-card space-y-4 border p-5">
             <h2 className="break-words text-2xl font-semibold">{item.title}</h2>
             <CaseMetadata item={item} />
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -680,7 +681,7 @@ export function CaseReaderFlow({
             )}
           </article>
           {display ? (
-            <article className="border-border bg-surface space-y-3 rounded-[6px] border p-5">
+            <article className="border-border bg-surface rounded-card space-y-3 border p-5">
               <h3 className="flex items-center gap-2 text-lg font-semibold">
                 <BookOpen
                   aria-hidden="true"

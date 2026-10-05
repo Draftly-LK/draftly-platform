@@ -229,7 +229,7 @@ function ClassificationReviewFlow({
 
         <div className="mx-auto max-w-2xl">
           {/* Document fragments display */}
-          <section className="border-border bg-surface mb-6 rounded-card border p-4 shadow-card">
+          <section className="border-border bg-surface mb-6 rounded-card border p-4">
             <h2 className="mb-3 font-semibold">{t("documentFragments")}</h2>
             <ul className="divide-border divide-y">
               {document.fragments.map((fragment) => (
@@ -254,7 +254,7 @@ function ClassificationReviewFlow({
           </section>
 
           {/* Classification section */}
-          <section className="border-border bg-surface mb-6 rounded-card border p-4 shadow-card">
+          <section className="border-border bg-surface mb-6 rounded-card border p-4">
             <h2 className="mb-3 font-semibold">{t("classificationStatus")}</h2>
 
             <div className="mb-4">
@@ -264,7 +264,7 @@ function ClassificationReviewFlow({
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
                   disabled={saving}
-                  className="border-border-strong bg-surface mt-2 min-h-10 w-full rounded-control border px-3 py-2"
+                  className="border-border-control bg-surface mt-2 min-h-10 w-full rounded-control border px-3 py-2"
                 >
                   <option value="">{t("chooseClass")}</option>
                   {classes.map((cls) => (
@@ -306,7 +306,7 @@ function ClassificationReviewFlow({
 
           {/* Boundary section */}
           {document.boundaryStatus !== "CONFIRMED" && (
-            <section className="border-border bg-surface mb-6 rounded-card border p-4 shadow-card">
+            <section className="border-border bg-surface mb-6 rounded-card border p-4">
               <h2 className="mb-3 font-semibold">{t("boundaryActions")}</h2>
               <p className="text-muted-ink mb-4 text-sm">
                 {t("confirmBoundary")}
@@ -348,7 +348,7 @@ function ClassificationReviewUnavailable({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <div className="border-border bg-surface rounded-card border p-6 shadow-card">
+        <div className="border-border bg-surface rounded-card border p-6">
           <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
           <p className="mt-2 text-sm">{t("backendNotConfigured")}</p>
         </div>

@@ -197,8 +197,8 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
       <div className="p-6">
         {/* Gates Summary Bar */}
         {gates && (
-          <section className="mb-6 rounded-card border border-border bg-surface p-4 shadow-card">
-            <h2 className="text-xs font-semibold uppercase text-muted-ink">
+          <section className="mb-6 rounded-card border border-border bg-surface p-4">
+            <h2 className="text-xs font-semibold text-muted-ink">
               {t("gateSummary")}
             </h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -431,7 +431,7 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
           {checks.map((check) => (
             <div
               key={check.id}
-              className="border-border bg-surface rounded-card shadow-card border p-4"
+              className="border-border bg-surface rounded-card border p-4"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 space-y-2">
@@ -454,7 +454,7 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
 
       {resolution && (
         <div
-          className="bg-ink/25 fixed inset-0 z-40 grid place-items-center p-4"
+          className="bg-scrim fixed inset-0 z-40 grid place-items-center p-4"
           role="presentation"
           onKeyDown={(event) => {
             if (event.key === "Escape") setResolution(undefined);
@@ -473,7 +473,7 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
               {t("reason")}
               <textarea
                 ref={reasonInputRef}
-                className="border-border-strong mt-1 min-h-28 w-full rounded border p-3"
+                className="border-border-control mt-1 min-h-28 w-full rounded border p-3"
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
               />
@@ -603,7 +603,7 @@ function IssueDecisionModal({
 
   return (
     <div
-      className="bg-ink/25 fixed inset-0 z-40 grid place-items-center p-4"
+      className="bg-scrim fixed inset-0 z-40 grid place-items-center p-4"
       role="presentation"
       onKeyDown={(event) => {
         if (event.key === "Escape") onCancel();
@@ -628,7 +628,7 @@ function IssueDecisionModal({
               onChange={(e) =>
                 onTargetStateChange(e.target.value as IssueState | "")
               }
-              className="border-border-strong bg-surface mt-1 w-full rounded-control border p-2"
+              className="border-border-control bg-surface mt-1 w-full rounded-control border p-2"
             >
               <option value="">{t("selectState")}</option>
               {issue.permittedStates.map((state) => (
@@ -646,7 +646,7 @@ function IssueDecisionModal({
               {t("reason")}
               <textarea
                 ref={reasonInputRef}
-                className="border-border-strong mt-1 min-h-24 w-full rounded border p-2"
+                className="border-border-control mt-1 min-h-24 w-full rounded border p-2"
                 value={reason}
                 onChange={(e) => onReasonChange(e.target.value)}
                 placeholder={t("reasonPlaceholder")}
@@ -693,7 +693,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-border-strong bg-surface rounded-control border px-2 py-1 text-sm"
+        className="border-border-control bg-surface rounded-control border px-2 py-1 text-sm"
       >
         {options.map((option) => (
           <option key={option} value={option}>

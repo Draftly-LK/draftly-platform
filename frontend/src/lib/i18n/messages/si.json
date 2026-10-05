@@ -19,7 +19,11 @@
     "signUpTitle": "ඔබගේ Draftly ගිණුම සාදන්න",
     "signUpBody": "සම්බන්ධිත ගිණුමක් හරහා ඉදිරියට යන්න, නැතහොත් ඔබගේ විද්‍යුත් තැපෑල හා මුරපදය භාවිතා කර ලියාපදිංචි වන්න.",
     "myProfile": "මගේ පැතිකඩ",
-    "otpSentNotice": "ඔබගේ විද්‍යුත් තැපෑල ලිපිනයට සත්‍යාපන කේතයක් යවා ඇත."
+    "otpSentNotice": "ඔබගේ විද්‍යුත් තැපෑල ලිපිනයට සත්‍යාපන කේතයක් යවා ඇත.",
+    "brandName": "Draftly",
+    "brandLine": "හිමිකම් ලියාපදිංචි කිරීමේ වෘත්තීය සඳහා කෙටුම්පත් සහ කාරණා කළමනාකරණය.",
+    "continueWith": "{provider} සමඟ දිගටම කරගෙන යන්න",
+    "or": "හෝ"
   },
   "profile": {
     "title": "පැතිකඩ",
@@ -74,7 +78,6 @@
     "searchShortcut": "Ctrl+K",
     "searchPlaceholder": "Search matters, documents, facts, and sources",
     "searchEmpty": "No matching workspace item",
-    "create": "Create matter",
     "home": "Home",
     "matters": "Matters",
     "library": "Legal sources",
@@ -96,7 +99,14 @@
     "commands": "Commands",
     "goHome": "Go to home",
     "openAssistant": "Open assistant",
-    "openMatter": "Open matter"
+    "openMatter": "Open matter",
+    "groupWork": "වැඩ",
+    "groupKnowledge": "දැනුම",
+    "account": "ගිණුම",
+    "accountMenu": "ගිණුම් මෙනුව",
+    "collapseSidebar": "පැති තීරුව හකුළන්න",
+    "expandSidebar": "පැති තීරුව දිග හරින්න",
+    "sidebarShortcut": "Ctrl+\\"
   },
   "matterNav": {
     "overview": "Overview",
@@ -143,6 +153,15 @@
     "assistantTab": "සහායක"
   },
   "home": {
+    "body": {
+      "resume": "Continue where you left off",
+      "dueNext": "What needs your attention next",
+      "needsAttention": "{count, plural, one {# matter needs attention} other {# matters need attention}}",
+      "updated": "Updated",
+      "start": "Start",
+      "available": "Available to start",
+      "planned": "Planned workflows"
+    },
     "title": "Good morning",
     "description": "Resume a matter or start a scoped notarial task.",
     "createTitle": "Create a matter",
@@ -169,6 +188,35 @@
       "needsReview": "Need your review",
       "drafting": "In drafting",
       "failed": "Counts could not be loaded."
+    },
+    "greetingMorning": "සුභ උදෑසනක්{hasName, select, true {, {name}} other {}}",
+    "greetingAfternoon": "සුභ දහවලක්{hasName, select, true {, {name}} other {}}",
+    "greetingEvening": "සුභ සන්ධ්‍යාවක්{hasName, select, true {, {name}} other {}}",
+    "greetingWelcome": "සාදරයෙන් පිළිගනිමු{hasName, select, true {, {name}} other {}}",
+    "contextReview": "{count, plural, one {සමාලෝචනය සඳහා කාරණා #ක් තිබේ} other {සමාලෝචනය සඳහා කාරණා #ක් තිබේ}}",
+    "contextClear": "සමාලෝචනය සඳහා කිසිවක් බලා නොසිටී.",
+    "contextEmpty": "කාරණාවක් ආරම්භ කරන්න, නැතහොත් නීතිමය ප්‍රශ්නයක් අසන්න.",
+    "colMatter": "කාරණාව",
+    "colInstrument": "ලේඛන වර්ගය",
+    "colStatus": "තත්ත්වය",
+    "colActivity": "අවසන් ක්‍රියාකාරකම",
+    "colNext": "ඊළඟ ක්‍රියාව",
+    "nextOpen": "විවෘත කරන්න",
+    "nextReview": "සමාලෝචනය කරන්න",
+    "dueOverdue": "දින {days}කින් ප්‍රමාදයි",
+    "dueToday": "අද නියමිතයි",
+    "dueIn": "දින {days}කින්",
+    "obligationsEmpty": "ඉදිරි දින 14 තුළ නියමිත කිසිවක් නැත.",
+    "comingSoon": "ඉක්මනින් එයි",
+    "firstRunTitle": "ඔබේ පළමු කාරණාව ආරම්භ කරන්න",
+    "firstRunBody": "ඔබ සකස් කරන ලේඛනය තෝරන්න. ලබාගැනීම, පරීක්ෂා සහ කෙටුම්පත් කිරීම හරහා Draftly ඔබට මඟ පෙන්වයි.",
+    "workflowDescription": {
+      "transfer_sale": "ඉඩමක අයිතිය ගැනුම්කරුවෙකුට පැවරීම.",
+      "mortgage": "දේපළක් උකස් කර ණයක් සුරක්ෂිත කිරීම.",
+      "mortgage_cancel": "ණය පියවූ උකසකින් දේපළ නිදහස් කිරීම.",
+      "lease": "නියමිත කාලයකට දේපළක් භාවිතයට ලබා දීම.",
+      "gift": "ගෙවීමකින් තොරව දේපළක් පැවරීම.",
+      "sale_agreement": "පැවරීමට පෙර විකිණීමේ ගිවිසුමක් සටහන් කිරීම."
     }
   },
   "obligations": {
@@ -195,7 +243,20 @@
     "notSelected": "Not selected",
     "loading": "Loading matters…",
     "loadFailed": "Matters could not be loaded.",
-    "empty": "No matters yet."
+    "empty": "No matters yet.",
+    "loadFailedHelp": "ඔබේ සම්බන්ධතාව පරීක්ෂා කර නැවත උත්සාහ කරන්න. එය දිගටම අසාර්ථක නම් ඔබේ පරිපාලකයාට දන්වන්න.",
+    "retry": "නැවත උත්සාහ කරන්න",
+    "emptyTitle": "තවම කාරණා නැත",
+    "emptyBody": "හිමිකම පරීක්ෂා කිරීම ආරම්භ කිරීමට කාරණාවක් සාදන්න.",
+    "emptyAction": "කාරණාවක් සාදන්න",
+    "noMatchTitle": "මෙම පෙරහනට ගැළපෙන කාරණා නැත",
+    "noMatch": "වෙනත් පෙරහනක් උත්සාහ කරන්න, නැතහොත් සියලු කාරණා පෙන්වන්න.",
+    "showAll": "සියලු කාරණා පෙන්වන්න",
+    "filterLabel": "තත්ත්වය අනුව කාරණා පෙරන්න",
+    "filterAll": "සියල්ල",
+    "filterOpen": "විවෘත",
+    "filterReview": "සමාලෝචනයට",
+    "filterDrafting": "කෙටුම්පත් කරමින්"
   },
   "overview": {
     "activeFunction": "Active function",
@@ -555,7 +616,9 @@
     "createFailed": "සංවාදය සෑදිය නොහැකි විය.",
     "sendFailed": "ප්‍රශ්නය යැවිය නොහැකි විය. ඔබේ පෙළ තවමත් මෙහි ඇත.",
     "branchFailed": "නව ශාඛාව සෑදිය නොහැකි විය.",
-    "notEnabled": "ඔබගේ ගිණුම සඳහා නීති පර්යේෂණය තවම සක්‍රිය කර නැත. ඔබගේ Draftly පරිපාලක හරහා ඔබගේ සැලැස්ම සක්‍රිය කරවා ගෙන නැවත උත්සාහ කරන්න."
+    "notEnabled": "ඔබගේ ගිණුම සඳහා නීති පර්යේෂණය තවම සක්‍රිය කර නැත. ඔබගේ Draftly පරිපාලක හරහා ඔබගේ සැලැස්ම සක්‍රිය කරවා ගෙන නැවත උත්සාහ කරන්න.",
+    "loadingConversations": "සංවාද පූරණය වෙමින්",
+    "retry": "නැවත උත්සාහ කරන්න"
   },
   "assistant": {
     "title": "කාරණා සහායක",
@@ -848,7 +911,11 @@
     "liveSession": "Live session",
     "historical": "Seeded history",
     "noEvents": "No matching activity",
-    "open": "Open"
+    "open": "Open",
+    "noResultsTitle": "ඔබේ සෙවුමට ගැළපෙන කිසිවක් නැත",
+    "noResultsBody": "වෙනත් වචනයක් උත්සාහ කරන්න, නැතහොත් සියලු අයිතම තෝරන්න.",
+    "clearSearch": "සෙවුම ඉවත් කරන්න",
+    "noEventsBody": "ඔබ වැඩ කරන විට ඔබේ කාරණා පිළිබඳ ක්‍රියා මෙහි පෙනේ."
   },
   "newMatter": {
     "imageAlt": "Synthetic notarial documents and survey plan on a quiet worktable",
@@ -1062,7 +1129,13 @@
     "verified": "Verified",
     "candidate": "Candidate — do not rely",
     "open": "Open source",
-    "corpusNotice": "Catalogue metadata comes from the pinned corpus release. Use the official-source link to inspect the published document."
+    "corpusNotice": "Catalogue metadata comes from the pinned corpus release. Use the official-source link to inspect the published document.",
+    "offlineTitle": "නීතිමය මූලාශ්‍රවලට සේවාදායක සම්බන්ධතාවක් අවශ්‍යයි",
+    "offlineBody": "මෙම වැඩබිම නියැදි දත්ත සමඟ නොබැඳිව ක්‍රියාත්මක වන බැවින් නීතිමය සංග්‍රහය නොමැත. පනත් සහ සංශෝධන බැලීමට එය Draftly සේවාදායකයට සම්බන්ධ කරන්න.",
+    "retry": "නැවත උත්සාහ කරන්න",
+    "loadFailedHelp": "ඔබේ සම්බන්ධතාව පරීක්ෂා කර නැවත උත්සාහ කරන්න. එය දිගටම අසාර්ථක නම් ඔබේ පරිපාලකයාට දන්වන්න.",
+    "noResultsHelp": "වෙනත් වචනයක් උත්සාහ කරන්න, නැතහොත් සෙවුම සහ පෙරහන ඉවත් කරන්න.",
+    "clearFilters": "සෙවුම සහ පෙරහන ඉවත් කරන්න"
   },
   "settings": {
     "title": "Settings",
@@ -1178,7 +1251,34 @@
     "buttons": "Button states",
     "primary": "Primary action",
     "secondary": "Secondary action",
-    "disabled": "Disabled action"
+    "disabled": "Disabled action",
+    "ghost": "පසුබිම් රහිත ක්‍රියාව",
+    "destructive": "ඉවත් කිරීමේ ක්‍රියාව",
+    "small": "කුඩා ක්‍රියාව",
+    "loading": "සුරකිමින්",
+    "fields": "පෝරම ක්ෂේත්‍ර",
+    "fieldLabel": "කාරණා යොමුව",
+    "fieldHelp": "ආවරණ පත්‍රයේ මුද්‍රිත පරිදි.",
+    "fieldError": "RTA-2026-ABC-0001 වැනි යොමුවක් ඇතුළත් කරන්න.",
+    "selectLabel": "ලේඛනය",
+    "selectOption": "විකිණීමෙන් මාරු කිරීම",
+    "textareaLabel": "සටහන්",
+    "chips": "තත්ත්ව ලේබල",
+    "toneNeutral": "ආරම්භ කර නැත",
+    "toneSuccess": "තහවුරු කළා",
+    "toneWarning": "අවධානය අවශ්‍යයි",
+    "toneDanger": "අවහිරයි",
+    "toneInfo": "සිදුවෙමින් පවතී",
+    "emptyTitle": "තවම ලේඛන නැත",
+    "emptyBody": "පරීක්ෂාව ආරම්භ කිරීමට හිමිකම් ඔප්පුව උඩුගත කරන්න.",
+    "emptyAction": "ලේඛනයක් උඩුගත කරන්න",
+    "menus": "මෙනුව",
+    "menuLabel": "ක්‍රියා මෙනුව විවෘත කරන්න",
+    "menuRename": "නම වෙනස් කරන්න",
+    "menuArchive": "සංරක්ෂණය කරන්න",
+    "rows": "ලැයිස්තු පේළි",
+    "rowReview": "සමාලෝචනය අවශ්‍යයි",
+    "rowOpen": "කාරණාව විවෘත කරන්න"
   },
   "rta": {
     "doc": {

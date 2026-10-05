@@ -497,7 +497,9 @@ verify() {
     # Same origin, so there is no CORS to check; check each site instead.
     local landing code
     landing="$(env_value LANDING_DOMAIN)"
-    code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 30 --resolve "$domain:443:127.0.0.1" "https://$domain/" || true)"
+    # Clerk redirects browser document requests to sign-in; plain curl requests
+    # are classified as non-document requests and receive 404 when signed out.
+    code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 30 -H 'Accept: text/html' -H 'Sec-Fetch-Dest: document' --resolve "$domain:443:127.0.0.1" "https://$domain/" || true)"
     case "$code" in 2* | 3*) echo "frontend  https://$domain/: HTTP $code" ;; *) echo "frontend  https://$domain/: FAILED (HTTP ${code:-none})"; ok=0 ;; esac
     code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 30 --resolve "$landing:443:127.0.0.1" "https://$landing/" || true)"
     case "$code" in 2*) echo "landing   https://$landing/: HTTP $code" ;; *) echo "landing   https://$landing/: FAILED (HTTP ${code:-none})"; ok=0 ;; esac

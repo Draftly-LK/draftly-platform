@@ -119,7 +119,7 @@ export function ConversationRail({
           type="button"
           aria-label={t("collapseConversations")}
           tabIndex={-1}
-          className="bg-ink/25 absolute inset-0 z-10 lg:hidden"
+          className="bg-scrim absolute inset-0 z-10 lg:hidden"
           onClick={() => setCollapsed(true)}
         />
       )}
@@ -139,7 +139,7 @@ export function ConversationRail({
       >
         <div className="flex min-h-0 flex-1 flex-col lg:sticky lg:top-0 lg:max-h-screen lg:flex-none">
           <div className="flex items-center gap-2 px-4 pb-2 pt-3">
-            <h2 className="text-muted-ink min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wide">
+            <h2 className="text-muted-ink min-w-0 flex-1 truncate text-xs font-semibold">
               {t("conversations")}
             </h2>
             <IconButton
@@ -155,7 +155,7 @@ export function ConversationRail({
           <div className="space-y-2 px-4">
             <Button
               type="button"
-              variant="primary"
+              variant="secondary"
               onClick={() => {
                 onCreate();
                 closeIfOverlay();
@@ -167,7 +167,7 @@ export function ConversationRail({
             </Button>
             <label className="block">
               <span className="sr-only">{t("searchConversations")}</span>
-              <span className="border-border bg-canvas focus-within:border-border-strong focus-within:bg-surface flex min-h-9 items-center gap-2 rounded-control border px-3">
+              <span className="border-border-control bg-canvas focus-within:bg-surface focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring flex min-h-9 items-center gap-2 rounded-control border px-3">
                 <Search
                   className="text-muted-ink size-4 shrink-0"
                   strokeWidth={1.5}

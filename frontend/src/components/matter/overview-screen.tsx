@@ -91,17 +91,17 @@ function DemoOverviewScreen({ matterId }: { matterId: string }) {
   return (
     <AppShell matterId={matterId}>
       <div className="p-6">
-        <section className="border-border bg-surface rounded-card shadow-card overflow-hidden border">
+        <section className="border-border bg-surface rounded-card overflow-hidden border">
           <div className="grid gap-6 p-6 lg:grid-cols-[1fr_1.2fr]">
             <div>
-              <div className="text-muted-ink text-xs font-semibold uppercase">
+              <div className="text-muted-ink text-xs font-semibold">
                 {t("activeFunction")}
               </div>
               <h2 className="mt-1 text-3xl font-semibold">
                 {t("examination")}
               </h2>
               <div className="border-gold bg-canvas mt-5 rounded border-l-[3px] p-4">
-                <div className="text-forest text-xs font-semibold uppercase">
+                <div className="text-forest text-xs font-semibold">
                   {t("nextAction")}
                 </div>
                 <div className="font-heading mt-1 text-xl font-semibold">
@@ -117,7 +117,7 @@ function DemoOverviewScreen({ matterId }: { matterId: string }) {
               </div>
             </div>
             <div>
-              <div className="text-muted-ink text-xs font-semibold uppercase">
+              <div className="text-muted-ink text-xs font-semibold">
                 {t("completion")}
               </div>
               <div className="mt-3 space-y-4">
@@ -153,7 +153,7 @@ function DemoOverviewScreen({ matterId }: { matterId: string }) {
                 <h2 className="font-heading text-xl font-semibold">{t(key)}</h2>
                 <p className="text-muted-ink text-sm">{body}</p>
               </div>
-              <span className="text-teal flex items-center gap-2 font-medium">
+              <span className="text-forest flex items-center gap-2 font-medium">
                 {t("view", { section: t(key).toLowerCase() })}
                 <ArrowRight className="size-4" strokeWidth={1.5} />
               </span>
@@ -189,13 +189,13 @@ function MatterNotInWorkspace({ matterId }: { matterId: string }) {
   return (
     <AppShell>
       <div className="mx-auto max-w-2xl p-6">
-        <div className="border-border bg-surface rounded-card border p-6 shadow-card">
+        <div className="border-border bg-surface rounded-card border p-6">
           <h1 className="text-2xl font-semibold">{t("notLoadedTitle")}</h1>
           <p className="text-muted-ink mt-2">{t("notLoadedBody")}</p>
           <p className="text-muted-ink mt-4 font-mono text-xs">{matterId}</p>
           <Link
             href="/matters"
-            className="text-teal mt-4 inline-flex items-center gap-2 font-medium hover:underline"
+            className="text-forest mt-4 inline-flex items-center gap-2 font-medium hover:underline"
           >
             {t("notLoadedAction")}
             <ArrowRight className="size-4" strokeWidth={1.5} />

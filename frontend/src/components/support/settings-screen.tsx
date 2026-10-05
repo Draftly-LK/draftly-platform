@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
+import { buttonClass } from "@/components/ui/button";
 
 export function SettingsScreen() {
   const t = useTranslations("settings");
@@ -13,19 +14,16 @@ export function SettingsScreen() {
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="max-w-3xl p-6">
-        <section className="border-border border-b py-5">
-          <h2 className="text-2xl font-semibold">{t("profile")}</h2>
+      <div className="mx-auto w-full max-w-[1240px] p-6">
+        <section className="border-border border-b pb-5">
+          <h2 className="text-xl font-semibold">{t("profile")}</h2>
           <p className="text-muted-ink mt-2 text-sm">{t("profileHint")}</p>
-          <Link
-            href="/profile"
-            className="bg-forest hover:bg-forest/90 focus-visible:outline-ring mt-3 inline-flex rounded-control px-3 py-2 text-sm text-white"
-          >
+          <Link href="/profile" className={`${buttonClass("secondary")} mt-3`}>
             {t("openProfile")}
           </Link>
         </section>
         <section className="border-border border-b py-5">
-          <h2 className="text-2xl font-semibold">{t("notifications")}</h2>
+          <h2 className="text-xl font-semibold">{t("notifications")}</h2>
           <div className="mt-3 space-y-2">
             {items.map((item) => (
               <label key={item} className="flex min-h-11 items-center gap-3">
@@ -46,7 +44,7 @@ export function SettingsScreen() {
           )}
         </section>
         <section className="py-5">
-          <h2 className="text-2xl font-semibold">{t("language")}</h2>
+          <h2 className="text-xl font-semibold">{t("language")}</h2>
           <p className="text-muted-ink mt-2">{t("reducedMotion")}</p>
         </section>
       </div>

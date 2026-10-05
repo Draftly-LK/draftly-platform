@@ -190,6 +190,21 @@ canvas by only a narrow margin — don't run it below 12 px there). Charts
 slate `#4A5568` + a forest sequential ramp, CVD-checked, series always
 labelled.
 
+### Primary action style (October 2026)
+
+Primary actions use the shared `Button` variant or `buttonClass("primary")`:
+slightly translucent cream-to-amber fill, navy text, a 1 px amber outline and a 16 px amber icon. Tokens:
+`primary-bg rgb(249 232 198 / 0.96)`, `primary-border #AD7B24` and `primary-icon #95651C`,
+`primary-hover #F5DEB0`, `primary-pressed #F9EDC8`, and
+`primary-ink` referencing `navy-950 #0B1628`. The boundary and icon meet 3:1
+on white, canvas and both interaction fills; text meets 4.5:1. Hover transitions
+last 150 ms and respect reduced motion. Disabled icons use neutral tokens.
+Clerk sign-in and sign-up use the same style. Primary buttons use a subtle 135-degree cream-to-amber gradient ending at
+`rgb(237 205 147 / 0.96)`, with no shadow. This and the navy backdrop are
+the approved gradient exceptions.
+"Create a matter" keeps its 192 px minimum width on full desktop Home and
+Matters; the compact dashboard header uses equal available widths instead.
+
 ### Typography
 
 - Brand, major headings, matter titles, and legal-document-style headings:
@@ -762,3 +777,39 @@ with #8 export stubbed behind the approval gate.)
   Form 8 transfer scenario?
 - Who authors the synthetic evidence documents (EN + සිං), and who owns the
   Sinhala string drafting? (Lawyer mentor reviews terminology either way.)
+
+### Dashboard header on narrow surfaces
+
+Below 1100 px of available header width, content runs vertically: greeting,
+one-line summary, three equal count columns, then the two actions. Count
+labels are 12 px with no wrapping and numbers are 22 px; thin dividers separate
+columns. Actions share equal width at 36 px high. Measure their labels after
+fonts load: hide icons before stacking both actions full width, creation first.
+On larger headers, keep the desktop row and 40 px actions. The drawer opener
+on the dashboard has a 40 px transparent target, white lines, an 8% white hover
+and the inverse gold focus ring, aligned with the greeting's first line.
+
+### Homepage body: legal work queue (October 2026)
+
+The homepage body is separate from its frozen header and sidebar. Below the
+header, recent matters and upcoming obligations use an 8/4 grid at 880 px of
+available body width (700 px on desktop), stacking in that order on narrower surfaces. The content
+width stays capped at 1240 px. Matter rows retain the existing sorting, eight-row
+limit, state chips, timestamps and routes; document-style titles and a visible
+next action replace the table presentation. A small contextual review cue uses
+the existing review predicate, without another statistics section.
+
+Obligations use the existing 14-day horizon and urgency rules in a compact
+vertical timeline. No calendar action is shown because no such route exists.
+Live workflow tiles retain their catalogue availability and Gazette references,
+with a document motif and visible Start action. Planned workflows appear as
+smaller, non-interactive items without hover elevation. Empty accounts retain the same counts, header actions, matter queue, obligations
+section, and workflow tiles. Counts show zero and the queue uses an empty message;
+no demo matters are substituted for production account data.
+
+Styles are scoped to `[data-home-body]` in `dashboard-body.css`; typography,
+header, sidebar and shared button tokens are unchanged. By explicit design
+request, grouped body surfaces and live workflow tiles have a local ambient
+shadow (2 px / 8 px at 3.5% navy) and 12 px radii. Workflow hover moves 2 px and
+strengthens the border, respecting reduced motion. These are body-only
+exceptions to the earlier no-workspace-shadow rule.
