@@ -122,8 +122,8 @@ export function Sidebar() {
         inert={drawer && !open ? true : undefined}
         id="app-sidebar"
         {...(drawer && open ? { role: "dialog", "aria-modal": true, "aria-label": t("workspace") } : {})}
-        // A 1px edge and a soft shadow lift the sidebar slightly above the header; the shadow falls on the header and the page.
-        className={`bg-surface-inverse text-on-dark fixed inset-y-0 left-0 z-20 w-[var(--sidebar-width)] overflow-hidden border-r border-white/[0.08] p-3 shadow-sidebar transition-[transform,width] duration-[180ms] ease-out lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        // No border line: a soft shadow alone lifts the sidebar slightly above the header, and it falls on the header and the page.
+        className={`bg-surface-inverse text-on-dark fixed inset-y-0 left-0 z-20 w-[var(--sidebar-width)] overflow-hidden p-3 shadow-sidebar transition-[transform,width] duration-[180ms] ease-out lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         <NavyBackdrop anchor="origin" />
         <div className="relative z-10 flex h-full flex-col">

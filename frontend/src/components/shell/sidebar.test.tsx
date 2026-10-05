@@ -80,13 +80,14 @@ describe("Sidebar collapse button", () => {
     expect(toggle.querySelector("svg")?.getAttribute("class")).toContain("size-4");
   });
 
-  it("shows its ring on the outer (right) half only: a full 1px ring on ::before clipped to the right half, never a border", () => {
+  it("has no resting border; on hover only, a gold ring on the outer (right) half: a full 1px ring on ::before clipped to the right half, never a border", () => {
     renderShell();
     const circle = screen.getByRole("button", { name: "Collapse sidebar" }).querySelector("span") as HTMLElement;
     const classes = circle.className.split(" ");
-    // The ring is the ::before pseudo-element: a full 1px circle at 22% white, clipped to its right half.
+    // The ring is the ::before pseudo-element: a full 1px circle, clipped to its right half, transparent at rest.
     expect(classes).toContain("before:border");
-    expect(classes).toContain("before:border-white/[0.22]");
+    expect(classes).toContain("before:border-transparent");
+    expect(classes).not.toContain("before:border-white/[0.22]");
     expect(classes).toContain("before:rounded-full");
     expect(classes).toContain("before:[clip-path:inset(0_0_0_50%)]");
     // Not drawn on the element itself, and no border-right (that would colour a quarter of the circle).

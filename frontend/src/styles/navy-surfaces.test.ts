@@ -35,12 +35,11 @@ describe("navy surfaces", () => {
     }
   });
 
-  it("the sidebar has a 1px edge at 8% white and the soft sidebar shadow, and nothing else on the edge", () => {
+  it("the sidebar edge has the soft sidebar shadow and no border line or gradient", () => {
     const sidebar = readFileSync(join(SRC, "components/shell/sidebar.tsx"), "utf8");
     const aside = sidebar.slice(sidebar.indexOf("<aside"), sidebar.indexOf(">", sidebar.indexOf("<aside")));
-    expect(aside).toContain("border-r border-white/[0.08]");
     expect(aside).toContain("shadow-sidebar");
-    expect(aside).not.toMatch(/gradient/);
+    expect(aside).not.toMatch(/border-r|border-white|gradient/);
   });
 
   it("the token resolves to #0F1F38", () => {

@@ -89,9 +89,9 @@ and the relevant plans under `backend/docs/services/`.
   backdrop: a diagonal gradient (`#1B3156` top-left, then `#0F1F38`, then
   `#0B1628`) under a faint "land parcels" texture, white 1 px lines at 7%
   forming irregular plots, as one inline SVG that scales to fit and is never
-  tiled (`components/shell/navy-backdrop.tsx`). The sidebar has a 1 px right
-  border at 8% white. Text on it must keep 4.5:1 on the lightest part of the
-  gradient.
+  tiled (`components/shell/navy-backdrop.tsx`). The sidebar edge has no border
+  line, only the soft `--shadow-sidebar`. Text on it must keep 4.5:1 on the
+  lightest part of the gradient.
 - Primary (gold) buttons are one style, the `primary` variant of `Button` (or
   `buttonClass("primary")` on a link), never hand-styled: a pill with a subtle
   vertical gradient `--primary-top` `#D6A84D` to `--primary-bottom` `#BE8D31`, a
