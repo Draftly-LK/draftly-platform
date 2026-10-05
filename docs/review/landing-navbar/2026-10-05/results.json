@@ -1,0 +1,77 @@
+[
+  {
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "loads": [
+      {
+        "load": "cold",
+        "visibleEntrances": 1,
+        "background": "rgba(20, 19, 20, 0.75)",
+        "panelBackground": "rgba(20, 19, 20, 0.72)",
+        "horizontalOverflow": false,
+        "cacheHits": 0
+      },
+      {
+        "load": "cached-reload",
+        "visibleEntrances": 1,
+        "background": "rgba(20, 19, 20, 0.75)",
+        "panelBackground": "rgba(20, 19, 20, 0.72)",
+        "horizontalOverflow": false,
+        "cacheHits": 29
+      }
+    ],
+    "errors": []
+  },
+  {
+    "viewport": {
+      "width": 1024,
+      "height": 768
+    },
+    "loads": [
+      {
+        "load": "cold",
+        "visibleEntrances": 1,
+        "background": "rgba(20, 19, 20, 0.75)",
+        "panelBackground": "rgba(20, 19, 20, 0.72)",
+        "horizontalOverflow": false,
+        "cacheHits": 0
+      },
+      {
+        "load": "cached-reload",
+        "visibleEntrances": 1,
+        "background": "rgba(20, 19, 20, 0.75)",
+        "panelBackground": "rgba(20, 19, 20, 0.72)",
+        "horizontalOverflow": false,
+        "cacheHits": 32
+      }
+    ],
+    "errors": []
+  },
+  {
+    "viewport": {
+      "width": 375,
+      "height": 812
+    },
+    "loads": [
+      {
+        "load": "cold",
+        "visibleEntrances": 1,
+        "background": "rgba(20, 19, 20, 0.75)",
+        "panelBackground": "rgba(20, 19, 20, 0.72)",
+        "horizontalOverflow": false,
+        "cacheHits": 0
+      },
+      {
+        "load": "cached-reload",
+        "visibleEntrances": 1,
+        "background": "rgba(20, 19, 20, 0.75)",
+        "panelBackground": "rgba(20, 19, 20, 0.72)",
+        "horizontalOverflow": false,
+        "cacheHits": 32
+      }
+    ],
+    "errors": []
+  }
+]
