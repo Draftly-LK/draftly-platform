@@ -10,13 +10,14 @@ curly braces (for example `{count}`, `{name}`, `{days}`) and ICU plural and
 select syntax must be kept as they are.
 
 - New strings: 90
-- English meaning changed: 1
+- English meaning changed: 2
 
 ## Changed English strings
 
 | Key | Before | After | Sinhala now |
 | --- | --- | --- | --- |
 | `home.snapshot.needsReview` | Need your review | To review | Need your review (not changed: it is still the old English text) |
+| `newMatter.create` | Create matter | Create a matter | Create matter (not changed: it is still the old English text) |
 
 ## auth
 

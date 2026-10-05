@@ -63,17 +63,20 @@ export const draftlyAppearance: Appearance = {
     },
     headerTitle: { fontFamily: FONT, fontSize: "1.25rem", fontWeight: 600, color: "var(--ink)" },
     headerSubtitle: { fontSize: "0.875rem", color: "var(--muted-ink)" },
-    // The one primary action: gold with navy text (white on gold is 2.7:1).
+    // The primary action, in the shared primary style (see Button): a vertical gold gradient, a 1px
+    // border and a top highlight, navy ink (white on gold is 2.7:1). Clerk cannot fade a gradient,
+    // so its hover swaps to the lighter gradient at once.
     formButtonPrimary: {
       ...control,
-      backgroundColor: "var(--gold) !important",
-      backgroundImage: "none !important",
-      border: "1px solid var(--gold) !important",
-      color: "var(--navy-950) !important",
+      backgroundColor: "var(--primary-pressed) !important",
+      backgroundImage: "linear-gradient(to bottom, var(--primary-top), var(--primary-bottom)) !important",
+      border: "1px solid var(--primary-border) !important",
+      color: "var(--primary-ink) !important",
       fontWeight: 600,
-      boxShadow: "none !important",
+      boxShadow: "var(--primary-highlight) !important",
       "&::before, &::after": { display: "none" },
-      "&:hover": { backgroundColor: "var(--gold-hover) !important", borderColor: "var(--gold-hover) !important" },
+      "&:hover": { backgroundImage: "linear-gradient(to bottom, var(--primary-hover-top), var(--primary-hover-bottom)) !important" },
+      "&:active": { backgroundImage: "none !important", boxShadow: "none !important" },
       "&:focus-visible": { outline: "2px solid var(--ring)", outlineOffset: "2px" },
     },
     // Provider buttons: quiet secondary actions, one height, a visible focus ring.

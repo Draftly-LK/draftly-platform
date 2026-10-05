@@ -27,6 +27,9 @@ export default {
         success: "var(--success)",
         "success-bg": "var(--success-bg)",
         "gold-hover": "var(--gold-hover)",
+        "primary-border": "var(--primary-border)",
+        "primary-pressed": "var(--primary-pressed)",
+        "primary-ink": "var(--primary-ink)",
         "amber-on-dark": "var(--amber-on-dark)",
         "ring-on-dark": "var(--ring-on-dark)",
         canvas: "var(--canvas)",
@@ -82,7 +85,13 @@ export default {
       animation: {
         "nav-progress": "nav-progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) both"
       },
+      backgroundImage: {
+        // The primary button only (see CLAUDE.md): rest, and a lighter hover that fades in over it.
+        "primary-gradient": "linear-gradient(to bottom, var(--primary-top), var(--primary-bottom))",
+        "primary-gradient-hover": "linear-gradient(to bottom, var(--primary-hover-top), var(--primary-hover-bottom))"
+      },
       boxShadow: {
+        primary: "var(--primary-highlight)",
         popover: "var(--shadow-popover)",
         dialog: "var(--shadow-dialog)",
         toast: "var(--shadow-toast)",

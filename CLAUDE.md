@@ -89,10 +89,20 @@ and the relevant plans under `backend/docs/services/`.
   backdrop: a diagonal gradient (`#1B3156` top-left, then `#0F1F38`, then
   `#0B1628`) under a faint "land parcels" texture, white 1 px lines at 7%
   forming irregular plots, as one inline SVG that scales to fit and is never
-  tiled (`components/shell/navy-backdrop.tsx`). This is the only allowed
-  gradient or texture; the sidebar has a 1 px right border at 8% white. Text on
-  it must keep 4.5:1 on the lightest part of the gradient. No other gradients
-  or decorative backgrounds.
+  tiled (`components/shell/navy-backdrop.tsx`). The sidebar has a 1 px right
+  border at 8% white. Text on it must keep 4.5:1 on the lightest part of the
+  gradient.
+- Primary (gold) buttons are one style, the `primary` variant of `Button` (or
+  `buttonClass("primary")` on a link), never hand-styled: a pill with a subtle
+  vertical gradient `--primary-top` `#D6A84D` to `--primary-bottom` `#BE8D31`, a
+  1 px `--primary-border` `#A87A26` border (so it reads the same on navy and on
+  white), an inset top highlight `rgba(255,255,255,0.35)`, and navy `#0B1628`
+  text and icon. Hover fades to `#DDB15A` to `#C69436` over 150 ms; pressed is
+  flat `#B5862C` with no highlight. One height, padding, font size and 16 px icon
+  for every primary. "Create a matter" with the `FilePlus2` icon is the one
+  label for starting a matter (`CreateMatterLink`). At most one per screen.
+- The navy backdrop and the primary button are the only allowed gradients. No
+  other gradients or decorative backgrounds.
 - Sidebar: from 1024px it collapses to a 72 px icon rail. The toggle is a 32 px
   round button on the sidebar's right edge, level with the logo, with a 40 px hit
   area. It is rendered in the app shell, outside the sidebar's clipping

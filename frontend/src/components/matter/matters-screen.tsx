@@ -1,12 +1,13 @@
 "use client";
 
-import { FilePlus2, Plus } from "lucide-react";
+import { FilePlus2 } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { MatterFeed, type Feed } from "@/components/home/matter-feed";
 import { AppShell } from "@/components/shell/app-shell";
+import { CreateMatterLink } from "./create-matter-link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -30,7 +31,6 @@ import { statusToneIcons } from "./status-tone-icons";
 
 export function MattersScreen() {
   const t = useTranslations("matters");
-  const tShell = useTranslations("shell");
 
   return (
     <AppShell>
@@ -39,10 +39,7 @@ export function MattersScreen() {
         description={t("description")}
         action={
           // The one gold button on this page.
-          <Link href="/new" className={buttonClass("primary")}>
-            <Plus className="size-4" strokeWidth={1.5} aria-hidden="true" />
-            {tShell("create")}
-          </Link>
+          <CreateMatterLink />
         }
       />
       <div className="mx-auto w-full max-w-[1240px] p-6">
@@ -81,6 +78,7 @@ function MatterList({ feed }: { feed: Feed }) {
         action={
           // The header already carries the page's gold button.
           <Link href="/new" className={buttonClass("secondary")}>
+            <FilePlus2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
             {t("emptyAction")}
           </Link>
         }

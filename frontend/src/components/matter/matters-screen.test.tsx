@@ -61,7 +61,7 @@ describe("MattersScreen", () => {
   it("lists every matter with no filter, and has one gold button", () => {
     const { container } = renderWithIntl(<MattersScreen />);
     expect(shownRefs()).toEqual(["REF-a", "REF-b", "REF-c", "REF-d", "REF-e"]);
-    expect(container.querySelectorAll(".bg-gold")).toHaveLength(1);
+    expect(container.querySelectorAll(".bg-primary-gradient")).toHaveLength(1);
   });
 
   it.each([
@@ -109,8 +109,11 @@ describe("MattersScreen", () => {
     mocks.feed = { matters: [], loading: false, failed: false };
     const { container } = renderWithIntl(<MattersScreen />);
     expect(screen.getByRole("heading", { name: "No matters yet" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Create a matter" })).toBeTruthy();
-    expect(container.querySelectorAll(".bg-gold")).toHaveLength(1);
+    // The header carries the one gold button; the empty state offers the same action as a secondary link.
+    const links = screen.getAllByRole("link", { name: "Create a matter" });
+    expect(links).toHaveLength(2);
+    expect(links.filter((l) => l.className.includes("bg-primary-gradient"))).toHaveLength(1);
+    expect(container.querySelectorAll(".bg-primary-gradient")).toHaveLength(1);
   });
 
   it("shows a skeleton that announces itself while loading", () => {

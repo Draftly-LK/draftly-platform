@@ -1,8 +1,9 @@
 "use client";
 
-import { FilePlus2, MessageSquareText } from "lucide-react";
+import { MessageSquareText } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { CreateMatterLink } from "@/components/matter/create-matter-link";
 import { buttonClass } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SectionHeader } from "@/components/ui/section-header";
@@ -58,10 +59,7 @@ function DashboardView({ feed, obligations }: { feed: Feed; obligations: readonl
           {/* Equal-width buttons: auto-cols-fr sizes both columns to the wider label; on phones they stack. */}
           <div className="grid gap-3 sm:inline-grid sm:auto-cols-fr sm:grid-flow-col">
             {/* The only gold button on the screen. */}
-            <Link href="/new" className={buttonClass("primary")}>
-              <FilePlus2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t("createTitle")}
-            </Link>
+            <CreateMatterLink />
             {!firstRun ? (
               <Link
                 href="/assistant"

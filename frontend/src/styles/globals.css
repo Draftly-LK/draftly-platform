@@ -46,6 +46,18 @@
   --gold-soft: #f6eedc;
   /* Gold fills carry navy text (6.6:1). White on gold is 2.7:1 and fails. */
   --gold-hover: #b78628;
+  /* The primary button, the only gradient allowed on a control: a subtle vertical
+     gold gradient with a 1px border that reads the same on navy and on white
+     (3.4 to 4.3:1 against both) and a 1px top highlight. Navy ink is 5.5:1 on the
+     darkest state and 9.1:1 on the lightest. */
+  --primary-top: #d6a84d;
+  --primary-bottom: #be8d31;
+  --primary-border: #a87a26;
+  --primary-hover-top: #ddb15a;
+  --primary-hover-bottom: #c69436;
+  --primary-pressed: #b5862c;
+  --primary-ink: var(--navy-950);
+  --primary-highlight: inset 0 1px 0 rgb(255 255 255 / 0.35);
   /* Success was the one status hue the palette lacked. */
   --success: #1f6b3a;
   --success-bg: #e4f1e8;

@@ -15,12 +15,46 @@ import { SectionHeader } from "./section-header";
 import { StatusChip } from "./status-chip";
 
 describe("Button", () => {
-  it("uses navy text on the gold primary, never white", () => {
+  it("primary is the one shared style: gradient, 1px border, top highlight, navy ink, never white", () => {
     renderWithIntl(<Button variant="primary">Save</Button>);
-    const classes = screen.getByRole("button", { name: "Save" }).className;
-    expect(classes).toContain("bg-gold");
-    expect(classes).toContain("text-navy-950");
+    const classes = screen.getByRole("button", { name: "Save" }).className.split(" ");
+    for (const token of ["bg-primary-gradient", "bg-primary-pressed", "border-primary-border", "shadow-primary", "text-primary-ink", "rounded-control", "font-semibold"]) {
+      expect(classes, token).toContain(token);
+    }
     expect(classes).not.toContain("text-white");
+    // Hover fades a lighter gradient in over 150ms; pressed is flat with no highlight; disabled drops all of it.
+    for (const token of ["before:bg-primary-gradient-hover", "before:transition-opacity", "before:duration-150", "hover:before:opacity-100", "active:bg-none", "active:shadow-none", "disabled:bg-none", "disabled:shadow-none"]) {
+      expect(classes, token).toContain(token);
+    }
+  });
+
+  it("every primary button has the same height, padding, font size and icon size, whatever size is asked for", () => {
+    renderWithIntl(
+      <>
+        <Button variant="primary">A</Button>
+        <Button variant="primary" size="sm">
+          B
+        </Button>
+      </>,
+    );
+    const [first, second] = [screen.getByRole("button", { name: "A" }), screen.getByRole("button", { name: "B" })];
+    const metrics = (el: HTMLElement) => el.className.split(" ").filter((c) => /^(min-h|px|py|text)-/.test(c) && !c.startsWith("text-primary"));
+    expect(metrics(second)).toEqual(metrics(first));
+    expect(first.className).toContain("min-h-10");
+    expect(first.className).toContain("[&_svg]:size-4");
+  });
+
+  it("only primary carries the gradient; secondary, ghost and destructive stay flat", () => {
+    renderWithIntl(
+      <>
+        <Button>s</Button>
+        <Button variant="ghost">g</Button>
+        <Button variant="destructive">d</Button>
+      </>,
+    );
+    for (const name of ["s", "g", "d"]) {
+      expect(screen.getByRole("button", { name }).className).not.toContain("gradient");
+    }
   });
 
   it("does not default to type=button, so form buttons keep submitting", () => {

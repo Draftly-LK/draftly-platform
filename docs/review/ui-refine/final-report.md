@@ -19,6 +19,7 @@ review are in [sinhala-review.md](sinhala-review.md).
 | 7. Responsive and accessibility | Drawer below 1024px, stacked rows, axe audit at three widths. |
 | Follow-up | Billing, Settings and Help moved into the account menu (Profile, Settings, Billing, Help, divider, Sign out); themed thin scrollbars without arrow buttons. |
 | Follow-up | Collapsible sidebar: a 72px icon rail from 1024px (a 32px round button on the sidebar's edge, level with the logo and outside the sidebar's clipping container; Ctrl+\\, cookie read on the server, `rail:` CSS variant), tooltips and the account popover in portals, clearer hover (white 5%) and active (white 10% plus gold marker) states. |
+| Follow-up | One primary-button style: a subtle vertical gold gradient (`#D6A84D` to `#BE8D31`), 1px `#A87A26` border, top highlight, navy ink, lighter hover over 150ms, flat pressed. Same size on every screen; one "Create a matter" label and icon (`CreateMatterLink`); Clerk's button matches. Defined as tokens; the only gradient allowed on a control. |
 
 ## Files changed
 

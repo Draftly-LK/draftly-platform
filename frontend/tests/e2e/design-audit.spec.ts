@@ -69,6 +69,8 @@ test("every route conforms to the Draftly visual system", async ({
       // parcel texture are an <svg data-navy-backdrop>, a reviewed exception.
       const gradientViolations = [...document.querySelectorAll("body *")]
         .filter(visible)
+        // The one gradient on a control: the primary button (bg-primary-gradient).
+        .filter((element) => !element.classList.contains("bg-primary-gradient"))
         .filter((element) =>
           getComputedStyle(element).backgroundImage.includes("gradient"),
         ).length;
@@ -78,7 +80,7 @@ test("every route conforms to the Draftly visual system", async ({
           // Elevation comes only from the named shadow tokens (popover, dialog,
           // toast, and the sidebar's lift over the header); anything else is an
           // unreviewed shadow.
-          const permittedElevation = ["shadow-popover", "shadow-dialog", "shadow-toast", "shadow-sidebar"].some(
+          const permittedElevation = ["shadow-popover", "shadow-dialog", "shadow-toast", "shadow-sidebar", "shadow-primary"].some(
             (token) =>
               element.classList.contains(token) ||
               element.classList.contains(`hover:${token}`),

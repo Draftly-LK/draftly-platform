@@ -127,8 +127,8 @@ describe("UpcomingObligations", () => {
 describe("Dashboard", () => {
   it("has exactly one gold button when there is data, and each count opens its filtered list", () => {
     const { container } = renderWithIntl(<Dashboard obligations={[]} />);
-    expect(container.querySelectorAll(".bg-gold")).toHaveLength(1);
-    expect(screen.getByRole("link", { name: /Create a matter/ }).className).toContain("bg-gold");
+    expect(container.querySelectorAll(".bg-primary-gradient")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: /Create a matter/ }).className).toContain("bg-primary-gradient");
     expect(screen.getByRole("link", { name: /Ask a legal question/ })).toBeTruthy();
     expect(screen.getByText("To review")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Open matters/ }).getAttribute("href")).toBe("/matters?status=open");
@@ -176,7 +176,7 @@ describe("Dashboard", () => {
     expect(screen.getByRole("heading", { name: "Start your first matter" })).toBeTruthy();
     expect(screen.getByText("Start a matter or ask a legal question.")).toBeTruthy();
     expect(screen.queryByText("To review")).toBeNull();
-    expect(container.querySelectorAll(".bg-gold")).toHaveLength(1);
+    expect(container.querySelectorAll(".bg-primary-gradient")).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: /Ask a legal question/ })).toHaveLength(1);
   });
 

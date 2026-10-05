@@ -26,6 +26,7 @@ import {
   CircleDashed,
   CircleHelp,
   FileKey2,
+  FilePlus2,
   FileText,
   Gavel,
   Landmark,
@@ -1079,12 +1080,8 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
               disabled={busy}
               onClick={() => void finish()}
             >
+              {busy ? null : <FilePlus2 className="size-4" strokeWidth={1.5} aria-hidden="true" />}
               {busy ? t("saving") : t("create")}
-              <ArrowRight
-                className="size-4"
-                strokeWidth={1.5}
-                aria-hidden="true"
-              />
             </Button>
           )}
         </footer>

@@ -32,6 +32,6 @@ describe("AuthShell", () => {
         <p>x</p>
       </AuthShell>,
     );
-    expect(container.querySelectorAll(".bg-gold")).toHaveLength(0);
+    expect(container.querySelectorAll(".bg-primary-gradient")).toHaveLength(0);
   });
 });

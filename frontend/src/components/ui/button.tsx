@@ -8,8 +8,17 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
 export type ButtonSize = "md" | "sm";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  // The one gold action on a screen. Navy text: white on gold is 2.7:1.
-  primary: "border-gold bg-gold text-navy-950 font-semibold hover:border-gold-hover hover:bg-gold-hover active:brightness-95",
+  // The one gold action on a screen. A subtle vertical gradient with a 1px border and a
+  // top highlight, navy ink (white on gold is 2.7:1). The hover gradient fades in on a
+  // ::before (a gradient cannot be transitioned directly); pressed is flat with no highlight.
+  // Every value is a token (globals.css). Same size and icon size everywhere (see buttonClass).
+  primary: [
+    "relative isolate border-primary-border bg-primary-pressed bg-primary-gradient font-semibold text-primary-ink shadow-primary",
+    "before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:bg-primary-gradient-hover before:opacity-0 before:transition-opacity before:duration-150 hover:before:opacity-100",
+    "active:bg-none active:shadow-none active:before:opacity-0",
+    "disabled:bg-none disabled:shadow-none disabled:before:hidden",
+    "[&_svg]:size-4 [&_svg]:shrink-0",
+  ].join(" "),
   secondary:
     "border-border-strong bg-surface text-ink hover:bg-hover-bg active:bg-active-bg aria-pressed:bg-selected-bg",
   ghost:
@@ -27,7 +36,8 @@ const sizeClasses: Record<ButtonSize, string> = {
 
 /** The button look for a link: `<Link className={buttonClass("primary")}>`. */
 export function buttonClass(variant: ButtonVariant = "secondary", size: ButtonSize = "md"): string {
-  return cn(baseClasses, sizeClasses[size], variantClasses[variant]);
+  // Every primary button is the same height, padding, font size and icon size, whatever `size` says.
+  return cn(baseClasses, sizeClasses[variant === "primary" ? "md" : size], variantClasses[variant]);
 }
 
 /**
