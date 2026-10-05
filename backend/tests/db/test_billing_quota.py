@@ -68,7 +68,11 @@ async def subscribed(db_committing: Sessions) -> Sessions:
                 created_at=now,
                 updated_at=now,
             ),
-            [PlanEntitlement("pv_synthetic", METRIC, LIMIT, True)],
+            [
+                PlanEntitlement("pv_synthetic", METRIC, LIMIT, True),
+                PlanEntitlement("pv_synthetic", "research.enabled", None, True),
+                PlanEntitlement("pv_synthetic", "research_queries.monthly", LIMIT, True),
+            ],
         )
         await SqlSubscriptionRepository(session).create(
             Subscription(
@@ -199,3 +203,70 @@ async def test_one_reservation_released_concurrently_is_refunded_once(
     )
 
     assert await _used(subscribed) == 2
+
+
+async def test_distinct_case_search_keys_share_the_last_query_allowance(
+    subscribed: Sessions,
+) -> None:
+    """Two real SQL billing sessions must not spend the same remaining query."""
+    from sqlalchemy import func, select
+
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.orm import AuditEventRow
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.library.contracts import CaseCoverage
+    from src.modules.research.application.cases import CaseResearchService
+    from src.modules.research.domain.cases import CaseSearchResult
+    from src.modules.research.infrastructure.case_operations import SqlCaseSearchOperations
+
+    metric = "research_queries.monthly"
+    await _in_session(subscribed, lambda s: s.reserve_usage(USER_A, metric, LIMIT - 1, "case-base"))
+    ctx = RequestContext(USER_A, Role.REVIEWER, "synthetic-case-quota")
+    calls = 0
+
+    class Retrieval:
+        async def search_cases(self, query: str, *, limit: int) -> CaseSearchResult:
+            nonlocal calls
+            calls += 1
+            # The first reservation remains uncommitted while the second key
+            # attempts its quota check through another real SQL session.
+            await asyncio.sleep(0.3)
+            return CaseSearchResult(
+                "synthetic-v1",
+                CaseCoverage(0, 0, 0, {}, None, None),
+                [],
+                "no_similar_cases",
+                [],
+                "disabled",
+            )
+
+    async def search(key: str) -> CaseSearchResult:
+        async with subscribed() as session:
+            service = CaseResearchService(
+                Retrieval(),
+                SqlCaseSearchOperations(
+                    session,
+                    build_billing_service(session),
+                    AuditService(repository=SqlAuditRepository(session)),
+                ),
+            )
+            return await service.search(ctx, "Synthetic facts", key=key)
+
+    outcomes = await asyncio.gather(
+        search("case-key-a"), search("case-key-b"), return_exceptions=True
+    )
+    assert sum(isinstance(outcome, QuotaExceededError) for outcome in outcomes) == 1, outcomes
+    assert calls == 1
+    async with subscribed() as session:
+        usage = await build_billing_service(session).get_usage(
+            RequestContext(USER_A, Role.APPROVER)
+        )
+        assert next(item.quantity for item in usage if item.metric == metric) == LIMIT
+        assert (
+            await session.scalar(
+                select(func.count())
+                .select_from(AuditEventRow)
+                .where(AuditEventRow.action == "research.cases-searched")
+            )
+            == 1
+        )

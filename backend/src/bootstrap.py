@@ -69,6 +69,7 @@ def register_routers(app: FastAPI) -> None:
     from src.modules.content_governance.api.router import router as rule_pack_router
     from src.modules.document.api.router import router as document_router
     from src.modules.draft.api.router import router as draft_router
+    from src.modules.library.api.case_router import router as case_library_router
     from src.modules.library.api.router import router as library_router
     from src.modules.matter.api.router import router as matter_router
     from src.modules.matter_agent.api.router import router as matter_agent_router
@@ -76,6 +77,7 @@ def register_routers(app: FastAPI) -> None:
     from src.modules.notification.api.router import router as notification_router
     from src.modules.obligations.api.router import router as obligations_router
     from src.modules.party.api.router import router as party_router
+    from src.modules.research.api.case_router import router as case_research_router
     from src.modules.research.api.router import router as research_router
     from src.modules.task.api.router import router as checklist_router
     from src.modules.verification.api.router import router as verification_router
@@ -88,6 +90,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(verification_router, prefix="/api/v1")
     app.include_router(check_router, prefix="/api/v1")
     app.include_router(draft_router, prefix="/api/v1")
+    app.include_router(case_library_router, prefix="/api/v1")
     app.include_router(library_router, prefix="/api/v1")
     app.include_router(matter_agent_router, prefix="/api/v1")
     app.include_router(approval_router, prefix="/api/v1")
@@ -95,6 +98,7 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(billing_admin_router, prefix="/api/v1")
     app.include_router(party_router, prefix="/api/v1")
     app.include_router(research_router, prefix="/api/v1")
+    app.include_router(case_research_router, prefix="/api/v1")
     app.include_router(notification_router, prefix="/api/v1")
     app.include_router(obligations_router, prefix="/api/v1")
     app.include_router(notarial_register_router, prefix="/api/v1")

@@ -212,6 +212,13 @@ during the build instead of re-hashing a corpus the image does not contain.
 That stands in for the research repo's `DRAFTLY_INDEX_FROZEN` mode, which is
 not on its main branch yet.
 
+The judgment catalogue is also frozen during image build from the parsed LKCA
+and LKSC JSONL inputs. The authenticated platform uses private `/v1/cases`
+interfaces for browsing, reading and standalone fact-pattern search. See
+[case-library configuration](../docs/case-law-library.md) for build inputs,
+the separately mounted full-text display approval and dense-channel opt-in.
+Without that approval the reader serves metadata and source links.
+
 ### Day to day
 
 ```bash
@@ -322,10 +329,8 @@ migrations are not reversed automatically.
   extraction provider and the real matter-access adapter. Until then the API
   starts, but those features fail on first use. This is a backend decision, not
   a Docker one. The `vps.sh` path runs `local` for that reason.
-- **The backend does not call the retrieval service yet.** The research API
-  answers from the statute corpus bundled in the backend image
-  (`modules/research/infrastructure/retrieval/corpus`). The stack passes
-  `RETRIEVAL_BASE_URL=http://retrieval:8000` to the backend for when a client
-  for this service is written.
+- **The backend requires the retrieval service for case law.** Catalogue,
+  reader and similar-case search use `RETRIEVAL_BASE_URL=http://retrieval:8000`.
+  An unavailable service returns an explicit corpus-unavailable error.
 - **The retrieval service has no authentication.** It is deliberately not
   published and Caddy has no route to it. Do not add a `ports:` entry to it.

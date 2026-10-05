@@ -25,6 +25,7 @@ class AuditTargetType(str, enum.Enum):
     CHECK = "check"
     WORKFLOW_STEP = "workflow-step"
     ANSWER = "answer"
+    CASE_SEARCH = "case-search"
     DRAFT = "draft"
     APPROVAL = "approval"
     EXPORT = "export"
@@ -84,6 +85,8 @@ class AuditAction(str, enum.Enum):
     DRAFT_RESTORED = "draft.restored"
     # Export
     EXPORT_CREATED = "export.created"
+    # Bounded case retrieval; no fact patterns or source passages in audit.
+    RESEARCH_CASES_SEARCHED = "research.cases-searched"
     # Compliance / retention
     RETENTION_HOLD_PLACED = "retention.hold.placed"
     RETENTION_DESTRUCTION_APPROVED = "retention.destruction.approved"

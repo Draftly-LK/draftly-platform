@@ -647,6 +647,9 @@ class BillingService:
         if not is_known_feature_key(metric):
             raise FeatureDeniedError("Unknown usage metric.", feature_key=metric)
 
+        # Serialise quota consumers before reading the ledger or allowance.
+        # The caller's transaction holds this lock through commit/rollback.
+        await self._usage.lock_usage(user_id)
         existing = await self._usage.find_ledger_by_operation(user_id, metric, operation_id)
         if existing is not None and existing.state in {
             UsageLedgerState.RESERVED,
@@ -707,6 +710,7 @@ class BillingService:
         if reservation_id.startswith(UNMETERED_PREFIX):
             return self._unmetered_usage(reservation_id)
 
+        await self._usage.lock_usage(user_id)
         entry = await self._load_own_ledger_entry(user_id, reservation_id)
         if entry.state == UsageLedgerState.CONSUMED:
             return await self._usage_read_for(entry)
@@ -730,6 +734,7 @@ class BillingService:
     async def release_usage(self, user_id: str, reservation_id: str) -> UsageRead:
         if reservation_id.startswith(UNMETERED_PREFIX):
             return self._unmetered_usage(reservation_id)
+        await self._usage.lock_usage(user_id)
         entry = await self._load_own_ledger_entry(user_id, reservation_id)
         if entry.state == UsageLedgerState.RELEASED:
             return await self._usage_read_for(entry)
