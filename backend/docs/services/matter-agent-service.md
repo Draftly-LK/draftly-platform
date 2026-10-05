@@ -582,7 +582,7 @@ The screen contains:
 Configuration includes:
 
 - MATTER_AGENT_ENABLED
-- MATTER_AGENT_MODEL
+- MATTER_AGENT_MODEL=gemini-3.5-flash-lite (default; deployment-overridable)
 - MATTER_AGENT_MAX_TOOL_CALLS=8
 - MATTER_AGENT_TURN_TIMEOUT_SECONDS=120
 - SUPERMEMORY_ENABLED=false
