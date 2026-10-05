@@ -128,7 +128,7 @@ class Settings(BaseSettings):
     # Off by default. While false the agent refuses every route, so a partial
     # rollout cannot be reached by guessing a URL.
     matter_agent_enabled: bool = False
-    matter_agent_model: str = "gemini-2.5-flash-lite"
+    matter_agent_model: str = "gemini-3.5-flash-lite"
     matter_agent_max_tool_calls: int = 8
     matter_agent_turn_timeout_seconds: int = 120
 
