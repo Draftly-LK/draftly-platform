@@ -100,7 +100,7 @@ AuditTargetType =
   matter | document | instrument | fact | check | workflow-step |
   answer | draft | approval | export | permission | party |
   obligation | notification | content-definition | legal-source |
-  subscription | transcript | user | retention
+  subscription | transcript | user | retention | case-search
 ```
 
 The history screen filters to the eight values it renders today and shows the
@@ -123,6 +123,12 @@ Audit action names deliberately mirror the event registry names
 (`events.md`) where an event exists for the same mutation, but the two are
 separate mechanisms: some audited actions publish no event (a privileged read),
 and some events carry no audit row (a projection refresh).
+
+Standalone case search adds `research.cases-searched` on `case-search` (2026-10-04).
+Its successful operation records the corpus version and result outcome, with no
+fact pattern, judgment text or excerpt. Replayed requests reuse the stored result
+without another query charge or audit event; failed searches roll back together
+with their quota reservation.
 
 ### 3.3 Hash chaining
 

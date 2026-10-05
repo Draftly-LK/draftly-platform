@@ -9,6 +9,27 @@ Maps to plan **Phase 6** (the separate versioned legal corpus), API row
 **Research** (§7), and the trust-boundary row *Legal corpus* (§5.2). The `/library`
 screen is hardcoded today; there is no accessor and no endpoint behind it.
 
+## Case-library extension (2026-10-04)
+
+The Case law tab adds a separate, authenticated catalogue over a frozen import
+of the supplied LKCA/LKSC parsed judgment collection. This extension supersedes
+the disabled-case-tab descriptions below; the V0 statute catalogue keeps its
+existing contract. See [the case-library implementation](../../../docs/case-law-library.md).
+
+`GET /api/v1/library/cases` provides filtered signed-cursor pagination, and
+`GET /api/v1/library/cases/{caseId}` returns policy-filtered detail. The catalogue
+exposes parsed metadata with explicit provenance and extraction warnings, never
+as independently verified legal authority. Collection and deciding court are
+separate fields. Runtime access uses a typed internal HTTP port over frozen
+artifacts; no Library service walks the research checkout.
+
+The full reader requires a recorded approval reference covering the exact text
+checksum, record and authenticated audience. Without it, detail is metadata and
+a source link. This does not grant bulk download, export, report-scan or
+independently retrieved headnote access. Existing restricted research permission
+alone never enables the reader. The original full-text exclusion below continues
+to apply to every record without this separate display policy.
+
 ## 1. What it owns
 
 **Read-only browse and lookup** over the controlled legal-source catalogue:

@@ -17,6 +17,33 @@ Maps to plan **Phase 6** (grounded research), API row **Research** (§7), and th
 trust-boundary row *Legal corpus* (§5.2). It is the flagship the frontend does
 not yet have — today the assistant textbox submits into nothing.
 
+## Standalone similar-case search (2026-10-04)
+
+`POST /api/v1/research/cases/search` adds a standalone fact-pattern retrieval
+path for the Case law tab. It reuses the existing conveyancing engine through
+a versioned private HTTP port: BM25, case-graph expansion and optional dense
+embeddings feed RRF, followed by lexical-or-graph corroboration. Dense-only
+matches are rejected. This route does not compose answers or alter assistant
+conversation retrieval.
+
+Results carry bounded evidence excerpts, source citations, matching signals,
+corpus version and coverage. Reader links resolve only for catalogue records;
+other hits retain their source link. Parsed cases and extraction confidence do
+not acquire lawyer verification or binding weight. Valid empty results and
+unavailable retrieval are distinct states.
+
+The path uses `research.enabled` and `research_queries.monthly`. Required
+`Idempotency-Key` replay is actor-scoped; quota consumption, replay persistence
+and the privacy-safe audit commit together. Failed searches roll back the
+reservation. Completed abstentions consume one query. Fact patterns are sent
+in POST bodies and omitted from ordinary logs.
+
+This bounded direct search is a synchronous exception to the answer-job design
+below, matching the existing raw-search interaction: it has a finite upstream
+timeout and no generation or streaming stage. Dense retrieval remains opt-in
+under recorded provider approval; its optional-channel status is explicit.
+See [the case-library implementation](../../../docs/case-law-library.md).
+
 ## 1. What it owns
 
 Answering a question over the **controlled legal corpus** and returning a

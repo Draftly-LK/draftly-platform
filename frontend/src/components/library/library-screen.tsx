@@ -1,6 +1,12 @@
 "use client";
 
-import { BookOpen, ExternalLink, FilePenLine, Search, WifiOff } from "lucide-react";
+import {
+  BookOpen,
+  ExternalLink,
+  FilePenLine,
+  WifiOff,
+  Search,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
@@ -13,6 +19,8 @@ import { isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { listLegalSources } from "@/lib/api/library";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { LegalSourceSummary, LegalSourceType } from "@/types";
+import { CaseCatalogueFlow } from "./case-law";
+export { CaseReaderFlow } from "./case-law";
 
 type SourceFilter = "all" | LegalSourceType;
 
@@ -23,7 +31,11 @@ type SourceFilter = "all" | LegalSourceType;
  * the token provider is never called.
  */
 export function LibraryScreen() {
-  return isApiEnabled() ? <ApiBoundLibraryScreen /> : <LibraryFlow getToken={offlineToken} />;
+  return isApiEnabled() ? (
+    <ApiBoundLibraryScreen />
+  ) : (
+    <LibraryFlow getToken={offlineToken} />
+  );
 }
 
 const offlineToken: TokenProvider = () => Promise.resolve(null);
@@ -33,7 +45,55 @@ function ApiBoundLibraryScreen() {
   return <LibraryFlow getToken={getToken} />;
 }
 
-function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
+export function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
+  const cases = useTranslations("caseLaw");
+  const [tab, setTab] = useState<"statutes" | "cases">("statutes");
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("tab") === "cases")
+      setTab("cases");
+  }, []);
+  const t = useTranslations("library");
+  return (
+    <AppShell>
+      <PageHeader title={t("title")} description={t("description")} />
+      <div className="p-6">
+        <nav
+          className="border-border mb-6 flex flex-wrap gap-2 border-b pb-3"
+          aria-label={t("title")}
+        >
+          {(["statutes", "cases"] as const).map((value) => (
+            <Button
+              key={value}
+              aria-pressed={tab === value}
+              className={
+                tab === value
+                  ? "border-forest bg-selected-bg text-forest"
+                  : undefined
+              }
+              onClick={() => {
+                setTab(value);
+                window.history.replaceState(
+                  null,
+                  "",
+                  value === "cases" ? "/library?tab=cases" : "/library",
+                );
+              }}
+            >
+              {cases(value === "cases" ? "tab" : "statutesTab")}
+            </Button>
+          ))}
+        </nav>
+        {tab === "cases" ? (
+          <CaseCatalogueFlow getToken={getToken} />
+        ) : (
+          <StatutorySources getToken={getToken} />
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+function StatutorySources({ getToken }: { getToken: TokenProvider }) {
   const t = useTranslations("library");
   const [sources, setSources] = useState<LegalSourceSummary[]>([]);
   const [query, setQuery] = useState("");
@@ -81,111 +141,149 @@ function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
   const amendmentCount = sources.length - statuteCount;
 
   return (
-    <AppShell>
-      <PageHeader title={t("title")} description={t("description")} />
-      <div className="p-6">
-        {offline ? (
-          <EmptyState icon={WifiOff} title={t("offlineTitle")} description={t("offlineBody")} />
-        ) : error && !loading ? (
-          <ErrorState
-            title={t("loadFailed")}
-            action={<Button onClick={() => window.location.reload()}>{t("retry")}</Button>}
-          >
-            {t("loadFailedHelp")}
-          </ErrorState>
-        ) : (
-          <>
-            <div className="border-border bg-surface divide-border grid divide-y rounded-card border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              <Count label={t("all")} value={loading ? null : sources.length} />
-              <Count label={t("statutes")} value={loading ? null : statuteCount} />
-              <Count label={t("amendments")} value={loading ? null : amendmentCount} />
-            </div>
+    <section>
+      {offline ? (
+        <EmptyState
+          icon={WifiOff}
+          title={t("offlineTitle")}
+          description={t("offlineBody")}
+        />
+      ) : error && !loading ? (
+        <ErrorState
+          title={t("loadFailed")}
+          action={
+            <Button onClick={() => window.location.reload()}>
+              {t("retry")}
+            </Button>
+          }
+        >
+          {t("loadFailedHelp")}
+        </ErrorState>
+      ) : (
+        <>
+          <div className="border-border bg-surface divide-border rounded-card grid divide-y border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <Count label={t("all")} value={loading ? null : sources.length} />
+            <Count
+              label={t("statutes")}
+              value={loading ? null : statuteCount}
+            />
+            <Count
+              label={t("amendments")}
+              value={loading ? null : amendmentCount}
+            />
+          </div>
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <label className="border-border-control bg-surface focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring flex h-10 min-w-64 flex-1 items-center gap-2 rounded-control border px-3">
-                <Search className="text-muted-ink size-4" strokeWidth={1.5} />
-                <span className="sr-only">{t("search")}</span>
-                <input
-                  className="min-w-0 flex-1 bg-transparent outline-none"
-                  placeholder={t("search")}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
+          <div className="mt-5 flex flex-wrap gap-3">
+            <label className="border-border-control bg-surface focus-within:outline-ring rounded-control flex h-10 min-w-64 flex-1 items-center gap-2 border px-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2">
+              <Search className="text-muted-ink size-4" strokeWidth={1.5} />
+              <span className="sr-only">{t("search")}</span>
+              <input
+                className="min-w-0 flex-1 bg-transparent outline-none"
+                placeholder={t("search")}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </label>
+            <select
+              aria-label={t("filterLabel")}
+              className="border-border-control bg-surface rounded-control h-10 border px-3"
+              value={filter}
+              onChange={(event) =>
+                setFilter(event.target.value as SourceFilter)
+              }
+            >
+              <option value="all">{t("all")}</option>
+              <option value="statute">{t("statutes")}</option>
+              <option value="amendment">{t("amendments")}</option>
+            </select>
+          </div>
+
+          {loading ? (
+            <RowsSkeleton
+              label={t("loading")}
+              rows={4}
+              className="border-border bg-surface rounded-card mt-4 border"
+            />
+          ) : (
+            <>
+              <p className="text-muted-ink mt-4 text-sm">
+                {t("resultCount", { count: visibleSources.length })}
+              </p>
+              {visibleSources.length === 0 ? (
+                <EmptyState
+                  icon={Search}
+                  title={t("noResults")}
+                  description={t("noResultsHelp")}
+                  action={
+                    <Button
+                      onClick={() => {
+                        setQuery("");
+                        setFilter("all");
+                      }}
+                    >
+                      {t("clearFilters")}
+                    </Button>
+                  }
                 />
-              </label>
-              <select
-                aria-label={t("filterLabel")}
-                className="border-border-control bg-surface h-10 rounded-control border px-3"
-                value={filter}
-                onChange={(event) => setFilter(event.target.value as SourceFilter)}
-              >
-                <option value="all">{t("all")}</option>
-                <option value="statute">{t("statutes")}</option>
-                <option value="amendment">{t("amendments")}</option>
-              </select>
-            </div>
-
-            {loading ? (
-              <RowsSkeleton label={t("loading")} rows={4} className="border-border bg-surface mt-4 rounded-card border" />
-            ) : (
-              <>
-                <p className="text-muted-ink mt-4 text-sm">{t("resultCount", { count: visibleSources.length })}</p>
-                {visibleSources.length === 0 ? (
-                  <EmptyState
-                    icon={Search}
-                    title={t("noResults")}
-                    description={t("noResultsHelp")}
-                    action={
-                      <Button
-                        onClick={() => {
-                          setQuery("");
-                          setFilter("all");
-                        }}
+              ) : (
+                <div className="divide-border border-border bg-surface mt-3 divide-y border-y">
+                  {visibleSources.map((source) => {
+                    const Icon =
+                      source.type === "amendment" ? FilePenLine : BookOpen;
+                    return (
+                      <article
+                        key={source.id}
+                        className="grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3"
                       >
-                        {t("clearFilters")}
-                      </Button>
-                    }
-                  />
-                ) : (
-                  <div className="divide-border border-border bg-surface mt-3 divide-y border-y">
-                    {visibleSources.map((source) => {
-                      const Icon = source.type === "amendment" ? FilePenLine : BookOpen;
-                      return (
-                        <article
-                          key={source.id}
-                          className="grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3"
+                        <Icon
+                          aria-hidden="true"
+                          className="text-forest size-5"
+                          strokeWidth={1.5}
+                        />
+                        <div className="min-w-0">
+                          <h2 className="font-heading text-lg font-semibold">
+                            {source.title}
+                          </h2>
+                          <p className="text-muted-ink flex flex-wrap gap-x-3 text-sm">
+                            <span>
+                              {source.type === "amendment"
+                                ? t("amendment")
+                                : t("statute")}
+                            </span>
+                            <span className="tabular-nums">
+                              {source.reference}
+                            </span>
+                          </p>
+                          <p className="text-muted-ink mt-1 text-xs">
+                            {t("sectionCount", { count: source.sectionCount })}
+                          </p>
+                        </div>
+                        <a
+                          className="text-forest focus-visible:outline-ring inline-flex items-center gap-1 text-sm font-semibold hover:underline"
+                          href={source.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
                         >
-                          <Icon aria-hidden="true" className="text-forest size-5" strokeWidth={1.5} />
-                          <div className="min-w-0">
-                            <h2 className="font-heading text-lg font-semibold">{source.title}</h2>
-                            <p className="text-muted-ink flex flex-wrap gap-x-3 text-sm">
-                              <span>{source.type === "amendment" ? t("amendment") : t("statute")}</span>
-                              <span className="tabular-nums">{source.reference}</span>
-                            </p>
-                            <p className="text-muted-ink mt-1 text-xs">{t("sectionCount", { count: source.sectionCount })}</p>
-                          </div>
-                          <a
-                            className="text-forest focus-visible:outline-ring inline-flex items-center gap-1 text-sm font-semibold hover:underline"
-                            href={source.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {t("open")}
-                            <ExternalLink aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                          </a>
-                        </article>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-        <div className="border-amber bg-amber-bg text-amber-text mt-6 border-l-2 p-4">
-          {t("corpusNotice")}
-        </div>
+                          {t("open")}
+                          <ExternalLink
+                            aria-hidden="true"
+                            className="size-4"
+                            strokeWidth={1.5}
+                          />
+                        </a>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+      <div className="border-amber bg-amber-bg text-amber-text mt-6 border-l-2 p-4">
+        {t("corpusNotice")}
       </div>
-    </AppShell>
+    </section>
   );
 }
 
