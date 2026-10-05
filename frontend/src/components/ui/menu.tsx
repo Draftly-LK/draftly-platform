@@ -2,7 +2,15 @@
 
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 export interface MenuItem {
@@ -35,6 +43,7 @@ export function Menu({
   side = "bottom",
   triggerClassName,
   rootClassName,
+  portalWhen,
 }: {
   /** Accessible name of the trigger button. */
   label: string;
@@ -44,19 +53,36 @@ export function Menu({
   side?: "bottom" | "top";
   triggerClassName?: string;
   rootClassName?: string;
+  /**
+   * Checked when the menu opens. When true the list is drawn in a portal, fixed
+   * above the trigger, so a clipping ancestor (the 72px sidebar rail) cannot cut
+   * it off. Otherwise it is positioned inside the menu, which keeps it within a
+   * modal dialog's accessibility tree (the mobile drawer).
+   */
+  portalWhen?: () => boolean;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const listId = useId();
+  const [portalPos, setPortalPos] = useState<{
+    left: number;
+    bottom: number;
+  } | null>(null);
 
   const itemElements = useCallback(
-    () => Array.from(rootRef.current?.querySelectorAll<HTMLElement>("[role='menuitem']") ?? []),
+    () =>
+      Array.from(
+        listRef.current?.querySelectorAll<HTMLElement>("[role='menuitem']") ??
+          [],
+      ),
     [],
   );
 
   const close = useCallback((returnFocus: boolean) => {
     setOpen(false);
+    setPortalPos(null);
     if (returnFocus) triggerRef.current?.focus();
   }, []);
 
@@ -64,7 +90,12 @@ export function Menu({
     if (!open) return;
     itemElements()[0]?.focus();
     const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (
+        !rootRef.current?.contains(target) &&
+        !listRef.current?.contains(target)
+      )
+        setOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
@@ -93,6 +124,98 @@ export function Menu({
       tone === "danger" ? "text-red" : "text-ink",
     );
 
+  const openMenu = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    setPortalPos(
+      rect && portalWhen?.()
+        ? { left: rect.left, bottom: window.innerHeight - rect.top + 4 }
+        : null,
+    );
+    setOpen(true);
+  };
+
+  const list = (
+    <div
+      ref={listRef}
+      id={listId}
+      role="menu"
+      tabIndex={-1}
+      aria-label={label}
+      onKeyDown={onListKeyDown}
+      style={
+        portalPos
+          ? { left: portalPos.left, bottom: portalPos.bottom }
+          : undefined
+      }
+      className={cn(
+        "border-border bg-surface shadow-popover min-w-48 rounded border p-1",
+        portalPos
+          ? "fixed z-50"
+          : cn(
+              "absolute z-30",
+              align === "right" ? "right-0" : "left-0",
+              side === "top" ? "bottom-full mb-1" : "top-full mt-1",
+            ),
+      )}
+    >
+      {items.map((entry) => {
+        if ("divider" in entry) {
+          return (
+            <div
+              key={entry.key}
+              role="separator"
+              className="border-border my-1 border-t"
+            />
+          );
+        }
+        const {
+          key,
+          label: itemLabel,
+          icon: Icon,
+          href,
+          onSelect,
+          tone,
+        } = entry;
+        const content = (
+          <>
+            {Icon ? (
+              <Icon
+                aria-hidden="true"
+                className="size-4 shrink-0"
+                strokeWidth={1.5}
+              />
+            ) : null}
+            {itemLabel}
+          </>
+        );
+        return href ? (
+          <Link
+            key={key}
+            href={href}
+            role="menuitem"
+            className={itemClass(tone)}
+            onClick={() => close(false)}
+          >
+            {content}
+          </Link>
+        ) : (
+          <button
+            key={key}
+            type="button"
+            role="menuitem"
+            className={itemClass(tone)}
+            onClick={() => {
+              close(true);
+              onSelect?.();
+            }}
+          >
+            {content}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div ref={rootRef} className={cn("relative", rootClassName)}>
       <button
@@ -102,62 +225,18 @@ export function Menu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => (open ? close(false) : openMenu())}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" && !open) {
             event.preventDefault();
-            setOpen(true);
+            openMenu();
           }
         }}
         className={triggerClassName}
       >
         {trigger}
       </button>
-      {open ? (
-        <div
-          id={listId}
-          role="menu"
-          tabIndex={-1}
-          aria-label={label}
-          onKeyDown={onListKeyDown}
-          className={cn(
-            "absolute z-30 min-w-48 rounded border border-border bg-surface p-1 shadow-popover",
-            align === "right" ? "right-0" : "left-0",
-            side === "top" ? "bottom-full mb-1" : "top-full mt-1",
-          )}
-        >
-          {items.map((entry) => {
-            if ("divider" in entry) {
-              return <div key={entry.key} role="separator" className="my-1 border-t border-border" />;
-            }
-            const { key, label: itemLabel, icon: Icon, href, onSelect, tone } = entry;
-            const content = (
-              <>
-                {Icon ? <Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} /> : null}
-                {itemLabel}
-              </>
-            );
-            return href ? (
-              <Link key={key} href={href} role="menuitem" className={itemClass(tone)} onClick={() => close(false)}>
-                {content}
-              </Link>
-            ) : (
-              <button
-                key={key}
-                type="button"
-                role="menuitem"
-                className={itemClass(tone)}
-                onClick={() => {
-                  close(true);
-                  onSelect?.();
-                }}
-              >
-                {content}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+      {open ? (portalPos ? createPortal(list, document.body) : list) : null}
     </div>
   );
 }

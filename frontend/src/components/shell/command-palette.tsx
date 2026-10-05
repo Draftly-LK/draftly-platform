@@ -56,16 +56,17 @@ export function CommandPalette({
           </IconButton>
         ) : (
           <button
+            aria-label={t("search")}
             className={
               tone === "dark"
-                ? "text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-1.5 rounded-control border border-white/15 bg-white/[0.04] px-2.5 text-left text-sm hover:border-white/25 hover:bg-white/[0.08]"
+                ? "text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-1.5 rounded-control border border-white/15 bg-white/[0.04] px-2.5 text-left text-sm hover:border-white/25 hover:bg-white/[0.08] rail:mx-auto rail:w-10 rail:justify-center rail:gap-0 rail:px-0"
                 : "border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-1.5 rounded-control border px-3 text-left text-sm"
             }
           >
             <Search className="size-4" strokeWidth={1.5} />
-            <span className="min-w-0 flex-1 truncate">{t("search")}</span>
+            <span className="min-w-0 flex-1 truncate rail:hidden">{t("search")}</span>
             <kbd
-              className={`shrink-0 rounded-full border px-1 font-sans text-xs leading-4 ${tone === "dark" ? "border-border-on-dark" : "border-border"}`}
+              className={`shrink-0 rounded-full border px-1 font-sans text-xs leading-4 rail:hidden ${tone === "dark" ? "border-border-on-dark" : "border-border"}`}
             >
               {t("searchShortcut")}
             </kbd>

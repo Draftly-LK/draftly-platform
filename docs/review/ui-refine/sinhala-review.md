@@ -9,7 +9,7 @@ Existing Sinhala strings were not touched, except where noted. Placeholders in
 curly braces (for example `{count}`, `{name}`, `{days}`) and ICU plural and
 select syntax must be kept as they are.
 
-- New strings: 87
+- New strings: 90
 - English meaning changed: 1
 
 ## Changed English strings
@@ -35,6 +35,9 @@ select syntax must be kept as they are.
 | `shell.groupKnowledge` | Knowledge | දැනුම |
 | `shell.account` | Account | ගිණුම |
 | `shell.accountMenu` | Account menu | ගිණුම් මෙනුව |
+| `shell.collapseSidebar` | Collapse sidebar | පැති තීරුව හකුළන්න |
+| `shell.expandSidebar` | Expand sidebar | පැති තීරුව දිග හරින්න |
+| `shell.sidebarShortcut` | Ctrl+\ | Ctrl+\ |
 
 ## home
 

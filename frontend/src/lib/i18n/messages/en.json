@@ -104,7 +104,10 @@
     "groupWork": "Work",
     "groupKnowledge": "Knowledge",
     "account": "Account",
-    "accountMenu": "Account menu"
+    "accountMenu": "Account menu",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
+    "sidebarShortcut": "Ctrl+\\"
   },
   "matterNav": {
     "overview": "Overview",

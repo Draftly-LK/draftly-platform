@@ -208,3 +208,33 @@ describe("Menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 });
+
+describe("Menu in a portal", () => {
+  const two = [
+    { key: "a", label: "One", onSelect: vi.fn() },
+    { key: "b", label: "Two", onSelect: vi.fn() },
+  ];
+
+  it("draws its list outside the menu when asked, keeps keyboard control, and closes on an outside press", () => {
+    const { container } = renderWithIntl(<Menu label="Actions" trigger="Actions" items={two} portalWhen={() => true} />);
+    fireEvent.click(screen.getByRole("button", { name: "Actions" }));
+    const list = screen.getByRole("menu");
+    expect(container.contains(list)).toBe(false);
+    expect(list.parentElement).toBe(document.body);
+    expect(list.className).toContain("fixed");
+    const [first, second] = screen.getAllByRole("menuitem") as [HTMLElement, HTMLElement];
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(first, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(second);
+    fireEvent.pointerDown(list);
+    expect(screen.queryByRole("menu")).not.toBeNull();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("stays inside the menu when the portal condition is false", () => {
+    const { container } = renderWithIntl(<Menu label="Actions" trigger="Actions" items={two} portalWhen={() => false} />);
+    fireEvent.click(screen.getByRole("button", { name: "Actions" }));
+    expect(container.contains(screen.getByRole("menu"))).toBe(true);
+  });
+});

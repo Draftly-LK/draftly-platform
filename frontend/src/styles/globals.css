@@ -93,6 +93,10 @@ html { background: var(--canvas); font-optical-sizing: auto; }
 body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; font-size: calc(14px * var(--type-scale, 1)); line-height: 1.5; letter-spacing: 0; }
 /* Sinhala: ~1.14x type (body 16px) and ~1.25x line height (about 1.75 for body-size text). Checked against Noto Sans Sinhala at 12-16px. */
 html[lang="si"] { --type-scale: 1.1428; --lh-scale: 1.25; --sidebar-width: 272px; }
+/* The collapsed icon rail. Desktop only: below 1024px the sidebar is a drawer and ignores it. */
+@media (min-width: 1024px) {
+  html[data-sidebar="collapsed"] { --sidebar-width: 72px; }
+}
 html[lang="si"] body { line-height: 1.75; }
 ::selection { background: var(--soft-green); }
 h1, h2, h3, .font-heading { font-family: var(--font-plex), var(--font-noto-sans-si), sans-serif; }

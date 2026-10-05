@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 // Sizes are px at 1x. The Sinhala locale sets --type-scale (larger glyphs, since
 // Noto Sinhala marks are small) and --lh-scale (taller lines for stacked marks)
@@ -89,5 +90,12 @@ export default {
       }
     }
   },
-  plugins: []
+  plugins: [
+    // `rail:` applies only on desktop (1024px and up) while the sidebar is collapsed to its
+    // 72px icon rail. It is plain CSS keyed on <html data-sidebar>, which the server renders
+    // from a cookie, so the collapsed look needs no JavaScript and cannot mismatch on hydration.
+    plugin(({ addVariant }) => {
+      addVariant("rail", '@media (min-width: 1024px) { html[data-sidebar="collapsed"] & }');
+    }),
+  ]
 } satisfies Config;

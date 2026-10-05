@@ -104,7 +104,10 @@
     "groupWork": "වැඩ",
     "groupKnowledge": "දැනුම",
     "account": "ගිණුම",
-    "accountMenu": "ගිණුම් මෙනුව"
+    "accountMenu": "ගිණුම් මෙනුව",
+    "collapseSidebar": "පැති තීරුව හකුළන්න",
+    "expandSidebar": "පැති තීරුව දිග හරින්න",
+    "sidebarShortcut": "Ctrl+\\"
   },
   "matterNav": {
     "overview": "Overview",

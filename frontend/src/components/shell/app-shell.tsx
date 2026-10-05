@@ -13,7 +13,7 @@ export function AppShell({
   return (
     <div className="bg-canvas min-h-screen">
       <Sidebar />
-      <div className="min-w-0 lg:pl-[var(--sidebar-width)]">
+      <div className="min-w-0 transition-[padding-left] duration-[180ms] ease-out lg:pl-[var(--sidebar-width)]">
         {matterId && <MatterHeader matterId={matterId} />}
         <main className="min-w-0">{children}</main>
       </div>

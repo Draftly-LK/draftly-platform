@@ -93,6 +93,14 @@ and the relevant plans under `backend/docs/services/`.
   gradient or texture; the sidebar has a 1 px right border at 8% white. Text on
   it must keep 4.5:1 on the lightest part of the gradient. No other gradients
   or decorative backgrounds.
+- Sidebar: from 1024px it collapses to a 72 px icon rail (toggle beside the logo,
+  Ctrl+\ or Cmd+\; not Ctrl+B, which is bold in the editor). The choice is the
+  `draftly-sidebar` cookie, read on the server so the first paint is already in
+  the right state; the collapsed look is the `rail:` Tailwind variant keyed on
+  `<html data-sidebar>`. Below 1024px it is a drawer and has no collapsed state.
+  Tooltips and the account popover are drawn in portals because the sidebar
+  clips its contents. Hover on a nav item is white 5%; the active item is white
+  10% plus the gold marker.
 - Radius as built, not as first specced: buttons, inputs and chips are pills
   (`rounded-control`), panels and cards 12–16 px (`rounded`, `rounded-card`),
   dialogs 16 px. 40–44 px table rows. No card shadows in the

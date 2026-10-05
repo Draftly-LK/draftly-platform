@@ -5,6 +5,8 @@ import { ChevronsUpDown, CircleHelp, CircleUserRound, CreditCard, LogOut, Settin
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Menu, type MenuDivider, type MenuItem } from "@/components/ui/menu";
+import { Tooltip } from "@/components/ui/tooltip";
+import { isRailActive } from "./sidebar-state";
 import { clerkDisplayName, getInitials, useDemoMode } from "./user-button";
 
 function Avatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
@@ -49,20 +51,25 @@ export function AccountMenuView({
       : []),
   ];
   return (
-    <Menu
-      label={t("accountMenu")}
-      side="top"
-      rootClassName="w-full"
-      triggerClassName="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded px-2 py-2 text-left text-on-dark hover:bg-white/10"
-      trigger={
-        <>
-          <Avatar name={name} imageUrl={imageUrl} />
-          <span className="min-w-0 flex-1 truncate text-sm font-medium">{name.trim() || t("account")}</span>
-          <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-on-dark-muted" strokeWidth={1.5} />
-        </>
-      }
-      items={items}
-    />
+    // In the rail only the avatar shows, so the tooltip names the person.
+    <Tooltip label={name.trim() || t("account")} enabled={isRailActive}>
+      <Menu
+        label={t("accountMenu")}
+        side="top"
+        rootClassName="w-full"
+        // The rail clips anything wider than itself, so its popover is drawn in a portal.
+        portalWhen={isRailActive}
+        triggerClassName="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded px-2 py-2 text-left text-on-dark hover:bg-white/10 rail:justify-center rail:gap-0 rail:px-0"
+        trigger={
+          <>
+            <Avatar name={name} imageUrl={imageUrl} />
+            <span className="min-w-0 flex-1 truncate text-sm font-medium rail:hidden">{name.trim() || t("account")}</span>
+            <ChevronsUpDown aria-hidden="true" className="size-4 shrink-0 text-on-dark-muted rail:hidden" strokeWidth={1.5} />
+          </>
+        }
+        items={items}
+      />
+    </Tooltip>
   );
 }
 
