@@ -23,7 +23,7 @@ export function Dashboard({ obligations }: { obligations: readonly Obligation[] 
 }
 
 /** Fit labels before sacrificing icons, then stack only when both labels cannot fit. */
-function HeaderActions({ firstRun }: { firstRun: boolean }) {
+function HeaderActions() {
   const t = useTranslations("home");
   const ref = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<"icons" | "labels" | "stack">("icons");
@@ -47,16 +47,14 @@ function HeaderActions({ firstRun }: { firstRun: boolean }) {
     void document.fonts?.ready.then(measure);
     measure();
     return () => observer.disconnect();
-  }, [firstRun, t]);
+  }, [t]);
   return (
     <div ref={ref} className="dashboard-actions grid auto-cols-fr grid-flow-col gap-3" data-fit={fit}>
       <CreateMatterLink className="dashboard-action" />
-      {!firstRun ? (
         <Link href="/assistant" className={cn(buttonClass("ghost"), "dashboard-action border-white/25 text-white hover:bg-white/10 active:bg-white/15")}>
           <MessageSquareText aria-hidden="true" className="size-4" strokeWidth={1.5} />
           <span>{t("askTitle")}</span>
         </Link>
-      ) : null}
     </div>
   );
 }
@@ -90,12 +88,12 @@ function DashboardView({ feed, obligations }: { feed: Feed; obligations: readonl
             <Greeting />
             <p className="dashboard-summary mt-1 min-h-6 text-base text-on-dark-muted">{context}</p>
           </div>
-          {!firstRun ? <PracticeMetrics feed={feed} /> : null}
-          <HeaderActions firstRun={firstRun} />
+          <PracticeMetrics feed={feed} />
+          <HeaderActions />
         </div>
       </section>
 
-      <DashboardBody feed={feed} obligations={obligations} now={now} firstRun={firstRun} />
+      <DashboardBody feed={feed} obligations={obligations} now={now} />
     </>
   );
 }
