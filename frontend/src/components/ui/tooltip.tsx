@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -13,6 +13,8 @@ export function Tooltip({
   label,
   shortcut,
   enabled = () => true,
+  className = "block",
+  style,
   children,
 }: {
   label: string;
@@ -20,6 +22,9 @@ export function Tooltip({
   shortcut?: string;
   /** Checked each time the tooltip would show, e.g. only while the sidebar is a rail. */
   enabled?: () => boolean;
+  /** The wrapper is the anchor. Position it (for example `fixed`) when the trigger is positioned itself. */
+  className?: string;
+  style?: CSSProperties;
   children: ReactNode;
 }) {
   const anchorRef = useRef<HTMLSpanElement>(null);
@@ -65,7 +70,8 @@ export function Tooltip({
   return (
     <span
       ref={anchorRef}
-      className="block"
+      className={className}
+      style={style}
       onMouseEnter={() => show(250)}
       onMouseLeave={hide}
       onFocus={() => show(0)}

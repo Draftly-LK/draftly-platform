@@ -1,5 +1,6 @@
 import { MatterHeader } from "./matter-header";
 import { Sidebar } from "./sidebar";
+import { SidebarToggle } from "./sidebar-toggle";
 
 export function AppShell({
   children,
@@ -13,6 +14,8 @@ export function AppShell({
   return (
     <div className="bg-canvas min-h-screen">
       <Sidebar />
+      {/* Outside the sidebar's clipping container, so its outer half is never cut off. */}
+      <SidebarToggle />
       <div className="min-w-0 transition-[padding-left] duration-[180ms] ease-out lg:pl-[var(--sidebar-width)]">
         {matterId && <MatterHeader matterId={matterId} />}
         <main className="min-w-0">{children}</main>

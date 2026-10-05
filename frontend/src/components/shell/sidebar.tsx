@@ -7,8 +7,6 @@ import {
   Library,
   SearchCheck,
   Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
   X,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -25,7 +23,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { AccountMenu } from "./account-menu";
 import { CommandPalette } from "./command-palette";
 import { NavyBackdrop } from "./navy-backdrop";
-import { isRailActive, useSidebarState } from "./sidebar-state";
+import { isRailActive } from "./sidebar-state";
 
 export function Sidebar() {
   const t = useTranslations("shell");
@@ -33,7 +31,6 @@ export function Sidebar() {
   const pathname = usePathname();
   const matters = useDemoStore((state) => state.matters);
   const [open, setOpen] = useState(false);
-  const { collapsed, toggle } = useSidebarState();
   // From 1024px the sidebar is a fixed rail; below that it is a drawer.
   const desktop = useMediaQuery("(min-width: 1024px)");
   const drawer = desktop === false;
@@ -130,7 +127,8 @@ export function Sidebar() {
       >
         <NavyBackdrop anchor="origin" />
         <div className="relative z-10 flex h-full flex-col">
-        <div className="box-content flex h-12 items-center gap-3 px-2 py-2 rail:h-auto rail:flex-col rail:gap-2 rail:px-0">
+        {/* One row in both states, so the collapse button on the sidebar's edge stays level with the logo. The rail centres the logo mark. */}
+        <div className="box-content flex h-12 items-center gap-3 px-2 py-2 rail:justify-center rail:gap-0 rail:px-0">
           <BrandMark tone="white" className="size-8 shrink-0" />
           {/* The rail keeps the logo mark only. */}
           <div className="min-w-0 flex-1 rail:hidden">
@@ -141,23 +139,6 @@ export function Sidebar() {
               {t("workspace")}
             </div>
           </div>
-          {/* Desktop only: below 1024px the sidebar is a drawer and has no collapsed state. */}
-          <Tooltip label={collapsed ? t("expandSidebar") : t("collapseSidebar")} shortcut={t("sidebarShortcut")}>
-            <IconButton
-              label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
-              aria-expanded={!collapsed}
-              aria-controls="app-sidebar"
-              aria-keyshortcuts={"Control+\\"}
-              className="hidden text-on-dark-muted hover:bg-white/10 hover:text-white lg:inline-flex"
-              onClick={toggle}
-            >
-              {collapsed ? (
-                <PanelLeftOpen aria-hidden="true" className="size-5" strokeWidth={1.5} />
-              ) : (
-                <PanelLeftClose aria-hidden="true" className="size-5" strokeWidth={1.5} />
-              )}
-            </IconButton>
-          </Tooltip>
           <IconButton
             label={t("close")}
             data-drawer-close

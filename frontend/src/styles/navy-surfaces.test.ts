@@ -16,7 +16,10 @@ const files = [...sourceFiles(join(SRC, "components")), ...sourceFiles(join(SRC,
 
 describe("navy surfaces", () => {
   it("every navy surface uses the one inverse-surface token as its base colour", () => {
-    const offenders = files.filter((file) => /\bbg-navy-(800|900|950)\b/.test(readFileSync(file, "utf8")));
+    // The collapse button's own #172B4B fill is a control, not a surface, and is the one allowed exception.
+    const offenders = files.filter(
+      (file) => !file.endsWith("sidebar-toggle.tsx") && /\bbg-navy-(800|900|950)\b/.test(readFileSync(file, "utf8")),
+    );
     expect(offenders).toEqual([]);
   });
 

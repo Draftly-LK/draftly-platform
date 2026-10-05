@@ -93,8 +93,11 @@ and the relevant plans under `backend/docs/services/`.
   gradient or texture; the sidebar has a 1 px right border at 8% white. Text on
   it must keep 4.5:1 on the lightest part of the gradient. No other gradients
   or decorative backgrounds.
-- Sidebar: from 1024px it collapses to a 72 px icon rail (toggle beside the logo,
-  Ctrl+\ or Cmd+\; not Ctrl+B, which is bold in the editor). The choice is the
+- Sidebar: from 1024px it collapses to a 72 px icon rail. The toggle is a 26 px
+  round button on the sidebar's right edge, level with the logo, with a 40 px hit
+  area. It is rendered in the app shell, outside the sidebar's clipping
+  container, so it is never cut off. Shortcut Ctrl+\ or Cmd+\ (not Ctrl+B,
+  which is bold in the editor). The choice is the
   `draftly-sidebar` cookie, read on the server so the first paint is already in
   the right state; the collapsed look is the `rail:` Tailwind variant keyed on
   `<html data-sidebar>`. Below 1024px it is a drawer and has no collapsed state.

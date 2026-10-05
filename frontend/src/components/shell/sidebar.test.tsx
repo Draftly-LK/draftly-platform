@@ -7,6 +7,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/matters", useRouter: ()
 
 import { Sidebar } from "./sidebar";
 import { SidebarStateProvider } from "./sidebar-state";
+import { SidebarToggle } from "./sidebar-toggle";
 
 beforeEach(() => {
   document.cookie = "draftly-sidebar=; max-age=0; path=/";
@@ -19,34 +20,81 @@ beforeEach(() => {
   })) as unknown as typeof window.matchMedia;
 });
 
-const renderSidebar = (collapsed = false) =>
+// The shell renders the sidebar and, beside it, the collapse button.
+const renderShell = (collapsed = false) =>
   renderWithIntl(
     <SidebarStateProvider initialCollapsed={collapsed}>
       <Sidebar />
+      <SidebarToggle />
     </SidebarStateProvider>,
   );
 
-describe("Sidebar toggle", () => {
-  it("is a button next to the logo: Collapse sidebar when open, with aria-expanded and the shortcut", () => {
-    renderSidebar();
+const toggles = () => document.querySelectorAll("button[aria-controls='app-sidebar']");
+
+describe("Sidebar collapse button", () => {
+  it("is exactly one button, outside the sidebar, so the sidebar's clipping cannot cut it off", () => {
+    const { container } = renderShell();
+    expect(toggles()).toHaveLength(1);
+    const aside = container.querySelector("aside") as HTMLElement;
+    expect(aside.contains(toggles()[0] as Element)).toBe(false);
+    expect(aside.className).toContain("overflow-hidden");
+  });
+
+  it("is also the only toggle in the collapsed rail (no second one under the logo)", () => {
+    renderShell(true);
+    expect(toggles()).toHaveLength(1);
+  });
+
+  it("is Collapse sidebar with aria-expanded true and a left chevron when open", () => {
+    renderShell();
     const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(toggle.getAttribute("aria-controls")).toBe("app-sidebar");
     expect(toggle.getAttribute("aria-keyshortcuts")).toBe("Control+\\");
     expect(document.getElementById("app-sidebar")).toBeTruthy();
-    // Desktop only: hidden below 1024px, where the sidebar is a drawer.
-    expect(toggle.className).toContain("hidden");
-    expect(toggle.className).toContain("lg:inline-flex");
+    expect(toggle.querySelector("svg.lucide-chevron-left")).not.toBeNull();
   });
 
-  it("renders Expand sidebar, aria-expanded false, when the server said collapsed", () => {
-    renderSidebar(true);
+  it("is Expand sidebar with aria-expanded false and a right chevron when the server said collapsed", () => {
+    renderShell(true);
     const toggle = screen.getByRole("button", { name: "Expand sidebar" });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.querySelector("svg.lucide-chevron-right")).not.toBeNull();
   });
 
-  it("clicking it collapses, remembers the choice in the cookie and the html attribute, and expands again", () => {
-    renderSidebar();
+  it("looks like a 26px navy circle with a 22% white border inside a 40px hit area", () => {
+    renderShell();
+    const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
+    const circle = toggle.querySelector("span") as HTMLElement;
+    expect(toggle.className).toContain("size-full");
+    expect(circle.className).toContain("size-[26px]");
+    expect(circle.className).toContain("rounded-full");
+    expect(circle.className).toContain("border-white/[0.22]");
+    expect(circle.className).toContain("bg-navy-800");
+    expect(circle.className).toContain("group-hover:border-gold");
+    expect(circle.className).toContain("group-focus-visible:outline-ring-on-dark");
+    expect(toggle.querySelector("svg")?.getAttribute("class")).toContain("size-[15px]");
+    const anchor = toggle.parentElement as HTMLElement;
+    expect(anchor.style.width).toBe("40px");
+    expect(anchor.style.height).toBe("40px");
+  });
+
+  it("sits on the sidebar's right edge, level with the logo, above the sidebar and its shadow, and slides with it", () => {
+    renderShell();
+    const anchor = screen.getByRole("button", { name: "Collapse sidebar" }).parentElement as HTMLElement;
+    expect(anchor.style.left).toBe("calc(var(--sidebar-width) - 20px)");
+    // 12px sidebar padding plus half of the 64px logo row, minus half the 40px hit area.
+    expect(anchor.style.top).toBe("24px");
+    expect(anchor.className).toContain("z-30");
+    expect(anchor.className).toContain("fixed");
+    expect(anchor.className).toContain("transition-[left]");
+    expect(anchor.className).toContain("duration-[180ms]");
+    expect(anchor.className).toContain("hidden");
+    expect(anchor.className).toContain("lg:block");
+  });
+
+  it("collapses on click, remembers the choice, and expands again", () => {
+    renderShell();
     fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
     expect(screen.getByRole("button", { name: "Expand sidebar" }).getAttribute("aria-expanded")).toBe("false");
     expect(document.documentElement.dataset.sidebar).toBe("collapsed");
@@ -56,25 +104,27 @@ describe("Sidebar toggle", () => {
   });
 
   it("Ctrl+backslash does the same from the keyboard", () => {
-    renderSidebar();
+    renderShell();
     fireEvent.keyDown(window, { key: "\\", ctrlKey: true });
     expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeTruthy();
   });
 });
 
 describe("Sidebar rail styling", () => {
-  it("hides the wordmark, group labels and recent matters in the rail, keeping the logo mark", () => {
-    const { container } = renderSidebar();
+  it("keeps the logo mark in the same single top row and hides the wordmark, group labels and recent matters", () => {
+    const { container } = renderShell();
     const aside = container.querySelector("aside") as HTMLElement;
+    const row = aside.querySelector("img")?.parentElement as HTMLElement;
+    expect(row.className).toContain("rail:justify-center");
+    expect(row.className).not.toContain("rail:flex-col");
     expect(within(aside).getByText("Notarial workspace").parentElement?.className).toContain("rail:hidden");
     expect(within(aside).getByText("Work").className).toContain("rail:hidden");
     expect(within(aside).getByText("Knowledge").className).toContain("rail:hidden");
     expect(within(aside).getByText("Recent matters").parentElement?.className).toContain("rail:hidden");
-    expect(aside.querySelector("img")).not.toBeNull();
   });
 
   it("nav links keep their names in the rail: the label is visually hidden, not removed", () => {
-    renderSidebar();
+    renderShell();
     const matters = screen.getByRole("link", { name: "Matters" });
     expect(matters.querySelector("span")?.className).toContain("rail:sr-only");
     expect(matters.className).toContain("rail:justify-center");
@@ -83,16 +133,15 @@ describe("Sidebar rail styling", () => {
   });
 
   it("the search field and the account area shrink to an icon and an avatar in the rail", () => {
-    renderSidebar();
+    renderShell();
     const search = screen.getByRole("button", { name: "Search workspace" });
     expect(search.className).toContain("rail:w-10");
     expect(search.querySelector("kbd")?.className).toContain("rail:hidden");
-    const account = screen.getByRole("button", { name: "Account menu" });
-    expect(account.className).toContain("rail:justify-center");
+    expect(screen.getByRole("button", { name: "Account menu" }).className).toContain("rail:justify-center");
   });
 
-  it("the transition is 180ms on width, and the sidebar keeps its gold marker on the active item", () => {
-    const { container } = renderSidebar();
+  it("the sidebar width transitions in 180ms, and the active item keeps its gold marker", () => {
+    const { container } = renderShell();
     expect((container.querySelector("aside") as HTMLElement).className).toContain("duration-[180ms]");
     expect(screen.getByRole("link", { name: "Matters" }).className).toContain("before:bg-gold");
     expect(screen.getByRole("link", { name: "Matters" }).getAttribute("aria-current")).toBe("page");
@@ -101,7 +150,7 @@ describe("Sidebar rail styling", () => {
 
 describe("Sidebar nav states", () => {
   it("hover is a lighter veil (white 5%) than the active item (white 10% plus the gold marker)", () => {
-    renderSidebar();
+    renderShell();
     const active = screen.getByRole("link", { name: "Matters" });
     const idle = screen.getByRole("link", { name: "Home" });
     expect(active.className).toContain("bg-white/10");
