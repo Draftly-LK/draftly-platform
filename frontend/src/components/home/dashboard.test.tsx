@@ -171,12 +171,13 @@ describe("Dashboard", () => {
     for (const el of planned) expect(el.getAttribute("href")).toBeNull();
   });
 
-  it("with no matters, shows the first-run panel instead of counts and keeps one gold button", () => {
+  it("with no matters, keeps counts, header actions and dashboard sections", () => {
     mocks.apiEnabled = true;
     const { container } = renderWithIntl(<Dashboard obligations={[]} />);
-    expect(screen.getByRole("heading", { name: "Start your first matter" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Recent matters" })).toBeTruthy();
+    expect(screen.getByText("No matters yet. Create one to get started.")).toBeTruthy();
     expect(screen.getByText("Start a matter or ask a legal question.")).toBeTruthy();
-    expect(screen.queryByText("To review")).toBeNull();
+    expect(screen.getByRole("link", { name: /To review/ }).textContent).toContain("0");
     expect(container.querySelectorAll(".bg-primary-bg")).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: /Ask a legal question/ })).toHaveLength(1);
   });
@@ -192,7 +193,7 @@ describe("Dashboard", () => {
 
 describe("Dashboard body work queue", () => {
   it("uses the existing review states for its cue and keeps each next action on the matter route", () => {
-    renderWithIntl(<DashboardBody now={NOW} obligations={[]} firstRun={false} feed={feedOf([
+    renderWithIntl(<DashboardBody now={NOW} obligations={[]} feed={feedOf([
       matter({ id: "review", state: "LEGAL_REVIEW", reference: "REF-REVIEW" }),
       matter({ id: "draft", state: "DRAFTING", reference: "REF-DRAFT" }),
       matter({ id: "hold", state: "LITIGATION_HOLD", reference: "REF-HOLD" }),
@@ -204,17 +205,18 @@ describe("Dashboard body work queue", () => {
   });
 
   it("keeps a failed feed distinct from a new user's empty workspace", () => {
-    renderWithIntl(<DashboardBody now={NOW} obligations={[]} firstRun={false} feed={{ matters: [], loading: false, failed: true }} />);
+    renderWithIntl(<DashboardBody now={NOW} obligations={[]} feed={{ matters: [], loading: false, failed: true }} />);
     expect(screen.getByText("Recent matters could not be loaded.")).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Start your first matter" })).toBeNull();
     expect(screen.queryByText(/matter needs attention/)).toBeNull();
   });
 
-  it("gives a new user live workflow entries without empty matter or obligation surfaces", () => {
-    renderWithIntl(<DashboardBody now={NOW} obligations={[]} firstRun feed={feedOf([])} />);
-    expect(screen.getByRole("heading", { name: "Start your first matter" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Recent matters" })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Upcoming obligations" })).toBeNull();
+  it("keeps the same dashboard sections and live workflows for a new user", () => {
+    renderWithIntl(<DashboardBody now={NOW} obligations={[]} feed={feedOf([])} />);
+    expect(screen.getByRole("heading", { name: "Recent matters" })).toBeTruthy();
+    expect(screen.getByText("No matters yet. Create one to get started.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Recent matters" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Upcoming obligations" })).toBeTruthy();
     for (const form of ["Gazette Form 8", "Gazette Form 12"]) {
       expect(screen.getByRole("link", { name: new RegExp(form) }).getAttribute("href")).toBe("/new");
     }
