@@ -20,12 +20,12 @@ beforeEach(() => {
   })) as unknown as typeof window.matchMedia;
 });
 
-// The shell renders the sidebar and, beside it, the collapse button.
+// The shell renders the collapse button first (so the keyboard reaches it first), then the sidebar.
 const renderShell = (collapsed = false) =>
   renderWithIntl(
     <SidebarStateProvider initialCollapsed={collapsed}>
-      <Sidebar />
       <SidebarToggle />
+      <Sidebar />
     </SidebarStateProvider>,
   );
 
@@ -38,6 +38,12 @@ describe("Sidebar collapse button", () => {
     const aside = container.querySelector("aside") as HTMLElement;
     expect(aside.contains(toggles()[0] as Element)).toBe(false);
     expect(aside.className).toContain("overflow-hidden");
+  });
+
+  it("is first in keyboard order: the first Tab lands on it, before the search field and the nav", () => {
+    renderShell();
+    const all = [...document.querySelectorAll<HTMLElement>("button, a[href]")];
+    expect(all[0]).toBe(toggles()[0]);
   });
 
   it("is also the only toggle in the collapsed rail (no second one under the logo)", () => {
@@ -62,18 +68,38 @@ describe("Sidebar collapse button", () => {
     expect(toggle.querySelector("svg.lucide-chevron-right")).not.toBeNull();
   });
 
-  it("looks like a 26px navy circle with a 22% white border inside a 40px hit area", () => {
+  it("is a 32px circle with a 16px chevron inside a 40px hit area, filled to match the sidebar", () => {
     renderShell();
     const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
     const circle = toggle.querySelector("span") as HTMLElement;
     expect(toggle.className).toContain("size-full");
-    expect(circle.className).toContain("size-[26px]");
+    expect(circle.className).toContain("size-8");
     expect(circle.className).toContain("rounded-full");
-    expect(circle.className).toContain("border-white/[0.22]");
-    expect(circle.className).toContain("bg-navy-800");
-    expect(circle.className).toContain("group-hover:border-gold");
+    expect(circle.className).toContain("bg-[#1A2F52]");
     expect(circle.className).toContain("group-focus-visible:outline-ring-on-dark");
-    expect(toggle.querySelector("svg")?.getAttribute("class")).toContain("size-[15px]");
+    expect(toggle.querySelector("svg")?.getAttribute("class")).toContain("size-4");
+  });
+
+  it("shows its ring on the outer (right) half only: a full 1px ring on ::before clipped to the right half, never a border", () => {
+    renderShell();
+    const circle = screen.getByRole("button", { name: "Collapse sidebar" }).querySelector("span") as HTMLElement;
+    const classes = circle.className.split(" ");
+    // The ring is the ::before pseudo-element: a full 1px circle at 22% white, clipped to its right half.
+    expect(classes).toContain("before:border");
+    expect(classes).toContain("before:border-white/[0.22]");
+    expect(classes).toContain("before:rounded-full");
+    expect(classes).toContain("before:[clip-path:inset(0_0_0_50%)]");
+    // Not drawn on the element itself, and no border-right (that would colour a quarter of the circle).
+    expect(classes).not.toContain("border");
+    expect(classes.some((c) => /^border-r\b|^border-white/.test(c))).toBe(false);
+    // Hover turns the ring gold and the icon lighter.
+    expect(classes).toContain("group-hover:before:border-gold");
+    expect(classes).toContain("group-hover:text-white");
+  });
+
+  it("is hit by clicks on the 40px area, and the anchor is exactly 40px square", () => {
+    renderShell();
+    const toggle = screen.getByRole("button", { name: "Collapse sidebar" });
     const anchor = toggle.parentElement as HTMLElement;
     expect(anchor.style.width).toBe("40px");
     expect(anchor.style.height).toBe("40px");
@@ -117,6 +143,8 @@ describe("Sidebar rail styling", () => {
     const row = aside.querySelector("img")?.parentElement as HTMLElement;
     expect(row.className).toContain("rail:justify-center");
     expect(row.className).not.toContain("rail:flex-col");
+    // The mark is 28px in the rail so the 32px button on the edge stays 6px clear of it.
+    expect(aside.querySelector("img")?.className).toContain("rail:size-7");
     expect(within(aside).getByText("Notarial workspace").parentElement?.className).toContain("rail:hidden");
     expect(within(aside).getByText("Work").className).toContain("rail:hidden");
     expect(within(aside).getByText("Knowledge").className).toContain("rail:hidden");

@@ -13,9 +13,10 @@ export function AppShell({
   // content, and the account menu lives in the sidebar footer.
   return (
     <div className="bg-canvas min-h-screen">
-      <Sidebar />
-      {/* Outside the sidebar's clipping container, so its outer half is never cut off. */}
+      {/* Outside the sidebar's clipping container, so its outer half is never cut off. Rendered first so the
+          keyboard reaches it first, matching where it sits (at the top, on the edge). */}
       <SidebarToggle />
+      <Sidebar />
       <div className="min-w-0 transition-[padding-left] duration-[180ms] ease-out lg:pl-[var(--sidebar-width)]">
         {matterId && <MatterHeader matterId={matterId} />}
         <main className="min-w-0">{children}</main>

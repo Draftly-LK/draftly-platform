@@ -18,7 +18,7 @@ review are in [sinhala-review.md](sinhala-review.md).
 | 6. Consistency | Matters URL filters, skeletons, empty and error states on six pages. |
 | 7. Responsive and accessibility | Drawer below 1024px, stacked rows, axe audit at three widths. |
 | Follow-up | Billing, Settings and Help moved into the account menu (Profile, Settings, Billing, Help, divider, Sign out); themed thin scrollbars without arrow buttons. |
-| Follow-up | Collapsible sidebar: a 72px icon rail from 1024px (a 26px round button on the sidebar's edge, level with the logo and outside the sidebar's clipping container; Ctrl+\\, cookie read on the server, `rail:` CSS variant), tooltips and the account popover in portals, clearer hover (white 5%) and active (white 10% plus gold marker) states. |
+| Follow-up | Collapsible sidebar: a 72px icon rail from 1024px (a 32px round button on the sidebar's edge, level with the logo and outside the sidebar's clipping container; Ctrl+\\, cookie read on the server, `rail:` CSS variant), tooltips and the account popover in portals, clearer hover (white 5%) and active (white 10% plus gold marker) states. |
 
 ## Files changed
 

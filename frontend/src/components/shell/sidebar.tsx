@@ -129,7 +129,8 @@ export function Sidebar() {
         <div className="relative z-10 flex h-full flex-col">
         {/* One row in both states, so the collapse button on the sidebar's edge stays level with the logo. The rail centres the logo mark. */}
         <div className="box-content flex h-12 items-center gap-3 px-2 py-2 rail:justify-center rail:gap-0 rail:px-0">
-          <BrandMark tone="white" className="size-8 shrink-0" />
+          {/* 28px in the rail, so the 32px collapse button on the edge stays at least 6px clear of it. */}
+          <BrandMark tone="white" className="size-8 shrink-0 rail:size-7" />
           {/* The rail keeps the logo mark only. */}
           <div className="min-w-0 flex-1 rail:hidden">
             <div className="font-display text-xl font-semibold leading-none text-white">
