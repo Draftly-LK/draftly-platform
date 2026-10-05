@@ -58,7 +58,7 @@ export function CommandPalette({
           <button
             className={
               tone === "dark"
-                ? "text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-1.5 rounded-control border border-transparent bg-white/[0.04] px-2.5 text-left text-sm hover:bg-white/[0.08]"
+                ? "text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-1.5 rounded-control border border-white/15 bg-white/[0.04] px-2.5 text-left text-sm hover:border-white/25 hover:bg-white/[0.08]"
                 : "border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-1.5 rounded-control border px-3 text-left text-sm"
             }
           >
@@ -80,14 +80,16 @@ export function CommandPalette({
         >
           <Dialog.Title className="sr-only">{t("search")}</Dialog.Title>
           <Command className="bg-transparent">
-            <div className="border-border flex items-center border-b px-2">
-              <Search className="text-muted-ink size-5" strokeWidth={1.5} />
+            {/* The search row: 16px sides, 14px top and bottom, 12px between icon and text, all centred on one line. The soft bottom rule marks it as the active row. */}
+            <div className="flex items-center gap-3 border-b border-border-active px-4 py-3.5">
+              <Search aria-hidden="true" className="text-muted-ink size-5 shrink-0" strokeWidth={1.5} />
+              {/* No ring of its own: this input is the only thing focused while the palette is open, and the caret shows it. (An exception to the focus-ring rule; the global ring is declared after Tailwind utilities, so the variant is needed.) */}
               <Command.Input
-                className="h-12 min-w-0 flex-1 border-0 bg-transparent px-3 outline-none"
+                className="h-6 min-w-0 flex-1 border-0 bg-transparent p-0 outline-none focus-visible:outline-none"
                 placeholder={t("searchPlaceholder")}
               />
               <Dialog.Close asChild>
-                <IconButton label={t("close")}>
+                <IconButton label={t("close")} className="-my-2 -mr-2.5 shrink-0">
                   <X className="size-5" strokeWidth={1.5} />
                 </IconButton>
               </Dialog.Close>

@@ -35,6 +35,7 @@ export default {
         border: "var(--border)",
         "border-strong": "var(--border-strong)",
         "border-control": "var(--border-control)",
+        "border-active": "var(--border-active)",
         "red-hover": "var(--red-hover)",
         forest: "var(--forest)",
         "soft-green": "var(--soft-green)",

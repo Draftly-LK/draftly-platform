@@ -1,6 +1,5 @@
 "use client";
 
-import { TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { Divider } from "@/components/ui/divider";
@@ -10,8 +9,9 @@ import type { Feed } from "./matter-feed";
 
 /**
  * Three counts in one row, on the navy header. The number is the strongest
- * element; "To review" takes the amber warning colour (with an icon) only while
- * it is above zero, and zeros are muted. Gold stays reserved for the one primary
+ * element, centred under its label; "To review" takes the amber warning colour,
+ * label and number together, only while it is above zero (the label says what
+ * it means, so colour is not the only signal), and zeros are muted. Gold stays reserved for the one primary
  * button. Each count opens the Matters list.
  */
 export function PracticeMetrics({ feed }: { feed: Feed }) {
@@ -30,12 +30,9 @@ export function PracticeMetrics({ feed }: { feed: Feed }) {
             {index > 0 ? <Divider vertical className="hidden bg-white/15 md:block" /> : null}
             <Link
               href={mattersHref(filter)}
-              className="block rounded py-1 hover:bg-white/5 md:px-5 md:first:pl-0"
+              className="flex flex-col items-center rounded py-1 text-center hover:bg-white/5 md:px-5"
             >
-              <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-on-dark-muted">
-                {flag ? <TriangleAlert aria-hidden="true" className="size-4 text-amber-on-dark" strokeWidth={1.5} /> : null}
-                {t(key)}
-              </span>
+              <span className={cn("whitespace-nowrap text-xs", flag ? "text-amber-on-dark" : "text-on-dark-muted")}>{t(key)}</span>
               <span
                 className={cn(
                   "block",

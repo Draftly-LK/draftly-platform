@@ -15,6 +15,8 @@
   /* Boundary of an input, select or textarea: 3.3-3.6:1 on surface, canvas and
      hover fills (WCAG 1.4.11). --border-strong is 2.1:1 and stays decorative. */
   --border-control: #7b8899;
+  /* A soft rule that marks an active row (the open command palette's search row): navy at 15%. */
+  --border-active: rgb(15 31 56 / 0.15);
   --forest: #1b3358;
   --soft-green: #e7eef8;
   --teal: #176b75;

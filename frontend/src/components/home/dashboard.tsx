@@ -55,7 +55,8 @@ function DashboardView({ feed, obligations }: { feed: Feed; obligations: readonl
             <p className="mt-1 min-h-6 text-base text-on-dark-muted">{context}</p>
           </div>
           {!firstRun ? <PracticeMetrics feed={feed} /> : null}
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Equal-width buttons: auto-cols-fr sizes both columns to the wider label; on phones they stack. */}
+          <div className="grid gap-3 sm:inline-grid sm:auto-cols-fr sm:grid-flow-col">
             {/* The only gold button on the screen. */}
             <Link href="/new" className={buttonClass("primary")}>
               <FilePlus2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
