@@ -146,11 +146,11 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
         />
         <div className="p-6">
           {demoDrafts.length === 0 ? (
-            <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
+            <div className="border-border bg-surface rounded-card border p-6 text-center">
               <p className="text-muted-ink">{t("noDrafts")}</p>
             </div>
           ) : (
-            <div className="border-border bg-surface overflow-x-auto rounded-card border shadow-card">
+            <div className="border-border bg-surface overflow-x-auto rounded-card border">
               <table className="w-full min-w-[900px] border-collapse whitespace-nowrap text-left">
                 <thead className="bg-canvas text-muted-ink text-xs">
                   <tr className="border-border h-10 border-b">
@@ -236,11 +236,11 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
             {t("loading")}
           </div>
         ) : forms.length === 0 ? (
-          <div className="border-border bg-surface rounded-card border p-6 text-center shadow-card">
+          <div className="border-border bg-surface rounded-card border p-6 text-center">
             <p className="text-muted-ink">{t("noDrafts")}</p>
           </div>
         ) : (
-          <div className="border-border bg-surface overflow-x-auto rounded-card border shadow-card">
+          <div className="border-border bg-surface overflow-x-auto rounded-card border">
             <table className="w-full min-w-[900px] border-collapse whitespace-nowrap text-left">
               <thead className="bg-canvas text-muted-ink text-xs">
                 <tr className="border-border h-10 border-b">

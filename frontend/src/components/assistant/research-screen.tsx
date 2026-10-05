@@ -1,12 +1,14 @@
 "use client";
 
-import { GitBranch, LoaderCircle, RotateCcw, Search, Send, ShieldAlert, Square } from "lucide-react";
+import { GitBranch, LoaderCircle, Search, Send, ShieldAlert, Square } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { ConversationRail } from "./conversation-rail";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
+import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { RowsSkeleton } from "@/components/ui/skeleton";
 import { createResearchConversation, branchResearchMessage, listResearchConversations, listResearchMessages, sendResearchMessage } from "@/lib/api/research";
 import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
@@ -40,6 +42,8 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const apiEnabled = isApiEnabled();
+  // Offline there is nothing to load, so the thread is ready at once.
+  const [loaded, setLoaded] = useState(!apiEnabled);
   // A 403 `feature_denied` is not a failure of the feature: the account has no
   // plan that includes research. Say so instead of a generic error.
   const explain = useCallback(
@@ -54,7 +58,7 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
       const rows = await listResearchConversations(getToken);
       setConversations(rows);
       setSelectedId((current) => current ?? rows[0]?.id);
-    } catch (failure) { setError(explain(failure, t("loadFailed"))); }
+    } catch (failure) { setError(explain(failure, t("loadFailed"))); } finally { setLoaded(true); }
   }, [apiEnabled, explain, getToken, t]);
 
   useEffect(() => { void loadConversations(); }, [loadConversations]);
@@ -109,16 +113,17 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
             <strong>{t("libraryScope")}</strong>
             <span className="text-muted-ink ml-2">{t("corpusLimit")}</span>
           </div>
-          {!apiEnabled && <Notice text={t("apiUnavailable")} />}
-          {error && <Notice text={error} />}
+          {!apiEnabled && <InlineAlert tone="info" className="mt-4">{t("apiUnavailable")}</InlineAlert>}
+          {error && <InlineAlert tone="danger" className="mt-4">{error}</InlineAlert>}
           <section aria-label={t("thread")} className="mt-4 flex-1 space-y-3">
-            {messages.length === 0 && <div className="text-muted-ink py-16 text-center"><ShieldAlert className="mx-auto mb-3 size-8" strokeWidth={1.5} /><p>{t("emptyThread")}</p></div>}
+            {!loaded && <RowsSkeleton label={t("loadingConversations")} rows={3} className="border-border bg-surface rounded border" />}
+            {loaded && messages.length === 0 && <div className="text-muted-ink py-16 text-center"><ShieldAlert className="mx-auto mb-3 size-8" strokeWidth={1.5} /><p>{t("emptyThread")}</p></div>}
             {messages.map((message) => {
               const insufficient = message.content.startsWith("research.insufficient.");
               const grounded = message.role === "assistant" && !insufficient;
               return (
                 <article key={message.id} className={`rounded border p-4 ${message.role === "user" ? "border-border-strong bg-surface ml-auto max-w-[85%]" : insufficient ? "border-border-strong bg-surface border-l-2" : "border-teal bg-teal-bg border-l-2"}`}>
-                  <div className={`${message.role === "assistant" ? "text-ink" : "text-muted-ink"} mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase`}>
+                  <div className={`${message.role === "assistant" ? "text-ink" : "text-muted-ink"} mb-1 flex items-center gap-1.5 text-xs font-semibold`}>
                     {insufficient && <Search className="size-3.5" strokeWidth={1.5} />}
                     {message.role === "user" ? t("you") : insufficient ? t("noMatch") : t("answer")}
                   </div>
@@ -142,7 +147,7 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
               );
             })}
           </section>
-          <form className="border-border-strong bg-surface shadow-popover sticky bottom-3 mt-5 rounded border p-3" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+          <form className="border-border-control bg-surface shadow-popover sticky bottom-3 mt-5 rounded border p-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <label className="sr-only" htmlFor="research-question">{t("composerLabel")}</label>
             <textarea id="research-question" className="min-h-20 w-full resize-y bg-transparent p-2 outline-none" placeholder={t("composerPlaceholder")} value={question} onChange={(event) => setQuestion(event.target.value)} disabled={busy || !apiEnabled} />
             <div className="border-border flex items-center border-t pt-3">
@@ -154,8 +159,4 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
       </div>
     </AppShell>
   );
-}
-
-function Notice({ text }: { text: string }) {
-  return <div role="status" className="border-amber bg-amber-bg text-amber-text mt-4 flex items-center gap-2 border-l-2 p-3 text-sm"><RotateCcw className="size-4" />{text}</div>;
 }

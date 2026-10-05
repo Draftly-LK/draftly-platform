@@ -9,7 +9,7 @@ export async function ActivityScreen({ matterId }: { matterId: string }) {
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <section className="border-border bg-surface rounded-card border p-6 shadow-card">
+        <section className="border-border bg-surface rounded-card border p-6">
           <ActivityTimeline matterId={matterId} />
         </section>
       </div>

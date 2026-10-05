@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, Noto_Sans_Sinhala, Noto_Serif_Sinhala, Source_Serif_4 } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { cookies } from "next/headers";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { ProvisionGate } from "@/components/auth/provision-gate";
 import { IntlProvider } from "@/components/shell/intl-provider";
 import { NavigationProgress } from "@/components/shell/navigation-progress";
+import { SidebarStateProvider } from "@/components/shell/sidebar-state";
 import { UserButtonProvider } from "@/components/shell/user-button";
 import { isAuthBypassEnabled } from "@/lib/auth/bypass";
+import { parseSidebarCookie, SIDEBAR_COOKIE } from "@/lib/sidebar-cookie";
 import { hasClerkPublishableKey, isClerkConfigured } from "@/lib/auth/clerk";
+import { draftlyClerkLocalization } from "@/lib/auth/clerk-localization";
 import "@/styles/globals.css";
 
 const plex = IBM_Plex_Sans({
@@ -46,6 +50,9 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const tAuth = await getTranslations("auth");
+  // The sidebar's collapsed choice is a cookie, read here so the first paint is already in the right state.
+  const sidebarCollapsed = parseSidebarCookie((await cookies()).get(SIDEBAR_COOKIE)?.value);
   // ProvisionGate renders translated copy on its blocking-error state, so it
   // has to sit inside IntlProvider — not the other way around.
   //
@@ -54,7 +61,7 @@ export default async function RootLayout({
   // run time, and prerendering a screen that calls `useAuth` without a
   // provider fails the build.
   const body = hasClerkPublishableKey() ? (
-    <ClerkProvider afterSignOutUrl="/sign-in">
+    <ClerkProvider afterSignOutUrl="/sign-in" localization={draftlyClerkLocalization(tAuth)}>
       {/* Inside ClerkProvider: it reads the session to know when to run.
           Wraps the tree so first-time users reach onboarding before any
           workspace screen paints. */}
@@ -65,7 +72,7 @@ export default async function RootLayout({
   );
 
   return (
-    <html lang={locale} className={`${plex.variable} ${notoSansSi.variable} ${sourceSerif.variable} ${notoSerifSi.variable}`}>
+    <html lang={locale} data-sidebar={sidebarCollapsed ? "collapsed" : "expanded"} className={`${plex.variable} ${notoSansSi.variable} ${sourceSerif.variable} ${notoSerifSi.variable}`}>
       {/* Browser extensions such as Grammarly add data attributes to body
           before React hydrates. Limit suppression to this host element so
           genuine mismatches inside the application remain visible. */}
@@ -78,9 +85,11 @@ export default async function RootLayout({
           {/* Resolved here, on the server: AUTH_BYPASS and CLERK_SECRET_KEY
               are undefined in the browser, where most screens render. */}
           <NavigationProgress />
-          <UserButtonProvider demoMode={isAuthBypassEnabled() || !isClerkConfigured()}>
-            {body}
-          </UserButtonProvider>
+          <SidebarStateProvider initialCollapsed={sidebarCollapsed}>
+            <UserButtonProvider demoMode={isAuthBypassEnabled() || !isClerkConfigured()}>
+              {body}
+            </UserButtonProvider>
+          </SidebarStateProvider>
         </IntlProvider>
       </body>
     </html>

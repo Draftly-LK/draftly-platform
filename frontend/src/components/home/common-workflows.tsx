@@ -1,82 +1,107 @@
 "use client";
 
-import { ArrowRight, CircleDashed, FlaskConical } from "lucide-react";
+import { ArrowRight, ArrowLeftRight, FileCheck2, FileText, Gift, Handshake, KeyRound, Landmark, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useMemo } from "react";
-import { commonRtaWorkflows } from "@/lib/rta/workflow-catalogue";
+import { SectionHeader } from "@/components/ui/section-header";
+import { commonRtaWorkflows, type RtaWorkflow } from "@/lib/rta/workflow-catalogue";
+
+const ICONS: Record<string, LucideIcon> = {
+  transfer_sale: ArrowLeftRight,
+  mortgage: Landmark,
+  mortgage_cancel: FileCheck2,
+  lease: KeyRound,
+  gift: Gift,
+  sale_agreement: Handshake,
+};
+
+const DESCRIPTION_KEYS = ["transfer_sale", "mortgage", "mortgage_cancel", "lease", "gift", "sale_agreement"] as const;
+type DescriptionKey = (typeof DESCRIPTION_KEYS)[number];
+
+function slug(workflow: RtaWorkflow): string {
+  return workflow.subtype.id.split(".").at(-1) ?? "";
+}
+
+/** The shortlist and its order come from `COMMON_SUBTYPE_IDS`: an editorial choice, not a measurement. */
+export function useCommonWorkflows() {
+  return useMemo(() => {
+    const all = commonRtaWorkflows(6);
+    return { available: all.filter((w) => w.available), planned: all.filter((w) => !w.available) };
+  }, []);
+}
+
+/** One available workflow as a whole-card link. Shared with the first-run panel. */
+export function WorkflowCard({ workflow }: { workflow: RtaWorkflow }) {
+  const t = useTranslations("home");
+  const tWorkflow = useTranslations("workflow");
+  const tRoot = useTranslations();
+  const key = slug(workflow);
+  const Icon = ICONS[key] ?? FileText;
+  const form = workflow.subtype.gazetteFormNumber;
+  return (
+    <Link
+      href="/new"
+      className="home-workflow-tile rounded-card border border-border bg-surface"
+    >
+      <span className="home-workflow-top">
+        <span aria-hidden="true" className="home-workflow-document"><Icon className="size-5" strokeWidth={1.5} /></span>
+        <span className="home-form-reference text-xs text-muted-ink">
+          {form === null ? tWorkflow("noGazetteForm") : tWorkflow("gazetteForm", { number: form })}
+        </span>
+      </span>
+      <span className="home-workflow-title font-display text-lg font-semibold">{tRoot(workflow.subtype.labelKey)}</span>
+      {(DESCRIPTION_KEYS as readonly string[]).includes(key) ? (
+        <span className="home-workflow-description text-sm text-muted-ink">{t(`workflowDescription.${key as DescriptionKey}`)}</span>
+      ) : null}
+      <span className="home-workflow-start inline-flex items-center gap-2 text-sm font-semibold text-forest">
+        {t("body.start")} <ArrowRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      </span>
+    </Link>
+  );
+}
 
 /**
- * The workflows a notarial practice meets most often, on the dashboard.
- *
- * The shortlist and its order come from `COMMON_SUBTYPE_IDS` in the catalogue —
- * an editorial choice, not a measurement. Each card states whether Draftly
- * prepares that instrument in this release, so a common-but-not-yet-automated
- * workflow cannot read as available.
+ * What can be started now, as cards; what is planned, as a quiet "Coming soon"
+ * line that is neither a link nor focusable.
  */
 export function CommonWorkflows() {
   const t = useTranslations("home");
   const tWorkflow = useTranslations("workflow");
   const tRoot = useTranslations();
-  const workflows = useMemo(() => commonRtaWorkflows(6), []);
+  const { available, planned } = useCommonWorkflows();
 
-  if (workflows.length === 0) return null;
+  if (available.length === 0 && planned.length === 0) return null;
 
   return (
-    <section aria-labelledby="common-workflows-title">
-      <h2 id="common-workflows-title" className="text-xl font-semibold">
-        {t("commonWorkflowsTitle")}
-      </h2>
-      <p className="text-muted-ink mt-1 max-w-3xl text-sm">{t("commonWorkflowsBody")}</p>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {workflows.map(({ subtype, family, available }) => {
-          const TierIcon = available ? FlaskConical : CircleDashed;
-          const form =
-            subtype.gazetteFormNumber === null
-              ? tWorkflow("noGazetteForm")
-              : tWorkflow("gazetteForm", { number: subtype.gazetteFormNumber });
-          const card = (
-            <>
-              <span className="flex items-start justify-between gap-3">
-                <span className="font-heading block text-lg font-semibold">
-                  {tRoot(subtype.labelKey)}
-                </span>
-                {available && (
-                  <ArrowRight
-                    className="text-muted-ink group-hover:text-forest mt-1 size-4 shrink-0"
-                    strokeWidth={1.5}
-                  />
-                )}
-              </span>
-              <span className="text-muted-ink -mt-2 block text-xs">
-                {tRoot(family.labelKey)} · {form}
-              </span>
-              <span
-                className={`mt-auto inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium ${available ? "border-transparent bg-gold-soft text-gold-strong" : "border-border text-muted-ink"}`}
-              >
-                <TierIcon className="size-4" strokeWidth={1.5} aria-hidden="true" />
-                {tWorkflow(`tier.${subtype.releaseTier}`)}
-              </span>
-            </>
-          );
-          // Only an instrument this release prepares is actionable; the rest are
-          // shown for orientation and are deliberately not links.
-          const cardBase = "rounded-card border-border flex min-h-32 flex-col gap-3 border p-5";
-          return available ? (
-            <Link
-              key={subtype.id}
-              href="/new"
-              className={`${cardBase} bg-surface shadow-card hover:border-border-strong hover:shadow-raised group transition-shadow`}
-            >
-              {card}
-            </Link>
-          ) : (
-            <div key={subtype.id} className={`${cardBase} bg-canvas`}>
-              {card}
-            </div>
-          );
-        })}
+    <section aria-labelledby="common-workflows-title" className="home-workflows">
+      <SectionHeader id="common-workflows-title" title={t("commonWorkflowsTitle")} className="home-section-heading" />
+      <div className="home-live-workflows grid gap-4 sm:grid-cols-2">
+        {available.map((workflow) => (
+          <WorkflowCard key={workflow.subtype.id} workflow={workflow} />
+        ))}
       </div>
+      {planned.length > 0 ? (
+        <section aria-labelledby="coming-soon-title" className="home-planned-workflows">
+          <h3 id="coming-soon-title" className="mb-3 text-sm font-semibold text-muted-ink">{t("comingSoon")}</h3>
+          <ul className="home-planned-grid" aria-label={t("body.planned")}>
+            {planned.map((workflow) => {
+              const Icon = ICONS[slug(workflow)] ?? FileText;
+              return <li key={workflow.subtype.id} className="home-planned-item cursor-default">
+                <span role="link" aria-disabled="true" className="flex items-center gap-3">
+                  <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-ink" strokeWidth={1.5} />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-muted-ink">{tRoot(workflow.subtype.labelKey)}</span>
+                    {workflow.subtype.gazetteFormNumber !== null ? (
+                      <span className="mt-1 block text-xs text-muted-ink">{tWorkflow("gazetteForm", { number: workflow.subtype.gazetteFormNumber })}</span>
+                    ) : null}
+                  </span>
+                </span>
+              </li>;
+            })}
+          </ul>
+        </section>
+      ) : null}
     </section>
   );
 }

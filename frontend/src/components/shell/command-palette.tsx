@@ -56,16 +56,17 @@ export function CommandPalette({
           </IconButton>
         ) : (
           <button
+            aria-label={t("search")}
             className={
               tone === "dark"
-                ? "border-border-on-dark text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-2 rounded-control border bg-white/5 px-3 text-left text-sm hover:bg-white/10"
-                : "border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-2 rounded-control border px-3 text-left text-sm"
+                ? "text-on-dark-muted hover:text-on-dark flex h-10 w-full items-center gap-1.5 rounded-control border border-white/15 bg-white/[0.04] px-2.5 text-left text-sm hover:border-white/25 hover:bg-white/[0.08] rail:mx-auto rail:w-10 rail:justify-center rail:gap-0 rail:px-0"
+                : "border-border-strong bg-surface text-muted-ink hover:bg-hover-bg flex h-10 w-full items-center gap-1.5 rounded-control border px-3 text-left text-sm"
             }
           >
             <Search className="size-4" strokeWidth={1.5} />
-            <span className="min-w-0 flex-1 truncate">{t("search")}</span>
+            <span className="min-w-0 flex-1 truncate rail:hidden">{t("search")}</span>
             <kbd
-              className={`shrink-0 rounded-full border px-1.5 font-sans text-[10px] leading-4 ${tone === "dark" ? "border-border-on-dark" : "border-border"}`}
+              className={`shrink-0 rounded-full border px-1 font-sans text-xs leading-4 rail:hidden ${tone === "dark" ? "border-border-on-dark" : "border-border"}`}
             >
               {t("searchShortcut")}
             </kbd>
@@ -73,21 +74,23 @@ export function CommandPalette({
         )}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="bg-ink/25 fixed inset-0 z-40" />
+        <Dialog.Overlay className="bg-scrim fixed inset-0 z-40" />
         <Dialog.Content
           aria-describedby={undefined}
           className="rounded-dialog border-border-strong bg-surface shadow-dialog fixed left-1/2 top-[14vh] z-40 w-[min(640px,calc(100vw-32px))] -translate-x-1/2 border p-2"
         >
           <Dialog.Title className="sr-only">{t("search")}</Dialog.Title>
           <Command className="bg-transparent">
-            <div className="border-border flex items-center border-b px-2">
-              <Search className="text-muted-ink size-5" strokeWidth={1.5} />
+            {/* The search row: 16px sides, 14px top and bottom, 12px between icon and text, all centred on one line. The soft bottom rule marks it as the active row. */}
+            <div className="flex items-center gap-3 border-b border-border-active px-4 py-3.5">
+              <Search aria-hidden="true" className="text-muted-ink size-5 shrink-0" strokeWidth={1.5} />
+              {/* No ring of its own: this input is the only thing focused while the palette is open, and the caret shows it. (An exception to the focus-ring rule; the global ring is declared after Tailwind utilities, so the variant is needed.) */}
               <Command.Input
-                className="h-12 min-w-0 flex-1 border-0 bg-transparent px-3 outline-none"
+                className="h-6 min-w-0 flex-1 border-0 bg-transparent p-0 outline-none focus-visible:outline-none"
                 placeholder={t("searchPlaceholder")}
               />
               <Dialog.Close asChild>
-                <IconButton label={t("close")}>
+                <IconButton label={t("close")} className="-my-2 -mr-2.5 shrink-0">
                   <X className="size-5" strokeWidth={1.5} />
                 </IconButton>
               </Dialog.Close>

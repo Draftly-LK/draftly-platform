@@ -1,11 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
 import Link from "next/link";
 import { SignOutButton, useUser } from "@clerk/nextjs";
 import { useTranslations } from "next-intl";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
+import { Button } from "@/components/ui/button";
 import { getMe, updateMe } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
@@ -41,7 +48,10 @@ function clerkDisplayName(user: {
 }): string {
   const full = user.fullName?.trim();
   if (full) return full;
-  const parts = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  const parts = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
   if (parts) return parts;
   return user.username?.trim() ?? "";
 }
@@ -180,7 +190,9 @@ function Field({
     return (
       <div>
         <dt className="text-muted-ink text-xs">{label}</dt>
-        <dd className="mt-1 text-sm whitespace-pre-wrap">{displayOrDash(value)}</dd>
+        <dd className="mt-1 whitespace-pre-wrap text-sm">
+          {displayOrDash(value)}
+        </dd>
       </div>
     );
   }
@@ -189,7 +201,7 @@ function Field({
       <label className="block">
         <span className="text-muted-ink text-xs">{label}</span>
         <textarea
-          className="border-border focus-visible:outline-ring mt-1 w-full rounded border bg-surface px-3 py-2 text-sm"
+          className="border-border focus-visible:outline-ring bg-surface mt-1 w-full rounded border px-3 py-2 text-sm"
           rows={2}
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
@@ -201,7 +213,7 @@ function Field({
     <label className="block">
       <span className="text-muted-ink text-xs">{label}</span>
       <input
-        className="border-border focus-visible:outline-ring mt-1 w-full rounded-control border bg-surface px-3 py-2 text-sm"
+        className="border-border focus-visible:outline-ring rounded-control bg-surface mt-1 w-full border px-3 py-2 text-sm"
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
       />
@@ -279,7 +291,7 @@ function ProfileBody({
 
   return (
     <>
-      <div className="border-border flex flex-col gap-8 border-b py-5 sm:flex-row sm:items-start">
+      <div className="border-border flex flex-col gap-6 border-b pb-5 sm:flex-row sm:items-start">
         <ProfilePhoto
           name={editable.displayName}
           imageUrl={identity.imageUrl}
@@ -298,41 +310,28 @@ function ProfileBody({
           </div>
           <div className="flex flex-wrap gap-2">
             {!editing ? (
-              <button
-                type="button"
-                className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-control px-3 py-2 text-sm text-white"
-                onClick={startEdit}
-              >
+              <Button type="button" onClick={startEdit}>
                 {t("edit")}
-              </button>
+              </Button>
             ) : (
               <>
-                <button
+                {/* The one gold button while editing. */}
+                <Button
                   type="button"
-                  className="bg-forest hover:bg-forest/90 focus-visible:outline-ring rounded-control px-3 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={saving}
+                  variant="primary"
+                  loading={saving}
                   onClick={() => void save()}
                 >
                   {saving ? t("saving") : t("save")}
-                </button>
-                <button
-                  type="button"
-                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={saving}
-                  onClick={cancelEdit}
-                >
+                </Button>
+                <Button type="button" disabled={saving} onClick={cancelEdit}>
                   {t("cancel")}
-                </button>
+                </Button>
               </>
             )}
             {identity.showSignOut && (
               <SignOutButton redirectUrl="/sign-in">
-                <button
-                  type="button"
-                  className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control border px-3 py-2 text-sm"
-                >
-                  {t("signOut")}
-                </button>
+                <Button type="button">{t("signOut")}</Button>
               </SignOutButton>
             )}
           </div>
@@ -369,9 +368,17 @@ function ProfileBody({
             onChange={(v) => setDraft((d) => ({ ...d, displayName: v }))}
           />
           {identity.showSignOut && (
-            <Field label={t("signInAccountLabel")} value={identity.signInName} editing={false} />
+            <Field
+              label={t("signInAccountLabel")}
+              value={identity.signInName}
+              editing={false}
+            />
           )}
-          <Field label={t("emailLabel")} value={identity.email} editing={false} />
+          <Field
+            label={t("emailLabel")}
+            value={identity.email}
+            editing={false}
+          />
         </dl>
       </section>
 
@@ -499,7 +506,7 @@ function ApiPersistedProfile({
         </p>
         <button
           type="button"
-          className="border-border hover:bg-hover-bg focus-visible:outline-ring mt-3 rounded-control border px-3 py-2 text-sm"
+          className="border-border hover:bg-hover-bg focus-visible:outline-ring rounded-control mt-3 border px-3 py-2 text-sm"
           onClick={loadProfile}
         >
           {tApp("retry")}
@@ -598,8 +605,12 @@ export function ProfileScreen({
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="max-w-3xl p-6">
-        {clerkEnabled ? <ClerkProfileBody apiEnabled={apiEnabled} /> : <DemoProfileBody />}
+      <div className="mx-auto w-full max-w-[1240px] p-6">
+        {clerkEnabled ? (
+          <ClerkProfileBody apiEnabled={apiEnabled} />
+        ) : (
+          <DemoProfileBody />
+        )}
         <p className="text-muted-ink border-border border-t pt-4 text-xs">
           <Link href="/settings" className="text-forest underline">
             {t("openSettings")}

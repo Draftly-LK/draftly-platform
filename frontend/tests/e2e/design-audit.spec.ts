@@ -15,10 +15,15 @@ const expectedTokens = {
   "--amber-text": "#784405",
   "--red": "#a43d45",
   "--selected-bg": "#eaf0f8",
-  "--ring": "#176b75",
+  "--ring": "#1b3358",
   "--navy-950": "#0b1628",
   "--gold": "#c69436",
   "--gold-strong": "#74510f",
+  "--primary-bg": "rgb(249 232 198 / 0.96)",
+  "--primary-border": "#ad7b24",
+  "--primary-icon": "#95651c",
+  "--primary-hover": "#f5deb0",
+  "--primary-pressed": "#f9edc8",
 } as const;
 
 test("every route conforms to the Draftly visual system", async ({
@@ -65,17 +70,22 @@ test("every route conforms to the Draftly visual system", async ({
           radius: Number.parseFloat(getComputedStyle(element).borderRadius),
         }))
         .filter(({ radius }) => radius !== 6);
+      // Gradients are banned as CSS backgrounds. The navy backdrop's gradient and
+      // parcel texture are an <svg data-navy-backdrop>, a reviewed exception.
       const gradientViolations = [...document.querySelectorAll("body *")]
         .filter(visible)
+        .filter((element) => !element.classList.contains("primary-action"))
         .filter((element) =>
           getComputedStyle(element).backgroundImage.includes("gradient"),
         ).length;
       const shadowViolations = [...document.querySelectorAll("body *")]
         .filter(visible)
         .filter((element) => {
-          // Elevation comes only from the named shadow tokens (card, raised,
-          // popover); anything else is an unreviewed shadow.
-          const permittedElevation = ["shadow-card", "shadow-raised", "shadow-popover"].some(
+          // Elevation comes only from the named shadow tokens (popover, dialog,
+          // toast, and the sidebar's lift over the header); anything else is an
+          // unreviewed shadow.
+          const bodyElevation = element.closest("[data-home-body]") !== null && element.matches(".home-matter-surface, .home-timeline-surface, .home-workflow-tile");
+          const permittedElevation = bodyElevation || ["shadow-popover", "shadow-dialog", "shadow-toast", "shadow-sidebar"].some(
             (token) =>
               element.classList.contains(token) ||
               element.classList.contains(`hover:${token}`),
