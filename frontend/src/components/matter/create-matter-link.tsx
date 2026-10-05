@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
 export function CreateMatterLink({ className }: { className?: string }) {
   const t = useTranslations("home");
   return (
-    <Link href="/new" className={cn(buttonClass("primary"), className)}>
+    // One minimum width everywhere (Home header and Matters page), so the two buttons are the same size.
+    <Link href="/new" className={cn(buttonClass("primary"), "min-w-48", className)}>
       <FilePlus2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
       {t("createTitle")}
     </Link>

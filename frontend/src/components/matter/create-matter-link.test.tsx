@@ -11,6 +11,7 @@ describe("CreateMatterLink", () => {
     expect(link.getAttribute("href")).toBe("/new");
     expect(link.className).toContain("bg-primary-gradient");
     expect(link.className).toContain("min-h-10");
+    expect(link.className).toContain("min-w-48");
     expect(container.querySelector("svg.lucide-file-plus2")).not.toBeNull();
     expect(container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
   });
