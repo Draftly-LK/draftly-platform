@@ -1,0 +1,194 @@
+[
+  {
+    "width": 1440,
+    "route": "matters",
+    "overflow": false,
+    "left": 244,
+    "right": 1440,
+    "padding": "24px"
+  },
+  {
+    "width": 1440,
+    "route": "history",
+    "overflow": false,
+    "left": 244,
+    "right": 1440,
+    "padding": "24px"
+  },
+  {
+    "width": 1440,
+    "route": "settings",
+    "overflow": false,
+    "left": 244,
+    "right": 1440,
+    "padding": "24px"
+  },
+  {
+    "width": 1440,
+    "route": "billing",
+    "overflow": false,
+    "left": 244,
+    "right": 1440,
+    "padding": "24px"
+  },
+  {
+    "width": 1440,
+    "route": "profile",
+    "overflow": false,
+    "left": 244,
+    "right": 1440,
+    "padding": "24px"
+  },
+  {
+    "width": 1440,
+    "route": "help",
+    "overflow": false,
+    "left": 244,
+    "right": 1440,
+    "padding": "24px"
+  },
+  {
+    "width": 768,
+    "route": "matters",
+    "overflow": false,
+    "left": 0,
+    "right": 768,
+    "padding": "24px"
+  },
+  {
+    "width": 768,
+    "route": "history",
+    "overflow": false,
+    "left": 0,
+    "right": 768,
+    "padding": "24px"
+  },
+  {
+    "width": 768,
+    "route": "settings",
+    "overflow": false,
+    "left": 0,
+    "right": 768,
+    "padding": "24px"
+  },
+  {
+    "width": 768,
+    "route": "billing",
+    "overflow": false,
+    "left": 0,
+    "right": 768,
+    "padding": "24px"
+  },
+  {
+    "width": 768,
+    "route": "profile",
+    "overflow": false,
+    "left": 0,
+    "right": 768,
+    "padding": "24px"
+  },
+  {
+    "width": 768,
+    "route": "help",
+    "overflow": false,
+    "left": 0,
+    "right": 768,
+    "padding": "24px"
+  },
+  {
+    "width": 390,
+    "route": "matters",
+    "overflow": false,
+    "left": 0,
+    "right": 390,
+    "padding": "24px"
+  },
+  {
+    "width": 390,
+    "route": "history",
+    "overflow": false,
+    "left": 0,
+    "right": 390,
+    "padding": "24px"
+  },
+  {
+    "width": 390,
+    "route": "settings",
+    "overflow": false,
+    "left": 0,
+    "right": 390,
+    "padding": "24px"
+  },
+  {
+    "width": 390,
+    "route": "billing",
+    "overflow": false,
+    "left": 0,
+    "right": 390,
+    "padding": "24px"
+  },
+  {
+    "width": 390,
+    "route": "profile",
+    "overflow": false,
+    "left": 0,
+    "right": 390,
+    "padding": "24px"
+  },
+  {
+    "width": 390,
+    "route": "help",
+    "overflow": false,
+    "left": 0,
+    "right": 390,
+    "padding": "24px"
+  },
+  {
+    "width": 360,
+    "route": "matters",
+    "overflow": false,
+    "left": 0,
+    "right": 360,
+    "padding": "24px"
+  },
+  {
+    "width": 360,
+    "route": "history",
+    "overflow": false,
+    "left": 0,
+    "right": 360,
+    "padding": "24px"
+  },
+  {
+    "width": 360,
+    "route": "settings",
+    "overflow": false,
+    "left": 0,
+    "right": 360,
+    "padding": "24px"
+  },
+  {
+    "width": 360,
+    "route": "billing",
+    "overflow": false,
+    "left": 0,
+    "right": 360,
+    "padding": "24px"
+  },
+  {
+    "width": 360,
+    "route": "profile",
+    "overflow": false,
+    "left": 0,
+    "right": 360,
+    "padding": "24px"
+  },
+  {
+    "width": 360,
+    "route": "help",
+    "overflow": false,
+    "left": 0,
+    "right": 360,
+    "padding": "24px"
+  }
+]

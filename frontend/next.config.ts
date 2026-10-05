@@ -6,6 +6,8 @@ const withNextIntl = createNextIntlPlugin("./src/lib/i18n/request.ts");
 export default withNextIntl({
   reactStrictMode: true,
   poweredByHeader: false,
+  // The dev-only Next badge defaults to bottom-left, on top of the sidebar footer.
+  devIndicators: { position: "bottom-right" },
   // Docker builds set NEXT_OUTPUT=standalone (see Dockerfile); `next start` and CI stay on the default output.
   output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   // The Playwright workspace server runs beside the normal dev server and needs

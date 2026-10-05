@@ -53,11 +53,11 @@ export function BillingScreen() {
     <AppShell>
       {isApiEnabled() ? <SubscriptionLoader onLoad={setSubscription} /> : null}
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="space-y-8 p-6">
-        <section className="border-border bg-surface rounded-card border p-6 shadow-card">
+      <div className="mx-auto w-full max-w-[1240px] space-y-6 p-6">
+        <section className="border-border bg-surface rounded-card border p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-muted-ink text-xs font-semibold uppercase">
+              <p className="text-muted-ink text-xs font-semibold">
                 {t("currentAccess")}
               </p>
               <h2 className="mt-1 text-2xl font-semibold">{t("pilotName")}</h2>
@@ -118,13 +118,13 @@ export function BillingScreen() {
             </p>
           </div>
 
-          <div className="mt-5 grid gap-5 lg:grid-cols-3">
+          <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-5">
             {PLAN_KEYS.map((plan) => (
               <PlanCard key={plan} plan={plan} />
             ))}
           </div>
 
-          <div className="border-border bg-surface mt-5 rounded-card border p-5 shadow-card">
+          <div className="border-border bg-surface rounded-card mt-5 border p-5">
             <div className="flex gap-3">
               <ShieldCheck
                 className="text-forest mt-0.5 size-5 shrink-0"
@@ -148,14 +148,14 @@ export function BillingScreen() {
             {t("currentBilling")}
           </h2>
           <div className="mt-4 grid gap-5 md:grid-cols-2">
-            <div className="border-border bg-surface rounded-card border p-6 shadow-card">
+            <div className="border-border bg-surface rounded-card border p-6">
               <CreditCard className="text-forest size-6" strokeWidth={1.5} />
               <h3 className="mt-4 text-xl font-semibold">
                 {t("paymentMethod")}
               </h3>
               <p className="text-muted-ink mt-2 text-sm">{t("paymentBody")}</p>
             </div>
-            <div className="border-border bg-surface rounded-card border p-6 shadow-card">
+            <div className="border-border bg-surface rounded-card border p-6">
               <ReceiptText className="text-forest size-6" strokeWidth={1.5} />
               <h3 className="mt-4 text-xl font-semibold">
                 {t("billingHistory")}
@@ -170,7 +170,7 @@ export function BillingScreen() {
           <p className="text-muted-ink mt-1 text-sm">{t("helpBody")}</p>
           <Link
             href="/help"
-            className="border-border-strong bg-surface hover:bg-hover-bg mt-4 inline-flex min-h-10 items-center justify-center rounded-control border px-3 py-2 font-medium"
+            className="border-border-strong bg-surface hover:bg-hover-bg rounded-control mt-4 inline-flex min-h-10 items-center justify-center border px-3 py-2 font-medium"
           >
             {t("contactTeam")}
           </Link>
@@ -204,9 +204,7 @@ function SubscriptionLoader({
 function AccessDetail({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-muted-ink text-xs font-semibold uppercase">
-        {label}
-      </dt>
+      <dt className="text-muted-ink text-xs font-semibold">{label}</dt>
       <dd className="mt-1 text-lg font-semibold">{value}</dd>
     </div>
   );
@@ -226,12 +224,12 @@ function PlanCard({ plan }: { plan: PlanKey }) {
   return (
     <article
       className={cn(
-        "bg-surface flex h-full flex-col rounded-card border p-5 shadow-card",
+        "bg-surface rounded-card flex h-full flex-col border p-5",
         recommended ? "border-forest" : "border-border-strong",
       )}
     >
       <div className="flex min-h-7 items-start justify-between gap-3">
-        <p className="text-muted-ink text-xs font-semibold uppercase">
+        <p className="text-muted-ink text-xs font-semibold">
           {t(`${plan}.eyebrow`)}
         </p>
         {recommended ? (
@@ -270,7 +268,7 @@ function PlanCard({ plan }: { plan: PlanKey }) {
       {plan === "advanced" ? (
         <Link
           href="/help"
-          className="border-border-strong bg-surface hover:bg-hover-bg mt-5 inline-flex min-h-10 items-center justify-center rounded-control border px-3 py-2 font-medium"
+          className="border-border-strong bg-surface hover:bg-hover-bg rounded-control mt-5 inline-flex min-h-10 items-center justify-center border px-3 py-2 font-medium"
         >
           {t("contactUs")}
         </Link>

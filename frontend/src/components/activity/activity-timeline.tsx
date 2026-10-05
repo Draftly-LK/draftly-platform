@@ -2,6 +2,7 @@
 
 import { Clock3 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useDemoStore } from "@/lib/store";
 
 export function ActivityTimeline({ matterId }: { matterId?: string }) {
@@ -15,7 +16,7 @@ export function ActivityTimeline({ matterId }: { matterId?: string }) {
       : allEvents
   ).toReversed();
   if (!events.length)
-    return <p className="text-muted-ink p-6">{t("noEvents")}</p>;
+    return <EmptyState icon={Clock3} title={t("noEvents")} description={t("noEventsBody")} as="h3" />;
   return (
     <ol className="border-border-strong relative border-l">
       {events.map((event) => (

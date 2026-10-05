@@ -272,7 +272,7 @@ function DocumentProcessingReviewFlow({
             </div>
             <p className="text-muted-ink mt-2 text-xs">{t("overlayNote")}</p>
           </section>
-          <section className="border-border bg-surface rounded-card border p-4 shadow-card">
+          <section className="border-border bg-surface rounded-card border p-4">
             <h2 className="font-semibold">{t("fieldsTitle")}</h2>
             <p className="text-muted-ink mb-4 text-sm">
               {t("fieldsDescription")}
@@ -283,7 +283,7 @@ function DocumentProcessingReviewFlow({
                   <label className="text-sm font-medium">
                     {humanizeMessageKey(field.key)}
                     <input
-                      className="border-border-strong mt-1 w-full rounded-control border px-3 py-2"
+                      className="border-border-control mt-1 w-full rounded-control border px-3 py-2"
                       value={edits[field.id] ?? ""}
                       onChange={(event) =>
                         setEdits((current) => ({

@@ -75,12 +75,12 @@ function TextField({
   multiline?: boolean;
 }) {
   const shared =
-    "border-border focus-visible:outline-ring bg-surface mt-1 w-full rounded-control border px-3 py-2 text-sm";
+    "border-border-control focus-visible:outline-ring bg-surface mt-1 w-full rounded-control border px-3 py-2 text-sm";
   return (
     <label className="block">
       <span className="flex items-baseline justify-between gap-2">
         <span className="text-muted-ink text-xs">{label}</span>
-        <span className="text-muted-ink text-[11px]">{mark}</span>
+        <span className="text-muted-ink text-xs">{mark}</span>
       </span>
       {multiline ? (
         <textarea

@@ -1,16 +1,49 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
+
+// Sizes are px at 1x. The Sinhala locale sets --type-scale (larger glyphs, since
+// Noto Sinhala marks are small) and --lh-scale (taller lines for stacked marks)
+// in globals.css; English leaves both unset, so it renders exactly as written.
+const px = (size: number) => `calc(${size}px * var(--type-scale, 1))`;
+const lh = (size: number) => `calc(${size}px * var(--type-scale, 1) * var(--lh-scale, 1))`;
 
 export default {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
+    // The type scale is closed: 12, 13, 14, 16, 18, 20, 24, 30px. Anything
+    // else (text-4xl, text-[17px]) fails to compile into a size on purpose.
+    fontSize: {
+      xs: [px(12), { lineHeight: lh(16) }],
+      compact: [px(13), { lineHeight: lh(20) }],
+      sm: [px(14), { lineHeight: lh(20) }],
+      base: [px(16), { lineHeight: lh(24) }],
+      lg: [px(18), { lineHeight: lh(26) }],
+      xl: [px(20), { lineHeight: lh(28) }],
+      "2xl": [px(24), { lineHeight: lh(32) }],
+      "3xl": [px(30), { lineHeight: lh(38) }]
+    },
     extend: {
       colors: {
+        success: "var(--success)",
+        "success-bg": "var(--success-bg)",
+        "gold-hover": "var(--gold-hover)",
+        "primary-bg": "var(--primary-bg)",
+        "primary-hover": "var(--primary-hover)",
+        "primary-icon": "var(--primary-icon)",
+        "primary-border": "var(--primary-border)",
+        "primary-pressed": "var(--primary-pressed)",
+        "primary-ink": "var(--primary-ink)",
+        "amber-on-dark": "var(--amber-on-dark)",
+        "ring-on-dark": "var(--ring-on-dark)",
         canvas: "var(--canvas)",
         surface: "var(--surface)",
         ink: "var(--ink)",
         "muted-ink": "var(--muted-ink)",
         border: "var(--border)",
         "border-strong": "var(--border-strong)",
+        "border-control": "var(--border-control)",
+        "border-active": "var(--border-active)",
+        "red-hover": "var(--red-hover)",
         forest: "var(--forest)",
         "soft-green": "var(--soft-green)",
         teal: "var(--teal)",
@@ -31,6 +64,7 @@ export default {
         "border-on-dark": "var(--border-on-dark)",
         scrim: "var(--scrim)",
         "navy-950": "var(--navy-950)",
+        "surface-inverse": "var(--surface-inverse)",
         "navy-900": "var(--navy-900)",
         "navy-800": "var(--navy-800)",
         gold: "var(--gold)",
@@ -43,28 +77,31 @@ export default {
         display: ["var(--font-serif)", "var(--font-noto-serif-si)", "Georgia", "serif"]
       },
       outlineColor: {
-        ring: "var(--ring)"
+        ring: "var(--ring)",
+        "ring-on-dark": "var(--ring-on-dark)"
       },
       borderRadius: { DEFAULT: "12px", dialog: "16px", card: "16px", control: "9999px" },
       keyframes: {
-        "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
-        "rise-in": { from: { opacity: "0", transform: "translateY(6px)" }, to: { opacity: "1", transform: "none" } },
         // Page-change bar: fast at first, then creeping towards 90% until the page lands.
         "nav-progress": { from: { width: "0%" }, "20%": { width: "45%" }, to: { width: "90%" } }
       },
       animation: {
-        "fade-in": "fade-in 250ms ease-out both",
-        "rise-in": "rise-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both",
         "nav-progress": "nav-progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) both"
       },
       boxShadow: {
         popover: "var(--shadow-popover)",
         dialog: "var(--shadow-dialog)",
         toast: "var(--shadow-toast)",
-        card: "var(--shadow-card)",
-        raised: "var(--shadow-raised)"
+        sidebar: "var(--shadow-sidebar)"
       }
     }
   },
-  plugins: []
+  plugins: [
+    // `rail:` applies only on desktop (1024px and up) while the sidebar is collapsed to its
+    // 72px icon rail. It is plain CSS keyed on <html data-sidebar>, which the server renders
+    // from a cookie, so the collapsed look needs no JavaScript and cannot mismatch on hydration.
+    plugin(({ addVariant }) => {
+      addVariant("rail", '@media (min-width: 1024px) { html[data-sidebar="collapsed"] & }');
+    }),
+  ]
 } satisfies Config;

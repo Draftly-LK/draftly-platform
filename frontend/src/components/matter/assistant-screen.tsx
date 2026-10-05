@@ -367,7 +367,7 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
             {error && (
               <div
                 role="alert"
-                className="border-amber bg-amber-bg text-amber-text mb-3 flex items-start gap-3 rounded-card border p-3 text-sm shadow-card"
+                className="border-amber bg-amber-bg text-amber-text mb-3 flex items-start gap-3 rounded-card border p-3 text-sm"
               >
                 <AlertTriangle className="size-5 shrink-0" />
                 <span className="flex-1">{error}</span>
@@ -461,7 +461,7 @@ function MessageRow({
           }
         >
           <div
-            className={`text-muted-ink flex gap-2 text-xs font-semibold uppercase ${assistant ? "" : "justify-end"}`}
+            className={`text-muted-ink flex gap-2 text-xs font-semibold ${assistant ? "" : "justify-end"}`}
           >
             <span>{assistant ? t("roleAssistant") : t("roleYou")}</span>
             <time
@@ -486,7 +486,7 @@ function MessageRow({
                 <button
                   key={`${message.id}-${citation.sourceId}`}
                   type="button"
-                  className="border-border-strong bg-surface text-teal focus-visible:outline-ring rounded-control border px-2 py-1 text-xs focus-visible:outline-2"
+                  className="border-border-strong bg-surface text-forest focus-visible:outline-ring rounded-control border px-2 py-1 text-xs focus-visible:outline-2"
                   onClick={() => onCitation(citation)}
                 >
                   [{index + 1}] {citation.label}
@@ -519,7 +519,7 @@ function renderCitedText(
       <button
         key={`${citation.sourceId}-${index}`}
         type="button"
-        className="text-teal focus-visible:outline-ring mx-0.5 font-semibold hover:underline focus-visible:outline-2"
+        className="text-forest focus-visible:outline-ring mx-0.5 font-semibold hover:underline focus-visible:outline-2"
         aria-label={`${citation.label}, ${citation.verificationStatus}`}
         onClick={() => onCitation(citation)}
       >
@@ -544,7 +544,7 @@ function Composer({
 }) {
   return (
     <form
-      className="border-border-strong bg-surface shadow-popover sticky bottom-3 mb-3 rounded border p-3"
+      className="border-border-control bg-surface shadow-popover sticky bottom-3 mb-3 rounded border p-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -639,13 +639,13 @@ function ContextPanel({
       <div className="p-5">
         <button
           type="button"
-          className="text-teal text-sm hover:underline"
+          className="text-forest text-sm hover:underline"
           onClick={onClearCitation}
         >
           {t("backToContext")}
         </button>
         <div className="border-border-strong mt-4 rounded border p-4">
-          <div className="text-muted-ink text-xs font-semibold uppercase">
+          <div className="text-muted-ink text-xs font-semibold">
             {t("evidence")}
           </div>
           <h3 className="mt-1 font-semibold">{selectedCitation.label}</h3>
@@ -662,7 +662,7 @@ function ContextPanel({
           </p>
           <Link
             href={citationHref(matterId, selectedCitation)}
-            className="text-teal mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
+            className="text-forest mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
           >
             {t("openSource")}
             <ChevronRight className="size-4" />
@@ -705,7 +705,7 @@ function ContextPanel({
   return (
     <div>
       <div className="border-border border-b p-5">
-        <div className="text-muted-ink text-xs font-semibold uppercase">
+        <div className="text-muted-ink text-xs font-semibold">
           {t("caseContext")}
         </div>
         <h2 className="font-heading mt-1 text-xl font-semibold">
@@ -726,7 +726,7 @@ function ContextPanel({
           >
             <Icon className="text-forest size-5 shrink-0" />
             <div className="min-w-0 flex-1">
-              <div className="text-muted-ink text-xs font-semibold uppercase">
+              <div className="text-muted-ink text-xs font-semibold">
                 {label}
               </div>
               <div className="mt-1 text-sm">{value}</div>
@@ -755,7 +755,7 @@ function ProposalCard({
 }) {
   return (
     <div
-      className="border-amber bg-amber-bg ml-12 mt-3 rounded-card border p-4 shadow-card"
+      className="border-amber bg-amber-bg ml-12 mt-3 rounded-card border p-4"
       data-testid="proposal-card"
     >
       <p className="text-sm font-semibold">{t("proposalTitle")}</p>
