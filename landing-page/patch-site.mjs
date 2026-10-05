@@ -140,6 +140,14 @@ for (const relative of ['index.html', 'lab/index.html']) {
   }
   pushes.forEach((push, index) => $(push.element).text(`self.__next_f.push(${JSON.stringify([1, index === 0 ? result : ''])})`));
   $('title').text(field(section('Page metadata'), 'Title'));
+  // createRoot replaces the saved DOM. Let only the live React navbar play
+  // its entrance animation, rather than showing it once before replacement.
+  const savedNavbar = $('nav').first().closest('.fixed.top-0.left-0.right-0');
+  if (savedNavbar.length !== 1) throw new Error(`Could not locate the saved navbar in ${relative}.`);
+  savedNavbar.attr('data-draftly-saved-navbar', '');
+  $('#draftly-navbar-startup, #draftly-navbar-no-js').remove();
+  $('head').append('<style id="draftly-navbar-startup">[data-draftly-saved-navbar]{visibility:hidden}</style>');
+  $('head').append('<noscript id="draftly-navbar-no-js"><style>[data-draftly-saved-navbar]{visibility:visible}</style></noscript>');
   $('script[src="/draftly-fixes.js"]').remove();
   $('body').append('<script src="/draftly-fixes.js" defer></script>');
   fs.writeFileSync(file, $.html());
