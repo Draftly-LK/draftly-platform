@@ -83,7 +83,8 @@ export default {
       boxShadow: {
         popover: "var(--shadow-popover)",
         dialog: "var(--shadow-dialog)",
-        toast: "var(--shadow-toast)"
+        toast: "var(--shadow-toast)",
+        sidebar: "var(--shadow-sidebar)"
       }
     }
   },

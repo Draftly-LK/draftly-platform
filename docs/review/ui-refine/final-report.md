@@ -138,7 +138,7 @@ when motion is allowed.
 
 Contrast, measured: navy focus ring 11.6:1 on the canvas; gold focus ring
 5.2 to 6.6:1 on the navy ramp; navy text on gold fill 6.6:1 (white on gold is
-2.7:1 and is not used); input border 3.3 to 3.6:1; on-dark amber 8:1 on navy. Every navy surface (sidebar, drawer, dashboard header, sign-in panel) uses one token, `--surface-inverse` = `#0F1F38`, with no border or gradient between them; on it, menu text is 9.6:1, the search field text 8.6:1, white text on the active veil 13.5:1, and the gold marker and gold focus ring 4.9 to 6.0:1 (3:1 needed).
+2.7:1 and is not used); input border 3.3 to 3.6:1; on-dark amber 8:1 on navy. Navy surfaces (sidebar, drawer, dashboard header, sign-in panel) share one backdrop, `components/shell/navy-backdrop.tsx`: a diagonal gradient (`#1B3156` top-left, then `#0F1F38`, then `#0B1628`) under a faint land-parcels texture (white 1px lines at 7%, 96 irregular plots, one SVG that scales to fit and is never tiled). The sidebar has a 1px right border at 8% white and a soft shadow (`--shadow-sidebar`). On the lightest part of the gradient, white text is 13.0:1 and menu text 7.6:1; with a parcel line under it they are 10.6:1 and 6.2:1 (4.5:1 needed), and the gold marker and ring stay at or above 3.1:1 (3:1 needed). Sampled pixels in the sidebar and in the header both match the gradient to within 1/255, so the two read as one surface.
 
 ## Screenshots
 

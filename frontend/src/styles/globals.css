@@ -81,6 +81,8 @@
   --scrim: color-mix(in srgb, var(--ink) 55%, transparent);
   --shadow-popover: 0 8px 24px rgb(15 27 46 / 0.12);
   --shadow-dialog: 0 16px 48px rgb(15 27 46 / 0.16);
+  /* The sidebar's lift over the header and the page: 6px right, soft, dark navy at 55%. */
+  --shadow-sidebar: 6px 0 16px -8px rgb(11 22 40 / 0.55);
   --shadow-toast: 0 6px 20px rgb(15 27 46 / 0.14);
 }
 

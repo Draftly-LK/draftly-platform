@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Obligation } from "@/types/obligation";
 import { CommonWorkflows } from "./common-workflows";
 import { FirstRunPanel } from "./first-run-panel";
+import { NavyBackdrop } from "@/components/shell/navy-backdrop";
 import { Greeting } from "./greeting";
 import { MatterFeed, useDashboardNow, type Feed } from "./matter-feed";
 import { PracticeMetrics } from "./practice-snapshot";
@@ -41,8 +42,14 @@ function DashboardView({ feed, obligations }: { feed: Feed; obligations: readonl
 
   return (
     <>
-      <section aria-labelledby="home-title" data-surface="inverse" className="bg-surface-inverse text-white">
-        <div className={cn(CONTENT, "flex flex-wrap items-center gap-x-8 gap-y-5 px-6 py-8 pl-16 lg:pl-6")}>
+      <section
+        aria-labelledby="home-title"
+        data-surface="inverse"
+        // clip-path, not overflow, clips the viewport-fixed backdrop to this band.
+        className="relative isolate bg-surface-inverse text-white [clip-path:inset(0)]"
+      >
+        <NavyBackdrop anchor="viewport" />
+        <div className={cn(CONTENT, "relative z-10 flex flex-wrap items-center gap-x-8 gap-y-5 px-6 py-8 pl-16 lg:pl-6")}>
           <div className="min-w-0 flex-1 basis-72">
             <Greeting />
             <p className="mt-1 min-h-6 text-base text-on-dark-muted">{context}</p>

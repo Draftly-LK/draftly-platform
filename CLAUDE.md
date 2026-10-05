@@ -85,10 +85,19 @@ and the relevant plans under `backend/docs/services/`.
   2 px ring with offset: navy `#1B3358` on light surfaces, gold `#C69436` on
   navy (`data-surface="inverse"`). Gold fills carry navy text, never white.
   No zinc/slate grays.
+- Navy surfaces (sidebar, drawer, dashboard header, sign-in panel) share one
+  backdrop: a diagonal gradient (`#1B3156` top-left, then `#0F1F38`, then
+  `#0B1628`) under a faint "land parcels" texture, white 1 px lines at 7%
+  forming irregular plots, as one inline SVG that scales to fit and is never
+  tiled (`components/shell/navy-backdrop.tsx`). This is the only allowed
+  gradient or texture; the sidebar has a 1 px right border at 8% white. Text on
+  it must keep 4.5:1 on the lightest part of the gradient. No other gradients
+  or decorative backgrounds.
 - Radius as built, not as first specced: buttons, inputs and chips are pills
   (`rounded-control`), panels and cards 12–16 px (`rounded`, `rounded-card`),
   dialogs 16 px. 40–44 px table rows. No card shadows in the
-  workspace. Icons 16 px/1.5-stroke in tables, 20 px toolbar, 24 px empty
+  workspace; the one exception is the sidebar's soft lift
+  (`--shadow-sidebar`, 6px 0 16px -8px at 55% navy). Icons 16 px/1.5-stroke in tables, 20 px toolbar, 24 px empty
   states.
 - Fonts: IBM Plex Sans + Noto Sans Sinhala (headings and UI/body), via
   `next/font`. `font-optical-sizing: auto`;

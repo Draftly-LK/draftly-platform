@@ -21,6 +21,7 @@ import { BrandMark } from "@/components/ui/brand-mark";
 import { IconButton } from "@/components/ui/icon-button";
 import { AccountMenu } from "./account-menu";
 import { CommandPalette } from "./command-palette";
+import { NavyBackdrop } from "./navy-backdrop";
 
 export function Sidebar() {
   const t = useTranslations("shell");
@@ -118,8 +119,11 @@ export function Sidebar() {
         // Closed, the drawer is off-screen and must not be reachable by keyboard.
         inert={drawer && !open ? true : undefined}
         {...(drawer && open ? { role: "dialog", "aria-modal": true, "aria-label": t("workspace") } : {})}
-        className={`bg-surface-inverse text-on-dark fixed inset-y-0 left-0 z-20 flex w-[var(--sidebar-width)] flex-col p-3 transition-transform lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        // A 1px edge and a soft shadow lift the sidebar slightly above the header; the shadow falls on the header and the page.
+        className={`bg-surface-inverse text-on-dark fixed inset-y-0 left-0 z-20 w-[var(--sidebar-width)] overflow-hidden border-r border-white/[0.08] p-3 shadow-sidebar transition-transform lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
+        <NavyBackdrop anchor="origin" />
+        <div className="relative z-10 flex h-full flex-col">
         <div className="flex h-12 items-center gap-3 px-2 py-2 box-content">
           <BrandMark tone="white" className="size-8 shrink-0" />
           <div className="min-w-0 flex-1">
@@ -161,6 +165,7 @@ export function Sidebar() {
         </div>
         <div className="shrink-0 border-t border-white/10 pt-3">
           <AccountMenu />
+        </div>
         </div>
       </aside>
     </>

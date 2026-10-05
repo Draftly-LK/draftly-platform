@@ -65,6 +65,8 @@ test("every route conforms to the Draftly visual system", async ({
           radius: Number.parseFloat(getComputedStyle(element).borderRadius),
         }))
         .filter(({ radius }) => radius !== 6);
+      // Gradients are banned as CSS backgrounds. The navy backdrop's gradient and
+      // parcel texture are an <svg data-navy-backdrop>, a reviewed exception.
       const gradientViolations = [...document.querySelectorAll("body *")]
         .filter(visible)
         .filter((element) =>
@@ -74,8 +76,9 @@ test("every route conforms to the Draftly visual system", async ({
         .filter(visible)
         .filter((element) => {
           // Elevation comes only from the named shadow tokens (popover, dialog,
-          // toast); anything else is an unreviewed shadow.
-          const permittedElevation = ["shadow-popover", "shadow-dialog", "shadow-toast"].some(
+          // toast, and the sidebar's lift over the header); anything else is an
+          // unreviewed shadow.
+          const permittedElevation = ["shadow-popover", "shadow-dialog", "shadow-toast", "shadow-sidebar"].some(
             (token) =>
               element.classList.contains(token) ||
               element.classList.contains(`hover:${token}`),
