@@ -174,11 +174,11 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <label className="border-border-control bg-surface focus-within:outline-ring rounded-control flex h-10 min-w-64 flex-1 items-center gap-2 border px-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2">
+            <label className="border-border-control bg-surface rounded-control flex h-10 min-w-64 flex-1 items-center gap-2 border px-3 focus-within:border-forest focus-within:ring-4 focus-within:ring-border-active">
               <Search className="text-muted-ink size-4" strokeWidth={1.5} />
               <span className="sr-only">{t("search")}</span>
               <input
-                className="min-w-0 flex-1 bg-transparent outline-none"
+                className="min-w-0 flex-1 bg-transparent outline-none focus-visible:outline-none"
                 placeholder={t("search")}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}

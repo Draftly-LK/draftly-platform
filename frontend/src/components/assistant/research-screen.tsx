@@ -147,9 +147,9 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
               );
             })}
           </section>
-          <form className="border-border-control bg-surface shadow-popover sticky bottom-3 mt-5 rounded border p-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
+          <form className="border-border-control bg-surface shadow-popover sticky bottom-3 mt-5 rounded border p-3 focus-within:border-forest focus-within:ring-4 focus-within:ring-border-active" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
             <label className="sr-only" htmlFor="research-question">{t("composerLabel")}</label>
-            <textarea id="research-question" className="min-h-20 w-full resize-y bg-transparent p-2 outline-none" placeholder={t("composerPlaceholder")} value={question} onChange={(event) => setQuestion(event.target.value)} disabled={busy || !apiEnabled} />
+            <textarea id="research-question" className="min-h-20 w-full resize-y bg-transparent p-2 outline-none focus-visible:outline-none" placeholder={t("composerPlaceholder")} value={question} onChange={(event) => setQuestion(event.target.value)} disabled={busy || !apiEnabled} />
             <div className="border-border flex items-center border-t pt-3">
               {busy && <span className="text-muted-ink flex items-center gap-2 text-sm"><LoaderCircle className="size-4 animate-spin" />{t("working")}</span>}
               <Button type="submit" variant="primary" className="ml-auto" disabled={!question.trim() || busy || !apiEnabled}>{busy ? <Square className="size-4" /> : <Send className="size-4" />}{busy ? t("stop") : t("send")}</Button>
