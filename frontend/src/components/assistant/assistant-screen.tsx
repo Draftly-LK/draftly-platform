@@ -162,7 +162,7 @@ export function AssistantScreen() {
             </div>
           </section>
           <form
-            className="border-border-control bg-surface shadow-popover mt-5 rounded border p-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
+            className="border-border-control bg-surface shadow-popover mt-5 rounded border p-3 focus-within:border-forest focus-within:ring-4 focus-within:ring-border-active"
             onSubmit={(event) => {
               event.preventDefault();
               submit();
@@ -173,7 +173,7 @@ export function AssistantScreen() {
             </label>
             <textarea
               id="assistant-question"
-              className="min-h-24 w-full resize-y border-0 bg-transparent p-2 outline-none"
+              className="min-h-24 w-full resize-y border-0 bg-transparent p-2 outline-none focus-visible:outline-none"
               placeholder={t("composerPlaceholder")}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}

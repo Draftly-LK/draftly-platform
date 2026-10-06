@@ -167,7 +167,7 @@ export function ConversationRail({
             </Button>
             <label className="block">
               <span className="sr-only">{t("searchConversations")}</span>
-              <span className="border-border-control bg-canvas focus-within:bg-surface focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring flex min-h-9 items-center gap-2 rounded-control border px-3">
+              <span className="border-border-control bg-canvas focus-within:bg-surface focus-within:border-forest focus-within:ring-4 focus-within:ring-border-active flex min-h-9 items-center gap-2 rounded-control border px-3">
                 <Search
                   className="text-muted-ink size-4 shrink-0"
                   strokeWidth={1.5}
@@ -176,7 +176,7 @@ export function ConversationRail({
                   ref={searchRef}
                   id="research-conversation-search"
                   name="researchConversationSearch"
-                  className="min-w-0 flex-1 bg-transparent text-sm outline-none"
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none focus-visible:outline-none"
                   placeholder={t("searchConversations")}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}

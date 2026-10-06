@@ -544,7 +544,7 @@ function Composer({
 }) {
   return (
     <form
-      className="border-border-control bg-surface shadow-popover sticky bottom-3 mb-3 rounded border p-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring"
+      className="border-border-control bg-surface shadow-popover sticky bottom-3 mb-3 rounded border p-3 focus-within:border-forest focus-within:ring-4 focus-within:ring-border-active"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
@@ -555,7 +555,7 @@ function Composer({
       </label>
       <textarea
         id="matter-assistant-composer"
-        className="min-h-20 w-full resize-y border-0 bg-transparent p-2 outline-none"
+        className="min-h-20 w-full resize-y border-0 bg-transparent p-2 outline-none focus-visible:outline-none"
         placeholder={t("composerPlaceholder")}
         value={draft}
         disabled={busy}
