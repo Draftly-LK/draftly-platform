@@ -8,7 +8,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
@@ -28,6 +28,8 @@ import { IconButton } from "@/components/ui/icon-button";
 export interface ResearchConversation {
   id: string;
   title: string;
+  /** ISO timestamp; shown as a short date under the title when present. */
+  createdAt?: string;
 }
 
 /** Below Tailwind 'lg' the expanded rail is an overlay drawer, not a column. */
@@ -47,6 +49,7 @@ export function ConversationRail({
   onCreate: () => void;
 }) {
   const t = useTranslations("research");
+  const format = useFormatter();
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(true);
   const [focusSearch, setFocusSearch] = useState(false);
@@ -217,7 +220,7 @@ export function ConversationRail({
                       closeIfOverlay();
                     }}
                     title={item.title}
-                    className={`focus-visible:outline-ring flex min-h-10 w-full items-center gap-2 rounded px-2 text-left text-sm ${
+                    className={`focus-visible:outline-ring flex min-h-10 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm ${
                       selected
                         ? "bg-selected-bg text-forest font-semibold"
                         : "text-ink hover:bg-hover-bg"
@@ -228,8 +231,19 @@ export function ConversationRail({
                       className={`size-4 shrink-0 ${selected ? "" : "text-muted-ink"}`}
                       strokeWidth={1.5}
                     />
-                    <span className="min-w-0 flex-1 truncate">
-                      {item.title}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{item.title}</span>
+                      {item.createdAt ? (
+                        <time
+                          dateTime={item.createdAt}
+                          className="text-muted-ink block text-xs font-normal tabular-nums"
+                        >
+                          {format.dateTime(new Date(item.createdAt), {
+                            day: "2-digit",
+                            month: "short",
+                          })}
+                        </time>
+                      ) : null}
                     </span>
                   </button>
                 );
