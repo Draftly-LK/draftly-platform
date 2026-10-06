@@ -56,6 +56,18 @@ class MessageCitationRead(CamelModel):
     passage: str
     page: int
     verified: bool
+    # "case" citations are unverified research leads; earlier rows read as "statute".
+    authority_kind: Literal["statute", "case"] = "statute"
+    title: str | None = None
+    reference: str | None = None
+    source_url: str | None = None
+
+
+class MessageClaimRead(CamelModel):
+    """One answer claim and the authority ids it cites, in answer order."""
+
+    text: str
+    citation_ids: list[str]
 
 
 class MessageRead(CamelModel):
@@ -68,6 +80,7 @@ class MessageRead(CamelModel):
     content: str
     answer_id: str | None = None
     citations: list[MessageCitationRead] = Field(default_factory=list)
+    claims: list[MessageClaimRead] = Field(default_factory=list)
     created_at: datetime
 
 
@@ -78,6 +91,8 @@ class MessageListRead(CamelModel):
 class SendMessageRequest(StrictCamel):
     content: str = Field(min_length=1, max_length=10_000)
     parent_message_id: str | None = None
+    # Legal sources to search. Defaults to the original statutes-only behaviour.
+    sources: Literal["statutes", "cases", "all"] = "statutes"
 
 
 class JobRead(CamelModel):

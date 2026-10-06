@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 
@@ -8,7 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.document.infrastructure.orm import SourceFileRow
 from src.modules.matter.infrastructure.orm import MatterRow
-from src.modules.research.domain.models import ComposedClaim, Scope, ScopeType
+from src.modules.research.case_ports import CaseSearchPort
+from src.modules.research.domain.cases import SimilarCase
+from src.modules.research.domain.models import (
+    AuthorityKind,
+    ComposedClaim,
+    RetrievalPassage,
+    Scope,
+    ScopeType,
+    SearchResult,
+    SourceScope,
+)
 from src.modules.research.infrastructure.orm import (
     ResearchAnswerRow,
     ResearchBranchRow,
@@ -29,6 +40,35 @@ CORPUS_VERSION = "statutes-bm25-v1:8a7f096671b28cf0"
 # migration backfills earlier conversations by the same rule.
 DEFAULT_TITLE = "New research"
 TITLE_LENGTH = 80
+# A handful of case leads per question: enough to ground a claim, few enough to
+# keep the evidence the model reads focused.
+CASE_RESULT_LIMIT = 5
+CASE_SOURCE_ID = "case-law"
+CASE_CHANNEL = "case-law"
+
+
+def case_passages(result_items: list[SimilarCase], corpus_version: str) -> list[RetrievalPassage]:
+    """Similar-case hits as research evidence: the excerpt only, never verified."""
+    passages: list[RetrievalPassage] = []
+    for item in result_items:
+        excerpt = " ".join(str(item.excerpt or "").split())
+        if not excerpt:
+            continue  # nothing to ground a claim in
+        passages.append(
+            RetrievalPassage(
+                source_id=CASE_SOURCE_ID,
+                authority_id=item.id,
+                title=item.title,
+                reference=item.citation,
+                text=excerpt,
+                page=0,
+                corpus_version=corpus_version,
+                verified=False,
+                kind=AuthorityKind.CASE,
+                source_url=item.source_url or None,
+            )
+        )
+    return passages
 
 
 def _id(prefix: str) -> str:
@@ -52,10 +92,58 @@ class ResearchService:
         session: AsyncSession,
         retrieval: LegalRetrievalPort,
         composer: GroundedAnswerComposerPort | None = None,
+        cases: CaseSearchPort | None = None,
     ) -> None:
         self.db = session
         self.retrieval = retrieval
         self.composer = composer
+        # The bounded similar-case port, called directly: the metered
+        # CaseResearchService would charge a second research query.
+        self.cases = cases
+
+    async def _search_cases(self, content: str) -> tuple[list[RetrievalPassage], str | None]:
+        """Case evidence and its corpus version; ([], None) when case search failed."""
+        if self.cases is None:
+            return [], None
+        try:
+            result = await self.cases.search_cases(content, limit=CASE_RESULT_LIMIT)
+        except Exception:  # an unavailable case service must not fail the question
+            return [], None
+        return case_passages(result.items, result.corpus_version), result.corpus_version
+
+    async def retrieve(
+        self, content: str, scope: Scope, sources: SourceScope
+    ) -> tuple[SearchResult, list[str], bool]:
+        """Evidence for the selected sources, searched concurrently.
+
+        Returns the combined result, the corpus versions searched, and whether
+        case search was requested but unavailable.
+        """
+        want_statutes = sources in (SourceScope.STATUTES, SourceScope.ALL)
+        want_cases = sources in (SourceScope.CASES, SourceScope.ALL)
+
+        async def no_statutes() -> SearchResult:
+            return SearchResult()
+
+        async def no_cases() -> tuple[list[RetrievalPassage], str | None]:
+            return [], None
+
+        statutes, (cases, case_version) = await asyncio.gather(
+            self.retrieval.search(content, scope, CORPUS_VERSION)
+            if want_statutes
+            else no_statutes(),
+            self._search_cases(content) if want_cases else no_cases(),
+        )
+        case_unavailable = want_cases and case_version is None
+        versions = ([CORPUS_VERSION] if want_statutes else []) + (
+            [case_version] if case_version else []
+        )
+        degraded = list(statutes.degraded_channels) + ([CASE_CHANNEL] if case_unavailable else [])
+        return (
+            SearchResult(passages=[*statutes.passages, *cases], degraded_channels=degraded),
+            versions,
+            case_unavailable,
+        )
 
     async def resolve_scope(
         self, ctx: RequestContext, scope_type: str, target_id: str | None
@@ -206,6 +294,7 @@ class ResearchService:
         content: str,
         parent_message_id: str | None,
         job_id: str | None = None,
+        sources: SourceScope = SourceScope.STATUTES,
     ) -> ResearchJobRow:
         conversation = await self.conversation(ctx, conversation_id)
         if parent_message_id:
@@ -255,7 +344,9 @@ class ResearchService:
         scope = Scope(
             ScopeType(conversation.scope_type), conversation.scope_target_id, conversation.matter_id
         )
-        result = await self.retrieval.search(content, scope, CORPUS_VERSION)
+        result, versions, case_unavailable = await self.retrieve(content, scope, sources)
+        corpus_version = "+".join(versions) or CORPUS_VERSION
+        job.corpus_version = corpus_version
         answer_id, assistant_id = _id("rans"), _id("rmsg")
         composed: tuple[ComposedClaim, ...] = ()
         if result.passages and self.composer is not None:
@@ -265,11 +356,12 @@ class ResearchService:
                 composed = ()
         reason = None
         if not composed:
-            reason = (
-                "research.insufficient.corpusUnavailable"
-                if not result.passages
-                else "research.insufficient.noSupportedClaims"
-            )
+            if sources == SourceScope.CASES and case_unavailable:
+                reason = "research.insufficient.caseLawUnavailable"
+            elif not result.passages:
+                reason = "research.insufficient.corpusUnavailable"
+            else:
+                reason = "research.insufficient.noSupportedClaims"
         answer = ResearchAnswerRow(
             id=answer_id,
             user_id=ctx.actor_id,
@@ -278,7 +370,7 @@ class ResearchService:
             message_id=assistant_id,
             kind="grounded" if composed else "insufficient-authority",
             question=content,
-            corpus_version=CORPUS_VERSION,
+            corpus_version=corpus_version,
             reason_key=reason,
             suggested_action_key="research.insufficient.refineOrRequestReview",
         )
@@ -325,7 +417,12 @@ class ResearchService:
                         corpus_version=passage.corpus_version,
                         passage=passage.text,
                         page=passage.page,
-                        verified=passage.verified,
+                        # Case law is never verified here, whatever the evidence said.
+                        verified=passage.verified and passage.kind != AuthorityKind.CASE,
+                        authority_kind=passage.kind.value,
+                        title=passage.title[:512] or None,
+                        reference=passage.reference[:256] or None,
+                        source_url=(passage.source_url or "")[:1024] or None,
                     )
                 )
         event_type = "grounded-answer" if composed else "abstention"

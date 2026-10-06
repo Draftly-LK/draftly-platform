@@ -12,6 +12,34 @@ class ScopeType(str, Enum):
     DOCUMENT = "document"
 
 
+class SourceScope(str, Enum):
+    """Which legal sources a research question searches. Not the conversation scope."""
+
+    STATUTES = "statutes"
+    CASES = "cases"
+    ALL = "all"
+
+
+class AuthorityKind(str, Enum):
+    """Where a cited passage came from. Case law is always an unverified research lead."""
+
+    STATUTE = "statute"
+    CASE = "case"
+
+
+# Case ids in the judgment catalogue carry this prefix; it identifies case citations
+# stored before the authority kind was recorded.
+CASE_ID_PREFIX = "commonlii-"
+
+
+def authority_kind_of(authority_id: str, recorded: str | None) -> AuthorityKind:
+    if recorded:
+        return AuthorityKind(recorded)
+    if authority_id.lower().startswith(CASE_ID_PREFIX):
+        return AuthorityKind.CASE
+    return AuthorityKind.STATUTE
+
+
 class JobState(str, Enum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -36,6 +64,8 @@ class RetrievalPassage:
     page: int
     corpus_version: str
     verified: bool = True
+    kind: AuthorityKind = AuthorityKind.STATUTE
+    source_url: str | None = None
 
 
 @dataclass(frozen=True)

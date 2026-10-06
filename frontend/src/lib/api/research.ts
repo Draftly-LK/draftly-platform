@@ -1,5 +1,5 @@
 import { apiFetch, type TokenProvider } from "./client";
-import type { AssistantScope, ResearchConversation, ResearchJob, ResearchMessage } from "@/types";
+import type { AssistantScope, ResearchConversation, ResearchJob, ResearchMessage, ResearchSources } from "@/types";
 
 interface List<T> { items: T[] }
 
@@ -25,8 +25,8 @@ export async function listResearchMessages(getToken: TokenProvider, conversation
   return (await apiFetch<List<ResearchMessage>>(`/api/v1/research/conversations/${conversationId}/messages`, { getToken })).items;
 }
 
-export function sendResearchMessage(getToken: TokenProvider, conversationId: string, content: string, parentMessageId?: string): Promise<ResearchJob> {
-  return apiFetch(`/api/v1/research/conversations/${conversationId}/messages`, { method: "POST", getToken, headers: { "Idempotency-Key": crypto.randomUUID() }, body: { content, parentMessageId } });
+export function sendResearchMessage(getToken: TokenProvider, conversationId: string, content: string, parentMessageId?: string, sources: ResearchSources = "statutes"): Promise<ResearchJob> {
+  return apiFetch(`/api/v1/research/conversations/${conversationId}/messages`, { method: "POST", getToken, headers: { "Idempotency-Key": crypto.randomUUID() }, body: { content, parentMessageId, sources } });
 }
 
 export function branchResearchMessage(getToken: TokenProvider, messageId: string): Promise<{ id: string }> {

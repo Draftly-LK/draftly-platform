@@ -22,6 +22,7 @@ from src.modules.research.api.schemas import (
     CreateConversationRequest,
     JobRead,
     MessageCitationRead,
+    MessageClaimRead,
     MessageListRead,
     MessageRead,
     RenameConversationRequest,
@@ -32,6 +33,7 @@ from src.modules.research.api.schemas import (
     SendMessageRequest,
 )
 from src.modules.research.application.service import CORPUS_VERSION, ResearchService
+from src.modules.research.domain.models import AuthorityKind, SourceScope, authority_kind_of
 from src.modules.research.infrastructure.orm import (
     ResearchAnswerRow,
     ResearchCitationRow,
@@ -44,6 +46,7 @@ from src.modules.research.infrastructure.retrieval import (
     HttpStatuteRetrievalAdapter,
     StatuteRetrievalAdapter,
 )
+from src.modules.research.infrastructure.retrieval.case_http import HttpCaseSearchAdapter
 from src.modules.research.ports import LegalRetrievalPort
 from src.platform.config import get_settings
 from src.platform.db.idempotency import (
@@ -87,7 +90,10 @@ def get_service(session: AsyncSession = Depends(get_db)) -> ResearchService:
         if settings.retrieval_base_url
         else StatuteRetrievalAdapter()
     )
-    return ResearchService(session, retrieval, composer)
+    # The bounded similar-case port directly, not the metered CaseResearchService:
+    # one research question costs one research query.
+    cases = HttpCaseSearchAdapter(base_url=settings.retrieval_base_url)
+    return ResearchService(session, retrieval, composer, cases)
 
 
 def _conversation(row: ResearchConversationRow) -> ConversationRead:
@@ -106,7 +112,9 @@ def _conversation(row: ResearchConversationRow) -> ConversationRead:
 
 
 def _message(
-    row: ResearchMessageRow, citations: list[MessageCitationRead] | None = None
+    row: ResearchMessageRow,
+    citations: list[MessageCitationRead] | None = None,
+    claims: list[MessageClaimRead] | None = None,
 ) -> MessageRead:
     return MessageRead(
         id=row.id,
@@ -118,6 +126,7 @@ def _message(
         content=row.content,
         answer_id=row.answer_id,
         citations=citations or [],
+        claims=claims or [],
         created_at=row.created_at,
     )
 
@@ -180,14 +189,17 @@ async def messages(
     rows = await service.list_messages(ctx, conversation_id)
     answer_ids = [row.answer_id for row in rows if row.answer_id]
     citations_by_answer: dict[str, list[MessageCitationRead]] = {}
+    claims_by_answer: dict[str, list[MessageClaimRead]] = {}
     if answer_ids:
         claims = list(
             (
                 await service.db.execute(
-                    select(ResearchClaimRow).where(
+                    select(ResearchClaimRow)
+                    .where(
                         ResearchClaimRow.answer_id.in_(answer_ids),
                         ResearchClaimRow.user_id == ctx.actor_id,
                     )
+                    .order_by(ResearchClaimRow.answer_id, ResearchClaimRow.position)
                 )
             ).scalars()
         )
@@ -203,8 +215,11 @@ async def messages(
                     )
                 ).scalars()
             )
+            cited_by_claim: dict[str, list[str]] = {}
             for citation in citation_rows:
                 answer_id = answer_for_claim[citation.claim_id]
+                kind = authority_kind_of(citation.authority_id, citation.authority_kind)
+                cited_by_claim.setdefault(citation.claim_id, []).append(citation.authority_id)
                 citations_by_answer.setdefault(answer_id, []).append(
                     MessageCitationRead(
                         id=citation.id,
@@ -212,11 +227,27 @@ async def messages(
                         authority_id=citation.authority_id,
                         passage=citation.passage,
                         page=citation.page,
-                        verified=citation.verified,
+                        # A case citation is an unverified research lead, always.
+                        verified=citation.verified and kind != AuthorityKind.CASE,
+                        authority_kind=kind.value,
+                        title=citation.title,
+                        reference=citation.reference,
+                        source_url=citation.source_url,
                     )
                 )
+            for claim in claims:
+                claims_by_answer.setdefault(claim.answer_id, []).append(
+                    MessageClaimRead(text=claim.text, citation_ids=cited_by_claim.get(claim.id, []))
+                )
     return MessageListRead(
-        items=[_message(row, citations_by_answer.get(row.answer_id or "")) for row in rows]
+        items=[
+            _message(
+                row,
+                citations_by_answer.get(row.answer_id or ""),
+                claims_by_answer.get(row.answer_id or ""),
+            )
+            for row in rows
+        ]
     )
 
 
@@ -252,7 +283,12 @@ async def submit_message(
             ctx.actor_id, "research_queries.monthly", 1, job_id
         )
         job = await service.submit(
-            ctx, conversation_id, body.content, body.parent_message_id, job_id
+            ctx,
+            conversation_id,
+            body.content,
+            body.parent_message_id,
+            job_id,
+            sources=SourceScope(body.sources),
         )
         await billing.consume_usage(ctx.actor_id, reservation.id, 1)
         read = JobRead(job_id=job.id, state=cast(JobStateWire, job.state))
