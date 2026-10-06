@@ -31,6 +31,11 @@ class CreateConversationRequest(StrictCamel):
     title: str | None = Field(default=None, max_length=256)
 
 
+class RenameConversationRequest(StrictCamel):
+    # A title of only whitespace is rejected rather than stored as blank.
+    title: str = Field(min_length=1, max_length=256, pattern=r"\S")
+
+
 class ConversationRead(CamelModel):
     id: str
     title: str

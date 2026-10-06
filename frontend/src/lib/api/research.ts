@@ -12,6 +12,15 @@ export function createResearchConversation(getToken: TokenProvider, scope: Assis
   return apiFetch("/api/v1/research/conversations", { method: "POST", getToken, body: { scope: { type: scope.type, targetId: scope.targetId }, title } });
 }
 
+export function renameResearchConversation(getToken: TokenProvider, conversationId: string, title: string): Promise<ResearchConversation> {
+  return apiFetch(`/api/v1/research/conversations/${conversationId}`, { method: "PATCH", getToken, body: { title } });
+}
+
+/** Hides the conversation from the list; the server keeps its messages and answers. */
+export function archiveResearchConversation(getToken: TokenProvider, conversationId: string): Promise<void> {
+  return apiFetch(`/api/v1/research/conversations/${conversationId}/archive`, { method: "POST", getToken });
+}
+
 export async function listResearchMessages(getToken: TokenProvider, conversationId: string): Promise<ResearchMessage[]> {
   return (await apiFetch<List<ResearchMessage>>(`/api/v1/research/conversations/${conversationId}/messages`, { getToken })).items;
 }

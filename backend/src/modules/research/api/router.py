@@ -24,6 +24,7 @@ from src.modules.research.api.schemas import (
     MessageCitationRead,
     MessageListRead,
     MessageRead,
+    RenameConversationRequest,
     ScopeRead,
     SearchPassageRead,
     SearchRead,
@@ -143,6 +144,31 @@ async def create_conversation(
         scope = await service.resolve_scope(ctx, body.scope.type, body.scope.target_id)
         row = await service.create_conversation(ctx, scope, body.title)
     return _conversation(row)
+
+
+@router.patch("/conversations/{conversation_id}", response_model=ConversationRead)
+async def rename_conversation(
+    conversation_id: str,
+    body: RenameConversationRequest,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[ResearchService, Depends(get_service)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ConversationRead:
+    async with UnitOfWork(session):
+        row = await service.rename_conversation(ctx, conversation_id, body.title)
+    return _conversation(row)
+
+
+@router.post("/conversations/{conversation_id}/archive", status_code=status.HTTP_204_NO_CONTENT)
+async def archive_conversation(
+    conversation_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[ResearchService, Depends(get_service)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Remove a conversation from the list; its messages and answers are kept."""
+    async with UnitOfWork(session):
+        await service.archive_conversation(ctx, conversation_id)
 
 
 @router.get("/conversations/{conversation_id}/messages", response_model=MessageListRead)

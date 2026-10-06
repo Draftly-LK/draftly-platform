@@ -148,6 +148,8 @@ Draftly assistant UI
           v
 GET  /api/assistant/conversations
 POST /api/assistant/conversations
+PATCH /api/assistant/conversations/{id}           rename
+POST /api/assistant/conversations/{id}/archive    hide from the list; records kept
 GET  /api/assistant/conversations/{id}/messages
 POST /api/assistant/conversations/{id}/messages
 GET  /api/assistant/jobs/{id}/events
