@@ -136,7 +136,7 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
                       {message.citations.map((citation) => (
                         <details key={citation.id} className="border-border-strong bg-surface rounded border px-3 py-2">
                           <summary className="focus-visible:outline-ring cursor-pointer text-sm font-medium">
-                            {citation.authorityId} · {citation.verified ? t("verified") : t("unverified")}
+                            {citation.authorityId}
                           </summary>
                           <p className="mt-2 text-sm leading-6">{citation.passage}</p>
                         </details>
