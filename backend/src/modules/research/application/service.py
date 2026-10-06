@@ -25,10 +25,23 @@ from src.platform.errors import NotFoundError
 from src.platform.request_context import RequestContext
 
 CORPUS_VERSION = "statutes-bm25-v1:8a7f096671b28cf0"
+# Placeholder until the first question names the conversation. The research_0002
+# migration backfills earlier conversations by the same rule.
+DEFAULT_TITLE = "New research"
+TITLE_LENGTH = 80
 
 
 def _id(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex}"
+
+
+def title_from_question(content: str) -> str:
+    """The first question, on one line, cut at a word boundary to fit a list row."""
+    text = " ".join(content.split())
+    if len(text) <= TITLE_LENGTH:
+        return text or DEFAULT_TITLE
+    cut = text[: TITLE_LENGTH - 1].rsplit(" ", 1)[0] or text[: TITLE_LENGTH - 1]
+    return cut + "…"
 
 
 class ResearchService:
@@ -93,7 +106,7 @@ class ResearchService:
             matter_id=scope.matter_id,
             scope_type=scope.type.value,
             scope_target_id=scope.target_id,
-            title=(title or "New research").strip() or "New research",
+            title=(title or DEFAULT_TITLE).strip() or DEFAULT_TITLE,
             active_branch_id=branch_id,
         )
         self.db.add(row)
@@ -197,6 +210,8 @@ class ResearchService:
                 )
             )
         ).scalar_one_or_none() or 0
+        if last_sequence == 0 and conversation.title == DEFAULT_TITLE:
+            conversation.title = title_from_question(content)
         user_message = ResearchMessageRow(
             id=user_message_id,
             conversation_id=conversation_id,
