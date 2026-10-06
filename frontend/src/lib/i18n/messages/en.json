@@ -609,8 +609,6 @@
     "insufficientAuthority": "The approved corpus does not contain enough authority to support an answer.",
     "insufficientAction": "Refine the question or request authority review. Draftly will not fill the gap with uncited text.",
     "citations": "Citations and passages",
-    "verified": "Verified authority",
-    "unverified": "Unverified authority",
     "apiUnavailable": "Research history is unavailable because the Draftly API is not configured.",
     "loadFailed": "Research history could not be loaded.",
     "createFailed": "The conversation could not be created.",
