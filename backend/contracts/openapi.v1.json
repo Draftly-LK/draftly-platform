@@ -4617,6 +4617,15 @@
             "title": "Authorityid",
             "type": "string"
           },
+          "authorityKind": {
+            "default": "statute",
+            "enum": [
+              "statute",
+              "case"
+            ],
+            "title": "Authoritykind",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -4629,9 +4638,42 @@
             "title": "Passage",
             "type": "string"
           },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
           "sourceId": {
             "title": "Sourceid",
             "type": "string"
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           },
           "verified": {
             "title": "Verified",
@@ -4647,6 +4689,28 @@
           "verified"
         ],
         "title": "MessageCitationRead",
+        "type": "object"
+      },
+      "MessageClaimRead": {
+        "description": "One answer claim and the authority ids it cites, in answer order.",
+        "properties": {
+          "citationIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Citationids",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "citationIds"
+        ],
+        "title": "MessageClaimRead",
         "type": "object"
       },
       "MonthlyReturnPeriodRead": {
@@ -8953,6 +9017,13 @@
             "title": "Citations",
             "type": "array"
           },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/MessageClaimRead"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
           "content": {
             "title": "Content",
             "type": "string"
@@ -9033,6 +9104,16 @@
               }
             ],
             "title": "Parentmessageid"
+          },
+          "sources": {
+            "default": "statutes",
+            "enum": [
+              "statutes",
+              "cases",
+              "all"
+            ],
+            "title": "Sources",
+            "type": "string"
           }
         },
         "required": [

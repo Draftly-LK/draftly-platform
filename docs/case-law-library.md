@@ -1,8 +1,9 @@
 # Judgment catalogue and similar-case search
 
 The Case law tab in Legal sources browses the supplied LKCA and LKSC judgment
-collection. Its fact-pattern search is a separate conveyancing retrieval path;
-the legal assistant and statutory retrieval are unchanged.
+collection. Its fact-pattern search is a separate conveyancing retrieval path.
+Research questions can also draw on the same case search, as unverified research
+leads; see the research service plan.
 
 ## Collection and provenance
 
