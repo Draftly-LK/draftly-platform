@@ -44,6 +44,49 @@ timeout and no generation or streaming stage. Dense retrieval remains opt-in
 under recorded provider approval; its optional-channel status is explicit.
 See [the case-library implementation](../../../docs/case-law-library.md).
 
+## Case law in the research chat (2026-10-06)
+
+Research is no longer statutes-only. Each question carries a legal source
+scope, separate from the conversation scope (library, matter, step, document):
+
+| `sources` | Searches |
+| --- | --- |
+| `statutes` (default) | The statutory corpus only, exactly as before |
+| `cases` | The conveyancing case corpus only |
+| `all` | Both, concurrently |
+
+The frontend shows this as "All sources / Statutes & amendments / Case law",
+defaulting to statutes so existing behaviour does not change.
+
+**Retrieval.** Statute retrieval is unchanged (`LegalRetrievalPort`). Case
+retrieval calls the bounded `CaseSearchPort` (`HttpCaseSearchAdapter`, private
+`/v1/cases/search`) directly, with a limit of five results. It does not go
+through `CaseResearchService`: that path meters and audits its own query, and
+one research question must cost one research query. Each similar case becomes
+evidence from its excerpt only, with the case id, name, citation and source
+link. Full judgment text is never sent or shown.
+
+**Grounding.** The composer's existing rule is unchanged: every claim must cite
+one or more retrieved authority ids, an id that was not retrieved is dropped,
+and a claim left without one is dropped. Statute-only evidence uses the
+original statutes-only prompt. When case evidence is present, each case is
+labelled `[CASE LAW - UNVERIFIED RESEARCH LEAD]`, and the model is told that
+case passages are machine-parsed, possibly incomplete research leads that must
+never be presented as verified, binding or settled law.
+
+**Unverified case law.** A case citation is stored and returned with
+`authorityKind: "case"` and `verified: false`, whatever the evidence said, and
+the client shows "Unverified research lead — attorney review required" on every
+case citation. Citations record their kind, title, reference and source link
+(`research_0003`); earlier citations have none of these and read as statutes.
+Each assistant message also returns its claims with the ids each one cites.
+
+**Failure.** With `all`, an unavailable case service degrades to statute-only
+evidence (`degradedChannels` includes `case-law`). With `cases`, it ends in an
+insufficient-authority answer with `research.insufficient.caseLawUnavailable`.
+No evidence from any selected source keeps the existing abstention. The answer
+records the corpus versions it searched, joined with `+`.
+
 ## 1. What it owns
 
 Answering a question over the **controlled legal corpus** and returning a
@@ -148,6 +191,8 @@ Draftly assistant UI
           v
 GET  /api/assistant/conversations
 POST /api/assistant/conversations
+PATCH /api/assistant/conversations/{id}           rename
+POST /api/assistant/conversations/{id}/archive    hide from the list; records kept
 GET  /api/assistant/conversations/{id}/messages
 POST /api/assistant/conversations/{id}/messages
 GET  /api/assistant/jobs/{id}/events

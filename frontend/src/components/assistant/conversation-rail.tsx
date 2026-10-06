@@ -1,10 +1,13 @@
 "use client";
 
 import {
+  Archive,
+  Ellipsis,
   MessageSquare,
   MessageSquarePlus,
   PanelLeftClose,
   PanelLeftOpen,
+  Pencil,
   Search,
   X,
 } from "lucide-react";
@@ -12,6 +15,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { IconButton } from "@/components/ui/icon-button";
+import { Menu, type MenuItem } from "@/components/ui/menu";
 
 /**
  * Conversation list for the research assistant.
@@ -42,14 +46,18 @@ export function ConversationRail({
   selectedId,
   onSelect,
   onCreate,
+  onRename,
+  onRemove,
 }: {
   conversations: ResearchConversation[];
   selectedId: string;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  /** With these, each row gets a menu to rename it or remove it from the list. */
+  onRename?: (id: string, title: string) => Promise<void>;
+  onRemove?: (id: string) => Promise<void>;
 }) {
   const t = useTranslations("research");
-  const format = useFormatter();
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState(true);
   const [focusSearch, setFocusSearch] = useState(false);
@@ -208,50 +216,228 @@ export function ConversationRail({
                 {t("noConversations")}
               </p>
             ) : (
-              visible.map((item) => {
-                const selected = item.id === selectedId;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    aria-current={selected ? "true" : undefined}
-                    onClick={() => {
-                      onSelect(item.id);
-                      closeIfOverlay();
-                    }}
-                    title={item.title}
-                    className={`focus-visible:outline-ring flex min-h-10 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm ${
-                      selected
-                        ? "bg-selected-bg text-forest font-semibold"
-                        : "text-ink hover:bg-hover-bg"
-                    }`}
-                  >
-                    <MessageSquare
-                      aria-hidden="true"
-                      className={`size-4 shrink-0 ${selected ? "" : "text-muted-ink"}`}
-                      strokeWidth={1.5}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate">{item.title}</span>
-                      {item.createdAt ? (
-                        <time
-                          dateTime={item.createdAt}
-                          className="text-muted-ink block text-xs font-normal tabular-nums"
-                        >
-                          {format.dateTime(new Date(item.createdAt), {
-                            day: "2-digit",
-                            month: "short",
-                          })}
-                        </time>
-                      ) : null}
-                    </span>
-                  </button>
-                );
-              })
+              visible.map((item) => (
+                <ConversationRow
+                  key={item.id}
+                  item={item}
+                  selected={item.id === selectedId}
+                  onSelect={() => {
+                    onSelect(item.id);
+                    closeIfOverlay();
+                  }}
+                  onRename={onRename}
+                  onRemove={onRemove}
+                />
+              ))
             )}
           </div>
         </div>
       </aside>
     </>
+  );
+}
+
+function ConversationRow({
+  item,
+  selected,
+  onSelect,
+  onRename,
+  onRemove,
+}: {
+  item: ResearchConversation;
+  selected: boolean;
+  onSelect: () => void;
+  onRename?: (id: string, title: string) => Promise<void>;
+  onRemove?: (id: string) => Promise<void>;
+}) {
+  const t = useTranslations("research");
+  const format = useFormatter();
+  const [mode, setMode] = useState<"view" | "rename" | "confirm">("view");
+  const [draft, setDraft] = useState(item.title);
+  const [pending, setPending] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLButtonElement>(null);
+  // After rename or remove-cancel, focus goes back to the row, not the page.
+  const returnFocus = useRef(false);
+
+  useEffect(() => {
+    if (mode === "rename") inputRef.current?.select();
+    if (mode === "confirm") confirmRef.current?.querySelector("button")?.focus();
+    if (mode === "view" && returnFocus.current) {
+      returnFocus.current = false;
+      rowRef.current?.focus();
+    }
+  }, [mode]);
+
+  function backToView() {
+    returnFocus.current = true;
+    setMode("view");
+  }
+
+  async function saveRename() {
+    // Enter and the blur that follows it both arrive here; save once.
+    if (pending || mode !== "rename") return;
+    const title = draft.trim();
+    if (!onRename || !title || title === item.title) {
+      backToView();
+      return;
+    }
+    setPending(true);
+    try {
+      await onRename(item.id, title);
+    } finally {
+      setPending(false);
+      backToView();
+    }
+  }
+
+  async function confirmRemove() {
+    if (!onRemove || pending) return;
+    setPending(true);
+    try {
+      await onRemove(item.id);
+    } finally {
+      setPending(false);
+      setMode("view");
+    }
+  }
+
+  if (mode === "rename") {
+    return (
+      <div className="p-1">
+        <label className="sr-only" htmlFor={`rename-${item.id}`}>
+          {t("conversationName")}
+        </label>
+        <input
+          ref={inputRef}
+          id={`rename-${item.id}`}
+          className="border-forest ring-border-active text-ink bg-surface min-h-9 w-full rounded border px-2 text-sm ring-4 focus-visible:outline-none"
+          value={draft}
+          maxLength={256}
+          disabled={pending}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={() => void saveRename()}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              void saveRename();
+            } else if (event.key === "Escape") {
+              // Escape cancels the rename only; it must not also close the drawer.
+              event.stopPropagation();
+              setDraft(item.title);
+              backToView();
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (mode === "confirm") {
+    return (
+      <div
+        ref={confirmRef}
+        role="group"
+        aria-label={t("removeConfirm")}
+        className="border-border bg-canvas rounded border p-2"
+      >
+        <p className="text-ink text-sm">{t("removeConfirm")}</p>
+        <p className="text-muted-ink mt-0.5 truncate text-xs">{item.title}</p>
+        <div className="mt-2 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={backToView}
+          >
+            {t("cancelAction")}
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            loading={pending}
+            onClick={() => void confirmRemove()}
+          >
+            {t("removeConfirmAction")}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const actions: MenuItem[] = [];
+  if (onRename) {
+    actions.push({
+      key: "rename",
+      label: t("renameConversation"),
+      icon: Pencil,
+      onSelect: () => {
+        setDraft(item.title);
+        setMode("rename");
+      },
+    });
+  }
+  if (onRemove) {
+    actions.push({
+      key: "remove",
+      label: t("removeConversation"),
+      icon: Archive,
+      tone: "danger",
+      onSelect: () => setMode("confirm"),
+    });
+  }
+
+  return (
+    <div
+      className={`flex items-center rounded ${
+        selected
+          ? "bg-selected-bg text-forest font-semibold"
+          : "text-ink hover:bg-hover-bg"
+      }`}
+    >
+      <button
+        ref={rowRef}
+        type="button"
+        aria-current={selected ? "true" : undefined}
+        onClick={onSelect}
+        title={item.title}
+        className="focus-visible:outline-ring flex min-h-10 min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left text-sm"
+      >
+        <MessageSquare
+          aria-hidden="true"
+          className={`size-4 shrink-0 ${selected ? "" : "text-muted-ink"}`}
+          strokeWidth={1.5}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">{item.title}</span>
+          {item.createdAt ? (
+            <time
+              dateTime={item.createdAt}
+              className="text-muted-ink block text-xs font-normal tabular-nums"
+            >
+              {format.dateTime(new Date(item.createdAt), {
+                day: "2-digit",
+                month: "short",
+              })}
+            </time>
+          ) : null}
+        </span>
+      </button>
+      {actions.length > 0 ? (
+        <Menu
+          label={`${t("conversationActions")}: ${item.title}`}
+          trigger={
+            <Ellipsis aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          }
+          triggerClassName="text-muted-ink hover:text-ink hover:bg-hover-bg mr-1 flex size-8 items-center justify-center rounded-control"
+          // The list scrolls and clips, so the menu is drawn above the page.
+          portalWhen={() => true}
+          items={actions}
+        />
+      ) : null}
+    </div>
   );
 }

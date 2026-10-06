@@ -4617,6 +4617,15 @@
             "title": "Authorityid",
             "type": "string"
           },
+          "authorityKind": {
+            "default": "statute",
+            "enum": [
+              "statute",
+              "case"
+            ],
+            "title": "Authoritykind",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -4629,9 +4638,42 @@
             "title": "Passage",
             "type": "string"
           },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
           "sourceId": {
             "title": "Sourceid",
             "type": "string"
+          },
+          "sourceUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceurl"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           },
           "verified": {
             "title": "Verified",
@@ -4647,6 +4689,28 @@
           "verified"
         ],
         "title": "MessageCitationRead",
+        "type": "object"
+      },
+      "MessageClaimRead": {
+        "description": "One answer claim and the authority ids it cites, in answer order.",
+        "properties": {
+          "citationIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Citationids",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "citationIds"
+        ],
+        "title": "MessageClaimRead",
         "type": "object"
       },
       "MonthlyReturnPeriodRead": {
@@ -6866,6 +6930,23 @@
         "title": "RejectActionRequest",
         "type": "object"
       },
+      "RenameConversationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "RenameConversationRequest",
+        "type": "object"
+      },
       "ReviewCandidateRead": {
         "properties": {
           "candidateValue": {
@@ -8936,6 +9017,13 @@
             "title": "Citations",
             "type": "array"
           },
+          "claims": {
+            "items": {
+              "$ref": "#/components/schemas/MessageClaimRead"
+            },
+            "title": "Claims",
+            "type": "array"
+          },
           "content": {
             "title": "Content",
             "type": "string"
@@ -9016,6 +9104,16 @@
               }
             ],
             "title": "Parentmessageid"
+          },
+          "sources": {
+            "default": "statutes",
+            "enum": [
+              "statutes",
+              "cases",
+              "all"
+            ],
+            "title": "Sources",
+            "type": "string"
           }
         },
         "required": [
@@ -15670,6 +15768,104 @@
           }
         ],
         "summary": "Create Conversation",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/conversations/{conversation_id}": {
+      "patch": {
+        "operationId": "rename_conversation_api_v1_research_conversations__conversation_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__research__api__schemas__ConversationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename Conversation",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/v1/research/conversations/{conversation_id}/archive": {
+      "post": {
+        "description": "Remove a conversation from the list; its messages and answers are kept.",
+        "operationId": "archive_conversation_api_v1_research_conversations__conversation_id__archive_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Archive Conversation",
         "tags": [
           "research"
         ]

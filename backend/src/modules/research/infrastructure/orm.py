@@ -161,3 +161,9 @@ class ResearchCitationRow(Base):
     passage: Mapped[str] = mapped_column(Text, nullable=False)
     page: Mapped[int] = mapped_column(Integer, nullable=False)
     verified: Mapped[bool] = mapped_column(nullable=False)
+    # research_0003: recorded for new citations; null on earlier rows, which are
+    # all statute citations and display by authority id as before.
+    authority_kind: Mapped[str | None] = mapped_column(String(16))
+    title: Mapped[str | None] = mapped_column(String(512))
+    reference: Mapped[str | None] = mapped_column(String(256))
+    source_url: Mapped[str | None] = mapped_column(String(1024))

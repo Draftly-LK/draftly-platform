@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch, LoaderCircle, Search, Send, ShieldAlert, Square } from "lucide-react";
+import { ExternalLink, GitBranch, LoaderCircle, Search, Send, ShieldAlert, Square, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { ConversationRail } from "./conversation-rail";
@@ -9,10 +9,10 @@ import { PageHeader } from "@/components/shell/page-header";
 import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RowsSkeleton } from "@/components/ui/skeleton";
-import { createResearchConversation, branchResearchMessage, listResearchConversations, listResearchMessages, sendResearchMessage } from "@/lib/api/research";
+import { archiveResearchConversation, createResearchConversation, branchResearchMessage, listResearchConversations, listResearchMessages, renameResearchConversation, sendResearchMessage } from "@/lib/api/research";
 import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
-import type { AssistantScope, ResearchConversation, ResearchMessage } from "@/types";
+import type { AssistantScope, ResearchCitation, ResearchConversation, ResearchMessage, ResearchSources } from "@/types";
 
 const LIBRARY_SCOPE: AssistantScope = { type: "library", labelKey: "research.scope.library" };
 
@@ -39,6 +39,8 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
   const [selectedId, setSelectedId] = useState<string>();
   const [messages, setMessages] = useState<ResearchMessage[]>([]);
   const [question, setQuestion] = useState("");
+  // Statutes by default, as before case law was available.
+  const [sources, setSources] = useState<ResearchSources>("statutes");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const apiEnabled = isApiEnabled();
@@ -89,11 +91,30 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
         setConversations((rows) => [created, ...rows]);
         setSelectedId(created.id); conversationId = created.id;
       }
-      await sendResearchMessage(getToken, conversationId, content, messages.at(-1)?.id);
+      await sendResearchMessage(getToken, conversationId, content, messages.at(-1)?.id, sources);
       setQuestion("");
       setMessages(await listResearchMessages(getToken, conversationId));
       await loadConversations();
     } catch (failure) { setError(explain(failure, t("sendFailed"))); } finally { setBusy(false); }
+  }
+
+  async function renameConversation(id: string, title: string) {
+    setError(undefined);
+    try {
+      const renamed = await renameResearchConversation(getToken, id, title);
+      setConversations((rows) => rows.map((row) => (row.id === id ? renamed : row)));
+    } catch (failure) { setError(explain(failure, t("renameFailed"))); }
+  }
+
+  async function removeConversation(id: string) {
+    setError(undefined);
+    try {
+      await archiveResearchConversation(getToken, id);
+      const remaining = conversations.filter((row) => row.id !== id);
+      setConversations(remaining);
+      // Removing the open conversation moves to the next one, or to an empty thread.
+      if (selectedId === id) setSelectedId(remaining[0]?.id);
+    } catch (failure) { setError(explain(failure, t("removeFailed"))); }
   }
 
   async function branch(messageId: string) {
@@ -107,12 +128,9 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="relative grid min-h-[calc(100vh-105px)] lg:grid-cols-[auto_minmax(0,1fr)]">
-        <ConversationRail conversations={conversations} selectedId={selectedId ?? ""} onSelect={setSelectedId} onCreate={() => void createConversation()} />
+        <ConversationRail conversations={conversations} selectedId={selectedId ?? ""} onSelect={setSelectedId} onCreate={() => void createConversation()} onRename={apiEnabled ? renameConversation : undefined} onRemove={apiEnabled ? removeConversation : undefined} />
         <main className="mx-auto flex w-full max-w-4xl flex-col p-4 md:p-6">
-          <div className="border-border-strong bg-surface rounded border px-4 py-3 text-sm">
-            <strong>{t("libraryScope")}</strong>
-            <span className="text-muted-ink ml-2">{t("corpusLimit")}</span>
-          </div>
+          <SourceSelector value={sources} onChange={setSources} disabled={busy || !apiEnabled} />
           {!apiEnabled && <InlineAlert tone="info" className="mt-4">{t("apiUnavailable")}</InlineAlert>}
           {error && <InlineAlert tone="danger" className="mt-4">{error}</InlineAlert>}
           <section aria-label={t("thread")} className="mt-4 flex-1 space-y-3">
@@ -125,24 +143,18 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
                 <article key={message.id} className={`rounded border p-4 ${message.role === "user" ? "border-border-strong bg-surface ml-auto max-w-[85%]" : insufficient ? "border-border-strong bg-surface border-l-2" : "border-teal bg-teal-bg border-l-2"}`}>
                   <div className={`${message.role === "assistant" ? "text-ink" : "text-muted-ink"} mb-1 flex items-center gap-1.5 text-xs font-semibold`}>
                     {insufficient && <Search className="size-3.5" strokeWidth={1.5} />}
-                    {message.role === "user" ? t("you") : insufficient ? t("noMatch") : t("answer")}
+                    {message.role === "user" ? t("you") : insufficient ? t("noSupportingAuthority") : t("answer")}
                   </div>
-                  <p className="whitespace-pre-line leading-7">{insufficient ? t("insufficientAuthority") : message.content}</p>
+                  {grounded && message.claims && message.claims.length > 0 ? (
+                    <AnswerClaims message={message} />
+                  ) : (
+                    <p className="whitespace-pre-line leading-7">
+                      {!insufficient ? message.content : message.content === "research.insufficient.caseLawUnavailable" ? t("caseLawUnavailable") : t("insufficientAuthority")}
+                    </p>
+                  )}
                   {message.role === "user" && <Button className="mt-3" onClick={() => void branch(message.id)}><GitBranch className="size-4" />{t("branch")}</Button>}
                   {insufficient && <p className="text-ink mt-2 text-sm">{t("insufficientAction")}</p>}
-                  {grounded && message.citations.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <h3 className="text-sm font-semibold">{t("citations")}</h3>
-                      {message.citations.map((citation) => (
-                        <details key={citation.id} className="border-border-strong bg-surface rounded border px-3 py-2">
-                          <summary className="focus-visible:outline-ring cursor-pointer text-sm font-medium">
-                            {citation.authorityId}
-                          </summary>
-                          <p className="mt-2 text-sm leading-6">{citation.passage}</p>
-                        </details>
-                      ))}
-                    </div>
-                  )}
+                  {grounded && message.citations.length > 0 && <AnswerSources citations={message.citations} />}
                 </article>
               );
             })}
@@ -158,5 +170,127 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
         </main>
       </div>
     </AppShell>
+  );
+}
+
+const SOURCE_OPTIONS: ReadonlyArray<{ value: ResearchSources; label: string; help: string }> = [
+  { value: "all", label: "sourceAll", help: "sourceHelpAll" },
+  { value: "statutes", label: "sourceStatutes", help: "sourceHelpStatutes" },
+  { value: "cases", label: "sourceCases", help: "sourceHelpCases" },
+];
+
+/** Which legal sources the next question searches. */
+function SourceSelector({ value, onChange, disabled }: { value: ResearchSources; onChange: (next: ResearchSources) => void; disabled: boolean }) {
+  const t = useTranslations("research");
+  const help = SOURCE_OPTIONS.find((option) => option.value === value)?.help ?? "sourceHelpStatutes";
+  return (
+    <section aria-labelledby="research-source-scope" className="border-border-strong bg-surface rounded border px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h2 id="research-source-scope" className="text-sm font-semibold">{t("sourceScope")}</h2>
+        <div role="group" aria-labelledby="research-source-scope" className="flex flex-wrap gap-2">
+          {SOURCE_OPTIONS.map((option) => (
+            <Button
+              key={option.value}
+              type="button"
+              size="sm"
+              aria-pressed={value === option.value}
+              disabled={disabled}
+              className={value === option.value ? "border-forest bg-selected-bg text-forest font-semibold" : undefined}
+              onClick={() => onChange(option.value)}
+            >
+              {t(option.label)}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <p className={`mt-2 flex items-center gap-1.5 text-sm ${value === "cases" ? "text-amber-text" : "text-muted-ink"}`}>
+        {value === "cases" ? <TriangleAlert aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} /> : null}
+        {t(help)}
+      </p>
+    </section>
+  );
+}
+
+function kindOf(citation: ResearchCitation): "statute" | "case" {
+  return citation.authorityKind ?? (citation.authorityId.toLowerCase().startsWith("commonlii-") ? "case" : "statute");
+}
+
+/** One research answer: its claims, each tagged by the kind of source it cites when case law is involved. */
+function AnswerClaims({ message }: { message: ResearchMessage }) {
+  const t = useTranslations("research");
+  const kindById = new Map(message.citations.map((citation) => [citation.authorityId.toUpperCase(), kindOf(citation)]));
+  const mixed = message.citations.some((citation) => kindOf(citation) === "case");
+  return (
+    <div className="space-y-3">
+      {(message.claims ?? []).map((claim, index) => {
+        const kinds = new Set(claim.citationIds.map((id) => kindById.get(id.toUpperCase())).filter(Boolean));
+        return (
+          <p key={index} className="leading-7">
+            {claim.text}
+            {mixed && kinds.has("statute") ? <SourceTag tone="statute">{t("claimStatute")}</SourceTag> : null}
+            {mixed && kinds.has("case") ? <SourceTag tone="case">{t("claimCase")}</SourceTag> : null}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function SourceTag({ tone, children }: { tone: "statute" | "case"; children: string }) {
+  return (
+    <span className={`rounded-control ml-2 inline-flex items-center border px-1.5 align-middle text-[11px] font-semibold uppercase leading-5 tracking-normal ${tone === "case" ? "border-amber bg-amber-bg text-amber-text" : "border-border-strong bg-surface text-muted-ink"}`}>
+      {children}
+    </span>
+  );
+}
+
+/** The answer's sources, grouped: statutes and amendments, then case law with its warning. */
+function AnswerSources({ citations }: { citations: ResearchCitation[] }) {
+  const t = useTranslations("research");
+  // A source cited by several claims is listed once.
+  const unique = [...new Map(citations.map((citation) => [citation.authorityId, citation])).values()];
+  const statutes = unique.filter((citation) => kindOf(citation) === "statute");
+  const cases = unique.filter((citation) => kindOf(citation) === "case");
+  return (
+    <div className="mt-4 space-y-3">
+      <h3 className="text-sm font-semibold">{t("sourcesUsed")}</h3>
+      {statutes.length > 0 && (
+        <div className="space-y-2">
+          {cases.length > 0 && <h4 className="text-muted-ink text-xs font-semibold">{t("sourceStatutes")}</h4>}
+          {statutes.map((citation) => (
+            <details key={citation.id} className="border-border-strong bg-surface rounded border px-3 py-2">
+              <summary className="focus-visible:outline-ring cursor-pointer text-sm font-medium">
+                {citation.title && citation.reference ? `${citation.title} — ${citation.reference}` : citation.authorityId}
+              </summary>
+              <p className="mt-2 text-sm leading-6">{citation.passage}</p>
+            </details>
+          ))}
+        </div>
+      )}
+      {cases.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="text-muted-ink text-xs font-semibold">{t("sourceCases")}</h4>
+          {cases.map((citation) => (
+            <details key={citation.id} className="border-amber bg-surface rounded border border-l-2 px-3 py-2">
+              <summary className="focus-visible:outline-ring cursor-pointer text-sm">
+                <span className="font-medium">{citation.title || citation.authorityId}</span>
+                <span className="text-muted-ink"> — {citation.reference || t("citationNotRecorded")}</span>
+                <span className="text-amber-text mt-1 flex items-center gap-1.5 text-xs font-semibold">
+                  <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  {t("caseLead")}
+                </span>
+              </summary>
+              <p className="mt-2 text-sm leading-6">{citation.passage}</p>
+              {citation.sourceUrl ? (
+                <a href={citation.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-forest mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline">
+                  {t("openSource")}
+                  <ExternalLink aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+                </a>
+              ) : null}
+            </details>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
