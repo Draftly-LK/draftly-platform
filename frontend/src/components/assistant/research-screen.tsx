@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { InlineAlert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { RowsSkeleton } from "@/components/ui/skeleton";
-import { createResearchConversation, branchResearchMessage, listResearchConversations, listResearchMessages, sendResearchMessage } from "@/lib/api/research";
+import { archiveResearchConversation, createResearchConversation, branchResearchMessage, listResearchConversations, listResearchMessages, renameResearchConversation, sendResearchMessage } from "@/lib/api/research";
 import { ApiError, isApiEnabled, type TokenProvider } from "@/lib/api/client";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { AssistantScope, ResearchConversation, ResearchMessage } from "@/types";
@@ -96,6 +96,25 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
     } catch (failure) { setError(explain(failure, t("sendFailed"))); } finally { setBusy(false); }
   }
 
+  async function renameConversation(id: string, title: string) {
+    setError(undefined);
+    try {
+      const renamed = await renameResearchConversation(getToken, id, title);
+      setConversations((rows) => rows.map((row) => (row.id === id ? renamed : row)));
+    } catch (failure) { setError(explain(failure, t("renameFailed"))); }
+  }
+
+  async function removeConversation(id: string) {
+    setError(undefined);
+    try {
+      await archiveResearchConversation(getToken, id);
+      const remaining = conversations.filter((row) => row.id !== id);
+      setConversations(remaining);
+      // Removing the open conversation moves to the next one, or to an empty thread.
+      if (selectedId === id) setSelectedId(remaining[0]?.id);
+    } catch (failure) { setError(explain(failure, t("removeFailed"))); }
+  }
+
   async function branch(messageId: string) {
     setBusy(true);
     try { await branchResearchMessage(getToken, messageId); }
@@ -107,7 +126,7 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="relative grid min-h-[calc(100vh-105px)] lg:grid-cols-[auto_minmax(0,1fr)]">
-        <ConversationRail conversations={conversations} selectedId={selectedId ?? ""} onSelect={setSelectedId} onCreate={() => void createConversation()} />
+        <ConversationRail conversations={conversations} selectedId={selectedId ?? ""} onSelect={setSelectedId} onCreate={() => void createConversation()} onRename={apiEnabled ? renameConversation : undefined} onRemove={apiEnabled ? removeConversation : undefined} />
         <main className="mx-auto flex w-full max-w-4xl flex-col p-4 md:p-6">
           <div className="border-border-strong bg-surface rounded border px-4 py-3 text-sm">
             <strong>{t("libraryScope")}</strong>

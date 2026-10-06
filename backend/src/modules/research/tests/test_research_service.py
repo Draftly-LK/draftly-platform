@@ -169,6 +169,53 @@ async def test_first_question_names_an_unnamed_conversation_only() -> None:
     await engine.dispose()
 
 
+async def test_rename_and_archive_are_owner_only_and_keep_the_record() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as connection:
+        await connection.run_sync(
+            lambda sync: ResearchConversationRow.metadata.create_all(sync, tables=TABLES)
+        )
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    async with maker() as session:
+        owner = RequestContext(actor_id="user_owner", account_role=Role.REVIEWER)
+        stranger = RequestContext(actor_id="user_stranger", account_role=Role.REVIEWER)
+        service = ResearchService(session, NullLegalRetrieval())
+        scope = await service.resolve_scope(owner, "library", None)
+        kept = await service.create_conversation(owner, scope, "Kept")
+        removed = await service.create_conversation(owner, scope, None)
+        await service.submit(owner, removed.id, "A question to keep on record", None)
+        await session.commit()
+
+        renamed = await service.rename_conversation(owner, kept.id, "  Title   on\n one line ")
+        assert renamed.title == "Title on one line"
+        # The API response reads updated_at, which the database just changed; it
+        # must be loaded already, not fetched lazily outside the async context.
+        assert renamed.updated_at is not None
+        for action in (
+            service.rename_conversation(stranger, kept.id, "Hijacked"),
+            service.archive_conversation(stranger, removed.id),
+        ):
+            try:
+                await action
+            except NotFoundError:
+                pass
+            else:
+                raise AssertionError("another user changed the conversation")
+
+        await service.archive_conversation(owner, removed.id)
+        await service.archive_conversation(owner, removed.id)  # repeating is harmless
+        await session.commit()
+
+        listed = [row.id for row in await service.list_conversations(owner, None)]
+        assert listed == [kept.id]
+        # Archived means hidden from the list, not deleted.
+        assert [m.content for m in await service.list_messages(owner, removed.id)][0] == (
+            "A question to keep on record"
+        )
+        assert (await service.conversation(owner, kept.id)).title == "Title on one line"
+    await engine.dispose()
+
+
 async def _exercise(session: AsyncSession) -> None:
     owner = RequestContext(actor_id="user_owner", account_role=Role.REVIEWER)
     stranger = RequestContext(actor_id="user_stranger", account_role=Role.REVIEWER)

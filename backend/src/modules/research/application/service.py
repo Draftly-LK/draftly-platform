@@ -167,6 +167,24 @@ class ResearchService:
             raise NotFoundError()
         return row
 
+    async def rename_conversation(
+        self, ctx: RequestContext, conversation_id: str, title: str
+    ) -> ResearchConversationRow:
+        row = await self.conversation(ctx, conversation_id)
+        row.title = " ".join(title.split())[:256] or row.title
+        await self.db.flush()
+        # updated_at is set by the database on update; load it now so the caller
+        # can read it without a lazy load outside the async context.
+        await self.db.refresh(row)
+        return row
+
+    async def archive_conversation(self, ctx: RequestContext, conversation_id: str) -> None:
+        """Hide a conversation from the list. Messages and answers are kept."""
+        row = await self.conversation(ctx, conversation_id)
+        if row.archived_at is None:
+            row.archived_at = datetime.now(UTC)
+            await self.db.flush()
+
     async def list_messages(
         self, ctx: RequestContext, conversation_id: str
     ) -> list[ResearchMessageRow]:
