@@ -1,8 +1,9 @@
 "use client";
 
-import { ExternalLink, GitBranch, LoaderCircle, Search, Send, ShieldAlert, Square, TriangleAlert } from "lucide-react";
+import { ExternalLink, GitBranch, Search, ShieldAlert, TriangleAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import { ChatComposer } from "./chat-composer";
 import { ConversationRail } from "./conversation-rail";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
@@ -159,14 +160,19 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
               );
             })}
           </section>
-          <form className="border-border-control bg-surface shadow-popover sticky bottom-3 mt-5 rounded border p-3 focus-within:border-forest focus-within:ring-4 focus-within:ring-border-active" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
-            <label className="sr-only" htmlFor="research-question">{t("composerLabel")}</label>
-            <textarea id="research-question" className="min-h-20 w-full resize-y bg-transparent p-2 outline-none focus-visible:outline-none" placeholder={t("composerPlaceholder")} value={question} onChange={(event) => setQuestion(event.target.value)} disabled={busy || !apiEnabled} />
-            <div className="border-border flex items-center border-t pt-3">
-              {busy && <span className="text-muted-ink flex items-center gap-2 text-sm"><LoaderCircle className="size-4 animate-spin" />{t("working")}</span>}
-              <Button type="submit" variant="primary" className="ml-auto" disabled={!question.trim() || busy || !apiEnabled}>{busy ? <Square className="size-4" /> : <Send className="size-4" />}{busy ? t("stop") : t("send")}</Button>
-            </div>
-          </form>
+          <ChatComposer
+            id="research-question"
+            className="sticky bottom-3 mt-5"
+            label={t("composerLabel")}
+            placeholder={t("composerPlaceholder")}
+            value={question}
+            onChange={setQuestion}
+            onSubmit={() => void submit()}
+            sendLabel={t("send")}
+            busyLabel={t("working")}
+            busy={busy}
+            disabled={!apiEnabled}
+          />
         </main>
       </div>
     </AppShell>
