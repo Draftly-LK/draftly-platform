@@ -35,7 +35,7 @@
 [data-home-body] .home-workflow-top { display: contents; }
 [data-home-body] .home-workflow-document { grid-column: 1; grid-row: 1 / span 2; position: relative; display: flex; align-items: center; justify-content: center; width: 32px; height: 38px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 3px 9px 3px 3px; background: var(--canvas); color: var(--forest); }
 [data-home-body] .home-workflow-document::after { content: ""; position: absolute; top: -1px; right: -1px; width: 8px; height: 8px; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); border-top-right-radius: 8px; }
-[data-home-body] .home-form-reference { grid-column: 2; grid-row: 3; justify-self: start; align-self: center; border: 1px solid var(--border); border-radius: 4px; padding: 3px 6px; line-height: 1.4; }
+[data-home-body] .home-form-reference { grid-column: 2; grid-row: 3; justify-self: start; align-self: center; border: 1px solid var(--border); border-radius: 9999px; padding: 2px 10px; line-height: 1.4; }
 [data-home-body] .home-workflow-title { grid-column: 2 / -1; grid-row: 1; line-height: 1.35; }
 [data-home-body] .home-workflow-description { grid-column: 2 / -1; grid-row: 2; line-height: 1.5; }
 [data-home-body] .home-workflow-start { grid-column: 3; grid-row: 3; align-self: center; margin-top: 0; padding-top: 0; min-height: 24px; }

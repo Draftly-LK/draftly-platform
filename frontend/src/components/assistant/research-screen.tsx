@@ -1,9 +1,10 @@
 "use client";
 
-import { ExternalLink, GitBranch, Search, ShieldAlert, TriangleAlert } from "lucide-react";
+import { ExternalLink, GitBranch, Search, ShieldAlert } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { ChatComposer } from "./chat-composer";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ConversationRail } from "./conversation-rail";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
@@ -128,7 +129,7 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
   return (
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
-      <div className="relative grid min-h-[calc(100vh-105px)] lg:grid-cols-[auto_minmax(0,1fr)]">
+      <div className="relative grid min-h-[calc(100vh-105px)] grid-cols-[minmax(0,1fr)] lg:grid-cols-[auto_minmax(0,1fr)]">
         <ConversationRail conversations={conversations} selectedId={selectedId ?? ""} onSelect={setSelectedId} onCreate={() => void createConversation()} onRename={apiEnabled ? renameConversation : undefined} onRemove={apiEnabled ? removeConversation : undefined} />
         <main className="mx-auto flex w-full max-w-4xl flex-col p-4 md:p-6">
           <SourceSelector value={sources} onChange={setSources} disabled={busy || !apiEnabled} />
@@ -179,9 +180,9 @@ function ResearchFlow({ getToken }: { getToken: TokenProvider }) {
   );
 }
 
-const SOURCE_OPTIONS: ReadonlyArray<{ value: ResearchSources; label: string; help: string }> = [
+const SOURCE_OPTIONS: ReadonlyArray<{ value: ResearchSources; label: string; short?: string; help: string }> = [
   { value: "all", label: "sourceAll", help: "sourceHelpAll" },
-  { value: "statutes", label: "sourceStatutes", help: "sourceHelpStatutes" },
+  { value: "statutes", label: "sourceStatutes", short: "sourceStatutesShort", help: "sourceHelpStatutes" },
   { value: "cases", label: "sourceCases", help: "sourceHelpCases" },
 ];
 
@@ -191,30 +192,25 @@ function SourceSelector({ value, onChange, disabled }: { value: ResearchSources;
   const help = SOURCE_OPTIONS.find((option) => option.value === value)?.help ?? "sourceHelpStatutes";
   return (
     <section aria-labelledby="research-source-scope" className="border-border-strong bg-surface rounded border px-4 py-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
         <h2 id="research-source-scope" className="text-sm font-semibold">{t("sourceScope")}</h2>
-        <div role="group" aria-labelledby="research-source-scope" className="flex flex-wrap gap-2">
-          {SOURCE_OPTIONS.map((option) => (
-            <Button
-              key={option.value}
-              type="button"
-              size="sm"
-              aria-pressed={value === option.value}
-              disabled={disabled}
-              className={value === option.value ? "border-forest bg-selected-bg text-forest font-semibold" : undefined}
-              onClick={() => onChange(option.value)}
-            >
-              {t(option.label)}
-            </Button>
-          ))}
-        </div>
+        <SegmentedControl
+          labelledBy="research-source-scope"
+          options={SOURCE_OPTIONS.map((option) => ({ value: option.value, label: t(option.label), shortLabel: option.short ? t(option.short) : undefined }))}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          className="self-start"
+        />
       </div>
-      <p className={`mt-2 flex items-center gap-1.5 text-sm ${value === "cases" ? "text-amber-text" : "text-muted-ink"}`}>
-        {value === "cases" ? <TriangleAlert aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} /> : null}
-        {t(help)}
-      </p>
+      <p className="text-muted-ink mt-2 text-sm">{t(help)}</p>
     </section>
   );
+}
+
+/** Only web links open from a citation; anything else stays plain text. */
+function safeSourceUrl(url: string | null | undefined): string | null {
+  return url && /^https?:\/\//i.test(url) ? url : null;
 }
 
 function kindOf(citation: ResearchCitation): "statute" | "case" {
@@ -277,18 +273,14 @@ function AnswerSources({ citations }: { citations: ResearchCitation[] }) {
         <div className="space-y-2">
           <h4 className="text-muted-ink text-xs font-semibold">{t("sourceCases")}</h4>
           {cases.map((citation) => (
-            <details key={citation.id} className="border-amber bg-surface rounded border border-l-2 px-3 py-2">
+            <details key={citation.id} className="border-border-strong bg-surface rounded border px-3 py-2">
               <summary className="focus-visible:outline-ring cursor-pointer text-sm">
                 <span className="font-medium">{citation.title || citation.authorityId}</span>
                 <span className="text-muted-ink"> — {citation.reference || t("citationNotRecorded")}</span>
-                <span className="text-amber-text mt-1 flex items-center gap-1.5 text-xs font-semibold">
-                  <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.5} />
-                  {t("caseLead")}
-                </span>
               </summary>
               <p className="mt-2 text-sm leading-6">{citation.passage}</p>
-              {citation.sourceUrl ? (
-                <a href={citation.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-forest mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline">
+              {safeSourceUrl(citation.sourceUrl) ? (
+                <a href={safeSourceUrl(citation.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-forest mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline">
                   {t("openSource")}
                   <ExternalLink aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
                 </a>
