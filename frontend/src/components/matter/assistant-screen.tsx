@@ -12,7 +12,6 @@ import {
   PanelRight,
   Plus,
   RotateCcw,
-  Send,
   ShieldCheck,
   Sparkles,
   X,
@@ -20,6 +19,7 @@ import {
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChatComposer } from "@/components/assistant/chat-composer";
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
 import { listIssues } from "@/lib/api/checks";
@@ -543,43 +543,20 @@ function Composer({
   t: ReturnType<typeof useTranslations>;
 }) {
   return (
-    <form
-      className="border-border-control bg-surface shadow-popover sticky bottom-3 mb-3 rounded border p-3 focus-within:border-forest focus-within:ring-4 focus-within:ring-border-active"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit();
-      }}
-    >
-      <label className="sr-only" htmlFor="matter-assistant-composer">
-        {t("composerLabel")}
-      </label>
-      <textarea
+    <div className="bg-canvas sticky bottom-0 pb-3 pt-2">
+      <ChatComposer
         id="matter-assistant-composer"
-        className="min-h-20 w-full resize-y border-0 bg-transparent p-2 outline-none focus-visible:outline-none"
+        label={t("composerLabel")}
         placeholder={t("composerPlaceholder")}
         value={draft}
-        disabled={busy}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            onSubmit();
-          }
-        }}
+        onChange={onChange}
+        onSubmit={onSubmit}
+        sendLabel={t("send")}
+        busyLabel={t("working")}
+        busy={busy}
       />
-      <div className="border-border flex items-center gap-3 border-t pt-3">
-        <p className="text-muted-ink text-xs">{t("composerNotice")}</p>
-        <Button
-          type="submit"
-          className="ml-auto"
-          variant="primary"
-          disabled={busy || !draft.trim()}
-        >
-          {t("send")}
-          <Send className="size-4" />
-        </Button>
-      </div>
-    </form>
+      <p className="text-muted-ink mt-2 px-5 text-xs">{t("composerNotice")}</p>
+    </div>
   );
 }
 
