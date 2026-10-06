@@ -176,7 +176,7 @@ async function createSyntheticMatter(page: Page) {
     buffer: Buffer.from("Synthetic browser fixture"),
   });
   await expect(page.getByText("deed-9001-synthetic.pdf")).toBeVisible();
-  await page.getByRole("button", { name: "Create matter" }).click();
+  await page.getByRole("button", { name: "Create a matter" }).click();
   await expect(page).toHaveURL(/\/matters\/matter-rta-002$/, {
     timeout: 30_000,
   });
