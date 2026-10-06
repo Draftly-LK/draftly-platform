@@ -4,7 +4,11 @@ from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.modules.auth.domain.models import Role
-from src.modules.research.application.service import CORPUS_VERSION, ResearchService
+from src.modules.research.application.service import (
+    CORPUS_VERSION,
+    ResearchService,
+    title_from_question,
+)
 from src.modules.research.domain.models import (
     ComposedClaim,
     RetrievalPassage,
@@ -127,6 +131,41 @@ async def test_grounded_answer_persists_only_retrieved_citations() -> None:
         assert messages[-1].content == "A registered parcel must be transferred under the Act."
         citations = list((await session.execute(select(ResearchCitationRow))).scalars())
         assert [citation.authority_id for citation in citations] == ["SRC011:s39"]
+    await engine.dispose()
+
+
+def test_title_from_question_fits_one_list_row() -> None:
+    assert title_from_question("  What   governs\n a transfer? ") == "What governs a transfer?"
+    long = "Which provisions govern " + "a registered parcel transfer " * 6
+    title = title_from_question(long)
+    assert len(title) <= 80 and title.endswith("…") and not title.endswith(" …")
+    assert title_from_question("   ") == "New research"
+
+
+async def test_first_question_names_an_unnamed_conversation_only() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as connection:
+        await connection.run_sync(
+            lambda sync: ResearchConversationRow.metadata.create_all(sync, tables=TABLES)
+        )
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    async with maker() as session:
+        owner = RequestContext(actor_id="user_owner", account_role=Role.REVIEWER)
+        service = ResearchService(session, NullLegalRetrieval())
+        scope = await service.resolve_scope(owner, "library", None)
+
+        unnamed = await service.create_conversation(owner, scope, None)
+        assert unnamed.title == "New research"
+        await service.submit(owner, unnamed.id, "Double sale and prior registration?", None)
+        await service.submit(owner, unnamed.id, "A later follow-up question", None)
+        named = await service.create_conversation(owner, scope, "Chosen title")
+        await service.submit(owner, named.id, "Some question", None)
+        await session.commit()
+
+        assert (await service.conversation(owner, unnamed.id)).title == (
+            "Double sale and prior registration?"
+        )
+        assert (await service.conversation(owner, named.id)).title == "Chosen title"
     await engine.dispose()
 
 
