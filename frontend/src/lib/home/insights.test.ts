@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checklistPercent, dueByDay, pipelineSegments, researchUsage } from "./insights";
+import { checklistPercent, countThisMonth, dueByDay, pipelineSegments, researchUsage } from "./insights";
 import { summarizeMatters } from "./practice-snapshot";
 import type { ApiChecklist, RtaMatterState } from "@/types/rta";
 
@@ -51,5 +51,13 @@ describe("researchUsage", () => {
 
   it("is zero with no cap when the metric is absent", () => {
     expect(researchUsage([])).toEqual({ used: 0, limit: null, periodEnd: null });
+  });
+});
+
+describe("countThisMonth", () => {
+  it("counts dates in the current month and skips missing ones", () => {
+    const now = new Date(2026, 6, 22, 10);
+    const dates = [new Date(2026, 6, 1, 9).toISOString(), new Date(2026, 6, 21).toISOString(), new Date(2026, 5, 30).toISOString(), new Date(2025, 6, 10).toISOString(), undefined];
+    expect(countThisMonth(dates, now)).toBe(2);
   });
 });

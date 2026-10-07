@@ -50,14 +50,14 @@
 [data-home-body] .home-planned-item { padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--hover-bg); }
 @container (min-width: 880px) {
   [data-home-body] .home-work-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; }
-  [data-home-body] .home-work-grid > section:first-child { grid-column: span 8; }
-  [data-home-body] .home-agenda { grid-column: span 4; }
+  [data-home-body] .home-work-grid > section:first-child { grid-column: span 6; }
+  [data-home-body] .home-agenda { grid-column: span 6; }
 }
 @media (min-width: 1024px) {
   @container (min-width: 700px) {
     [data-home-body] .home-work-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; }
-    [data-home-body] .home-work-grid > section:first-child { grid-column: span 8; }
-    [data-home-body] .home-agenda { grid-column: span 4; }
+    [data-home-body] .home-work-grid > section:first-child { grid-column: span 6; }
+    [data-home-body] .home-agenda { grid-column: span 6; }
   }
 }
 @container (max-width: 879px) {
@@ -83,27 +83,52 @@
   [data-home-body] .home-workflow-start svg { transition: none; transform: none !important; }
 }
 
-/* Practice at a glance: three cards above the work list. Phones swipe through them. */
-[data-home-body] .home-insights { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(268px, 86%); gap: 12px; margin: 0 -24px 28px; padding: 0 24px 4px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 24px; scrollbar-width: none; }
-[data-home-body] .home-insights::-webkit-scrollbar { display: none; }
-[data-home-body] .home-insight-card { scroll-snap-align: start; min-width: 0; container-type: inline-size; }
-[data-home-body] .home-insight-body { display: flex; align-items: center; gap: 16px; }
+/* Practice at a glance: one card in three panels, side by side when there is room, stacked otherwise. */
+[data-home-body] .home-insights { display: grid; grid-template-columns: minmax(0, 1fr); margin-bottom: 28px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: var(--home-ambient-shadow); }
+[data-home-body] .home-insight-panel { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding: 20px; container-type: inline-size; }
+[data-home-body] .home-insight-panel + .home-insight-panel { border-top: 1px solid var(--border); }
+[data-home-body] .home-insight-head { display: flex; align-items: center; gap: 10px; min-height: 28px; }
+[data-home-body] .home-insight-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 9999px; background: var(--selected-bg); color: var(--forest); }
+[data-home-body] .home-insight-body { flex: 1; display: flex; align-items: center; justify-content: center; gap: 24px; }
+[data-home-body] .home-insight-side { flex: 0 1 200px; min-width: 0; }
+[data-home-body] .home-insight-latest { display: block; margin-top: 4px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 12px; transition: border-color 150ms, background-color 150ms; }
+[data-home-body] .home-insight-latest:hover { border-color: var(--border-control); background: var(--selected-bg); }
+[data-home-body] .home-insight-due { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
 [data-home-body] .home-insight-ring { width: 120px; height: 120px; }
 [data-home-body] .home-insight-figure { font-size: 30px; }
-/* A narrow card shrinks the chart first, then puts it above its text. */
+/* A narrow panel shrinks the chart first, then puts it above its text. */
 @container (max-width: 320px) {
-  [data-home-body] .home-insight-ring { width: 92px; height: 92px; }
+  [data-home-body] .home-insight-ring { width: 96px; height: 96px; }
   [data-home-body] .home-insight-figure { font-size: 24px; }
-  [data-home-body] .home-insight-body { gap: 14px; }
+  [data-home-body] .home-insight-body { gap: 16px; }
+  [data-home-body] .home-insight-ring .text-xs { font-size: 10px; }
 }
-@container (max-width: 240px) {
-  [data-home-body] .home-insight-body { flex-direction: column; align-items: flex-start; }
+/* Narrow panels drop the title icon so the title and its link both fit. */
+@container (max-width: 340px) {
+  [data-home-body] .home-insight-icon { display: none; }
 }
-@media (min-width: 768px) {
-  [data-home-body] .home-insights { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-columns: auto; margin: 0 0 28px; padding: 0; overflow: visible; }
+@container (max-width: 250px) {
+  [data-home-body] .home-insight-body { flex-direction: column; }
+  [data-home-body] .home-insight-side { flex-basis: auto; width: 100%; }
+}
+/* Medium widths: two panels side by side, the due panel across the full width below. */
+@container (min-width: 600px) and (max-width: 1099px) {
+  [data-home-body] .home-insights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  [data-home-body] .home-insight-panel:nth-child(2) { border-top: 0; border-left: 1px solid var(--border); }
+  [data-home-body] .home-insight-panel:nth-child(3) { grid-column: 1 / -1; }
+}
+@container (min-width: 1100px) {
+  [data-home-body] .home-insights { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  [data-home-body] .home-insight-panel + .home-insight-panel { border-top: 0; border-left: 1px solid var(--border); }
+}
+/* A wide due panel puts the count beside the bars rather than above them. */
+@container (min-width: 520px) {
+  [data-home-body] .home-insight-due { display: grid; grid-template-columns: minmax(150px, auto) minmax(0, 1fr); align-items: end; column-gap: 32px; }
+  [data-home-body] .home-insight-due > p { grid-column: 1 / -1; }
 }
 [data-home-body] .home-chart-in { animation: home-chart-in 320ms ease-out both; transform-origin: center; }
 @keyframes home-chart-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   [data-home-body] .home-chart-in { animation: none; }
+  [data-home-body] .home-insight-latest { transition: none; }
 }

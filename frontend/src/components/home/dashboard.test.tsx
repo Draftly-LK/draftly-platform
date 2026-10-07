@@ -14,6 +14,8 @@ vi.mock("@/lib/api/client", async (importOriginal) => {
   return { ...actual, isApiEnabled: () => mocks.apiEnabled };
 });
 vi.mock("@/lib/api/use-recent-matters", () => ({ useRecentMatters: () => mocks.feed }));
+vi.mock("@/lib/api/research", () => ({ listResearchConversations: async () => [] }));
+vi.mock("@/lib/api/billing", () => ({ getBillingUsage: async () => [] }));
 
 import { Dashboard } from "./dashboard";
 import { DashboardBody } from "./dashboard-body";
@@ -126,34 +128,31 @@ describe("UpcomingObligations", () => {
 });
 
 describe("Dashboard", () => {
-  it("has exactly one gold button when there is data, and each count opens its filtered list", () => {
+  it("has exactly one gold button when there is data, and each total opens its list", () => {
     const { container } = renderWithIntl(<Dashboard obligations={[]} />);
     expect(container.querySelectorAll(".bg-primary-bg")).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Create a matter/ }).className).toContain("bg-primary-bg");
     expect(screen.getByRole("link", { name: /Ask a legal question/ })).toBeTruthy();
-    // The header count; the pipeline legend below repeats the label.
-    expect(screen.getByRole("link", { name: /To review/ })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Open matters/ }).getAttribute("href")).toBe("/matters?status=open");
-    expect(screen.getByRole("link", { name: /To review/ }).getAttribute("href")).toBe("/matters?status=review");
-    expect(screen.getByRole("link", { name: /In drafting/ }).getAttribute("href")).toBe("/matters?status=drafting");
+    expect(screen.getByRole("link", { name: /Total matters/ }).getAttribute("href")).toBe("/matters");
+    expect(screen.getByRole("link", { name: /Research chats/ }).getAttribute("href")).toBe("/research");
+    expect(screen.getByRole("link", { name: /New this month/ }).getAttribute("href")).toBe("/matters");
   });
 
-  it("centres each count under its label; To review is amber label and number together, with no icon", () => {
+  it("shows totals in the header and leaves the stage breakdown to the chart below", () => {
     const { container } = renderWithIntl(<Dashboard obligations={[]} />);
-    const counts = container.querySelectorAll("section[aria-label] ul > li a");
+    const header = container.querySelector(".dashboard-metrics") as HTMLElement;
+    const counts = header.querySelectorAll("ul > li a");
     expect(counts).toHaveLength(3);
     for (const link of counts) {
       expect(link.className).toContain("items-center");
       expect(link.className).toContain("text-center");
     }
-    const review = screen.getByRole("link", { name: /To review/ });
-    const [label, number] = review.querySelectorAll("span");
-    expect(label?.className).toContain("text-amber-on-dark");
-    expect(number?.className).toContain("text-amber-on-dark");
-    expect(review.querySelector("svg")).toBeNull();
-    // A count of zero stays muted, label and number alike.
-    const drafting = screen.getByRole("link", { name: /In drafting/ });
-    expect(drafting.querySelector("span")?.className).toContain("text-on-dark-muted");
+    expect(within(header).queryByText("To review")).toBeNull();
+    expect(screen.getByRole("img", { name: /open matters:/ })).toBeTruthy();
+    // Offline there are no research figures: a muted dash, never a misleading zero.
+    const research = screen.getByRole("link", { name: /Research chats/ });
+    expect(research.textContent).toContain("—");
+    expect(research.querySelectorAll("span")[1]?.className).toContain("text-on-dark-muted");
   });
 
   it("gives the two header buttons one width", () => {
@@ -178,7 +177,7 @@ describe("Dashboard", () => {
     expect(screen.getByRole("heading", { name: "Recent matters" })).toBeTruthy();
     expect(screen.getByText("No matters yet. Create one to get started.")).toBeTruthy();
     expect(screen.getByText("Start a matter or ask a legal question.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /To review/ }).textContent).toContain("0");
+    expect(screen.getByRole("link", { name: /Total matters/ }).textContent).toContain("0");
     expect(container.querySelectorAll(".bg-primary-bg")).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: /Ask a legal question/ })).toHaveLength(1);
   });

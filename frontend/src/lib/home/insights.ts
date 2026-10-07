@@ -74,3 +74,12 @@ export function researchUsage(
   const row = rows.find((item) => item.metric === RESEARCH_METRIC);
   return { used: row?.quantity ?? 0, limit: row?.limitValue ?? null, periodEnd: row?.periodEnd ?? null };
 }
+
+/** How many timestamps fall in the same calendar month as `now`, in the user's own time zone. */
+export function countThisMonth(timestamps: readonly (string | undefined)[], now: Date): number {
+  return timestamps.filter((timestamp) => {
+    if (!timestamp) return false;
+    const date = new Date(timestamp);
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  }).length;
+}
