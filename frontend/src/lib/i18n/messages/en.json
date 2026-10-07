@@ -150,7 +150,12 @@
       "LITIGATION_HOLD": "Litigation hold",
       "CANCELLED": "Cancelled"
     },
-    "assistantTab": "Assistant"
+    "assistantTab": "Assistant",
+    "progress": "Matter progress",
+    "stepOf": "Step {current} of {total}: {stage}",
+    "progressComplete": "All stages complete",
+    "stepDone": "completed",
+    "stepOnHold": "on hold"
   },
   "home": {
     "insights": {
@@ -325,24 +330,10 @@
     "checklistBlocking": "{count, plural, =0 {Nothing blocking} one {# blocking requirement} other {# blocking requirements}}",
     "checklistMissing": "{count, plural, =0 {Everything satisfied} one {# still outstanding} other {# still outstanding}}",
     "noChecklist": "No checklist compiled yet.",
-    "agentLabel": "Matter assistant · live record",
-    "caseSummary": "Case summary",
-    "summaryStatus": "{instrument} · {state}",
-    "summaryEvidence": "Evidence",
-    "summaryEvidenceValue": "{total, plural, =0 {No files uploaded} one {# file uploaded} other {# files uploaded}}; {pending, plural, =0 {all processed} one {# awaiting processing} other {# awaiting processing}}.",
-    "summaryFacts": "Verified facts",
-    "summaryFactsValue": "{verified} of {total} current facts are lawyer verified.",
-    "summaryRequirements": "Requirements",
-    "summaryRequirementsValue": "{satisfied} of {total} satisfied; {blocking} blocking and {outstanding} outstanding.",
-    "summaryOutputs": "Issues and drafts",
-    "summaryOutputsValue": "{issues, plural, =0 {No open issues} one {# open issue} other {# open issues}}; {forms, plural, =0 {no forms} one {# form} other {# forms}}.",
     "summaryUnavailable": "Not available right now.",
     "summaryNotice": "This snapshot reports the matter's current records. It is not a legal conclusion and does not replace lawyer review.",
     "openAssistant": "Open matter assistant",
-    "documentsCount": "{count, plural, =0 {No files uploaded} one {# file uploaded} other {# files uploaded}}",
     "documentsPending": "{count, plural, =0 {All processed} one {# awaiting processing} other {# awaiting processing}}",
-    "issuesCount": "{count, plural, =0 {No open issues} one {# open issue} other {# open issues}}",
-    "formsCount": "{count, plural, =0 {No form generated} one {# form} other {# forms}}",
     "nextUpload": "Upload the evidence this matter needs",
     "nextUploadBody": "Nothing has been uploaded yet. The checklist names what the instrument requires.",
     "nextProcess": "Process the uploaded files",
@@ -358,7 +349,20 @@
       "V0_AUTOMATED": "Prepared by Draftly",
       "MANUAL_SUPPORTED": "Manual, with support",
       "LITIGATION_HOLD": "Litigation hold"
-    }
+    },
+    "action": {
+      "upload": "Upload documents",
+      "process": "Open documents",
+      "resolve": "Open checks",
+      "draft": "Open drafts",
+      "review": "Review the form"
+    },
+    "tileFiles": "{count, plural, one {file uploaded} other {files uploaded}}",
+    "tileIssues": "{count, plural, one {open issue} other {open issues}}",
+    "tileFacts": "of {total} lawyer verified",
+    "tileForms": "{count, plural, one {form generated} other {forms generated}}",
+    "checklistRing": "{percent}% of the checklist satisfied",
+    "assistantTitle": "Ask the matter assistant"
   },
   "documents": {
     "title": "Documents",

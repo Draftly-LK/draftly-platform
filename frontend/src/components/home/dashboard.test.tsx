@@ -63,6 +63,12 @@ describe("RecentMatters", () => {
     expect(within(rows[1] as HTMLElement).getByRole("link", { name: /Open/ })).toBeTruthy();
   });
 
+  it("shows only the three latest matters, however many there are", () => {
+    const many = Array.from({ length: 10 }, (_, index) => matter({ id: `m${index}`, reference: `REF-${index}` }));
+    renderWithIntl(<RecentMatters now={NOW} feed={feedOf(many)} />);
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+  });
+
   it("shows the status as an icon plus words, and relative activity inside a week", () => {
     const { container } = renderWithIntl(<RecentMatters now={NOW} feed={feedOf([matter({ state: "REVIEW_REQUIRED" })])} />);
     expect(screen.getAllByText("Review required").length).toBeGreaterThan(0);
@@ -73,12 +79,6 @@ describe("RecentMatters", () => {
   it("prints older activity as a day-month date", () => {
     renderWithIntl(<RecentMatters now={NOW} feed={feedOf([matter({ updatedAt: "2026-06-03T10:00:00.000Z" })])} />);
     expect(screen.getByText("3 Jun")).toBeTruthy();
-  });
-
-  it("caps the list at eight rows", () => {
-    const many = Array.from({ length: 12 }, (_, i) => matter({ id: `m${i}`, reference: `REF-${i}`, clientReference: `Client ${i}` }));
-    renderWithIntl(<RecentMatters now={NOW} feed={feedOf(many)} />);
-    expect(screen.getAllByRole("listitem")).toHaveLength(8);
   });
 
   it("says what happened when the feed fails", () => {
