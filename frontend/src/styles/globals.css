@@ -164,10 +164,17 @@ select:not([multiple]):not([size]) {
 }
 
 /* Inside a matter the matter header already carries the title band and the
-   language control, so a tab's own page header steps down a level. */
+   language control, so a tab's own page header steps down to a plain section
+   heading on the canvas, aligned with the content (no second white band, and
+   no room kept for the mobile menu button, which the matter header clears). */
 [data-matter-header] ~ main [data-page-locale] { display: none; }
-[data-matter-header] ~ main [data-page-header] > div { padding-top: 1.25rem; padding-bottom: 1rem; }
-[data-matter-header] ~ main [data-page-header] h1 { font-size: 24px; }
+[data-matter-header] ~ main [data-page-header] { border-bottom: 0; background: transparent; }
+[data-matter-header] ~ main [data-page-header] > div { padding: 1.5rem 1.5rem 0.25rem; }
+[data-matter-header] ~ main [data-page-header] h1 { font-size: 22px; }
+[data-matter-header] ~ main [data-page-header] h1 + p { margin-top: 0.25rem; font-size: 14px; }
+@media (max-width: 639px) {
+  [data-matter-header] ~ main [data-page-header] > div { padding: 1.25rem 1rem 0.25rem; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }

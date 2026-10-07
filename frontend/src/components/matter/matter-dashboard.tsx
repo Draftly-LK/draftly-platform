@@ -17,6 +17,7 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
+import { PageHeader } from "@/components/shell/page-header";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { listIssues } from "@/lib/api/checks";
@@ -80,6 +81,7 @@ function DashboardFlow({
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const header = <PageHeader title={tNav("overview")} description={t("pageDescription")} />;
 
   useEffect(() => {
     let cancelled = false;
@@ -128,6 +130,7 @@ function DashboardFlow({
   if (loading) {
     return (
       <AppShell matterId={matterId}>
+        {header}
         <p className="text-muted-ink flex items-center gap-2 p-6">
           <LoaderCircle className="size-5 animate-spin" strokeWidth={1.5} aria-hidden="true" />
           {t("loading")}
@@ -139,6 +142,7 @@ function DashboardFlow({
   if (error !== null || data === null) {
     return (
       <AppShell matterId={matterId}>
+        {header}
         <div className="mx-auto max-w-2xl p-6">
           <div className="border-red bg-red-bg text-red rounded border p-4" role="alert">
             {error ?? t("loadFailed")}
@@ -236,7 +240,8 @@ function DashboardFlow({
 
   return (
     <AppShell matterId={matterId}>
-      <div className="mx-auto w-full max-w-[1240px] space-y-6 p-4 sm:p-6">
+      {header}
+      <div className="space-y-6 p-4 sm:p-6">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <section aria-labelledby="next-action-title" className="border-border bg-surface rounded-card flex flex-col border p-5 sm:p-6">
             <span className="bg-gold-soft text-gold-strong rounded-control inline-flex w-fit items-center gap-1.5 px-2.5 py-1 text-xs font-semibold">
