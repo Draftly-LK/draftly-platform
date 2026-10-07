@@ -10,6 +10,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { CreateMatterLink } from "./create-matter-link";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button, buttonClass } from "@/components/ui/button";
+import { segmentedOption, segmentedTrack } from "@/components/ui/segmented-control";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -123,7 +124,7 @@ function FilterTabs({ active, counts }: { active: StatusFilter | null; counts: R
     ...(["open", "review", "drafting"] as const).map((key) => ({ key, label: t(FILTER_LABELS[key]), count: counts[key] })),
   ];
   return (
-    <nav aria-label={t("filterLabel")} className="mb-4 flex flex-wrap gap-2">
+    <nav aria-label={t("filterLabel")} className={cn(segmentedTrack, "mb-4")}>
       {tabs.map(({ key, label, count }) => {
         const selected = key === active;
         return (
@@ -131,10 +132,10 @@ function FilterTabs({ active, counts }: { active: StatusFilter | null; counts: R
             key={key ?? "all"}
             href={mattersHref(key)}
             aria-current={selected ? "true" : undefined}
-            className={cn(buttonClass("secondary"), selected && "border-forest bg-selected-bg font-semibold")}
+            className={segmentedOption(selected)}
           >
             {label}
-            <span className="tabular-nums text-muted-ink">{count}</span>
+            <span className="tabular-nums text-muted-ink font-normal">{count}</span>
           </Link>
         );
       })}

@@ -262,7 +262,7 @@ describe("case law entry", () => {
       screen.getByText(/Deciding court: Synthetic District Court/),
     ).toBeTruthy();
     expect(screen.getByText(/Court of Appeal collection/)).toBeTruthy();
-    expect(screen.getByText("Parsed · unverified")).toBeTruthy();
+    expect(screen.queryByText(/unverified/i)).toBeNull();
     expect(
       screen.getByText("Encoding errors may affect this extraction."),
     ).toBeTruthy();

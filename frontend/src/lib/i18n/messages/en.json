@@ -2733,7 +2733,6 @@
     "searchCoverage": "Fact-pattern search covers {count} conveyancing records; {overlap} are in this catalogue.",
     "collectionNotice": "The collection identifies the harvested database, not the deciding court.",
     "version": "Corpus version: {version}",
-    "parsed": "Parsed · unverified",
     "provenance": "Imported from parsed CommonLII records",
     "decidingCourt": "Deciding court",
     "courtUnknown": "Not parsed",
@@ -2751,7 +2750,7 @@
     "fullText": "Parsed judgment text",
     "approval": "Display approval: {reference}",
     "searchTitle": "Find similar cases",
-    "searchDescription": "Describe a fact pattern to find cited judgments and bounded evidence excerpts. Results are unverified research leads.",
+    "searchDescription": "Describe a fact pattern to find cited judgments and bounded evidence excerpts.",
     "facts": "Describe the facts",
     "submitSearch": "Find similar cases",
     "searching": "Finding similar cases…",
@@ -2782,6 +2781,6 @@
       "malformed-tags": "Malformed tags may affect this extraction.",
       "deciding-court-unparsed": "The deciding court could not be parsed reliably."
     },
-    "limitations": "Parsed metadata and excerpts have not been legally verified. Check the cited source before relying on a judgment."
+    "limitations": "Check the cited source before relying on a judgment."
   }
 }

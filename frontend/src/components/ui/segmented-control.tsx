@@ -2,6 +2,19 @@
 
 import { cn } from "@/lib/utils";
 
+/** The rounded track that holds the options. */
+export const segmentedTrack = "border-border-strong bg-canvas inline-flex max-w-full rounded-control border p-0.5";
+
+/** One option: small on phones, the selected one raised on a white segment. */
+export function segmentedOption(selected: boolean) {
+  return cn(
+    "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm",
+    selected
+      ? "border-border-strong bg-surface text-forest font-semibold"
+      : "text-muted-ink hover:text-ink border-transparent font-medium",
+  );
+}
+
 export interface SegmentedOption<T extends string> {
   value: T;
   label: string;
@@ -37,10 +50,7 @@ export function SegmentedControl<T extends string>({
       role="group"
       aria-label={labelledBy ? undefined : label}
       aria-labelledby={labelledBy}
-      className={cn(
-        "border-border-strong bg-canvas inline-flex max-w-full rounded-control border p-0.5",
-        className,
-      )}
+      className={cn(segmentedTrack, className)}
     >
       {options.map((option) => {
         const selected = option.value === value;
@@ -52,12 +62,7 @@ export function SegmentedControl<T extends string>({
             aria-label={option.shortLabel ? option.label : undefined}
             disabled={disabled}
             onClick={() => onChange(option.value)}
-            className={cn(
-              "rounded-control flex-auto cursor-pointer whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm",
-              selected
-                ? "border-border-strong bg-surface text-forest font-semibold"
-                : "text-muted-ink hover:text-ink border-transparent font-medium",
-            )}
+            className={segmentedOption(selected)}
           >
             {option.shortLabel ? (
               <>
