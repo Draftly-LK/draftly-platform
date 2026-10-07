@@ -32,7 +32,13 @@ export function UpcomingObligations({
 
   if (!now) return null;
   const items = sortByUrgency(dueWithin(obligations, now));
-  if (items.length === 0) return <p className="text-sm text-muted-ink">{t("obligationsEmpty")}</p>;
+  if (items.length === 0) {
+    return (
+      <Card pad="none" className="home-timeline-surface">
+        <p className="px-[18px] py-5 text-sm text-muted-ink">{t("obligationsEmpty")}</p>
+      </Card>
+    );
+  }
 
   return (
     <Card pad="none" className="home-timeline-surface">

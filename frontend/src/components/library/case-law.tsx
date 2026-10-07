@@ -111,19 +111,6 @@ function Coverage({
   );
 }
 
-function ParsedStatus() {
-  const t = useTranslations("caseLaw");
-  return (
-    <span
-      data-case-status
-      className="text-amber-text inline-flex items-center gap-1.5 text-sm"
-    >
-      <AlertTriangle aria-hidden="true" className={icon} strokeWidth={1.5} />
-      {t("parsed")}
-    </span>
-  );
-}
-
 function SourceLink({ url }: { url: string }) {
   const t = useTranslations("caseLaw");
   return (
@@ -151,7 +138,6 @@ function CaseMetadata({ item }: { item: CaseRecord }) {
       <p className="text-muted-ink text-sm">
         {t("decidingCourt")}: {item.decidingCourt ?? t("courtUnknown")}
       </p>
-      <ParsedStatus />
     </div>
   );
 }
@@ -395,7 +381,6 @@ function SimilarResult({ item }: { item: SimilarCase }) {
       ) : (
         <>
           <p className="text-muted-ink text-sm">{item.citation}</p>
-          <ParsedStatus />
           <p className="text-muted-ink text-xs">{t("outsideCatalogue")}</p>
         </>
       )}

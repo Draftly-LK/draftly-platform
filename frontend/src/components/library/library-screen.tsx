@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  BookOpen,
-  ExternalLink,
-  FilePenLine,
-  WifiOff,
-  Search,
-} from "lucide-react";
+import { ExternalLink, WifiOff, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
@@ -154,7 +148,7 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
         </ErrorState>
       ) : (
         <>
-          <div className="border-border bg-surface divide-border rounded-card grid divide-y border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="border-border bg-surface divide-border rounded-card grid grid-cols-3 divide-x border">
             <Count label={t("all")} value={loading ? null : sources.length} />
             <Count
               label={t("statutes")}
@@ -219,54 +213,37 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
                   }
                 />
               ) : (
-                <div className="divide-border border-border bg-surface mt-3 divide-y border-y">
-                  {visibleSources.map((source) => {
-                    const Icon =
-                      source.type === "amendment" ? FilePenLine : BookOpen;
-                    return (
-                      <article
-                        key={source.id}
-                        className="grid min-h-20 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3"
-                      >
-                        <Icon
-                          aria-hidden="true"
-                          className="text-forest size-5"
-                          strokeWidth={1.5}
-                        />
-                        <div className="min-w-0">
-                          <h2 className="font-heading text-lg font-semibold">
-                            {source.title}
-                          </h2>
-                          <p className="text-muted-ink flex flex-wrap gap-x-3 text-sm">
-                            <span>
-                              {source.type === "amendment"
-                                ? t("amendment")
-                                : t("statute")}
-                            </span>
-                            <span className="tabular-nums">
-                              {source.reference}
-                            </span>
-                          </p>
-                          <p className="text-muted-ink mt-1 text-xs">
-                            {t("sectionCount", { count: source.sectionCount })}
-                          </p>
-                        </div>
+                <div className="divide-border border-border bg-surface rounded-card mt-3 divide-y border">
+                  {visibleSources.map((source) => (
+                    <article key={source.id} className="space-y-2 p-4">
+                      <h2 className="break-words text-lg font-semibold">
                         <a
-                          className="text-forest focus-visible:outline-ring inline-flex items-center gap-1 text-sm font-semibold hover:underline"
+                          className="text-forest hover:underline"
                           href={source.sourceUrl}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          {t("open")}
-                          <ExternalLink
-                            aria-hidden="true"
-                            className="size-4"
-                            strokeWidth={1.5}
-                          />
+                          {source.title}
                         </a>
-                      </article>
-                    );
-                  })}
+                      </h2>
+                      <p className="text-muted-ink break-words text-sm">
+                        {source.type === "amendment" ? t("amendment") : t("statute")}
+                        {" · "}
+                        <span className="tabular-nums">{source.reference}</span>
+                        {" · "}
+                        {t("sectionCount", { count: source.sectionCount })}
+                      </p>
+                      <a
+                        className="text-teal inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
+                        href={source.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {t("open")}
+                        <ExternalLink aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
+                      </a>
+                    </article>
+                  ))}
                 </div>
               )}
             </>
@@ -280,14 +257,14 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
   );
 }
 
-/** One figure, centred in its third of the summary card. */
+/** One figure, centred in its third of the summary card; smaller on phones so all three share a row. */
 function Count({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="px-4 py-5 text-center">
-      <div className="font-heading text-3xl font-semibold tabular-nums">
+    <div className="min-w-0 px-2 py-3 text-center sm:px-4 sm:py-5">
+      <div className="font-heading text-xl font-semibold tabular-nums sm:text-3xl">
         {value ?? "—"}
       </div>
-      <div className="text-muted-ink text-sm">{label}</div>
+      <div className="text-muted-ink truncate text-xs sm:text-sm">{label}</div>
     </div>
   );
 }
