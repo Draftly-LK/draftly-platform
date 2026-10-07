@@ -40,6 +40,7 @@ export function demoMatterFeed(matters: readonly Matter[]): ApiRtaMatter[] {
         clientReference: matter.parties.map((party) => party.nameToken).join(" / "),
         subtypeId: matter.subtypeId ?? migrateLegacyMatterType(matter.type)?.subtypeId ?? null,
         state: demoMatterState(matter.status),
+        createdAt: matter.createdAt,
         updatedAt: matter.updatedAt,
       }) as ApiRtaMatter,
   );

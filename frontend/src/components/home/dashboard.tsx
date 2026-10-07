@@ -14,6 +14,7 @@ import { Greeting } from "./greeting";
 import { DashboardBody } from "./dashboard-body";
 import { MatterFeed, useDashboardNow, type Feed } from "./matter-feed";
 import { PracticeMetrics } from "./practice-snapshot";
+import { useResearchOverview } from "./use-research-overview";
 
 /** Content width: tables and grids do not stretch across a wide monitor. */
 const CONTENT = "mx-auto w-full max-w-[1240px]";
@@ -62,6 +63,7 @@ function HeaderActions() {
 function DashboardView({ feed, obligations }: { feed: Feed; obligations: readonly Obligation[] }) {
   const t = useTranslations("home");
   const now = useDashboardNow();
+  const research = useResearchOverview();
   const ready = !feed.loading && !feed.failed;
   const firstRun = ready && feed.matters.length === 0;
   const toReview = ready ? summarizeMatters(feed.matters.map((m) => m.state)).needsReview : 0;
@@ -88,12 +90,12 @@ function DashboardView({ feed, obligations }: { feed: Feed; obligations: readonl
             <Greeting />
             <p className="dashboard-summary mt-1 min-h-6 text-base text-on-dark-muted">{context}</p>
           </div>
-          <PracticeMetrics feed={feed} />
+          <PracticeMetrics feed={feed} research={research} now={now} />
           <HeaderActions />
         </div>
       </section>
 
-      <DashboardBody feed={feed} obligations={obligations} now={now} />
+      <DashboardBody feed={feed} obligations={obligations} now={now} research={research} />
     </>
   );
 }
