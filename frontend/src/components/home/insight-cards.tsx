@@ -11,8 +11,8 @@ import { DayBars, DonutChart, STAGE_COLORS } from "./charts";
 import type { Feed } from "./matter-feed";
 import type { ResearchOverview } from "./use-research-overview";
 
-/** Chats touched this month carry the brand navy; older ones recede to the strong border grey. */
-const CHAT_COLORS = { active: "var(--forest)", earlier: "var(--border-strong)" } as const;
+/** Chats touched this month carry the chart navy; older ones recede to the strong border grey. */
+const CHAT_COLORS = { active: STAGE_COLORS.progress, earlier: "var(--border-strong)" } as const;
 
 const STAGE_LABEL: Record<PipelineStage, "stageProgress" | "stageReview" | "stageDrafting"> = {
   progress: "stageProgress",

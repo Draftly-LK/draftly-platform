@@ -12,7 +12,7 @@ import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { familyLabelKey, subtypeLabelKey } from "@/lib/rta/taxonomy";
 import { useDemoStore } from "@/lib/store";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
-import { STAGE_ORDER, stageForState } from "./matter-stage";
+import { MatterStepper } from "./matter-stepper";
 
 const NAV_TABS = [
   "overview",
@@ -152,19 +152,20 @@ function MatterHeaderShell({
           <FileText className="size-6" strokeWidth={1.5} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-muted-ink flex flex-wrap items-center gap-2 text-xs">
-            <span className="bg-gold-soft text-gold-strong rounded-control px-1.5 py-0.5 font-semibold tracking-wide">
+          <div className="text-muted-ink flex min-w-0 items-center gap-2 text-xs">
+            <span className="bg-gold-soft text-gold-strong rounded-control shrink-0 px-1.5 py-0.5 font-semibold tracking-wide">
               {t("regime")}
             </span>
             <span className="truncate">{data.subtitleKey ? tRoot(data.subtitleKey) : data.subtitleFallback}</span>
+            {/* Phones read the stage from the stepper's "Step 2 of 6" line instead. */}
             {data.state && (
-              <>
+              <span className="hidden shrink-0 items-center gap-2 sm:flex">
                 <span aria-hidden="true">·</span>
                 <span className="text-ink font-medium">{t(`stateLabel.${data.state}`)}</span>
-              </>
+              </span>
             )}
           </div>
-          <h1 className="font-display mt-1 truncate text-3xl font-semibold leading-tight tabular-nums">
+          <h1 className="font-display mt-1 text-2xl font-semibold leading-tight tabular-nums [overflow-wrap:anywhere] sm:truncate sm:text-3xl">
             {data.reference}
           </h1>
           {updatedAt && (
@@ -179,7 +180,7 @@ function MatterHeaderShell({
           </IconButton>
         </div>
       </div>
-      {data.state && <MatterStageStepper state={data.state} />}
+      {data.state && <MatterStepper state={data.state} />}
       <nav aria-label={data.reference} className="flex min-w-0 overflow-x-auto px-4">
         {NAV_TABS.map((tab) => {
           const href = NAV_HREF[tab](matterId);
@@ -202,32 +203,3 @@ function MatterHeaderShell({
   );
 }
 
-/** The visible RtaMatterState progression: which of the six demo stages is current. */
-function MatterStageStepper({ state }: { state: RtaMatterState }) {
-  const t = useTranslations("matterNav.stage");
-  const current = stageForState(state);
-  return (
-    <ol className="text-muted-ink flex min-w-0 gap-1 overflow-x-auto px-6 pb-2 text-xs">
-      {STAGE_ORDER.map((stage, index) => {
-        const currentIndex = STAGE_ORDER.indexOf(current);
-        const done = index < currentIndex;
-        const active = stage === current;
-        return (
-          <li
-            key={stage}
-            aria-current={active ? "step" : undefined}
-            className={`shrink-0 rounded-full border px-2 py-1 ${
-              active
-                ? "border-forest text-forest font-medium"
-                : done
-                  ? "border-border-strong text-ink"
-                  : "border-border text-muted-ink"
-            }`}
-          >
-            {t(stage)}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
