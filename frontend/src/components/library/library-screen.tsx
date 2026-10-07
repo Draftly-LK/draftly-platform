@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { RowsSkeleton } from "@/components/ui/skeleton";
@@ -57,31 +58,23 @@ export function LibraryFlow({ getToken }: { getToken: TokenProvider }) {
     <AppShell>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
-        <nav
-          className="border-border mb-6 flex flex-wrap gap-2 border-b pb-3"
-          aria-label={t("title")}
-        >
-          {(["statutes", "cases"] as const).map((value) => (
-            <Button
-              key={value}
-              aria-pressed={tab === value}
-              className={
-                tab === value
-                  ? "border-forest bg-selected-bg text-forest"
-                  : undefined
-              }
-              onClick={() => {
-                setTab(value);
-                window.history.replaceState(
-                  null,
-                  "",
-                  value === "cases" ? "/library?tab=cases" : "/library",
-                );
-              }}
-            >
-              {cases(value === "cases" ? "tab" : "statutesTab")}
-            </Button>
-          ))}
+        <nav className="border-border mb-6 border-b pb-3" aria-label={t("title")}>
+          <SegmentedControl
+            label={t("title")}
+            options={[
+              { value: "statutes", label: cases("statutesTab") },
+              { value: "cases", label: cases("tab") },
+            ]}
+            value={tab}
+            onChange={(value) => {
+              setTab(value);
+              window.history.replaceState(
+                null,
+                "",
+                value === "cases" ? "/library?tab=cases" : "/library",
+              );
+            }}
+          />
         </nav>
         {tab === "cases" ? (
           <CaseCatalogueFlow getToken={getToken} />
