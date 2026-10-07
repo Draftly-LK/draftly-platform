@@ -153,6 +153,33 @@
     "assistantTab": "Assistant"
   },
   "home": {
+    "insights": {
+      "label": "Practice at a glance",
+      "pipelineTitle": "Matter pipeline",
+      "viewMatters": "View matters",
+      "open": "open",
+      "stageProgress": "In progress",
+      "stageReview": "To review",
+      "stageDrafting": "In drafting",
+      "pipelineChart": "{open} open matters: {progress} in progress, {review} to review, {drafting} in drafting.",
+      "pipelineEmpty": "Your pipeline appears here once you create a matter.",
+      "researchTitle": "Research this month",
+      "researchUsed": "{used} of {limit} research questions used.",
+      "researchUnlimited": "{used, plural, one {# research question} other {# research questions}} asked.",
+      "ofLimit": "of {limit}",
+      "researchResets": "Resets {date}",
+      "researchLoading": "Loading your allowance…",
+      "researchUnavailable": "Your research allowance shows once you're signed in.",
+      "openResearch": "Open Research",
+      "dueTitle": "Next 14 days",
+      "dueSummary": "{count, plural, =0 {Nothing due} one {# obligation due} other {# obligations due}}",
+      "dueNext": "next {date}",
+      "dueChart": "{count, plural, =0 {Nothing due} one {# obligation due} other {# obligations due}} in the next 14 days, by day.",
+      "dueDay": "{date}: {count, plural, =0 {nothing due} other {# due}}",
+      "today": "Today",
+      "overdueIncluded": "Includes an overdue item.",
+      "checklistProgress": "{percent}% of the checklist complete"
+    },
     "body": {
       "resume": "Continue where you left off",
       "dueNext": "What needs your attention next",

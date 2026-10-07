@@ -131,7 +131,8 @@ describe("Dashboard", () => {
     expect(container.querySelectorAll(".bg-primary-bg")).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Create a matter/ }).className).toContain("bg-primary-bg");
     expect(screen.getByRole("link", { name: /Ask a legal question/ })).toBeTruthy();
-    expect(screen.getByText("To review")).toBeTruthy();
+    // The header count; the pipeline legend below repeats the label.
+    expect(screen.getByRole("link", { name: /To review/ })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Open matters/ }).getAttribute("href")).toBe("/matters?status=open");
     expect(screen.getByRole("link", { name: /To review/ }).getAttribute("href")).toBe("/matters?status=review");
     expect(screen.getByRole("link", { name: /In drafting/ }).getAttribute("href")).toBe("/matters?status=drafting");
