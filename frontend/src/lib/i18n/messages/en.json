@@ -155,7 +155,9 @@
     "stepOf": "Step {current} of {total}: {stage}",
     "progressComplete": "All stages complete",
     "stepDone": "completed",
-    "stepOnHold": "on hold"
+    "stepOnHold": "on hold",
+    "tabsBack": "Show earlier sections",
+    "tabsMore": "Show more sections"
   },
   "home": {
     "insights": {
@@ -362,7 +364,8 @@
     "tileFacts": "of {total} lawyer verified",
     "tileForms": "{count, plural, one {form generated} other {forms generated}}",
     "checklistRing": "{percent}% of the checklist satisfied",
-    "assistantTitle": "Ask the matter assistant"
+    "assistantTitle": "Ask the matter assistant",
+    "pageDescription": "Where this matter stands and what to do next."
   },
   "documents": {
     "title": "Documents",
@@ -2566,7 +2569,9 @@
       "verified": "Verified",
       "unverified": "Unverified",
       "operational": "Operational"
-    }
+    },
+    "expandContext": "Show matter context",
+    "collapseContext": "Hide matter context"
   },
   "gazette": {
     "modeLabel": "Drafting mode",

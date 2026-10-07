@@ -26,12 +26,12 @@ export function MatterStepper({ state }: { state: RtaMatterState }) {
 
   return (
     <div className="px-6 pb-4 pt-1">
-      <p className="text-muted-ink mb-2 text-xs sm:hidden" aria-hidden="true">
+      <p className="text-muted-ink mb-2 text-center text-xs sm:hidden" aria-hidden="true">
         {complete
           ? t("progressComplete")
           : t("stepOf", { current: currentIndex + 1, total: STAGE_ORDER.length, stage: t(`stage.${currentStage}`) })}
       </p>
-      <ol aria-label={t("progress")} className="grid max-w-3xl" style={{ gridTemplateColumns: `repeat(${STAGE_ORDER.length}, minmax(0, 1fr))` }}>
+      <ol aria-label={t("progress")} className="mx-auto grid max-w-3xl" style={{ gridTemplateColumns: `repeat(${STAGE_ORDER.length}, minmax(0, 1fr))` }}>
         {STAGE_ORDER.map((stage, index) => {
           const done = index < currentIndex;
           const current = index === currentIndex;
@@ -66,15 +66,18 @@ export function MatterStepper({ state }: { state: RtaMatterState }) {
                   index + 1
                 )}
               </span>
-              <span
-                className={cn(
-                  "sr-only mt-2 max-w-full truncate text-center text-xs sm:not-sr-only",
-                  current ? (paused ? "text-amber-text font-semibold" : "text-forest font-semibold") : done ? "text-ink" : "text-muted-ink",
-                )}
-              >
-                {t(`stage.${stage}`)}
-                <span className="sr-only">
-                  {done ? ` (${t("stepDone")})` : paused ? ` (${t("stepOnHold")})` : ""}
+              {/* The gap sits on a wrapper: `sm:not-sr-only` resets the label's own margin. */}
+              <span className="block max-w-full sm:mt-2">
+                <span
+                  className={cn(
+                    "sr-only block truncate text-center text-xs sm:not-sr-only",
+                    current ? (paused ? "text-amber-text font-semibold" : "text-forest font-semibold") : done ? "text-ink" : "text-muted-ink",
+                  )}
+                >
+                  {t(`stage.${stage}`)}
+                  <span className="sr-only">
+                    {done ? ` (${t("stepDone")})` : paused ? ` (${t("stepOnHold")})` : ""}
+                  </span>
                 </span>
               </span>
             </li>

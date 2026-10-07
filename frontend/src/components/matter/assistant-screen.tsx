@@ -9,7 +9,8 @@ import {
   ListChecks,
   LoaderCircle,
   MessageCircleQuestion,
-  PanelRight,
+  PanelRightClose,
+  PanelRightOpen,
   Plus,
   RotateCcw,
   ShieldCheck,
@@ -21,7 +22,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatComposer } from "@/components/assistant/chat-composer";
 import { AppShell } from "@/components/shell/app-shell";
+import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { cn } from "@/lib/utils";
 import { listIssues } from "@/lib/api/checks";
 import { getDocumentInbox } from "@/lib/api/documents";
 import { listForms } from "@/lib/api/drafts";
@@ -79,6 +83,7 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
   const [selectedCitation, setSelectedCitation] =
     useState<ApiAgentCitation | null>(null);
   const [contextOpen, setContextOpen] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = usePanelCollapsed();
   const pendingSend = useRef<PendingSend | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
   const preserveScrollHeight = useRef<number | null>(null);
@@ -262,14 +267,17 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
   const selectCitation = (citation: ApiAgentCitation) => {
     setSelectedCitation(citation);
     setContextOpen(true);
+    // On wide screens the evidence shows in the side panel, so open it if it was folded away.
+    setPanelCollapsed(false);
   };
 
-  const contextPanel = (
+  const sidePanel = (
     <ContextPanel
       context={context}
       matterId={matterId}
       selectedCitation={selectedCitation}
       onClearCitation={() => setSelectedCitation(null)}
+      onCollapse={() => setPanelCollapsed(true)}
       t={t}
     />
   );
@@ -279,37 +287,36 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
       <div aria-live="polite" className="sr-only">
         {busy ? t("working") : ""}
       </div>
-      <div className="grid min-h-[calc(100vh-260px)] xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="relative grid min-h-[calc(100vh-260px)] xl:grid-cols-[minmax(0,1fr)_auto]">
         <main className="flex min-w-0 flex-col">
-          <header className="border-border bg-surface flex min-h-16 items-center gap-3 border-b px-4 sm:px-6">
-            <div className="min-w-0 flex-1">
-              <h2 className="font-heading text-xl font-semibold">
-                {t("title")}
-              </h2>
-              <p className="text-muted-ink truncate text-sm">
-                {t("workspaceSubtitle")}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              className="xl:hidden"
-              onClick={() => setContextOpen(true)}
-            >
-              <PanelRight className="size-4" strokeWidth={1.5} />
-              {t("caseContext")}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => void startFresh()}
-            >
-              <Plus className="size-4" strokeWidth={1.5} />
-              {t("newConversation")}
-            </Button>
-          </header>
-
+          {/* Below xl the side panel folds into a row at the top, under the tabs, as Research's conversation rail does. */}
+          <div className="border-border bg-surface border-b p-2 xl:hidden">
+            <ContextRail
+              context={context}
+              matterId={matterId}
+              onExpand={() => setContextOpen(true)}
+              orientation="row"
+              t={t}
+            />
+          </div>
+          {/* Inside a matter this title row sits on the page, under the tabs, like every other section's. */}
+          <PageHeader
+            title={t("title")}
+            description={t("workspaceSubtitle")}
+            action={
+              <>
+                <Button
+                  type="button"
+                  variant="primary"
+                  disabled={busy}
+                  onClick={() => void startFresh()}
+                >
+                  <Plus className="size-4" strokeWidth={1.5} />
+                  {t("newConversation")}
+                </Button>
+              </>
+            }
+          />
           <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 sm:px-6">
             <section aria-label={t("thread")} className="flex-1 py-5">
               {nextCursor && (
@@ -395,35 +402,55 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
             />
           </div>
         </main>
-        <aside className="border-border bg-surface hidden border-l xl:block">
-          {contextPanel}
+        <aside
+          aria-label={t("caseContext")}
+          data-collapsed={panelCollapsed || undefined}
+          className={cn(
+            "border-border bg-surface hidden border-l xl:block",
+            panelCollapsed ? "w-14 p-2" : "w-[360px]",
+          )}
+        >
+          {panelCollapsed ? (
+            <ContextRail context={context} matterId={matterId} onExpand={() => setPanelCollapsed(false)} t={t} />
+          ) : (
+            sidePanel
+          )}
         </aside>
-      </div>
-      {contextOpen && (
-        <div className="bg-scrim fixed inset-0 z-50 xl:hidden">
+        {/* Narrow screens: the panel slides in from the right over the section, below the
+            matter's header and tabs (the level the wide panel starts at), as Research's
+            conversations slide in under its page header. It stays mounted so it can
+            animate; while closed it is invisible, so nothing in it can be focused. */}
+        <div aria-hidden={!contextOpen} className={cn("absolute inset-0 z-20 overflow-hidden xl:hidden", contextOpen ? "visible" : "invisible")}>
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label={t("collapseContext")}
+            className={cn(
+              "bg-scrim absolute inset-0 transition-opacity duration-200 motion-reduce:transition-none",
+              contextOpen ? "opacity-100" : "opacity-0",
+            )}
+            onClick={() => setContextOpen(false)}
+          />
           <div
             role="dialog"
             aria-modal="true"
             aria-label={t("caseContext")}
-            className="bg-surface ml-auto h-full w-full max-w-md overflow-y-auto"
+            className={cn(
+              "border-border bg-surface shadow-popover absolute inset-y-0 right-0 w-[min(340px,88vw)] overflow-y-auto border-l transition-transform duration-200 ease-out motion-reduce:transition-none",
+              contextOpen ? "translate-x-0" : "translate-x-full",
+            )}
           >
-            <div className="border-border flex items-center border-b px-4 py-3">
-              <h2 className="font-heading flex-1 text-xl font-semibold">
-                {t("caseContext")}
-              </h2>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setContextOpen(false)}
-              >
-                <X className="size-4" />
-                {t("close")}
-              </Button>
-            </div>
-            {contextPanel}
+            <ContextPanel
+              context={context}
+              matterId={matterId}
+              selectedCitation={selectedCitation}
+              onClearCitation={() => setSelectedCitation(null)}
+              onCollapse={() => setContextOpen(false)}
+              t={t}
+            />
           </div>
         </div>
-      )}
+      </div>
     </AppShell>
   );
 }
@@ -597,57 +624,31 @@ function EmptyThread({
   );
 }
 
-function ContextPanel({
-  context,
-  matterId,
-  selectedCitation,
-  onClearCitation,
-  t,
-}: {
-  context: MatterContext | null;
-  matterId: string;
-  selectedCitation: ApiAgentCitation | null;
-  onClearCitation: () => void;
-  t: ReturnType<typeof useTranslations>;
-}) {
-  const tNav = useTranslations("matterNav");
-  if (selectedCitation)
-    return (
-      <div className="p-5">
-        <button
-          type="button"
-          className="text-forest text-sm hover:underline"
-          onClick={onClearCitation}
-        >
-          {t("backToContext")}
-        </button>
-        <div className="border-border-strong mt-4 rounded border p-4">
-          <div className="text-muted-ink text-xs font-semibold">
-            {t("evidence")}
-          </div>
-          <h3 className="mt-1 font-semibold">{selectedCitation.label}</h3>
-          <p className="text-muted-ink mt-2 break-all text-sm">
-            {selectedCitation.sourceId}
-          </p>
-          <p className="mt-3 flex items-center gap-2 text-sm">
-            {selectedCitation.verificationStatus === "verified" ? (
-              <ShieldCheck className="text-teal size-4" />
-            ) : (
-              <AlertTriangle className="text-amber-text size-4" />
-            )}
-            {t(`verification.${selectedCitation.verificationStatus}`)}
-          </p>
-          <Link
-            href={citationHref(matterId, selectedCitation)}
-            className="text-forest mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
-          >
-            {t("openSource")}
-            <ChevronRight className="size-4" />
-          </Link>
-        </div>
-      </div>
-    );
-  const metrics = [
+const PANEL_KEY = "draftly-assistant-context";
+
+/** Whether the wide-screen context panel is folded to its icon rail: folded unless this browser last left it open. */
+function usePanelCollapsed(): [boolean, (next: boolean) => void] {
+  const [collapsed, setCollapsed] = useState(true);
+  useEffect(() => {
+    try {
+      setCollapsed(window.localStorage.getItem(PANEL_KEY) !== "open");
+    } catch {
+      // Storage can be unavailable (private mode); the panel then simply starts folded.
+    }
+  }, []);
+  const update = useCallback((next: boolean) => {
+    setCollapsed(next);
+    try {
+      window.localStorage.setItem(PANEL_KEY, next ? "collapsed" : "open");
+    } catch {
+      // Not remembered; the choice still applies for this visit.
+    }
+  }, []);
+  return [collapsed, update];
+}
+
+function contextMetrics(context: MatterContext | null, matterId: string, t: ReturnType<typeof useTranslations>) {
+  return [
     {
       icon: FileText,
       label: t("contextDocuments"),
@@ -679,11 +680,121 @@ function ContextPanel({
       href: `/matters/${matterId}/drafts`,
     },
   ];
+}
+
+/** The icon-button look, for the rail's links. */
+const RAIL_ITEM =
+  "inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-transparent text-ink hover:border-border hover:bg-hover-bg active:bg-active-bg [@media(pointer:coarse)]:size-11";
+
+/**
+ * The folded panel, as Research's conversation rail is on the left: the open
+ * button on top, then one icon per section, each a link named in its tooltip
+ * and for screen readers.
+ */
+function ContextRail({ context, matterId, onExpand, orientation = "column", t }: {
+  context: MatterContext | null;
+  matterId: string;
+  onExpand: () => void;
+  /** A column beside the thread on wide screens; a row above it on narrow ones. */
+  orientation?: "column" | "row";
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const open = (
+    <IconButton label={t("expandContext")} aria-expanded={false} onClick={onExpand}>
+      <PanelRightOpen className="size-5" strokeWidth={1.5} />
+    </IconButton>
+  );
+  const links = contextMetrics(context, matterId, t).map(({ icon: Icon, label, value, href }) => (
+    <Link key={label} href={href} aria-label={`${label}: ${value}`} title={`${label}: ${value}`} className={RAIL_ITEM}>
+      <Icon aria-hidden="true" className="size-5" strokeWidth={1.5} />
+    </Link>
+  ));
+  // The panel opens from the right, so the row sits on the right with its open
+  // button at the far end, next to where the panel appears. DOM order follows
+  // the visual order, so focus moves the way the eye does.
+  return orientation === "column" ? (
+    <div className="sticky top-2 flex flex-col items-center gap-1">
+      {open}
+      {links}
+    </div>
+  ) : (
+    <div className="flex items-center justify-end gap-1">
+      {links}
+      {open}
+    </div>
+  );
+}
+
+function ContextPanel({
+  context,
+  matterId,
+  selectedCitation,
+  onClearCitation,
+  onCollapse,
+  t,
+}: {
+  context: MatterContext | null;
+  matterId: string;
+  selectedCitation: ApiAgentCitation | null;
+  onClearCitation: () => void;
+  /** Wide screens only: fold the panel back to its rail. */
+  onCollapse?: () => void;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  const collapse = onCollapse ? (
+    <IconButton label={t("collapseContext")} aria-expanded className="size-8" onClick={onCollapse}>
+      <PanelRightClose className="size-4" strokeWidth={1.5} />
+    </IconButton>
+  ) : null;
+  const tNav = useTranslations("matterNav");
+  if (selectedCitation)
+    return (
+      <div className="p-5">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            className="text-forest text-sm hover:underline"
+            onClick={onClearCitation}
+          >
+            {t("backToContext")}
+          </button>
+          {collapse}
+        </div>
+        <div className="border-border-strong mt-4 rounded border p-4">
+          <div className="text-muted-ink text-xs font-semibold">
+            {t("evidence")}
+          </div>
+          <h3 className="mt-1 font-semibold">{selectedCitation.label}</h3>
+          <p className="text-muted-ink mt-2 break-all text-sm">
+            {selectedCitation.sourceId}
+          </p>
+          <p className="mt-3 flex items-center gap-2 text-sm">
+            {selectedCitation.verificationStatus === "verified" ? (
+              <ShieldCheck className="text-teal size-4" />
+            ) : (
+              <AlertTriangle className="text-amber-text size-4" />
+            )}
+            {t(`verification.${selectedCitation.verificationStatus}`)}
+          </p>
+          <Link
+            href={citationHref(matterId, selectedCitation)}
+            className="text-forest mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
+          >
+            {t("openSource")}
+            <ChevronRight className="size-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  const metrics = contextMetrics(context, matterId, t);
   return (
     <div>
       <div className="border-border border-b p-5">
-        <div className="text-muted-ink text-xs font-semibold">
-          {t("caseContext")}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-muted-ink text-xs font-semibold">
+            {t("caseContext")}
+          </div>
+          {collapse}
         </div>
         <h2 className="font-heading mt-1 text-xl font-semibold">
           {context?.reference ?? t("loadingContext")}
