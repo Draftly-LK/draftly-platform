@@ -102,7 +102,7 @@ describe("research source scope", () => {
     expect(screen.getByText("Search the approved statutory corpus.")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Case law" }));
-    expect(screen.getByText("Search unverified case-law research leads. Attorney review required.")).toBeTruthy();
+    expect(screen.getByText("Search reported Sri Lankan case law.")).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText("Ask a legal research question…"), {
       target: { value: "Who holds title after a resale?" },
     });
@@ -132,7 +132,7 @@ describe("research answer sources", () => {
     vi.unstubAllEnvs();
   });
 
-  it("groups statutes and case law in one answer and marks every case as unverified", async () => {
+  it("groups statutes and case law in one answer, listing each case once", async () => {
     stubApi([
       userMessage,
       answer({
@@ -149,15 +149,30 @@ describe("research answer sources", () => {
 
     expect(within(sources).getByText("Registration of Title Act — Section 39")).toBeTruthy();
     expect(within(sources).getByText("Synthetic Vendor v. Synthetic Purchaser")).toBeTruthy();
-    // The same case cited twice is listed once, with its warning.
-    expect(within(sources).getAllByText("Unverified research lead — attorney review required.")).toHaveLength(1);
+    // The same case cited twice is listed once.
+    expect(within(sources).getAllByText("Synthetic Vendor v. Synthetic Purchaser")).toHaveLength(1);
     const link = within(sources).getByRole("link", { name: "Open source" });
     expect(link.getAttribute("href")).toBe("https://example.test/cases/LKCA/1999/1.html");
     expect(screen.getByText("Statute claim.").textContent).toContain("Statute");
     expect(screen.getByText("Case claim.").textContent).toContain("Case law");
+    expect(screen.queryByText(/unverified|attorney review/i)).toBeNull();
   });
 
-  it("keeps a statute-only answer free of case tags and warnings", async () => {
+  it("only links a case to a web address", async () => {
+    stubApi([
+      userMessage,
+      answer({
+        content: "Case claim.",
+        citations: [{ ...caseCitation, sourceUrl: "javascript:alert(1)" }],
+        claims: [{ text: "Case claim.", citationIds: ["commonlii-LKCA-1999-1"] }],
+      }),
+    ]);
+    renderWithIntl(<ResearchScreen />);
+    await screen.findByText("Sources used");
+    expect(screen.queryByRole("link", { name: "Open source" })).toBeNull();
+  });
+
+  it("keeps a statute-only answer free of case tags", async () => {
     stubApi([
       userMessage,
       answer({
@@ -169,7 +184,7 @@ describe("research answer sources", () => {
     renderWithIntl(<ResearchScreen />);
     await screen.findByText("Sources used");
     expect(screen.getByText("Statute claim.").textContent).toBe("Statute claim.");
-    expect(screen.queryByText("Unverified research lead — attorney review required.")).toBeNull();
+    expect(screen.queryByText("Case law", { selector: "h4" })).toBeNull();
   });
 
   it("explains when case-law search was unavailable", async () => {

@@ -75,9 +75,10 @@ case passages are machine-parsed, possibly incomplete research leads that must
 never be presented as verified, binding or settled law.
 
 **Unverified case law.** A case citation is stored and returned with
-`authorityKind: "case"` and `verified: false`, whatever the evidence said, and
-the client shows "Unverified research lead — attorney review required" on every
-case citation. Citations record their kind, title, reference and source link
+`authorityKind: "case"` and `verified: false`, whatever the evidence said. The
+client lists case citations under a separate "Case law" heading and tags the
+claims that rely on them; by product decision (2026-10-07) it shows no
+"unverified" wording, so the flag is not surfaced in the UI. Citations record their kind, title, reference and source link
 (`research_0003`); earlier citations have none of these and read as statutes.
 Each assistant message also returns its claims with the ids each one cites.
 

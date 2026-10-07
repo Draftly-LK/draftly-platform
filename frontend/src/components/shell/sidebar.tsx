@@ -23,6 +23,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { AccountMenu } from "./account-menu";
 import { CommandPalette } from "./command-palette";
 import { NavyBackdrop } from "./navy-backdrop";
+import { useOverInverseSurface } from "./use-surface-behind";
 import { isRailActive } from "./sidebar-state";
 
 export function Sidebar() {
@@ -95,14 +96,20 @@ export function Sidebar() {
       ],
     },
   ];
+  const overInverse = useOverInverseSurface(openerRef, pathname === "/", pathname);
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname.startsWith(href));
   return (
     <>
       <div ref={openerRef} className="fixed left-3 top-8 z-20 lg:hidden">
         <IconButton
           label={t("openNavigation")}
-          data-surface={pathname === "/" ? "inverse" : undefined}
-          className={pathname === "/" ? "size-10 border-transparent bg-transparent text-white hover:border-transparent hover:bg-white/[0.08] active:bg-white/[0.12] [@media(pointer:coarse)]:size-10" : "border-border-strong bg-surface"}
+          // No fill or border: the icon takes the colour of whatever is behind it.
+          data-surface={overInverse ? "inverse" : undefined}
+          className={`size-10 border-transparent bg-transparent hover:border-transparent [@media(pointer:coarse)]:size-10 ${
+            overInverse
+              ? "text-white hover:bg-white/[0.08] active:bg-white/[0.12]"
+              : "text-ink hover:bg-hover-bg active:bg-active-bg"
+          }`}
           onClick={() => setOpen(true)}
         >
           <Menu className="size-5" strokeWidth={1.5} />
