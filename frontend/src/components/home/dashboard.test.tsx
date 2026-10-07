@@ -123,7 +123,9 @@ describe("UpcomingObligations", () => {
 
   it("says so quietly when nothing is due in 14 days", () => {
     renderWithIntl(<UpcomingObligations now={NOW} feed={feedOf([])} obligations={[obligation("far", "2026-12-01")]} />);
-    expect(screen.getByText("Nothing due in the next 14 days.")).toBeTruthy();
+    const empty = screen.getByText("Nothing due in the next 14 days.");
+    // The same white card as Recent matters, so the two columns line up.
+    expect(empty.closest(".home-timeline-surface")?.className).toContain("bg-surface");
   });
 });
 
