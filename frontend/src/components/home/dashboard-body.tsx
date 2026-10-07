@@ -8,24 +8,26 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { needsReview } from "@/lib/home/dashboard";
 import type { Obligation } from "@/types/obligation";
 import { CommonWorkflows } from "./common-workflows";
-import { InsightCards } from "./insight-cards";
+import { PracticeInsights } from "./insight-cards";
 import type { Feed } from "./matter-feed";
 import { RecentMatters } from "./recent-matters";
 import { UpcomingObligations } from "./upcoming-obligations";
+import { OFFLINE_RESEARCH, type ResearchOverview } from "./use-research-overview";
 import "./dashboard-body.css";
 
 /** Body-only presentation; the header, feed and routing remain owned by Dashboard. */
-export function DashboardBody({ feed, obligations, now }: {
+export function DashboardBody({ feed, obligations, now, research = OFFLINE_RESEARCH }: {
   feed: Feed;
   obligations: readonly Obligation[];
   now: Date | null;
+  research?: ResearchOverview;
 }) {
   const t = useTranslations("home");
   const attention = !feed.loading && !feed.failed ? feed.matters.filter((matter) => needsReview(matter.state)).length : 0;
   return (
     <div data-home-body className="mx-auto w-full max-w-[1240px] px-6 py-6">
         <>
-          <InsightCards feed={feed} obligations={obligations} now={now} />
+          <PracticeInsights feed={feed} obligations={obligations} now={now} research={research} />
           <div className="home-work-grid">
             <section aria-labelledby="recent-title" className="min-w-0">
               <SectionHeader id="recent-title" title={t("recentTitle")} description={t("body.resume")} className="home-section-heading" action={

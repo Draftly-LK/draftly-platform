@@ -166,10 +166,9 @@
       "researchTitle": "Research this month",
       "researchUsed": "{used} of {limit} research questions used.",
       "researchUnlimited": "{used, plural, one {# research question} other {# research questions}} asked.",
-      "ofLimit": "of {limit}",
       "researchResets": "Resets {date}",
       "researchLoading": "Loading your allowance…",
-      "researchUnavailable": "Your research allowance shows once you're signed in.",
+      "researchUnavailable": "Your research activity shows once you're signed in.",
       "openResearch": "Open Research",
       "dueTitle": "Next 14 days",
       "dueSummary": "{count, plural, =0 {Nothing due} one {# obligation due} other {# obligations due}}",
@@ -178,7 +177,13 @@
       "dueDay": "{date}: {count, plural, =0 {nothing due} other {# due}}",
       "today": "Today",
       "overdueIncluded": "Includes an overdue item.",
-      "checklistProgress": "{percent}% of the checklist complete"
+      "checklistProgress": "{percent}% of the checklist complete",
+      "latestChat": "Latest chat",
+      "thisMonth": "this month",
+      "chatsActive": "Active this month",
+      "chatsEarlier": "Earlier",
+      "researchChart": "{total, plural, one {# research chat} other {# research chats}}: {active} active this month, {earlier} earlier.",
+      "researchEmpty": "Your research chats appear here once you ask a question."
     },
     "body": {
       "resume": "Continue where you left off",
@@ -211,10 +216,10 @@
     "eyebrow": "Registration of Title practice",
     "snapshot": {
       "title": "Practice at a glance",
-      "open": "Open matters",
-      "needsReview": "To review",
-      "drafting": "In drafting",
-      "failed": "Counts could not be loaded."
+      "failed": "Counts could not be loaded.",
+      "total": "Total matters",
+      "research": "Research chats",
+      "newThisMonth": "New this month"
     },
     "greetingMorning": "Good morning{hasName, select, true {, {name}} other {}}",
     "greetingAfternoon": "Good afternoon{hasName, select, true {, {name}} other {}}",

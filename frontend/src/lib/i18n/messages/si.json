@@ -166,10 +166,9 @@
       "researchTitle": "මෙම මාසයේ පර්යේෂණ",
       "researchUsed": "පර්යේෂණ ප්‍රශ්න {limit} න් {used} ක් භාවිත කර ඇත.",
       "researchUnlimited": "පර්යේෂණ ප්‍රශ්න {used} ක් අසා ඇත.",
-      "ofLimit": "{limit} න්",
       "researchResets": "{date} යළි සකසයි",
       "researchLoading": "ඔබගේ දීමනාව පූරණය වෙමින්…",
-      "researchUnavailable": "ඔබ පුරනය වූ පසු ඔබගේ පර්යේෂණ දීමනාව දිස්වේ.",
+      "researchUnavailable": "ඔබ පුරනය වූ පසු ඔබගේ පර්යේෂණ ක්‍රියාකාරකම් දිස්වේ.",
       "openResearch": "පර්යේෂණ විවෘත කරන්න",
       "dueTitle": "ඉදිරි දින 14",
       "dueSummary": "{count, plural, =0 {කිසිවක් නියමිත නැත} other {වගකීම් # ක් නියමිතයි}}",
@@ -178,7 +177,13 @@
       "dueDay": "{date}: {count, plural, =0 {කිසිවක් නැත} other {# ක් නියමිතයි}}",
       "today": "අද",
       "overdueIncluded": "කල් ඉකුත් වූ අයිතමයක් ඇතුළත්ය.",
-      "checklistProgress": "පිරික්සුම් ලැයිස්තුවෙන් {percent}% සම්පූර්ණයි"
+      "checklistProgress": "පිරික්සුම් ලැයිස්තුවෙන් {percent}% සම්පූර්ණයි",
+      "latestChat": "නවතම සංවාදය",
+      "thisMonth": "මෙම මාසයේ",
+      "chatsActive": "මෙම මාසයේ සක්‍රිය",
+      "chatsEarlier": "පෙර",
+      "researchChart": "පර්යේෂණ සංවාද {total}: මෙම මාසයේ සක්‍රිය {active}, පෙර {earlier}.",
+      "researchEmpty": "ඔබ ප්‍රශ්නයක් ඇසූ පසු ඔබගේ පර්යේෂණ සංවාද මෙහි දිස්වේ."
     },
     "body": {
       "resume": "Continue where you left off",
@@ -211,10 +216,10 @@
     "eyebrow": "Registration of Title practice",
     "snapshot": {
       "title": "Practice at a glance",
-      "open": "Open matters",
-      "needsReview": "Need your review",
-      "drafting": "In drafting",
-      "failed": "Counts could not be loaded."
+      "failed": "Counts could not be loaded.",
+      "total": "මුළු කාරණා",
+      "research": "පර්යේෂණ සංවාද",
+      "newThisMonth": "මෙම මාසයේ නව"
     },
     "greetingMorning": "සුභ උදෑසනක්{hasName, select, true {, {name}} other {}}",
     "greetingAfternoon": "සුභ දහවලක්{hasName, select, true {, {name}} other {}}",

@@ -1,19 +1,18 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, BookOpenText, CalendarClock, FolderKanban, type LucideIcon } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
-import { isApiEnabled } from "@/lib/api/client";
-import { getBillingUsage } from "@/lib/api/billing";
-import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { dayMonth, daysUntil, dueWithin } from "@/lib/home/dashboard";
-import { dueByDay, pipelineSegments, researchUsage, type PipelineStage, type ResearchUsage } from "@/lib/home/insights";
+import { countThisMonth, dueByDay, pipelineSegments, type PipelineStage } from "@/lib/home/insights";
 import { mattersHref } from "@/lib/home/practice-snapshot";
 import type { Obligation } from "@/types/obligation";
-import { DayBars, DonutChart, RingChart, STAGE_COLORS } from "./charts";
+import { DayBars, DonutChart, STAGE_COLORS } from "./charts";
 import type { Feed } from "./matter-feed";
+import type { ResearchOverview } from "./use-research-overview";
+
+/** Chats touched this month carry the brand navy; older ones recede to the strong border grey. */
+const CHAT_COLORS = { active: "var(--forest)", earlier: "var(--border-strong)" } as const;
 
 const STAGE_LABEL: Record<PipelineStage, "stageProgress" | "stageReview" | "stageDrafting"> = {
   progress: "stageProgress",
@@ -21,44 +20,58 @@ const STAGE_LABEL: Record<PipelineStage, "stageProgress" | "stageReview" | "stag
   drafting: "stageDrafting",
 };
 
-/** Three at-a-glance cards above the work list: pipeline, research allowance, what is due. */
-export function InsightCards({ feed, obligations, now }: { feed: Feed; obligations: readonly Obligation[]; now: Date | null }) {
+/**
+ * One card above the work list, in three panels: where the open matters are,
+ * this month's research, and what is due. The header carries the totals; these
+ * panels carry the detail behind them.
+ */
+export function PracticeInsights({ feed, obligations, now, research }: {
+  feed: Feed;
+  obligations: readonly Obligation[];
+  now: Date | null;
+  research: ResearchOverview;
+}) {
   const t = useTranslations("home.insights");
   return (
     <section aria-label={t("label")} className="home-insights">
-      <PipelineCard feed={feed} />
-      {isApiEnabled() ? <ApiResearchCard /> : <ResearchCard usage={null} state="offline" />}
-      <DueCard obligations={obligations} now={now} />
+      <PipelinePanel feed={feed} />
+      <ResearchPanel research={research} now={now} />
+      <DuePanel obligations={obligations} now={now} />
     </section>
   );
 }
 
-function CardTitle({ children, action }: { children: React.ReactNode; action?: React.ReactNode }) {
+function PanelTitle({ icon: Icon, children, action }: { icon: LucideIcon; children: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-2">
-      <h2 className="text-sm font-semibold">{children}</h2>
+    <div className="home-insight-head">
+      <span aria-hidden="true" className="home-insight-icon">
+        <Icon className="size-4" strokeWidth={1.5} />
+      </span>
+      <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{children}</h2>
       {action}
     </div>
   );
 }
 
-function PipelineCard({ feed }: { feed: Feed }) {
+function PanelLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className="text-forest inline-flex shrink-0 items-center gap-1 text-xs font-medium hover:underline">
+      {children}
+      <ArrowRight aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+    </Link>
+  );
+}
+
+function PipelinePanel({ feed }: { feed: Feed }) {
   const t = useTranslations("home.insights");
   const ready = !feed.loading && !feed.failed;
   const { open, segments } = pipelineSegments(ready ? feed.matters.map((matter) => matter.state) : []);
   const counts = Object.fromEntries(segments.map((segment) => [segment.stage, segment.count])) as Record<PipelineStage, number>;
   return (
-    <Card className="home-insight-card">
-      <CardTitle
-        action={
-          <Link href={mattersHref("open")} className="text-forest inline-flex items-center gap-1 text-xs font-medium hover:underline">
-            {t("viewMatters")}
-            <ArrowRight aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
-          </Link>
-        }
-      >
+    <div className="home-insight-panel">
+      <PanelTitle icon={FolderKanban} action={<PanelLink href={mattersHref("open")}>{t("viewMatters")}</PanelLink>}>
         {t("pipelineTitle")}
-      </CardTitle>
+      </PanelTitle>
       <div className="home-insight-body">
         <DonutChart
           label={t("pipelineChart", { open, progress: counts.progress, review: counts.review, drafting: counts.drafting })}
@@ -73,9 +86,9 @@ function PipelineCard({ feed }: { feed: Feed }) {
           <span className="text-muted-ink mt-1 text-xs">{t("open")}</span>
         </DonutChart>
         {ready && open === 0 ? (
-          <p className="text-muted-ink text-sm">{t("pipelineEmpty")}</p>
+          <p className="home-insight-side text-muted-ink text-sm">{t("pipelineEmpty")}</p>
         ) : (
-          <ul className="w-full min-w-0 flex-1 space-y-2">
+          <ul className="home-insight-side space-y-2.5">
             {segments.map((segment) => (
               <li key={segment.stage} className="flex items-center gap-2 text-sm">
                 <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: STAGE_COLORS[segment.stage] }} />
@@ -86,80 +99,85 @@ function PipelineCard({ feed }: { feed: Feed }) {
           </ul>
         )}
       </div>
-    </Card>
+    </div>
   );
 }
 
-function ApiResearchCard() {
-  const getToken = useTokenProvider();
-  const [usage, setUsage] = useState<ResearchUsage | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
-  useEffect(() => {
-    const controller = new AbortController();
-    getBillingUsage(getToken, controller.signal)
-      .then((rows) => {
-        setUsage(researchUsage(rows));
-        setState("ready");
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState("failed");
-      });
-    return () => controller.abort();
-  }, [getToken]);
-  return <ResearchCard usage={usage} state={state} />;
-}
-
-function ResearchCard({ usage, state }: { usage: ResearchUsage | null; state: "loading" | "ready" | "failed" | "offline" }) {
+function ResearchPanel({ research, now }: { research: ResearchOverview; now: Date | null }) {
   const t = useTranslations("home.insights");
   const format = useFormatter();
-  const used = usage?.used ?? 0;
-  const limit = usage?.limit ?? null;
-  const fraction = limit ? used / limit : 0;
-  const ready = state === "ready" && usage !== null;
+  const conversations = research.conversations;
+  const ready = research.state === "ready" && conversations !== null && now !== null;
+  const total = conversations?.length ?? 0;
+  const active = ready ? countThisMonth(conversations.map((conversation) => conversation.updatedAt), now) : 0;
+  const counts = { active, earlier: total - active };
+  const latest = conversations?.[0] ?? null;
+  const usage = research.usage;
+  const questions = usage
+    ? usage.limit
+      ? t("researchUsed", { used: usage.used, limit: usage.limit })
+      : t("researchUnlimited", { used: usage.used })
+    : null;
   return (
-    <Card className="home-insight-card">
-      <CardTitle>{t("researchTitle")}</CardTitle>
+    <div className="home-insight-panel">
+      <PanelTitle icon={BookOpenText} action={<PanelLink href="/research">{t("openResearch")}</PanelLink>}>
+        {t("researchTitle")}
+      </PanelTitle>
       <div className="home-insight-body">
-        <RingChart
-          fraction={ready ? fraction : 0}
-          label={ready ? (limit ? t("researchUsed", { used, limit }) : t("researchUnlimited", { used })) : t("researchUnavailable")}
+        <DonutChart
+          label={ready ? t("researchChart", { total, active: counts.active, earlier: counts.earlier }) : t("researchUnavailable")}
+          segments={CHAT_KEYS.map((key) => ({ key, value: counts[key], color: CHAT_COLORS[key], label: t(CHAT_LABEL[key]) }))}
         >
-          <span className="home-insight-figure font-display font-semibold tabular-nums leading-none">{ready ? used : "–"}</span>
-          {ready && limit ? <span className="text-muted-ink mt-1 text-xs tabular-nums">{t("ofLimit", { limit })}</span> : null}
-        </RingChart>
-        <div className="w-full min-w-0 flex-1 space-y-2 text-sm">
-          <p className="text-muted-ink">
-            {ready
-              ? limit
-                ? t("researchUsed", { used, limit })
-                : t("researchUnlimited", { used })
-              : state === "loading"
-                ? t("researchLoading")
-                : t("researchUnavailable")}
-          </p>
-          {ready && usage.periodEnd ? (
-            <p className="text-muted-ink text-xs">{t("researchResets", { date: dayMonth(format, new Date(usage.periodEnd)) })}</p>
+          <span className="home-insight-figure font-display font-semibold tabular-nums leading-none">{ready ? active : "–"}</span>
+          <span className="text-muted-ink mt-1 text-xs">{t("thisMonth")}</span>
+        </DonutChart>
+        <div className="home-insight-side space-y-2.5 text-sm">
+          {!ready ? (
+            <p className="text-muted-ink">{research.state === "loading" ? t("researchLoading") : t("researchUnavailable")}</p>
+          ) : total === 0 ? (
+            <p className="text-muted-ink">{t("researchEmpty")}</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {CHAT_KEYS.map((key) => (
+                <li key={key} className="flex items-center gap-2">
+                  <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ background: CHAT_COLORS[key] }} />
+                  <span className="min-w-0 flex-1 truncate">{t(CHAT_LABEL[key])}</span>
+                  <span className="font-semibold tabular-nums">{counts[key]}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {ready && questions ? (
+            <p className="text-muted-ink text-xs">
+              {questions}
+              {usage?.limit && usage.periodEnd ? ` ${t("researchResets", { date: dayMonth(format, new Date(usage.periodEnd)) })}` : ""}
+            </p>
           ) : null}
-          <Link href="/research" className="text-forest inline-flex items-center gap-1 font-medium hover:underline">
-            {t("openResearch")}
-            <ArrowRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
-          </Link>
+          {ready && latest ? (
+            <Link href="/research" className="home-insight-latest" title={latest.title}>
+              <span className="text-muted-ink block text-[11px] font-medium uppercase tracking-wide">{t("latestChat")}</span>
+              <span className="block truncate font-medium">{latest.title}</span>
+            </Link>
+          ) : null}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
+
+const CHAT_KEYS = ["active", "earlier"] as const;
+const CHAT_LABEL = { active: "chatsActive", earlier: "chatsEarlier" } as const;
 
 const HORIZON_DAYS = 14;
 
-function DueCard({ obligations, now }: { obligations: readonly Obligation[]; now: Date | null }) {
+function DuePanel({ obligations, now }: { obligations: readonly Obligation[]; now: Date | null }) {
   const t = useTranslations("home.insights");
   const format = useFormatter();
   if (!now) {
     return (
-      <Card className="home-insight-card">
-        <CardTitle>{t("dueTitle")}</CardTitle>
-      </Card>
+      <div className="home-insight-panel">
+        <PanelTitle icon={CalendarClock}>{t("dueTitle")}</PanelTitle>
+      </div>
     );
   }
   const upcoming = dueWithin(obligations, now, HORIZON_DAYS);
@@ -171,26 +189,30 @@ function DueCard({ obligations, now }: { obligations: readonly Obligation[]; now
     return t("dueDay", { date: dayMonth(format, day), count });
   });
   return (
-    <Card className="home-insight-card">
-      <CardTitle>{t("dueTitle")}</CardTitle>
-      <p className="font-display text-3xl font-semibold tabular-nums leading-none">{total}</p>
-      <p className="text-muted-ink mt-1 text-sm">
-        {t("dueSummary", { count: total })}
-        {next ? ` · ${t("dueNext", { date: dayMonth(format, new Date(`${next.dueDate}T00:00:00Z`), "UTC") })}` : ""}
-      </p>
-      <div className="mt-3">
-        <DayBars
-          counts={counts}
-          titles={titles}
-          label={t("dueChart", { count: total })}
-          highlight={(index) => index <= 2}
-        />
-        <div className="text-muted-ink mt-1 flex justify-between text-[11px] tabular-nums">
-          <span>{t("today")}</span>
-          <span>{dayMonth(format, new Date(now.getTime() + (HORIZON_DAYS - 1) * 86_400_000))}</span>
+    <div className="home-insight-panel">
+      <PanelTitle icon={CalendarClock}>{t("dueTitle")}</PanelTitle>
+      <div className="home-insight-due">
+        <div>
+          <p className="font-display text-3xl font-semibold tabular-nums leading-none">{total}</p>
+          <p className="text-muted-ink mt-1 text-sm">
+            {t("dueSummary", { count: total })}
+            {next ? ` · ${t("dueNext", { date: dayMonth(format, new Date(`${next.dueDate}T00:00:00Z`), "UTC") })}` : ""}
+          </p>
         </div>
+        <div>
+          <DayBars
+            counts={counts}
+            titles={titles}
+            label={t("dueChart", { count: total })}
+            highlight={(index) => index <= 2}
+          />
+          <div className="text-muted-ink mt-1 flex justify-between text-[11px] tabular-nums">
+            <span>{t("today")}</span>
+            <span>{dayMonth(format, new Date(now.getTime() + (HORIZON_DAYS - 1) * 86_400_000))}</span>
+          </div>
+        </div>
+        {next && daysUntil(next.dueDate, now) < 0 ? <p className="text-red text-xs font-semibold">{t("overdueIncluded")}</p> : null}
       </div>
-      {next && daysUntil(next.dueDate, now) < 0 ? <p className="text-red mt-2 text-xs font-semibold">{t("overdueIncluded")}</p> : null}
-    </Card>
+    </div>
   );
 }

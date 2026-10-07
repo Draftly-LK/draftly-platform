@@ -62,39 +62,6 @@ export function DonutChart({ segments, label, children }: { segments: DonutSegme
   );
 }
 
-/** One measure against its whole, as a ring. `fraction` is clamped to 0..1. */
-export function RingChart({ fraction, label, color = "var(--forest)", children }: {
-  fraction: number;
-  label: string;
-  color?: string;
-  children?: React.ReactNode;
-}) {
-  const clamped = Math.min(1, Math.max(0, fraction));
-  const length = clamped * CIRCUMFERENCE;
-  return (
-    <div className="home-insight-ring relative shrink-0">
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label={label} className="home-chart-in size-full -rotate-90">
-        <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="none" stroke="var(--border)" strokeWidth={STROKE} />
-        {length > 0 ? (
-          <circle
-            cx={CENTER}
-            cy={CENTER}
-            r={RADIUS}
-            fill="none"
-            stroke={color}
-            strokeWidth={STROKE}
-            strokeLinecap={clamped >= 1 ? "butt" : "round"}
-            strokeDasharray={`${length} ${CIRCUMFERENCE}`}
-          >
-            <title>{label}</title>
-          </circle>
-        ) : null}
-      </svg>
-      {children ? <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div> : null}
-    </div>
-  );
-}
-
 /** A compact progress ring for a list row: the percentage sits beside it, so it is never the only cue. */
 export function MiniRing({ percent, label }: { percent: number; label: string }) {
   const length = (Math.min(100, Math.max(0, percent)) / 100) * CIRCUMFERENCE;
