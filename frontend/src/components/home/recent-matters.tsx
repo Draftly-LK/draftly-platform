@@ -14,7 +14,8 @@ import { ChecklistProgress } from "./checklist-progress";
 import type { Feed } from "./matter-feed";
 import { cn } from "@/lib/utils";
 
-const ROW_LIMIT = 8;
+/** Home shows the latest few; the full list is one click away on Matters. */
+const ROW_LIMIT = 3;
 
 /**
  * A list, not cards: matter, instrument, status, last activity, next action.

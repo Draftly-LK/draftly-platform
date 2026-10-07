@@ -4,8 +4,12 @@
  * and each mark has a native tooltip.
  */
 
-/** Validated against the white card: lightness band, chroma, colour-blind and normal-vision separation, 3:1. */
-export const STAGE_COLORS = { progress: "#5a62c4", review: "#c0882b", drafting: "#00918a" } as const;
+/**
+ * The brand's navy, gold and teal, each stepped into the chart band. Validated
+ * against the white card: lightness band, chroma, colour-blind and
+ * normal-vision separation (all pairs), and 3:1 contrast.
+ */
+export const STAGE_COLORS = { progress: "#2b5797", review: "#ad7b24", drafting: "#00918a" } as const;
 
 const SIZE = 120;
 const CENTER = SIZE / 2;
@@ -109,7 +113,7 @@ export function DayBars({ counts, titles, label, highlight }: {
             width={BAR_WIDTH}
             height={height}
             rx={3}
-            fill={highlight?.(index) ? STAGE_COLORS.review : "var(--forest)"}
+            fill={highlight?.(index) ? STAGE_COLORS.review : STAGE_COLORS.progress}
           >
             <title>{titles[index]}</title>
           </rect>
