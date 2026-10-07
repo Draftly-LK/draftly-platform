@@ -155,7 +155,9 @@
     "stepOf": "පියවර {total} න් {current}: {stage}",
     "progressComplete": "සියලු අදියර සම්පූර්ණයි",
     "stepDone": "සම්පූර්ණයි",
-    "stepOnHold": "අත්හිටුවා ඇත"
+    "stepOnHold": "අත්හිටුවා ඇත",
+    "tabsBack": "පෙර කොටස් පෙන්වන්න",
+    "tabsMore": "තවත් කොටස් පෙන්වන්න"
   },
   "home": {
     "insights": {
@@ -362,7 +364,8 @@
     "tileFacts": "{total} න් නීතිඥ තහවුරු කළ",
     "tileForms": "{count, plural, other {පෝරම සාදා ඇත}}",
     "checklistRing": "පිරික්සුම් ලැයිස්තුවෙන් {percent}% සපුරා ඇත",
-    "assistantTitle": "කාරණ සහායකයාගෙන් අසන්න"
+    "assistantTitle": "කාරණ සහායකයාගෙන් අසන්න",
+    "pageDescription": "මෙම කාරණය පවතින තැන සහ ඊළඟට කළ යුතු දේ."
   },
   "documents": {
     "title": "Documents",
@@ -2567,7 +2570,9 @@
       "operational": "මෙහෙයුම්"
     },
     "thread": "සංවාදය",
-    "empty": "තවම පණිවිඩ නැත. මෙම කාරණය ගැන අසන්න."
+    "empty": "තවම පණිවිඩ නැත. මෙම කාරණය ගැන අසන්න.",
+    "expandContext": "කාරණ සන්දර්භය පෙන්වන්න",
+    "collapseContext": "කාරණ සන්දර්භය සඟවන්න"
   },
   "gazette": {
     "modeLabel": "Drafting mode",
