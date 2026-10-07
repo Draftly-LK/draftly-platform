@@ -10,6 +10,7 @@ import { statusToneIcons } from "@/components/matter/status-tone-icons";
 import { activityIsRecent, dayMonth, needsReview, sortForDashboard, stateTone } from "@/lib/home/dashboard";
 import { getSubtype } from "@/lib/rta/taxonomy";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
+import { ChecklistProgress } from "./checklist-progress";
 import type { Feed } from "./matter-feed";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +67,7 @@ export function RecentMatters({ feed, now }: { feed: Feed; now: Date | null }) {
                   <StatusChip tone={tone} icon={Icon} className="home-state-chip">
                     {stateLabel(matter.state as RtaMatterState)}
                   </StatusChip>
+                  <ChecklistProgress matterId={matter.id} updatedAt={matter.updatedAt} />
                 </span>
               </span>
               <span className="home-matter-next">

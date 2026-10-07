@@ -45,13 +45,17 @@ export function UpcomingObligations({
           const reference = referenceFor.get(obligation.matterId);
           return (
             <ListRow key={obligation.id} className="home-deadline-row min-h-16 items-start">
-              <span aria-hidden="true" className={cn("home-timeline-node", tone === "danger" ? "bg-red-bg" : tone === "warning" ? "bg-amber-bg" : "bg-selected-bg")}><Icon aria-hidden="true" className={cn("size-4", TONE_TEXT[tone])} strokeWidth={1.5} /></span>
+              <span aria-hidden="true" className={cn("home-date-tile", tone === "danger" ? "bg-red-bg" : tone === "warning" ? "bg-amber-bg" : "bg-selected-bg")}>
+                <span className="home-date-day font-display tabular-nums">{format.dateTime(new Date(`${obligation.dueDate}T00:00:00Z`), { day: "numeric", timeZone: "UTC" })}</span>
+                <span className="home-date-month">{format.dateTime(new Date(`${obligation.dueDate}T00:00:00Z`), { month: "short", timeZone: "UTC" })}</span>
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">
                   {to(obligation.labelKey.split(".").at(-1) as "monthlyList" | "licenseRenewal" | "lawyerReview")}
                 </span>
                 {reference ? <span className="mt-1 block break-words font-mono text-xs text-muted-ink">{reference}</span> : null}
-                <span className={cn("home-due-label mt-2 inline-flex text-xs font-semibold tabular-nums", TONE_TEXT[tone])}>
+                <span className={cn("home-due-label mt-2 inline-flex items-center gap-1 text-xs font-semibold tabular-nums", TONE_TEXT[tone])}>
+                  <Icon aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.5} />
                   {label.kind === "overdue"
                     ? t("dueOverdue", { days: label.days })
                     : label.kind === "today"

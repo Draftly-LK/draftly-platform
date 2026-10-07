@@ -23,3 +23,16 @@ export function getBillingSubscription(
     signal,
   });
 }
+
+export interface BillingUsage {
+  metric: string;
+  quantity: number;
+  periodStart: string;
+  periodEnd: string;
+  limitValue: number | null;
+}
+
+/** This period's metered usage per metric, with the plan's cap where one exists. */
+export async function getBillingUsage(getToken: TokenProvider, signal?: AbortSignal): Promise<BillingUsage[]> {
+  return (await apiFetch<{ items: BillingUsage[] }>("/api/v1/billing/usage", { getToken, signal })).items;
+}

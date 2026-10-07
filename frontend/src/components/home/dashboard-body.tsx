@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { needsReview } from "@/lib/home/dashboard";
 import type { Obligation } from "@/types/obligation";
 import { CommonWorkflows } from "./common-workflows";
+import { InsightCards } from "./insight-cards";
 import type { Feed } from "./matter-feed";
 import { RecentMatters } from "./recent-matters";
 import { UpcomingObligations } from "./upcoming-obligations";
@@ -24,6 +25,7 @@ export function DashboardBody({ feed, obligations, now }: {
   return (
     <div data-home-body className="mx-auto w-full max-w-[1240px] px-6 py-6">
         <>
+          <InsightCards feed={feed} obligations={obligations} now={now} />
           <div className="home-work-grid">
             <section aria-labelledby="recent-title" className="min-w-0">
               <SectionHeader id="recent-title" title={t("recentTitle")} description={t("body.resume")} className="home-section-heading" action={

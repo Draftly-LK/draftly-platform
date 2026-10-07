@@ -153,6 +153,33 @@
     "assistantTab": "සහායක"
   },
   "home": {
+    "insights": {
+      "label": "පුහුණුව එක බැල්මකින්",
+      "pipelineTitle": "කාරණා ප්‍රවාහය",
+      "viewMatters": "කාරණා බලන්න",
+      "open": "විවෘත",
+      "stageProgress": "ක්‍රියාත්මකයි",
+      "stageReview": "සමාලෝචනයට",
+      "stageDrafting": "කෙටුම්පත් කිරීමේ",
+      "pipelineChart": "විවෘත කාරණා {open}: ක්‍රියාත්මක {progress}, සමාලෝචනයට {review}, කෙටුම්පත් කිරීමේ {drafting}.",
+      "pipelineEmpty": "ඔබ කාරණයක් සෑදූ පසු ඔබගේ ප්‍රවාහය මෙහි දිස්වේ.",
+      "researchTitle": "මෙම මාසයේ පර්යේෂණ",
+      "researchUsed": "පර්යේෂණ ප්‍රශ්න {limit} න් {used} ක් භාවිත කර ඇත.",
+      "researchUnlimited": "පර්යේෂණ ප්‍රශ්න {used} ක් අසා ඇත.",
+      "ofLimit": "{limit} න්",
+      "researchResets": "{date} යළි සකසයි",
+      "researchLoading": "ඔබගේ දීමනාව පූරණය වෙමින්…",
+      "researchUnavailable": "ඔබ පුරනය වූ පසු ඔබගේ පර්යේෂණ දීමනාව දිස්වේ.",
+      "openResearch": "පර්යේෂණ විවෘත කරන්න",
+      "dueTitle": "ඉදිරි දින 14",
+      "dueSummary": "{count, plural, =0 {කිසිවක් නියමිත නැත} other {වගකීම් # ක් නියමිතයි}}",
+      "dueNext": "ඊළඟ {date}",
+      "dueChart": "ඉදිරි දින 14 තුළ {count, plural, =0 {කිසිවක් නියමිත නැත} other {වගකීම් # ක් නියමිතයි}}, දිනය අනුව.",
+      "dueDay": "{date}: {count, plural, =0 {කිසිවක් නැත} other {# ක් නියමිතයි}}",
+      "today": "අද",
+      "overdueIncluded": "කල් ඉකුත් වූ අයිතමයක් ඇතුළත්ය.",
+      "checklistProgress": "පිරික්සුම් ලැයිස්තුවෙන් {percent}% සම්පූර්ණයි"
+    },
     "body": {
       "resume": "Continue where you left off",
       "dueNext": "What needs your attention next",
