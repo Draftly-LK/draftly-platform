@@ -21,6 +21,11 @@ _TEMPLATE_BY_CLASS_ID = {
 }
 
 
+def template_kind_for_class(class_id: str) -> str | None:
+    """The extraction template a governed document class reads with, if it has one."""
+    return _TEMPLATE_BY_CLASS_ID.get(class_id)
+
+
 class ChecklistMatterDocumentTypesAdapter:
     """Reads the current governed checklist; never accepts a model-invented type."""
 

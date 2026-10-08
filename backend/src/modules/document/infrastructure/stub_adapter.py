@@ -47,6 +47,11 @@ _SAMPLE_FIELDS: dict[str, dict[str, str | None]] = {
 }
 
 
+#: Shared with the V1 stand-in (:mod:`vision_stub_adapter`) so both stubs read the same marker and values.
+KIND_MARKER = _KIND_MARKER
+SAMPLE_FIELDS = _SAMPLE_FIELDS
+
+
 class StubExtractionAdapter:
     """Implements ClassifierPort and OcrExtractorPort deterministically."""
 

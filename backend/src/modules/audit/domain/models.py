@@ -109,6 +109,7 @@ class AuditAction(str, enum.Enum):
     RTA_SOURCE_FILE_UPLOADED = "rta.source-file.uploaded"
     RTA_SOURCE_FILE_STATE_CHANGED = "rta.source-file.state-changed"
     RTA_SOURCE_FILE_REJECTED = "rta.source-file.rejected"
+    RTA_SOURCE_FILE_VIEWED = "rta.source-file.viewed"
     RTA_DOCUMENT_BOUNDARY_DECIDED = "rta.document.boundary-decided"
     RTA_DOCUMENT_CLASSIFIED = "rta.document.classified"
     RTA_FACT_CONFIRMED = "rta.fact.confirmed"

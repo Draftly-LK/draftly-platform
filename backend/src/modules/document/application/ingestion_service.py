@@ -31,6 +31,7 @@ from src.modules.content_governance.contracts import (
     BoundaryStatus,
     DocumentClassStatus,
     DocumentVersionRelationship,
+    MatterState,
     ProcessingFailureReason,
     SourceFileState,
     get_document_class,
@@ -41,6 +42,7 @@ from src.modules.document.domain.errors import (
     SourceFileStaleError,
     SourceFileSupersedeTargetError,
     SourceFileTooLargeError,
+    SourceObjectIntegrityError,
     UnknownDocumentClassError,
 )
 from src.modules.document.domain.ingestion import (
@@ -67,7 +69,11 @@ from src.modules.document.domain.ingestion_policies import (
     validate_boundary_decision,
 )
 from src.modules.document.infrastructure.repository import SqlDocumentIngestionRepository
-from src.modules.document.ports import ProcessingJobPort, SourceFileStoragePort
+from src.modules.document.ports import (
+    MatterWorkflowCommandPort,
+    ProcessingJobPort,
+    SourceFileStoragePort,
+)
 from src.modules.task.contracts import ChecklistLinkCommandPort
 from src.platform import ids
 
@@ -190,8 +196,10 @@ class SourceFileIngestionService:
         max_upload_bytes: int,
         max_page_count: int,
         checklist_links: ChecklistLinkCommandPort | None = None,
+        matter_workflow: MatterWorkflowCommandPort | None = None,
     ) -> None:
         self._repo = repository
+        self._matter_workflow = matter_workflow
         self._storage = storage
         self._jobs = jobs
         self._audit = audit
@@ -376,6 +384,38 @@ class SourceFileIngestionService:
         )
         return self._source_view(source, fragments, duplicates)
 
+    async def read_original(
+        self, *, user_id: str, source_file_id: str, actor_id: str, correlation_id: str
+    ) -> tuple[SourceFile, bytes]:
+        """The uploaded bytes, for the lawyer to see what they are classifying.
+
+        Scoped to the actor's matters like every read here. The bytes are checked
+        against the hash taken at upload before they leave, so a viewer never shows
+        anything but the recorded original, and the view is audited.
+        """
+        source = await self._require_source(user_id, source_file_id)
+        if not source.has_stored_bytes:
+            raise SourceFileNotFoundError(sourceFileId=source_file_id)
+        data = await self._storage.get(
+            source.storage_object_key, version=source.storage_object_version
+        )
+        if hashlib.sha256(data).hexdigest() != source.sha256:
+            raise SourceObjectIntegrityError(
+                sourceFileId=source.id,
+                storageObjectKey=source.storage_object_key,
+                storageObjectVersion=source.storage_object_version,
+            )
+        await self._record(
+            user_id=user_id,
+            matter_id=source.matter_id,
+            actor_id=actor_id,
+            correlation_id=correlation_id,
+            action=AuditAction.RTA_SOURCE_FILE_VIEWED,
+            target_type=AuditTargetType.SOURCE_FILE,
+            target_id=source.id,
+        )
+        return source, data
+
     async def get_detected_document(self, *, user_id: str, document_id: str) -> DocumentView:
         document = await self._require_document(user_id, document_id)
         return await self._document_view(user_id, document)
@@ -485,6 +525,14 @@ class SourceFileIngestionService:
             after_ref=f"{final.state.value}@{run.id}",
             reason=final.failure_reason.value if final.failure_reason else None,
         )
+        if run.succeeded:
+            # §10.1: ingestion completing puts the evidence in front of the lawyer.
+            await self._advance(
+                user_id,
+                final.matter_id,
+                (MatterState.REVIEW_REQUIRED,),
+                AuditAction.RTA_SOURCE_FILE_STATE_CHANGED,
+            )
         return ProcessingRunView(
             run=run,
             source_file=final,
@@ -715,6 +763,9 @@ class SourceFileIngestionService:
             ),
             reason=note,
         )
+        await self._advance_if_documents_decided(
+            user_id, saved.matter_id, AuditAction.RTA_DOCUMENT_BOUNDARY_DECIDED
+        )
         return await self._document_view(user_id, saved)
 
     async def decide_classification(
@@ -763,9 +814,47 @@ class SourceFileIngestionService:
             after_ref=f"{saved.class_id}/{saved.class_status.value}",
             reason=note,
         )
+        await self._advance_if_documents_decided(
+            user_id, saved.matter_id, AuditAction.RTA_DOCUMENT_CLASSIFIED
+        )
         return await self._document_view(user_id, saved)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
+
+    async def _advance(
+        self,
+        user_id: str,
+        matter_id: str,
+        states: tuple[MatterState, ...],
+        reason: AuditAction,
+    ) -> None:
+        """Ask the matter to move through ``states`` in order; it refuses any step it does not allow."""
+        if self._matter_workflow is None:
+            return
+        for state in states:
+            await self._matter_workflow.advance_state(
+                user_id=user_id, matter_id=matter_id, state=state, reason=reason.value
+            )
+
+    async def _advance_if_documents_decided(
+        self, user_id: str, matter_id: str, reason: AuditAction
+    ) -> None:
+        """§10.1 REVIEW_REQUIRED -> LEGAL_REVIEW once no boundary or class task is open."""
+        if self._matter_workflow is None:
+            return
+        inbox = await self.get_document_inbox(user_id=user_id, matter_id=matter_id, limit=500)
+        if (
+            inbox.documents
+            and not inbox.boundary_review_document_ids
+            and not inbox.classification_review_document_ids
+            and not inbox.unprocessed_source_file_ids
+        ):
+            await self._advance(
+                user_id,
+                matter_id,
+                (MatterState.REVIEW_REQUIRED, MatterState.LEGAL_REVIEW),
+                reason,
+            )
 
     async def _require_source(self, user_id: str, source_file_id: str) -> SourceFile:
         source = await self._repo.get_source_file(user_id, source_file_id)

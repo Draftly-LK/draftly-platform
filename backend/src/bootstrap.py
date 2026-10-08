@@ -534,6 +534,9 @@ def build_draft_service(session: AsyncSession) -> DraftService:
     from src.modules.audit.infrastructure.repository import SqlAuditRepository
     from src.modules.draft.application.draft_service import DraftService
     from src.modules.draft.infrastructure.repository import SqlGeneratedFormRepository
+    from src.modules.matter.infrastructure.workflow_commands import (
+        SqlMatterWorkflowCommandAdapter,
+    )
     from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
 
     return DraftService(
@@ -542,6 +545,7 @@ def build_draft_service(session: AsyncSession) -> DraftService:
         issues=build_check_service(session),
         checklist=build_checklist_service(session),
         audit=AuditService(repository=SqlAuditRepository(session)),
+        matter_workflow=SqlMatterWorkflowCommandAdapter(session),
     )
 
 
@@ -733,22 +737,26 @@ def build_ingestion_service(session: AsyncSession) -> SourceFileIngestionService
     from src.modules.document.infrastructure.repository import (
         SqlDocumentIngestionRepository,
     )
+    from src.modules.matter.infrastructure.workflow_commands import (
+        SqlMatterWorkflowCommandAdapter,
+    )
 
     settings = get_settings()
     storage = build_source_file_storage()
 
-    provider_configured = settings.extraction_provider == "stub" or (
+    v1_providers = {"vision-gemini", "vision-stub"}
+    provider_configured = settings.extraction_provider in {"stub", "vision-stub"} or (
         settings.extraction_provider in {"gemini", "vision-gemini"}
         and bool(settings.gemini_api_key)
     )
     pipeline = (
         build_processing_service()
-        if provider_configured and settings.extraction_provider != "vision-gemini"
+        if provider_configured and settings.extraction_provider not in v1_providers
         else None
     )
     v1_pipeline = (
         build_v1_processing_pipeline()
-        if provider_configured and settings.extraction_provider == "vision-gemini"
+        if provider_configured and settings.extraction_provider in v1_providers
         else None
     )
     matter_types = None
@@ -774,6 +782,7 @@ def build_ingestion_service(session: AsyncSession) -> SourceFileIngestionService
         max_upload_bytes=settings.max_source_file_bytes,
         max_page_count=settings.max_source_file_pages,
         checklist_links=build_checklist_service(session),
+        matter_workflow=SqlMatterWorkflowCommandAdapter(session),
     )
 
 
@@ -796,8 +805,32 @@ def build_document_review_service(session: AsyncSession) -> DocumentReviewServic
 
 
 def build_v1_processing_pipeline() -> Any:
-    """Wire the proposal's Vision OCR + Flash-Lite path using ADC and one model."""
+    """Wire the proposal's Vision OCR + Flash-Lite path using ADC and one model.
+
+    ``vision-stub`` runs the same pipeline with deterministic local stand-ins,
+    so the review, fact and drafting steps can be exercised without a provider.
+    Like ``stub`` it is confined to the stub environments.
+    """
     settings = get_settings()
+    if settings.extraction_provider == "vision-stub":
+        if settings.environment not in STUB_EXTRACTION_ENVIRONMENTS:
+            raise ServiceMisconfiguredError(
+                f"EXTRACTION_PROVIDER=vision-stub is not permitted in environment "
+                f"'{settings.environment}'. It returns canned candidate fields and is "
+                f"limited to {sorted(STUB_EXTRACTION_ENVIRONMENTS)}."
+            )
+        from src.modules.document.application.v1_pipeline import V1DocumentPipeline
+        from src.modules.document.infrastructure.rasterizer_pypdfium import PypdfiumRasterizer
+        from src.modules.document.infrastructure.vision_stub_adapter import VisionStubAdapter
+
+        stand_in = VisionStubAdapter()
+        return V1DocumentPipeline(
+            rasterizer=PypdfiumRasterizer(dpi=settings.raster_dpi),
+            ocr=stand_in,
+            classifier=stand_in,
+            extractor=stand_in,
+            classification_confidence_threshold=settings.confidence_threshold,
+        )
     if settings.extraction_provider != "vision-gemini":
         raise ServiceMisconfiguredError("V1 processing requires EXTRACTION_PROVIDER=vision-gemini.")
     if not settings.gemini_api_key:

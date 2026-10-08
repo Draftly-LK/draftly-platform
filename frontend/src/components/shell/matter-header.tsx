@@ -12,29 +12,9 @@ import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { segmentedOption, segmentedTrack } from "@/components/ui/segmented-control";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
+import { MATTER_SECTIONS, matterSectionHref, sectionForPath } from "./matter-sections";
 import { MatterStepper } from "./matter-stepper";
 
-const NAV_TABS = [
-  "overview",
-  "documents",
-  "facts",
-  "checks",
-  "missingDocuments",
-  "drafts",
-  "exports",
-  "assistantTab",
-] as const;
-
-const NAV_HREF: Record<(typeof NAV_TABS)[number], (id: string) => string> = {
-  overview: (id) => `/matters/${id}`,
-  documents: (id) => `/matters/${id}/documents`,
-  facts: (id) => `/matters/${id}/facts`,
-  checks: (id) => `/matters/${id}/checks`,
-  missingDocuments: (id) => `/matters/${id}/missing-documents`,
-  drafts: (id) => `/matters/${id}/drafts`,
-  exports: (id) => `/matters/${id}/exports`,
-  assistantTab: (id) => `/matters/${id}/assistant`,
-};
 
 interface HeaderData {
   reference: string;
@@ -230,9 +210,9 @@ function MatterTabs({ matterId, label }: { matterId: string; label: string }) {
         // `relative` makes the strip the pills' offset parent, so centring the current one measures from the strip.
         className={cn(segmentedTrack, "relative min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden")}
       >
-        {NAV_TABS.map((tab) => {
-          const href = NAV_HREF[tab](matterId);
-          const active = pathname === href || (tab !== "overview" && pathname.startsWith(`${href}/`));
+        {MATTER_SECTIONS.map((tab) => {
+          const href = matterSectionHref(tab, matterId);
+          const active = sectionForPath(pathname, matterId) === tab;
           return (
             <Link key={tab} href={href} aria-current={active ? "page" : undefined} className={cn(segmentedOption(active), "shrink-0")}>
               {t(tab)}

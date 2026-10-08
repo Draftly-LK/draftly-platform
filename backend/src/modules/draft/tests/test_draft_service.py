@@ -23,6 +23,7 @@ from src.modules.content_governance.contracts import (
     MORTGAGE_CANCEL_SUBTYPE_ID,
     RULE_PACK_VERSION,
     GeneratedFormState,
+    MatterState,
     SubtypeDecisionStatus,
     UnresolvedReason,
 )
@@ -64,6 +65,18 @@ from .fakes import (
 _CORRELATION = "corr_synthetic"
 
 
+class FakeMatterWorkflow:
+    """Records the states drafting names; the real matter decides whether to move."""
+
+    def __init__(self) -> None:
+        self.requested: list[MatterState] = []
+
+    async def advance_state(
+        self, *, user_id: str, matter_id: str, state: MatterState, reason: str
+    ) -> None:
+        self.requested.append(state)
+
+
 def _build(
     values: dict[str, object] | None = None,
     *,
@@ -71,6 +84,7 @@ def _build(
     requirements: tuple[str, ...] = (),
     candidates: tuple[object, ...] = (),
     conflicted: tuple[str, ...] = (),
+    workflow: FakeMatterWorkflow | None = None,
 ) -> tuple[DraftService, FakeGeneratedFormRepository, FakeFactReader, FakeAudit]:
     repository, audit = FakeGeneratedFormRepository(), FakeAudit()
     facts = FakeFactReader(
@@ -84,6 +98,7 @@ def _build(
         audit=audit,
         candidates=FakeCandidateReader(candidates),  # type: ignore[arg-type]
         clock=lambda: NOW,
+        matter_workflow=workflow,
     )
     return service, repository, facts, audit
 
@@ -551,3 +566,25 @@ async def test_list_forms_returns_every_version() -> None:
     forms, cursor = await service.list_forms(user_id=USER_ID, matter_id=MATTER_ID)
     assert len(forms) == 2
     assert cursor is None
+
+
+# ── §10.1 matter progress ────────────────────────────────────────────────────
+
+
+async def test_creating_a_form_names_the_drafting_state() -> None:
+    workflow = FakeMatterWorkflow()
+    service, _, _, _ = _build(workflow=workflow)
+
+    await _generate(service)
+
+    assert workflow.requested == [MatterState.DRAFTING]
+
+
+async def test_a_refused_generation_names_no_state() -> None:
+    workflow = FakeMatterWorkflow()
+    service, _, _, _ = _build(workflow=workflow)
+
+    with pytest.raises(SubtypeNotConfirmedError):
+        await _generate(service, status=SubtypeDecisionStatus.PROVISIONAL)
+
+    assert workflow.requested == []
