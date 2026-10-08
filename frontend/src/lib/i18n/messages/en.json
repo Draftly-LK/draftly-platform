@@ -2452,6 +2452,31 @@
     "demoUnavailable": "Exports and registration events need the live service and are not available in the offline demo."
   },
   "processing": {
+    "refresh": "Refresh processing status",
+    "loading": "Loading persisted processing outcomes…",
+    "retry": "Retry processing",
+    "manualReview": "Review documents manually",
+    "uploadDocuments": "Upload documents",
+    "unknownOutcome": "Processing outcome is unavailable.",
+    "unknownFailure": "Processing failed. Review the original document or refresh the status before retrying.",
+    "manualReviewRequired": "Processing finished; manual review required.",
+    "staleSource": "The file changed. Review the refreshed state before retrying.",
+    "paginationError": "The complete file list could not be loaded. Refresh processing status.",
+    "rotationUncertain": "Page {page}: rotation is uncertain.",
+    "failure": {
+      "NOT_CONFIGURED": "Processing provider is unavailable.",
+      "PROVIDER_ERROR": "The processing provider failed. Retry or review the original document manually.",
+      "UNSUPPORTED_MEDIA": "This file format cannot be processed. Upload a supported PDF or image.",
+      "PASSWORD_PROTECTED": "This PDF is password protected. Upload an unlocked copy.",
+      "PAGE_LIMIT_EXCEEDED": "This file exceeds the page limit. Upload smaller files.",
+      "DATA_PROTECTION_GATE": "Provider processing is unavailable until data protection approval is recorded. Review the original document manually.",
+      "TIMEOUT": "Processing timed out. Retry or review the original document manually."
+    },
+    "pageQuality": {
+      "likely_blank": "Page {page}: likely blank; check for stamps or annotations.",
+      "ocr_sparse": "Page {page}: very little text was read; review the original page.",
+      "ocr_failed": "Page {page}: OCR failed; review the original page."
+    },
     "title": "Processing",
     "description": "Run the extraction pipeline on uploaded documents.",
     "error": "Something went wrong. Please try again.",

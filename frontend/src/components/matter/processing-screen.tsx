@@ -1,28 +1,39 @@
 "use client";
 
-import { AlertCircle, ChevronRight, LoaderCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  RefreshCw,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
-import { Button } from "@/components/ui/button";
-import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
-import { listSourceFiles, processSourceFile } from "@/lib/api/documents";
+import { Button, buttonClass } from "@/components/ui/button";
+import {
+  ApiError,
+  isApiEnabled,
+  type TokenProvider,
+  apiErrorMessage,
+} from "@/lib/api/client";
+import {
+  getSourceFile,
+  getSourceProcessingStatus,
+  listSourceFiles,
+  processSourceFile,
+} from "@/lib/api/documents";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
-import type { ApiProcessingRun, ApiSourceFile } from "@/types/rta";
+import { useEnumLabel } from "@/lib/i18n/use-enum-label";
+import type { ApiSourceProcessingStatus } from "@/types/rta";
 
-interface ProcessingEntry extends ApiSourceFile {
+interface ProcessingEntry extends ApiSourceProcessingStatus {
   isProcessing?: boolean;
-  processingRun?: ApiProcessingRun;
+  statusUnavailable?: boolean;
 }
 
-/**
- * Screen 5: Processing — run the extraction pipeline over uploaded files.
- * The pipeline is synchronous; there is no polling. We add a client-side
- * visual delay so the screen doesn't feel instant/fake.
- */
 export function ProcessingScreen({ matterId }: { matterId: string }) {
   return isApiEnabled() ? (
     <ApiBoundProcessingScreen matterId={matterId} />
@@ -45,193 +56,311 @@ function ProcessingFlow({
 }) {
   const t = useTranslations("processing");
   const fileStateLabel = useEnumLabel("enums.sourceFileState");
-  const [sourceFiles, setSourceFiles] = useState<ProcessingEntry[]>([]);
+  const [entries, setEntries] = useState<ProcessingEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const generation = useRef(0);
+  const activeRequests = useRef(new Set<string>());
 
-  // Fetch source files on mount
   useEffect(() => {
-    let cancelled = false;
+    const currentGeneration = ++generation.current;
+    const isCurrent = () => generation.current === currentGeneration;
     setLoading(true);
+    setLoaded(false);
+    setEntries([]);
     setError(null);
-
-    listSourceFiles(getToken, matterId)
-      .then((response) => {
-        if (!cancelled) {
-          setSourceFiles(response.items);
+    async function load() {
+      const all: ProcessingEntry[] = [];
+      const cursors = new Set<string>();
+      const sourceIds = new Set<string>();
+      let cursor: string | undefined;
+      do {
+        const response = await listSourceFiles(getToken, matterId, {
+          limit: 50,
+          cursor,
+        });
+        if (!isCurrent()) return;
+        // Bound concurrent reads; failed status reads stay explicitly unknown.
+        for (let index = 0; index < response.items.length; index += 5) {
+          const batch = await Promise.all(
+            response.items
+              .slice(index, index + 5)
+              .map(async (file): Promise<ProcessingEntry> => {
+                try {
+                  return await getSourceProcessingStatus(getToken, file.id);
+                } catch {
+                  return {
+                    sourceFile: file,
+                    latestRun: null,
+                    statusUnavailable: true,
+                  };
+                }
+              }),
+          );
+          if (!isCurrent()) return;
+          for (const entry of batch) {
+            if (!sourceIds.has(entry.sourceFile.id)) {
+              sourceIds.add(entry.sourceFile.id);
+              all.push(entry);
+            }
+          }
         }
-      })
+        if (!response.page.hasMore) break;
+        const next = response.page.nextCursor;
+        if (!next || cursors.has(next) || cursors.size >= 100)
+          throw new Error(t("paginationError"));
+        cursors.add(next);
+        cursor = next;
+      } while (isCurrent());
+      if (isCurrent()) {
+        setEntries(all);
+        setLoaded(true);
+      }
+    }
+    void load()
       .catch((cause: unknown) => {
-        if (!cancelled) {
-          setError(apiErrorMessage(cause, t("error")));
-        }
+        if (isCurrent()) setError(apiErrorMessage(cause, t("error")));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (isCurrent()) setLoading(false);
       });
-
     return () => {
-      cancelled = true;
+      generation.current += 1;
     };
-  }, [getToken, matterId, t]);
+  }, [getToken, matterId, refresh, t]);
 
-  const handleProcess = useCallback(
-    async (file: ProcessingEntry) => {
-      // Mark as processing in UI
-      setSourceFiles((current) =>
-        current.map((f) => (f.id === file.id ? { ...f, isProcessing: true } : f))
-      );
-
-      try {
-        // Add a visual delay so the interaction doesn't feel instant
-        const processingRunPromise = processSourceFile(getToken, file.id, file.version);
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        const run = await processingRunPromise;
-
-        // Update with the result
-        setSourceFiles((current) =>
-          current.map((f) =>
-            f.id === file.id
-              ? { ...f, isProcessing: false, processingRun: run, state: run.sourceFileId ? "PROCESSED" : "PROCESSING_FAILED" }
-              : f
-          )
+  async function handleProcess(entry: ProcessingEntry) {
+    const id = entry.sourceFile.id;
+    if (activeRequests.current.has(id)) return;
+    activeRequests.current.add(id);
+    const currentGeneration = generation.current;
+    const isCurrent = () => currentGeneration === generation.current;
+    const replace = (next: ProcessingEntry) => {
+      if (isCurrent())
+        setEntries((current) =>
+          current.map((item) => (item.sourceFile.id === id ? next : item)),
         );
-      } catch (cause: unknown) {
-        const message = apiErrorMessage(cause, t("error"));
-        setError(message);
-        setSourceFiles((current) =>
-          current.map((f) =>
-            f.id === file.id ? { ...f, isProcessing: false } : f
-          )
-        );
+    };
+    replace({ ...entry, isProcessing: true });
+    setError(null);
+    try {
+      // Refresh the concurrency token immediately before every initial attempt or retry.
+      const file = await getSourceFile(getToken, id);
+      if (!isCurrent()) return;
+      if (file.state !== "STORED" && file.state !== "PROCESSING_FAILED") {
+        replace(await getSourceProcessingStatus(getToken, id));
+        setError(t("staleSource"));
+        return;
       }
-    },
-    [getToken, t]
-  );
-
-  const readyToProcess = sourceFiles.filter(
-    (f) => f.state === "STORED" || f.state === "VALIDATED"
-  );
-  const alreadyProcessed = sourceFiles.filter(
-    (f) =>
-      f.state === "PROCESSED" ||
-      f.state === "PROCESSING_FAILED" ||
-      f.state === "REJECTED"
-  );
-  const canContinue = readyToProcess.length === 0;
-
-  if (loading) {
-    return (
-      <AppShell matterId={matterId}>
-        <PageHeader title={t("title")} description={t("description")} />
-        <div className="flex items-center justify-center py-12">
-          <LoaderCircle className="size-6 animate-spin" strokeWidth={1.5} />
-        </div>
-      </AppShell>
-    );
+      await processSourceFile(getToken, id, file.version);
+      replace(await getSourceProcessingStatus(getToken, id));
+    } catch (cause: unknown) {
+      if (!isCurrent()) return;
+      setError(
+        cause instanceof ApiError && cause.status === 412
+          ? t("staleSource")
+          : apiErrorMessage(cause, t("error")),
+      );
+      try {
+        replace(await getSourceProcessingStatus(getToken, id));
+      } catch {
+        replace({
+          ...entry,
+          latestRun: null,
+          statusUnavailable: true,
+          isProcessing: false,
+        });
+      }
+    } finally {
+      activeRequests.current.delete(id);
+    }
   }
 
-  if (sourceFiles.length === 0) {
-    return (
-      <AppShell matterId={matterId}>
-        <PageHeader title={t("title")} description={t("description")} />
-        <div className="p-6">
-          <div className="border-border bg-surface rounded-card border p-6 text-center">
-            <p className="text-muted-ink mb-4">{t("emptyState")}</p>
-            <Link href={`/matters/${matterId}`}>
-              <Button variant="primary">
-                {t("continueToInbox")}
-                <ChevronRight className="size-4" strokeWidth={1.5} />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </AppShell>
+  const busy = entries.some((entry) => entry.isProcessing);
+  const canContinue =
+    loaded &&
+    !loading &&
+    !busy &&
+    !error &&
+    entries.length > 0 &&
+    entries.every(
+      ({ sourceFile, latestRun, statusUnavailable }) =>
+        !statusUnavailable &&
+        sourceFile.state === "PROCESSED" &&
+        latestRun?.state === "succeeded" &&
+        latestRun.outcome === "PROCESSED",
     );
-  }
+  const inbox = `/matters/${matterId}/documents`;
 
   return (
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
+        <div className="mb-4 flex flex-wrap justify-end gap-2">
+          <Button
+            disabled={loading || busy}
+            onClick={() => setRefresh((value) => value + 1)}
+          >
+            <RefreshCw
+              aria-hidden="true"
+              className="size-4"
+              strokeWidth={1.5}
+            />
+            {t("refresh")}
+          </Button>
+        </div>
         {error && (
-          <div className="border-red bg-red-bg text-red mb-4 rounded border p-4">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
-              <p className="text-sm">{error}</p>
-            </div>
+          <div
+            role="alert"
+            className="border-red bg-red-bg text-red mb-4 flex items-start gap-2 rounded border p-4"
+          >
+            <AlertCircle
+              aria-hidden="true"
+              className="mt-0.5 size-5 shrink-0"
+              strokeWidth={1.5}
+            />
+            <p className="text-sm">{error}</p>
           </div>
         )}
-
-        {readyToProcess.length > 0 && (
-          <section className="mb-8">
-            <h2 className="mb-3 text-lg font-semibold">{t("readyToProcess")}</h2>
-            <ul className="divide-border border-border divide-y border-y">
-              {readyToProcess.map((file) => (
-                <li
-                  key={file.id}
-                  className="flex min-h-14 items-center justify-between gap-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{file.originalFilename}</p>
-                    <p className="text-muted-ink text-sm">
-                      {file.pageCount ? t("pageCount", { count: file.pageCount }) : ""}
-                    </p>
-                  </div>
-                  {file.isProcessing ? (
-                    <div className="flex items-center gap-2">
-                      <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} />
-                      <span className="text-sm font-medium">{t("processing")}</span>
+        {loading && (
+          <p role="status" className="text-muted-ink py-6">
+            {t("loading")}
+          </p>
+        )}
+        {!loading && loaded && entries.length === 0 && (
+          <div className="border-border bg-surface rounded-card border p-6 text-center">
+            <p className="text-muted-ink mb-4">{t("emptyState")}</p>
+            <Link className={buttonClass("primary")} href={inbox}>
+              {t("uploadDocuments")}
+            </Link>
+          </div>
+        )}
+        {!loading && entries.length > 0 && (
+          <ul className="divide-border border-border divide-y border-y">
+            {entries.map((entry) => {
+              const file = entry.sourceFile;
+              const run = entry.latestRun;
+              const success =
+                file.state === "PROCESSED" &&
+                run?.state === "succeeded" &&
+                run.outcome === "PROCESSED" &&
+                !entry.statusUnavailable;
+              const failed =
+                file.state === "PROCESSING_FAILED" ||
+                run?.state === "failed" ||
+                file.state === "REJECTED";
+              const waiting =
+                file.state === "STORED" && !entry.statusUnavailable;
+              const processing =
+                entry.isProcessing || file.state === "PROCESSING";
+              const manual = success && run.manualReviewRequired;
+              const StatusIcon =
+                success && !manual
+                  ? CheckCircle2
+                  : failed || manual || entry.statusUnavailable
+                    ? AlertCircle
+                    : Clock3;
+              const label = processing
+                ? t("processing")
+                : file.state === "SUPERSEDED" || file.state === "REJECTED"
+                  ? fileStateLabel(file.state)
+                  : success
+                    ? manual
+                      ? t("manualReviewRequired")
+                      : t("succeeded")
+                    : failed
+                      ? t("failed")
+                      : waiting
+                        ? fileStateLabel(file.state)
+                        : t("unknownOutcome");
+              const reason = run?.failureReason ?? file.failureReason;
+              return (
+                <li key={file.id} className="py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="break-words font-medium">
+                        {file.originalFilename}
+                      </p>
+                      {file.pageCount !== null && (
+                        <p className="text-muted-ink text-sm">
+                          {t("pageCount", { count: file.pageCount })}
+                        </p>
+                      )}
+                      <p className="mt-2 flex items-start gap-2 text-sm">
+                        <StatusIcon
+                          aria-hidden="true"
+                          className="mt-0.5 size-4 shrink-0"
+                          strokeWidth={1.5}
+                        />
+                        {label}
+                      </p>
+                      {failed && (
+                        <p className="text-muted-ink mt-2 text-sm">
+                          {reason
+                            ? t(`failure.${reason}`)
+                            : t("unknownFailure")}
+                        </p>
+                      )}
+                      {run && (
+                        <ul className="text-muted-ink mt-2 space-y-1 text-sm">
+                          {run.pageOutcomes.flatMap((page) => [
+                            page.qualityStatus !== "normal" ? (
+                              <li key={`${page.pageNo}-quality`}>
+                                {t(`pageQuality.${page.qualityStatus}`, {
+                                  page: page.pageNo,
+                                })}
+                              </li>
+                            ) : null,
+                            page.rotationStatus === "rotation_uncertain" ? (
+                              <li key={`${page.pageNo}-rotation`}>
+                                {t("rotationUncertain", { page: page.pageNo })}
+                              </li>
+                            ) : null,
+                          ])}
+                        </ul>
+                      )}
                     </div>
-                  ) : (
-                    <Button
-                      disabled={file.isProcessing}
-                      onClick={() => void handleProcess(file)}
-                    >
-                      {t("process")}
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {alreadyProcessed.length > 0 && (
-          <section>
-            <h2 className="mb-3 text-lg font-semibold">{t("alreadyProcessed")}</h2>
-            <ul className="divide-border border-border divide-y border-y">
-              {alreadyProcessed.map((file) => (
-                <li
-                  key={file.id}
-                  className="flex min-h-14 items-center justify-between gap-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{file.originalFilename}</p>
-                    <p className="text-muted-ink text-sm">
-                      {file.pageCount ? `${file.pageCount} pages` : ""}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(waiting ||
+                        file.state === "PROCESSING_FAILED" ||
+                        entry.isProcessing) && (
+                        <Button
+                          disabled={processing || entry.statusUnavailable}
+                          aria-busy={entry.isProcessing || undefined}
+                          onClick={() => void handleProcess(entry)}
+                        >
+                          {processing
+                            ? t("processing")
+                            : file.state === "PROCESSING_FAILED"
+                              ? t("retry")
+                              : t("process")}
+                        </Button>
+                      )}
+                      {(failed ||
+                        manual ||
+                        (!success && !waiting && !processing)) && (
+                        <Link className={buttonClass("secondary")} href={inbox}>
+                          {t("manualReview")}
+                        </Link>
+                      )}
+                    </div>
                   </div>
-                  <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
-                    {file.state === "PROCESSED"
-                      ? t("succeeded")
-                      : file.state === "PROCESSING_FAILED"
-                        ? t("failed")
-                        : fileStateLabel(file.state)}
-                  </span>
                 </li>
-              ))}
-            </ul>
-          </section>
+              );
+            })}
+          </ul>
         )}
-
         {canContinue && (
           <div className="mt-8 flex justify-end">
-            <Link href={`/matters/${matterId}/documents`}>
-              <Button variant="primary">
-                {t("continueToInbox")}
-                <ChevronRight className="size-4" strokeWidth={1.5} />
-              </Button>
+            <Link className={buttonClass("primary")} href={inbox}>
+              {t("continueToInbox")}
+              <ChevronRight
+                aria-hidden="true"
+                className="size-4"
+                strokeWidth={1.5}
+              />
             </Link>
           </div>
         )}
@@ -247,7 +376,11 @@ function ProcessingUnavailable({ matterId }: { matterId: string }) {
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
         <div className="border-border bg-surface rounded-card border p-6">
-          <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
+          <AlertCircle
+            aria-hidden="true"
+            className="text-amber-text size-5"
+            strokeWidth={1.5}
+          />
           <p className="mt-2 text-sm">{t("backendNotConfigured")}</p>
         </div>
       </div>

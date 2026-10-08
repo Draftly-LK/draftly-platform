@@ -669,6 +669,32 @@ export interface ApiSourceFileList {
   page: ApiPageInfo;
 }
 
+/** Latest persisted attempt, without candidate values or storage paths. */
+export interface ApiLatestProcessingRun {
+  jobId: string;
+  state: "succeeded" | "failed";
+  outcome: SourceFileState;
+  provider: string;
+  reasons: string[];
+  failureReason: ProcessingFailureReason | null;
+  failureExplanationKey: string | null;
+  pagesProcessed: number;
+  aiExtractionCalls: number;
+  startedAt: string;
+  finishedAt: string | null;
+  pageOutcomes: Array<{
+    pageNo: number;
+    qualityStatus: "normal" | "likely_blank" | "ocr_sparse" | "ocr_failed";
+    rotationStatus: "not_required" | "applied" | "rotation_uncertain";
+  }>;
+  manualReviewRequired: boolean;
+}
+
+export interface ApiSourceProcessingStatus {
+  sourceFile: ApiSourceFile;
+  latestRun: ApiLatestProcessingRun | null;
+}
+
 /** Mirrors `DocumentFragmentRead`. */
 export interface ApiDocumentFragment {
   id: string;

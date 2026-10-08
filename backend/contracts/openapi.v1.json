@@ -3996,6 +3996,109 @@
         "title": "IssueGatesRead",
         "type": "object"
       },
+      "LatestProcessingRunRead": {
+        "description": "Read-only terminal summary over existing persisted run/page records.",
+        "properties": {
+          "aiExtractionCalls": {
+            "title": "Aiextractioncalls",
+            "type": "integer"
+          },
+          "failureExplanationKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failureexplanationkey"
+          },
+          "failureReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingFailureReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "jobId": {
+            "title": "Jobid",
+            "type": "string"
+          },
+          "manualReviewRequired": {
+            "title": "Manualreviewrequired",
+            "type": "boolean"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/SourceFileState"
+          },
+          "pageOutcomes": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessingPageOutcomeRead"
+            },
+            "title": "Pageoutcomes",
+            "type": "array"
+          },
+          "pagesProcessed": {
+            "title": "Pagesprocessed",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "startedAt": {
+            "title": "Startedat",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "succeeded",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "state",
+          "outcome",
+          "provider",
+          "reasons",
+          "failureReason",
+          "failureExplanationKey",
+          "pagesProcessed",
+          "aiExtractionCalls",
+          "startedAt",
+          "finishedAt",
+          "pageOutcomes",
+          "manualReviewRequired"
+        ],
+        "title": "LatestProcessingRunRead",
+        "type": "object"
+      },
       "LawyerConfirmationRead": {
         "properties": {
           "confirmed_at": {
@@ -6063,6 +6166,54 @@
         "title": "PresentationDeadlineRead",
         "type": "object"
       },
+      "ProcessingFailureReason": {
+        "description": "Why processing did not produce a result — always recoverable-explained.\n\n``NOT_CONFIGURED`` is the honest answer when no OCR/classification provider\nis wired: the document is stored and readable, nothing was processed, and\nnothing pretends otherwise.",
+        "enum": [
+          "NOT_CONFIGURED",
+          "PROVIDER_ERROR",
+          "UNSUPPORTED_MEDIA",
+          "PASSWORD_PROTECTED",
+          "PAGE_LIMIT_EXCEEDED",
+          "DATA_PROTECTION_GATE",
+          "TIMEOUT"
+        ],
+        "title": "ProcessingFailureReason",
+        "type": "string"
+      },
+      "ProcessingPageOutcomeRead": {
+        "properties": {
+          "pageNo": {
+            "title": "Pageno",
+            "type": "integer"
+          },
+          "qualityStatus": {
+            "enum": [
+              "normal",
+              "likely_blank",
+              "ocr_sparse",
+              "ocr_failed"
+            ],
+            "title": "Qualitystatus",
+            "type": "string"
+          },
+          "rotationStatus": {
+            "enum": [
+              "not_required",
+              "applied",
+              "rotation_uncertain"
+            ],
+            "title": "Rotationstatus",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageNo",
+          "qualityStatus",
+          "rotationStatus"
+        ],
+        "title": "ProcessingPageOutcomeRead",
+        "type": "object"
+      },
       "ProcessingReportRead": {
         "properties": {
           "aiExtractionCalls": {
@@ -7990,6 +8141,45 @@
           "version"
         ],
         "title": "SourceFileRead",
+        "type": "object"
+      },
+      "SourceFileState": {
+        "description": "§10.2 — ingestion state machine for immutable uploaded bytes.\n\nSource bytes never transition to \"edited\". A corrected file is a new source\nwith a ``DERIVED_FROM`` link.",
+        "enum": [
+          "UPLOAD_INITIATED",
+          "QUARANTINED",
+          "VALIDATED",
+          "STORED",
+          "PROCESSING",
+          "PROCESSED",
+          "PROCESSING_FAILED",
+          "REJECTED",
+          "SUPERSEDED"
+        ],
+        "title": "SourceFileState",
+        "type": "string"
+      },
+      "SourceProcessingStatusRead": {
+        "properties": {
+          "latestRun": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestProcessingRunRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceFile": {
+            "$ref": "#/components/schemas/SourceFileRead"
+          }
+        },
+        "required": [
+          "sourceFile",
+          "latestRun"
+        ],
+        "title": "SourceProcessingStatusRead",
         "type": "object"
       },
       "SubscriptionRead": {
@@ -16596,6 +16786,54 @@
           }
         ],
         "summary": "Process Source File",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
+    "/api/v1/source-files/{source_file_id}/processing": {
+      "get": {
+        "operationId": "get_source_processing_status_api_v1_source_files__source_file_id__processing_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_file_id",
+            "required": true,
+            "schema": {
+              "title": "Source File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceProcessingStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Source Processing Status",
         "tags": [
           "documents",
           "source-files"

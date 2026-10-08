@@ -32,9 +32,11 @@ from src.modules.document.domain.errors import (
 from src.modules.document.domain.ingestion import (
     DetectedDocument,
     DocumentFragment,
+    ProcessingPageOutcome,
     ProcessingRun,
     SourceFile,
 )
+from src.modules.document.domain.ingestion_policies import failure_explanation_key
 from src.modules.document.domain.v1 import (
     DocumentReview,
     ProcessedLogicalDocument,
@@ -798,7 +800,9 @@ class SqlDocumentIngestionRepository:
                 SourceFileProcessingRunRow.user_id == user_id,
                 SourceFileProcessingRunRow.source_file_id == source_file_id,
             )
-            .order_by(SourceFileProcessingRunRow.started_at.desc())
+            .order_by(
+                SourceFileProcessingRunRow.started_at.desc(), SourceFileProcessingRunRow.id.desc()
+            )
         )
         return [
             ProcessingRun(
@@ -814,6 +818,79 @@ class SqlDocumentIngestionRepository:
                 pages_processed=row.pages_processed,
                 ai_extraction_calls=row.ai_extraction_calls,
                 finished_at=row.finished_at,
+                failure_reason=_run_failure_reason(row),
+                failure_explanation_key=(
+                    failure_explanation_key(reason)
+                    if (reason := _run_failure_reason(row))
+                    else None
+                ),
             )
             for row in result.scalars().all()
         ]
+
+    async def get_latest_run_for_source_file(
+        self, user_id: str, matter_id: str, source_file_id: str
+    ) -> ProcessingRun | None:
+        result = await self._session.execute(
+            select(SourceFileProcessingRunRow)
+            .where(
+                SourceFileProcessingRunRow.user_id == user_id,
+                SourceFileProcessingRunRow.matter_id == matter_id,
+                SourceFileProcessingRunRow.source_file_id == source_file_id,
+            )
+            .order_by(
+                SourceFileProcessingRunRow.started_at.desc(), SourceFileProcessingRunRow.id.desc()
+            )
+            .limit(1)
+        )
+        row = result.scalar_one_or_none()
+        if row is None:
+            return None
+        reason = _run_failure_reason(row)
+        return ProcessingRun(
+            id=row.id,
+            user_id=row.user_id,
+            matter_id=row.matter_id,
+            source_file_id=row.source_file_id,
+            provider=row.provider,
+            outcome=SourceFileState(row.outcome),
+            started_at=row.started_at,
+            correlation_id=row.correlation_id,
+            reasons=tuple(row.reasons),
+            pages_processed=row.pages_processed,
+            ai_extraction_calls=row.ai_extraction_calls,
+            finished_at=row.finished_at,
+            failure_reason=reason,
+            failure_explanation_key=failure_explanation_key(reason) if reason else None,
+        )
+
+    async def list_run_page_outcomes(
+        self, user_id: str, matter_id: str, source_file_id: str, run_id: str
+    ) -> tuple[ProcessingPageOutcome, ...]:
+        result = await self._session.execute(
+            select(
+                DocumentProcessingPageRow.page_no,
+                DocumentProcessingPageRow.quality_status,
+                DocumentProcessingPageRow.rotation_status,
+            )
+            .where(
+                DocumentProcessingPageRow.user_id == user_id,
+                DocumentProcessingPageRow.matter_id == matter_id,
+                DocumentProcessingPageRow.source_file_id == source_file_id,
+                DocumentProcessingPageRow.processing_run_id == run_id,
+            )
+            .order_by(DocumentProcessingPageRow.page_no)
+        )
+        return tuple(ProcessingPageOutcome(*row) for row in result.all())
+
+
+def _run_failure_reason(row: SourceFileProcessingRunRow) -> ProcessingFailureReason | None:
+    """Existing jobs persist the failure enum in reasons; preserve legacy rows."""
+    if row.outcome != SourceFileState.PROCESSING_FAILED.value:
+        return None
+    for reason in row.reasons:
+        try:
+            return ProcessingFailureReason(reason)
+        except ValueError:
+            continue
+    return None

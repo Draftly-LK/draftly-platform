@@ -140,6 +140,29 @@ Returns the current ProcessingRun state, the recorded provider metadata
 (processor, version, region, purpose, timing, quality, outcome), and which
 derivatives exist. Matter-scoped.
 
+The V0 source-file contract is `GET /api/v1/source-files/{id}/processing`.
+It requires `rta.document.classify` after resolving the source under `user_id`
+and checking its matter. The response has `sourceFile` (the current source
+version, also exposed as an ETag) and nullable `latestRun`. No recorded run is
+unknown, never success. The latest attempt is ordered by `started_at`, then id.
+Its summary includes terminal state, provider, recorded reasons and failure
+explanation, meters, timing, and retained page quality/rotation diagnostics. It
+excludes OCR text, candidate values, and object-storage paths.
+
+Failure enums already persisted in run reasons restore the recovery details on
+read; legacy runs with no recognised reason retain an unknown reason. A
+successful V1 run can still contain `ocr_failed`, `ocr_sparse`, likely blank,
+or uncertain-rotation pages. `manualReviewRequired` also covers unresolved
+document classification/grouping and recorded review reasons. These diagnostics
+do not introduce a partial-success lifecycle state or mark evidence accepted.
+
+The current synchronous retry command remains
+`POST /api/v1/source-files/{id}/process`, requiring `rta.source.upload` and
+`If-Match` against the refreshed source version. A stale replay returns 412
+without starting another attempt. Retries preserve original bytes and previous
+runs. Existing organised documents are retained by the current processing
+contract; extraction-generation correction is a separate workflow slice.
+
 ### get_viewer_manifest(ctx, document_version_id) -> ViewerManifestRead
 
 Returns the exact immutable version required by an `EvidenceSpan`, not merely

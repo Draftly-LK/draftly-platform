@@ -40,6 +40,15 @@ if TYPE_CHECKING:
 DEFAULT_RETENTION_CLASS = "rta.client-evidence"
 
 
+@dataclass(frozen=True)
+class ProcessingPageOutcome:
+    """Retained page diagnostics; excludes OCR text and storage references."""
+
+    page_no: int
+    quality_status: str
+    rotation_status: str
+
+
 @dataclass
 class SourceFile:
     """Uploaded bytes plus the metadata that makes them attributable.

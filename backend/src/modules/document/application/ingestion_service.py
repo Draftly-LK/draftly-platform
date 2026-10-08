@@ -50,6 +50,7 @@ from src.modules.document.domain.ingestion import (
     DetectedDocument,
     DocumentFragment,
     FragmentRange,
+    ProcessingPageOutcome,
     ProcessingRun,
     SourceFile,
 )
@@ -131,6 +132,14 @@ class ProcessingRunView:
     #: True when the run's candidates were not written because the file already
     #: has documents a lawyer may have decided on (§6.5).
     candidates_withheld: bool = False
+
+
+@dataclass(frozen=True)
+class ProcessingStatusView:
+    source: SourceFileView
+    latest_run: ProcessingRun | None
+    page_outcomes: tuple[ProcessingPageOutcome, ...] = ()
+    manual_review_required: bool = False
 
 
 @dataclass(frozen=True)
@@ -415,6 +424,42 @@ class SourceFileIngestionService:
             target_id=source.id,
         )
         return source, data
+
+    async def get_processing_status(
+        self, *, user_id: str, source_file_id: str
+    ) -> ProcessingStatusView:
+        """Read the latest recorded attempt, never infer success from source presence."""
+        source = await self.get_source_file(user_id=user_id, source_file_id=source_file_id)
+        run = await self._repo.get_latest_run_for_source_file(
+            user_id, source.source_file.matter_id, source_file_id
+        )
+        if run is None:
+            return ProcessingStatusView(source=source, latest_run=None)
+        pages = await self._repo.list_run_page_outcomes(
+            user_id, source.source_file.matter_id, source_file_id, run.id
+        )
+        documents = [
+            await self._require_document(user_id, document_id)
+            for document_id in source.detected_document_ids
+        ]
+        requires_review = (
+            bool(run.reasons)
+            or any(
+                page.quality_status != "normal" or page.rotation_status == "rotation_uncertain"
+                for page in pages
+            )
+            or any(
+                document.class_status is not DocumentClassStatus.LAWYER_CONFIRMED
+                or document.boundary_status is not BoundaryStatus.CONFIRMED
+                for document in documents
+            )
+        )
+        return ProcessingStatusView(
+            source=source,
+            latest_run=run,
+            page_outcomes=pages,
+            manual_review_required=run.succeeded and requires_review,
+        )
 
     async def get_detected_document(self, *, user_id: str, document_id: str) -> DocumentView:
         document = await self._require_document(user_id, document_id)

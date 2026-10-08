@@ -12,8 +12,12 @@ them would force the server to pick a lie.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+from src.modules.content_governance.contracts import ProcessingFailureReason, SourceFileState
 
 
 class _CamelModel(BaseModel):
@@ -102,6 +106,35 @@ class SourceFileRead(_CamelModel):
 class SourceFileListRead(_CamelModel):
     items: list[SourceFileRead]
     page: PageInfo
+
+
+class ProcessingPageOutcomeRead(_CamelModel):
+    page_no: int
+    quality_status: Literal["normal", "likely_blank", "ocr_sparse", "ocr_failed"]
+    rotation_status: Literal["not_required", "applied", "rotation_uncertain"]
+
+
+class LatestProcessingRunRead(_CamelModel):
+    """Read-only terminal summary over existing persisted run/page records."""
+
+    job_id: str
+    state: Literal["succeeded", "failed"]
+    outcome: SourceFileState
+    provider: str
+    reasons: list[str]
+    failure_reason: ProcessingFailureReason | None
+    failure_explanation_key: str | None
+    pages_processed: int
+    ai_extraction_calls: int
+    started_at: str
+    finished_at: str | None
+    page_outcomes: list[ProcessingPageOutcomeRead]
+    manual_review_required: bool
+
+
+class SourceProcessingStatusRead(_CamelModel):
+    source_file: SourceFileRead
+    latest_run: LatestProcessingRunRead | None
 
 
 class DocumentFragmentRead(_CamelModel):

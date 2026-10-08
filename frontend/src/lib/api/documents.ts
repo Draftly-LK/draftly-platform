@@ -20,6 +20,7 @@ import type {
   ApiProcessingRun,
   ApiSourceFile,
   ApiSourceFileList,
+  ApiSourceProcessingStatus,
   ApiReviewCandidate,
 } from "@/types/rta";
 
@@ -117,6 +118,17 @@ export function getSourceFile(
     {
       getToken,
     },
+  );
+}
+
+/** Current source version and latest persistent outcome; null means no recorded run. */
+export function getSourceProcessingStatus(
+  getToken: TokenProvider,
+  sourceFileId: string,
+): Promise<ApiSourceProcessingStatus> {
+  return apiFetch<ApiSourceProcessingStatus>(
+    `/api/v1/source-files/${encodeURIComponent(sourceFileId)}/processing`,
+    { getToken },
   );
 }
 

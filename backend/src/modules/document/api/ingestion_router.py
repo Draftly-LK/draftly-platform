@@ -41,13 +41,16 @@ from src.modules.document.api.schemas import (
     DocumentFragmentRead,
     DocumentInboxRead,
     DocumentReviewRead,
+    LatestProcessingRunRead,
     PageCandidateRead,
     PageInfo,
+    ProcessingPageOutcomeRead,
     ProcessingRunRead,
     ReviewCandidateRead,
     ReviewPageRead,
     SourceFileListRead,
     SourceFileRead,
+    SourceProcessingStatusRead,
     SupersedeSourceFileRequest,
 )
 from src.modules.document.application.ingestion_service import (
@@ -315,6 +318,45 @@ async def get_source_file(
     await _authorized_matter(ctx, view.source_file.matter_id, session, CAP_DOCUMENT_CLASSIFY)
     response.headers["ETag"] = f'"{view.source_file.version}"'
     return _to_source_read(view)
+
+
+@router.get("/source-files/{source_file_id}/processing", response_model=SourceProcessingStatusRead)
+async def get_source_processing_status(
+    source_file_id: str,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+) -> SourceProcessingStatusRead:
+    source = await service.get_source_file(user_id=ctx.actor_id, source_file_id=source_file_id)
+    await _authorized_matter(ctx, source.source_file.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    view = await service.get_processing_status(user_id=ctx.actor_id, source_file_id=source_file_id)
+    run = view.latest_run
+    response.headers["ETag"] = f'"{view.source.source_file.version}"'
+    response.headers["Cache-Control"] = "private, no-store"
+    return SourceProcessingStatusRead(
+        source_file=_to_source_read(view.source),
+        latest_run=LatestProcessingRunRead(
+            job_id=run.id,
+            state="succeeded" if run.succeeded else "failed",
+            outcome=run.outcome,
+            provider=run.provider,
+            reasons=list(run.reasons),
+            failure_reason=run.failure_reason,
+            failure_explanation_key=run.failure_explanation_key,
+            pages_processed=run.pages_processed,
+            ai_extraction_calls=run.ai_extraction_calls,
+            started_at=run.started_at.isoformat(),
+            finished_at=run.finished_at.isoformat() if run.finished_at else None,
+            page_outcomes=[
+                ProcessingPageOutcomeRead.model_validate(page, from_attributes=True)
+                for page in view.page_outcomes
+            ],
+            manual_review_required=view.manual_review_required,
+        )
+        if run
+        else None,
+    )
 
 
 #: Only these types are ever stored (upload validates them); anything else is served as a download.
