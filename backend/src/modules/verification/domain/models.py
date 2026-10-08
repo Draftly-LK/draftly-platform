@@ -52,6 +52,10 @@ class EvidenceReference:
     region_type: EvidenceRegionType | None = None
     extraction_run_id: str | None = None
     detected_document_id: str | None = None
+    page_text: str | None = None
+    precision: str = "page"
+    candidate_version: int | None = None
+    candidate_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -72,6 +76,12 @@ class ExtractedFact:
     scope_status: str = "legacy-unassigned"
     #: Additive invalidation seam; document lifecycle owners invalidate via a port.
     evidence_stale: bool = False
+    original_value: Any = None
+    origin: str = "legacy"
+    source_candidate_id: str | None = None
+    source_candidate_version: int | None = None
+    lineage_id: str | None = None
+    manual_reason: str | None = None
     #: The provider's own estimate. It routes work to a human; it never
     #: verifies anything (§6.4).
     model_reported_confidence: float | None = None
@@ -118,3 +128,4 @@ class ReviewDecision:
     previous_value: Any = None
     new_value: Any = None
     reason: str | None = None
+    resolved_fact_ids: tuple[str, ...] = ()

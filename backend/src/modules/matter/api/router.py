@@ -39,6 +39,7 @@ from src.modules.matter.api.schemas import (
     RoutingRead,
     SaveAnswerRequest,
 )
+from src.modules.matter.api.scope_router import router as scope_router
 from src.modules.matter.application.matter_service import (
     ChecklistCompileResult,
     CreateMatterInput,
@@ -51,6 +52,7 @@ from src.platform.db.unit_of_work import UnitOfWork
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["matters"])
+router.include_router(scope_router)
 
 
 def get_matter_service(session: AsyncSession = Depends(get_db)) -> MatterService:

@@ -510,7 +510,12 @@
     "classOfTitle": "Class of title",
     "surveyPlanNo": "Survey plan number",
     "surveyorName": "Licensed surveyor",
-    "surveyorRegistration": "Surveyor registration number",
+    "surveyorRegistration": "මිනින්දෝරු ලියාපදිංචි අංකය",
+    "holderNic": "ලේඛනයේ හිමිකරුගේ ජාතික හැඳුනුම්පත් අංකය",
+    "holderNameEn": "ලේඛනයේ හිමිකරුගේ නම (ඉංග්‍රීසි)",
+    "holderNameSi": "ලේඛනයේ හිමිකරුගේ නම (සිංහල)",
+    "holderDateOfBirth": "ලේඛනයේ හිමිකරුගේ උපන් දිනය",
+    "holderAddress": "ලේඛනයේ හිමිකරුගේ ලිපිනය",
     "lotNo": "Lot number",
     "boundaryNorth": "Boundary — north",
     "boundaryEast": "Boundary — east",
@@ -2749,6 +2754,7 @@
       "REVIEW_REQUIRED": "Needs review",
       "LAWYER_CONFIRMED": "Lawyer confirmed",
       "LOCKED_FOR_FORM": "Locked for form",
+      "REJECTED": "ප්‍රතික්ෂේප කළ",
       "SUPERSEDED": "Replaced"
     },
     "preflightCode": {

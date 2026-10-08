@@ -511,6 +511,11 @@
     "surveyPlanNo": "Survey plan number",
     "surveyorName": "Licensed surveyor",
     "surveyorRegistration": "Surveyor registration number",
+    "holderNic": "Document holder's NIC number",
+    "holderNameEn": "Document holder's name (English)",
+    "holderNameSi": "Document holder's name (Sinhala)",
+    "holderDateOfBirth": "Document holder's date of birth",
+    "holderAddress": "Document holder's address",
     "lotNo": "Lot number",
     "boundaryNorth": "Boundary — north",
     "boundaryEast": "Boundary — east",
@@ -2748,6 +2753,7 @@
       "REVIEW_REQUIRED": "Needs review",
       "LAWYER_CONFIRMED": "Lawyer confirmed",
       "LOCKED_FOR_FORM": "Locked for form",
+      "REJECTED": "Rejected",
       "SUPERSEDED": "Replaced"
     },
     "preflightCode": {

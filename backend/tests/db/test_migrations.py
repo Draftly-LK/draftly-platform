@@ -6,6 +6,8 @@ downgrades to base and would otherwise take the shared test schema with it.
 
 from __future__ import annotations
 
+import ast
+import hashlib
 import importlib
 import os
 import re
@@ -236,6 +238,58 @@ PREDATES_THE_ADDITIVE_RULE = frozenset(
     {"notification_0002_outbox_inbox.py", "party_0002_tenant_key.py"}
 )
 
+# Reviewed 2026-10-09: one literal metadata backfill, exercised with historical
+# and foreign rows by test_scoped_fact_migration. It never rewrites values,
+# types or decisions, and only withholds an unproven NIC transaction role.
+# This is intentionally a statement fingerprint, not a whole-file exemption.
+REVIEWED_METADATA_BACKFILLS = {
+    "matter_0002_scoped_fact_review.py": "3efd909ed6d4b6396a4c82c598290fc34b604395575df9504e52b494d4c717c8"
+}
+
+
+def _unsafe_upgrade_steps(filename: str, source: str) -> list[str]:
+    upgrade = source.split("def upgrade", 1)[1].split("def downgrade", 1)[0]
+    expected = REVIEWED_METADATA_BACKFILLS.get(filename)
+    if expected:
+        tree = ast.parse(source)
+        function = next(
+            n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "upgrade"
+        )
+        matches = []
+        for node in ast.walk(function):
+            if not (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "op"
+                and node.func.attr == "execute"
+                and len(node.args) == 1
+                and not node.keywords
+            ):
+                continue
+            argument = node.args[0]
+            if not (
+                isinstance(argument, ast.Call)
+                and isinstance(argument.func, ast.Attribute)
+                and isinstance(argument.func.value, ast.Name)
+                and argument.func.value.id == "sa"
+                and argument.func.attr == "text"
+                and len(argument.args) == 1
+                and not argument.keywords
+                and isinstance(argument.args[0], ast.Constant)
+                and isinstance(argument.args[0].value, str)
+            ):
+                continue
+            digest = hashlib.sha256(" ".join(argument.args[0].value.split()).encode()).hexdigest()
+            if digest == expected:
+                matches.append(ast.get_source_segment(source, node))
+        if len(matches) == 1 and matches[0]:
+            upgrade = upgrade.replace(matches[0], "", 1)
+    destructive = re.compile(
+        r"op\.(drop_column|alter_column|drop_table|drop_constraint|rename_table|execute)\("
+    )
+    return [f"{filename}: {m.group(1)}" for m in destructive.finditer(upgrade)]
+
 
 def test_no_new_upgrade_step_drops_or_alters_a_column() -> None:
     """One release of backward compatibility (DEPLOYMENT_PLAN.md §7.2).
@@ -243,18 +297,31 @@ def test_no_new_upgrade_step_drops_or_alters_a_column() -> None:
     A static scan of every upgrade(): the running release must still work
     against the schema the next one migrates to, so upgrades only add.
     """
-    destructive = re.compile(
-        r"op\.(drop_column|alter_column|drop_table|drop_constraint|rename_table|execute)\("
-    )
     offenders: list[str] = []
     for path in sorted(VERSIONS.glob("*.py")):
         if path.name in PREDATES_THE_ADDITIVE_RULE:
             continue
         source = path.read_text(encoding="utf-8")
-        upgrade = source.split("def upgrade", 1)[1].split("def downgrade", 1)[0]
-        offenders += [f"{path.name}: {m.group(1)}" for m in destructive.finditer(upgrade)]
+        offenders += _unsafe_upgrade_steps(path.name, source)
 
     assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        "op.execute(sa.text('DELETE FROM extracted_facts'))",
+        "op.execute(query)",
+        "op.drop_table('source_files')",
+        "op.alter_column('extracted_facts', 'value')",
+    ],
+)
+def test_reviewed_backfill_does_not_allow_additional_or_dynamic_steps(extra: str) -> None:
+    filename = "matter_0002_scoped_fact_review.py"
+    source = (VERSIONS / filename).read_text(encoding="utf-8")
+    modified = source.replace("def upgrade() -> None:", f"def upgrade() -> None:\n    {extra}")
+    assert _unsafe_upgrade_steps(filename, modified)
+    assert _unsafe_upgrade_steps(filename, source.replace("original_value =", "value ="))
 
 
 def test_the_exempt_migrations_still_exist() -> None:

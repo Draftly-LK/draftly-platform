@@ -10,6 +10,7 @@ state; the row and its bytes stay (§6.3).
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, select, update
@@ -37,6 +38,7 @@ from src.modules.document.domain.ingestion import (
     SourceFile,
 )
 from src.modules.document.domain.ingestion_policies import failure_explanation_key
+from src.modules.document.domain.registry import observational_field_key
 from src.modules.document.domain.v1 import (
     DocumentReview,
     ProcessedLogicalDocument,
@@ -631,7 +633,13 @@ class SqlDocumentIngestionRepository:
                 )
                 for row in page_rows
             ),
-            candidates=tuple(self._to_review_candidate(row) for row in candidate_rows),
+            candidates=tuple(
+                replace(
+                    self._to_review_candidate(row),
+                    key=observational_field_key(logical.type_id, row.key),
+                )
+                for row in candidate_rows
+            ),
         )
 
     async def get_page_artifact_ref(
@@ -706,8 +714,12 @@ class SqlDocumentIngestionRepository:
             detected_document_id=logical.detected_document_id,
             extraction_run_id=logical.processing_run_id,
             source_sha256=source.sha256,
-            field_key=candidate.key,
-            value=candidate.edited_value or candidate.candidate_value,
+            field_key=observational_field_key(logical.type_id, candidate.key),
+            value=candidate.edited_value
+            if candidate.edited_value is not None
+            else candidate.candidate_value,
+            original_value=candidate.candidate_value,
+            version=candidate.version,
             page_no=candidate.page_no,
             model_reported_confidence=candidate.model_reported_confidence,
             review_state=candidate.review_state,

@@ -9,7 +9,7 @@ matter aggregate, its ORM rows, or its repositories.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 
 from src.modules.content_governance.contracts import (
     AutomationScope,
@@ -21,6 +21,7 @@ from src.modules.content_governance.contracts import (
     resolve_workflow_role,
 )
 from src.platform.errors import CapabilityDeniedError, NotFoundError
+from src.platform.request_context import RequestContext
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,67 @@ class MatterReadPort(Protocol):
     async def get_access_summary(
         self, user_id: str, matter_id: str
     ) -> MatterAccessSummary | None: ...
+
+
+SubjectKind = Literal["party", "parcel"]
+TransactionRole = Literal[
+    "transferor",
+    "transferee",
+    "owner",
+    "donor",
+    "donee",
+    "lessor",
+    "lessee",
+    "mortgagor",
+    "mortgagee",
+    "other",
+]
+
+
+@dataclass(frozen=True)
+class MatterSubjectReference:
+    id: str
+    user_id: str
+    matter_id: str
+    kind: SubjectKind
+    ordinal: int
+
+
+@dataclass(frozen=True)
+class TransactionPartyRole:
+    subject_id: str
+    role: TransactionRole
+
+
+@dataclass(frozen=True)
+class MatterTransactionReference:
+    id: str
+    user_id: str
+    matter_id: str
+    ordinal: int
+    parcel_subject_ids: tuple[str, ...] = ()
+    party_roles: tuple[TransactionPartyRole, ...] = ()
+    version: int = 1
+
+
+class MatterScopePort(Protocol):
+    async def lock(self, ctx: RequestContext, matter_id: str) -> None:
+        """Serialize scope/review mutations in this matter until transaction end."""
+        ...
+
+    async def validate_scope(
+        self,
+        ctx: RequestContext,
+        matter_id: str,
+        *,
+        transaction_id: str | None,
+        subject_id: str | None,
+        subject_kind: SubjectKind | None = None,
+    ) -> None: ...
+
+    async def get_transaction(
+        self, ctx: RequestContext, matter_id: str, transaction_id: str
+    ) -> MatterTransactionReference: ...
 
 
 def workflow_role_for(

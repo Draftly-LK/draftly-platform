@@ -82,6 +82,64 @@ class MatterRow(Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
 
+class MatterSubjectRow(Base):
+    """Structural matter-local reference; raw party identity belongs to party."""
+
+    __tablename__ = "matter_subjects"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "matter_id", "kind", "ordinal", name="uq_matter_subject_ordinal"
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), ForeignKey("matters.id"), nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class MatterTransactionRow(Base):
+    __tablename__ = "matter_transactions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "matter_id", "ordinal", name="uq_matter_transaction_ordinal"),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), ForeignKey("matters.id"), nullable=False)
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    parcel_subject_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    party_roles: Mapped[list[dict[str, str]]] = mapped_column(JSON, nullable=False, default=list)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class MatterTransactionRevisionRow(Base):
+    __tablename__ = "matter_transaction_revisions"
+    __table_args__ = (
+        UniqueConstraint("transaction_id", "version", name="uq_transaction_revision"),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    transaction_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("matter_transactions.id"), nullable=False
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    parcel_subject_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    party_roles: Mapped[list[dict[str, str]]] = mapped_column(JSON, nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class MatterClassificationRow(Base):
     """Append-only classification history.
 

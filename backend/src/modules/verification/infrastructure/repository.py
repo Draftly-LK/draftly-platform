@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.content_governance.contracts import (
@@ -67,6 +67,10 @@ def _to_evidence(row: EvidenceReferenceRow) -> EvidenceReference:
         region_type=EvidenceRegionType(row.region_type) if row.region_type else None,
         extraction_run_id=row.extraction_run_id,
         created_at=row.created_at,
+        page_text=row.page_text,
+        precision=row.precision or "page",
+        candidate_version=row.candidate_version,
+        candidate_id=row.candidate_id,
     )
 
 
@@ -80,6 +84,12 @@ def _to_fact(row: ExtractedFactRow) -> ExtractedFact:
         transaction_id=row.transaction_id,
         scope_status=row.scope_status or "legacy-unassigned",
         evidence_stale=bool(row.evidence_stale),
+        original_value=row.original_value,
+        origin=row.origin or "legacy",
+        source_candidate_id=row.source_candidate_id,
+        source_candidate_version=row.source_candidate_version,
+        lineage_id=row.lineage_id,
+        manual_reason=row.manual_reason,
         value=row.value,
         normalized_value=row.normalized_value,
         status=FactStatus(row.status),
@@ -104,6 +114,128 @@ class SqlVerificationRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def list_scope(
+        self,
+        user_id: str,
+        matter_id: str,
+        fact_type_id: str,
+        transaction_id: str | None,
+        subject_id: str | None,
+    ) -> list[ExtractedFact]:
+        rows = (
+            await self._session.execute(
+                select(ExtractedFactRow)
+                .where(
+                    ExtractedFactRow.user_id == user_id,
+                    ExtractedFactRow.matter_id == matter_id,
+                    ExtractedFactRow.fact_type_id == fact_type_id,
+                    ExtractedFactRow.transaction_id == transaction_id,
+                    ExtractedFactRow.subject_id == subject_id,
+                    ExtractedFactRow.superseded_by_fact_id.is_(None),
+                    ExtractedFactRow.status.not_in(("SUPERSEDED", "REJECTED")),
+                )
+                .order_by(ExtractedFactRow.id)
+            )
+        ).scalars()
+        return [_to_fact(row) for row in rows]
+
+    async def list_page(
+        self, user_id: str, matter_id: str, *, after: str | None, limit: int
+    ) -> list[ExtractedFact]:
+        query = select(ExtractedFactRow).where(
+            ExtractedFactRow.user_id == user_id,
+            ExtractedFactRow.matter_id == matter_id,
+            ExtractedFactRow.superseded_by_fact_id.is_(None),
+        )
+        if after:
+            query = query.where(ExtractedFactRow.id > after)
+        return [
+            _to_fact(row)
+            for row in (
+                await self._session.execute(query.order_by(ExtractedFactRow.id).limit(limit))
+            ).scalars()
+        ]
+
+    async def by_candidate(
+        self, user_id: str, matter_id: str, candidate_id: str
+    ) -> ExtractedFact | None:
+        row = (
+            await self._session.execute(
+                select(ExtractedFactRow)
+                .where(
+                    ExtractedFactRow.user_id == user_id,
+                    ExtractedFactRow.matter_id == matter_id,
+                    ExtractedFactRow.source_candidate_id == candidate_id,
+                    ExtractedFactRow.superseded_by_fact_id.is_(None),
+                )
+                .order_by(ExtractedFactRow.created_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        return _to_fact(row) if row else None
+
+    async def history(
+        self, user_id: str, matter_id: str, lineage_id: str, limit: int, *, after: str | None = None
+    ) -> list[ExtractedFact]:
+        query = select(ExtractedFactRow).where(
+            ExtractedFactRow.user_id == user_id,
+            ExtractedFactRow.matter_id == matter_id,
+            or_(ExtractedFactRow.lineage_id == lineage_id, ExtractedFactRow.id == lineage_id),
+        )
+        if after:
+            anchor = (
+                await self._session.execute(query.where(ExtractedFactRow.id == after))
+            ).scalar_one_or_none()
+            if anchor is None:
+                from src.platform.api.pagination import InvalidCursorError
+
+                raise InvalidCursorError()
+            query = query.where(
+                tuple_(ExtractedFactRow.created_at, ExtractedFactRow.id)
+                > (anchor.created_at, anchor.id)
+            )
+        rows = (
+            await self._session.execute(
+                query.order_by(ExtractedFactRow.created_at, ExtractedFactRow.id).limit(limit)
+            )
+        ).scalars()
+        return [_to_fact(row) for row in rows]
+
+    async def decisions_for(
+        self, user_id: str, matter_id: str, fact_ids: tuple[str, ...], limit: int
+    ) -> list[ReviewDecision]:
+        rows = (
+            await self._session.execute(
+                select(ReviewDecisionRow)
+                .where(
+                    ReviewDecisionRow.user_id == user_id,
+                    ReviewDecisionRow.matter_id == matter_id,
+                    ReviewDecisionRow.target_type == "FACT",
+                    ReviewDecisionRow.target_id.in_(fact_ids),
+                )
+                .order_by(ReviewDecisionRow.created_at, ReviewDecisionRow.id)
+                .limit(limit)
+            )
+        ).scalars()
+        return [
+            ReviewDecision(
+                id=row.id,
+                user_id=row.user_id,
+                matter_id=row.matter_id,
+                target_type=ReviewTargetType.FACT,
+                target_id=row.target_id,
+                decision=row.decision,
+                reviewer_id=row.reviewer_id,
+                reviewer_role=row.reviewer_role,
+                created_at=row.created_at,
+                previous_value=row.previous_value,
+                new_value=row.new_value,
+                reason=row.reason,
+                resolved_fact_ids=tuple(row.resolved_fact_ids),
+            )
+            for row in rows
+        ]
 
     async def create_evidence(self, evidence: EvidenceReference) -> EvidenceReference:
         box = evidence.bounding_box
@@ -130,6 +262,10 @@ class SqlVerificationRepository:
             region_type=evidence.region_type.value if evidence.region_type else None,
             extraction_run_id=evidence.extraction_run_id,
             created_at=evidence.created_at,
+            page_text=evidence.page_text,
+            precision=evidence.precision,
+            candidate_version=evidence.candidate_version,
+            candidate_id=evidence.candidate_id,
         )
         self._session.add(row)
         await self._session.flush()
@@ -159,6 +295,12 @@ class SqlVerificationRepository:
             transaction_id=fact.transaction_id,
             scope_status=fact.scope_status,
             evidence_stale=fact.evidence_stale,
+            original_value=fact.original_value,
+            origin=fact.origin,
+            source_candidate_id=fact.source_candidate_id,
+            source_candidate_version=fact.source_candidate_version,
+            lineage_id=fact.lineage_id,
+            manual_reason=fact.manual_reason,
             value=fact.value,
             normalized_value=fact.normalized_value,
             status=fact.status.value,
@@ -274,6 +416,7 @@ class SqlVerificationRepository:
             reviewer_role=decision.reviewer_role,
             human_decision=human,
             created_at=decision.created_at,
+            resolved_fact_ids=list(decision.resolved_fact_ids),
         )
         self._session.add(row)
         await self._session.flush()
@@ -302,6 +445,7 @@ class SqlVerificationRepository:
                 reviewer_id=row.reviewer_id,
                 reviewer_role=row.reviewer_role,
                 created_at=row.created_at,
+                resolved_fact_ids=tuple(row.resolved_fact_ids or ()),
             )
             for row in result.scalars().all()
         ]

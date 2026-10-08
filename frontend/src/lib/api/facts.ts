@@ -10,6 +10,7 @@ export interface ApiMatterFact {
     | "REVIEW_REQUIRED"
     | "LAWYER_CONFIRMED"
     | "LOCKED_FOR_FORM"
+    | "REJECTED"
     | "SUPERSEDED";
 }
 

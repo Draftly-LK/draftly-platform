@@ -2655,6 +2655,93 @@
         "title": "DuplicateProbeResponse",
         "type": "object"
       },
+      "EvidenceInput": {
+        "additionalProperties": false,
+        "properties": {
+          "candidateId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidateid"
+          },
+          "candidateVersion": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidateversion"
+          },
+          "detectedDocumentId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detecteddocumentid"
+          },
+          "extractionRunId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extractionrunid"
+          },
+          "pageNumber": {
+            "minimum": 1.0,
+            "title": "Pagenumber",
+            "type": "integer"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
+          },
+          "sourceFileId": {
+            "maxLength": 64,
+            "title": "Sourcefileid",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "pattern": "^[a-fA-F0-9]{64}$",
+            "title": "Sourcesha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceFileId",
+          "pageNumber",
+          "sourceSha256"
+        ],
+        "title": "EvidenceInput",
+        "type": "object"
+      },
       "ExportFormRequest": {
         "additionalProperties": false,
         "description": "``format`` selects a record, never a document. See the module docstring.",
@@ -2723,6 +2810,72 @@
         "title": "FactCandidateRead",
         "type": "object"
       },
+      "FactDecisionRead": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "newValue": {
+            "title": "Newvalue"
+          },
+          "previousValue": {
+            "title": "Previousvalue"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "resolvedFactIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Resolvedfactids",
+            "type": "array"
+          },
+          "reviewerId": {
+            "title": "Reviewerid",
+            "type": "string"
+          },
+          "reviewerRole": {
+            "title": "Reviewerrole",
+            "type": "string"
+          },
+          "targetId": {
+            "title": "Targetid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "targetId",
+          "decision",
+          "reviewerId",
+          "reviewerRole",
+          "createdAt",
+          "previousValue",
+          "newValue",
+          "reason",
+          "resolvedFactIds"
+        ],
+        "title": "FactDecisionRead",
+        "type": "object"
+      },
       "FactEvidenceRead": {
         "properties": {
           "boundingBox": {
@@ -2735,6 +2888,28 @@
               }
             ]
           },
+          "candidateId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidateid"
+          },
+          "candidateVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidateversion"
+          },
           "detectedDocumentId": {
             "anyOf": [
               {
@@ -2746,6 +2921,17 @@
             ],
             "title": "Detecteddocumentid"
           },
+          "extractionRunId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extractionrunid"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -2754,9 +2940,45 @@
             "title": "Pagenumber",
             "type": "integer"
           },
+          "pageText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagetext"
+          },
+          "precision": {
+            "default": "page",
+            "enum": [
+              "page",
+              "text"
+            ],
+            "title": "Precision",
+            "type": "string"
+          },
           "sourceFileId": {
             "title": "Sourcefileid",
             "type": "string"
+          },
+          "sourceSha256": {
+            "default": "",
+            "title": "Sourcesha256",
+            "type": "string"
+          },
+          "supportingText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supportingtext"
           }
         },
         "required": [
@@ -2769,6 +2991,34 @@
         "title": "FactEvidenceRead",
         "type": "object"
       },
+      "FactHistoryRead": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/FactDecisionRead"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FactRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
+          }
+        },
+        "required": [
+          "items",
+          "decisions",
+          "page"
+        ],
+        "title": "FactHistoryRead",
+        "type": "object"
+      },
       "FactListRead": {
         "properties": {
           "items": {
@@ -2777,6 +3027,9 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
           }
         },
         "required": [
@@ -2787,6 +3040,13 @@
       },
       "FactRead": {
         "properties": {
+          "conflictFactIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflictfactids",
+            "type": "array"
+          },
           "createdAt": {
             "title": "Createdat",
             "type": "string"
@@ -2797,6 +3057,11 @@
             },
             "title": "Evidence",
             "type": "array"
+          },
+          "evidenceStale": {
+            "default": false,
+            "title": "Evidencestale",
+            "type": "boolean"
           },
           "factTypeId": {
             "title": "Facttypeid",
@@ -2821,6 +3086,28 @@
             "title": "Labelkey",
             "type": "string"
           },
+          "lineageId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineageid"
+          },
+          "manualReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manualreason"
+          },
           "matterId": {
             "title": "Matterid",
             "type": "string"
@@ -2835,6 +3122,19 @@
               }
             ],
             "title": "Modelreportedconfidence"
+          },
+          "origin": {
+            "default": "legacy",
+            "enum": [
+              "legacy",
+              "machine",
+              "lawyer"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "originalValue": {
+            "title": "Originalvalue"
           },
           "reviewedAt": {
             "anyOf": [
@@ -2858,9 +3158,84 @@
             ],
             "title": "Reviewedby"
           },
-          "status": {
-            "title": "Status",
+          "scopeStatus": {
+            "default": "legacy-unassigned",
+            "enum": [
+              "legacy-unassigned",
+              "unassigned",
+              "assigned"
+            ],
+            "title": "Scopestatus",
             "type": "string"
+          },
+          "scopeToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopetoken"
+          },
+          "sourceCandidateId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcecandidateid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FactStatus"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "supersededByFactId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersededbyfactid"
+          },
+          "supersedesFactId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedesfactid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
           },
           "value": {
             "title": "Value"
@@ -2887,6 +3262,21 @@
         ],
         "title": "FactRead",
         "type": "object"
+      },
+      "FactStatus": {
+        "description": "§10.5 — extracted-fact lifecycle.\n\nA critical fact reaches ``LAWYER_CONFIRMED`` only through a human decision,\nwhatever the model confidence (§6.4).",
+        "enum": [
+          "EXTRACTED_CANDIDATE",
+          "REJECTED",
+          "CORROBORATED",
+          "CONFLICTED",
+          "REVIEW_REQUIRED",
+          "LAWYER_CONFIRMED",
+          "LOCKED_FOR_FORM",
+          "SUPERSEDED"
+        ],
+        "title": "FactStatus",
+        "type": "string"
       },
       "FactVersionPinRead": {
         "properties": {
@@ -4436,6 +4826,83 @@
         "title": "LinkDocumentRequest",
         "type": "object"
       },
+      "ManualFactRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "factTypeId": {
+            "maxLength": 128,
+            "title": "Facttypeid",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "factTypeId",
+          "value",
+          "reason"
+        ],
+        "title": "ManualFactRequest",
+        "type": "object"
+      },
       "MarkStaleRequest": {
         "additionalProperties": false,
         "description": "Re-evaluate the form against its current inputs.\n\n``reason`` declares the one upstream change this module cannot observe — a\nchecklist recompile. Fact and template staleness are always recomputed\nserver-side and take precedence, so a declared reason can never talk a form\nout of the staleness it actually has.",
@@ -5494,6 +5961,46 @@
         "title": "Page[PlanRead]",
         "type": "object"
       },
+      "Page_SubjectRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "Page[SubjectRead]",
+        "type": "object"
+      },
+      "Page_TransactionRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "Page[TransactionRead]",
+        "type": "object"
+      },
       "Page_UsageReadSchema_": {
         "properties": {
           "items": {
@@ -5818,6 +6325,38 @@
           "party_id"
         ],
         "title": "PartyRefSchema",
+        "type": "object"
+      },
+      "PartyRoleRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "enum": [
+              "transferor",
+              "transferee",
+              "owner",
+              "donor",
+              "donee",
+              "lessor",
+              "lessee",
+              "mortgagor",
+              "mortgagee",
+              "other"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "subjectId": {
+            "maxLength": 64,
+            "title": "Subjectid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subjectId",
+          "role"
+        ],
+        "title": "PartyRoleRequest",
         "type": "object"
       },
       "PatchPartyRequest": {
@@ -7153,6 +7692,100 @@
         "title": "ReviewCandidateRead",
         "type": "object"
       },
+      "ReviewFactRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedScopeToken": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedscopetoken"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "resolveFactIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Resolvefactids",
+            "type": "array"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "title": "ReviewFactRequest",
+        "type": "object"
+      },
       "ReviewPageRead": {
         "properties": {
           "classificationConfidence": {
@@ -8182,6 +8815,62 @@
         "title": "SourceProcessingStatusRead",
         "type": "object"
       },
+      "SubjectRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "party",
+              "parcel"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "matterId": {
+            "title": "Matterid",
+            "type": "string"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "userId": {
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "userId",
+          "matterId",
+          "ordinal"
+        ],
+        "title": "SubjectRead",
+        "type": "object"
+      },
+      "SubjectRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "party",
+              "parcel"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SubjectRequest",
+        "type": "object"
+      },
       "SubscriptionRead": {
         "properties": {
           "cancelAtPeriodEnd": {
@@ -8290,6 +8979,79 @@
           "supersededBySourceFileId"
         ],
         "title": "SupersedeSourceFileRequest",
+        "type": "object"
+      },
+      "TransactionRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "matterId": {
+            "title": "Matterid",
+            "type": "string"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "parcelSubjectIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Parcelsubjectids",
+            "type": "array"
+          },
+          "partyRoles": {
+            "items": {
+              "$ref": "#/components/schemas/PartyRoleRequest"
+            },
+            "maxItems": 100,
+            "title": "Partyroles",
+            "type": "array"
+          },
+          "userId": {
+            "title": "Userid",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "matterId",
+          "ordinal",
+          "version"
+        ],
+        "title": "TransactionRead",
+        "type": "object"
+      },
+      "TransactionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "parcelSubjectIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Parcelsubjectids",
+            "type": "array"
+          },
+          "partyRoles": {
+            "items": {
+              "$ref": "#/components/schemas/PartyRoleRequest"
+            },
+            "maxItems": 100,
+            "title": "Partyroles",
+            "type": "array"
+          }
+        },
+        "title": "TransactionRequest",
         "type": "object"
       },
       "UpdateProfileRequest": {
@@ -13030,7 +13792,6 @@
     },
     "/api/v1/matters/{matter_id}/facts": {
       "get": {
-        "description": "Return every live fact in a matter, including unconfirmed states.",
         "operationId": "list_facts_api_v1_matters__matter_id__facts_get",
         "parameters": [
           {
@@ -13040,6 +13801,34 @@
             "schema": {
               "title": "Matter Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
@@ -13071,6 +13860,332 @@
           }
         ],
         "summary": "List Facts",
+        "tags": [
+          "facts"
+        ]
+      },
+      "post": {
+        "operationId": "add_manual_fact_api_v1_matters__matter_id__facts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualFactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Manual Fact",
+        "tags": [
+          "facts"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/facts/{fact_id}": {
+      "get": {
+        "operationId": "get_fact_api_v1_matters__matter_id__facts__fact_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fact_id",
+            "required": true,
+            "schema": {
+              "title": "Fact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Fact",
+        "tags": [
+          "facts"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/facts/{fact_id}/history": {
+      "get": {
+        "operationId": "fact_history_api_v1_matters__matter_id__facts__fact_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fact_id",
+            "required": true,
+            "schema": {
+              "title": "Fact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactHistoryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Fact History",
+        "tags": [
+          "facts"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/facts/{fact_id}/{action}": {
+      "post": {
+        "operationId": "decide_fact_api_v1_matters__matter_id__facts__fact_id___action__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fact_id",
+            "required": true,
+            "schema": {
+              "title": "Fact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "enum": [
+                "accept",
+                "correct",
+                "reject",
+                "associate"
+              ],
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewFactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decide Fact",
         "tags": [
           "facts"
         ]
@@ -13908,6 +15023,155 @@
         ]
       }
     },
+    "/api/v1/matters/{matter_id}/subjects": {
+      "get": {
+        "operationId": "list_subjects_api_v1_matters__matter_id__subjects_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SubjectRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Subjects",
+        "tags": [
+          "matters",
+          "matter scope"
+        ]
+      },
+      "post": {
+        "operationId": "create_subject_api_v1_matters__matter_id__subjects_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubjectRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Subject",
+        "tags": [
+          "matters",
+          "matter scope"
+        ]
+      }
+    },
     "/api/v1/matters/{matter_id}/subtype": {
       "post": {
         "description": "Responsible-lawyer-only. Selecting a family is not selecting an instrument.",
@@ -13979,6 +15243,255 @@
         "summary": "Confirm Subtype",
         "tags": [
           "matters"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/transactions": {
+      "get": {
+        "operationId": "list_transactions_api_v1_matters__matter_id__transactions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TransactionRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Transactions",
+        "tags": [
+          "matters",
+          "matter scope"
+        ]
+      },
+      "post": {
+        "operationId": "create_transaction_api_v1_matters__matter_id__transactions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Transaction",
+        "tags": [
+          "matters",
+          "matter scope"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/transactions/{transaction_id}/associations": {
+      "post": {
+        "operationId": "associate_transaction_api_v1_matters__matter_id__transactions__transaction_id__associations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Associate Transaction",
+        "tags": [
+          "matters",
+          "matter scope"
         ]
       }
     },

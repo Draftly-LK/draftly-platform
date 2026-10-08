@@ -301,6 +301,66 @@ invalidation; interpretation refresh and downstream propagation are separate
 workflow work. V0 uses the approved user/matter boundary; organization support
 is deferred.
 
+### Canonical register commands (2026-10-09)
+
+The approved lawyer-led workflow supersedes the earlier proposed manual/reject
+defaults below. The canonical owner is verification. `GET /matters/{matterId}/facts`
+merges document-owned processing observations and persisted fact successors.
+Lists and `GET /facts/{factId}/history` use signed cursors, default 50/100 and
+maximum 100 rows. History is chronological and retains machine originals,
+corrections, rejection, reasons, reviewers, timestamps and resolved alternatives.
+The register exposes `origin`, `originalValue`, `sourceCandidateId`, `lineageId`,
+transaction/subject references, `scopeStatus`, `evidenceStale`, `scopeToken`,
+`conflictFactIds`, predecessor and successor IDs. Historical IDs stay addressable.
+
+`POST /matters/{matterId}/facts` creates a lawyer-provided `REVIEW_REQUIRED` fact
+with a required reason; evidence is optional and author identity grants no
+approval. `POST /facts/{factId}/{accept|correct|reject|associate}` requires
+`Idempotency-Key` and `If-Match` (the integer version in quotes). Correction,
+rejection and association require reasons. Association creates an unverified
+successor and requires matter-owned references. Acceptance/correction requires
+assigned scope, current readable evidence, current `expectedScopeToken`, and
+the exact set of differing live alternatives in `resolveFactIds` with a reason.
+An arriving competing fact changes the token and refuses the stale decision.
+Negative conclusions retain the current-search-evidence guard.
+
+All mutations authorize the current RTA capability and practising status inside
+the application service, including replay. The matter lock serializes review
+and scope writes; shared `SqlIdempotencyStore` fingerprints the request. Retries
+return the same fact ID without another successor/decision. The returned row
+reflects later supersession if that result has since been reviewed again.
+Audit events contain reference IDs, with decision text confined to verification.
+Mutation, decision, audit and replay records share the request transaction.
+
+Document review delegates edit/approval to these same policies. Its stable
+candidate adapter prevents retries following a newer successor into a second
+decision. An edit remains unverified; editing a confirmed fact requires canonical
+correction. Document-owned machine rows and immutable source bytes are preserved.
+
+`DocumentFactPort` validates user/matter, immutable source hash, page bounds,
+candidate version/relationship, current source and document interpretation, and
+readable original/page artifacts. Evidence returns actual OCR text and page
+precision; text precision requires an exact supporting substring. No bounding
+box is synthesized. Every existing linked source is revalidated before acceptance.
+
+NIC fields are holder observations: `holderNic`, `holderNameEn`, `holderNameSi`,
+`holderDateOfBirth`, `holderAddress`; survey plans retain `surveyorRegistration`.
+They introduce no global required-form facts. They remain subject to explicit
+human evidence review and practising authorization. Existing role-specific
+critical identity types/capabilities and prescribed form mappings are unchanged;
+a later explicit role binding must preserve their critical policy. Legacy NIC
+`transfereeNic` is an observational alias only when the source owner identifies
+the document as NIC. The reviewed migration preserves historical types, values
+and decisions, attaches original candidate metadata, and marks that narrow
+legacy NIC set unassigned. Register reads display the holder alias; the confirmed
+projection withholds it until explicit association/review. Downgrade removes
+additive columns/tables but keeps that conservative `scope_status` withholding.
+
+Task 4 implements `FactEvidenceInvalidationPort` using the additive
+`FactEvidenceInvalidation` reference contract and existing `evidence_stale`
+eligibility seam. Interpretation refresh, check/readiness projection and role
+binding are subsequent tasks, not authority granted by these commands.
+
 ### Earlier decisions
 
 Recommended defaults in bold; confirm or override before coding.

@@ -11,8 +11,42 @@ from __future__ import annotations
 from typing import Protocol
 
 from src.modules.content_governance.contracts import CompiledChecklist, CompilerInput
+from src.modules.matter.contracts import (
+    MatterSubjectReference,
+    MatterTransactionReference,
+    SubjectKind,
+    TransactionPartyRole,
+)
 from src.modules.matter.domain.models import IntakeAnswer, Matter
 from src.modules.matter.domain.routing import MatterFactSnapshot
+
+
+class MatterScopeRepository(Protocol):
+    async def lock(self, user_id: str, matter_id: str) -> None: ...
+    async def subject(
+        self, user_id: str, matter_id: str, subject_id: str
+    ) -> MatterSubjectReference | None: ...
+    async def transaction(
+        self, user_id: str, matter_id: str, transaction_id: str
+    ) -> MatterTransactionReference | None: ...
+    async def subjects(
+        self, user_id: str, matter_id: str, limit: int, after: str | None
+    ) -> list[MatterSubjectReference]: ...
+    async def transactions(
+        self, user_id: str, matter_id: str, limit: int, after: str | None
+    ) -> list[MatterTransactionReference]: ...
+    async def create_subject(
+        self, user_id: str, matter_id: str, kind: SubjectKind
+    ) -> MatterSubjectReference: ...
+    async def save_transaction(
+        self,
+        user_id: str,
+        matter_id: str,
+        parcels: tuple[str, ...],
+        roles: tuple[TransactionPartyRole, ...],
+        transaction_id: str | None = None,
+        expected_version: int | None = None,
+    ) -> MatterTransactionReference: ...
 
 
 class MatterRepository(Protocol):

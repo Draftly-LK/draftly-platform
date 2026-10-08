@@ -40,7 +40,9 @@ from src.platform.request_context import RequestContext
 if TYPE_CHECKING:
     from src.modules.auth.application.auth_service import AuthService
     from src.modules.document.application.review_service import DocumentReviewService
+    from src.modules.matter.application.scope_service import MatterScopeService
     from src.modules.matter_agent.application.agent_service import AgentService
+    from src.modules.verification.application.review_service import FactReviewService
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -522,6 +524,44 @@ def build_fact_query_service(session: AsyncSession) -> FactQueryService:
     return FactQueryService(repository=SqlVerificationRepository(session))
 
 
+def build_matter_scope_service(session: AsyncSession) -> MatterScopeService:
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.matter.application.scope_service import MatterScopeService
+    from src.modules.matter.infrastructure.scope_repository import SqlMatterScopeRepository
+    from src.platform.db.idempotency import SqlIdempotencyStore
+
+    return MatterScopeService(
+        SqlMatterScopeRepository(session),
+        build_matter_service(session),
+        AuditService(repository=SqlAuditRepository(session)),
+        SqlIdempotencyStore(session),
+    )
+
+
+def build_fact_review_service(session: AsyncSession) -> FactReviewService:
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.document.infrastructure.fact_reader import SqlDocumentFactReader
+    from src.modules.verification.application.review_service import FactReviewService
+    from src.modules.verification.infrastructure.repository import (
+        SqlConfirmedFactReader,
+        SqlVerificationRepository,
+    )
+    from src.platform.db.idempotency import SqlIdempotencyStore
+
+    return FactReviewService(
+        SqlVerificationRepository(session),
+        build_matter_service(session),
+        build_matter_scope_service(session),
+        SqlDocumentFactReader(session, build_source_file_storage()),
+        AuthPractisingNotaryAdapter(_build_agent_authorizer(session)),
+        SqlIdempotencyStore(session),
+        AuditService(repository=SqlAuditRepository(session)),
+        SqlConfirmedFactReader(session),
+    )
+
+
 def build_draft_service(session: AsyncSession) -> DraftService:
     """Assemble form generation and preflight.
 
@@ -835,7 +875,9 @@ def build_document_review_service(session: AsyncSession) -> DocumentReviewServic
         repository=SqlDocumentIngestionRepository(session),
         storage=build_source_file_storage(),
         audit=AuditService(repository=SqlAuditRepository(session)),
-        candidate_approval=VerificationCandidateApprovalAdapter(SqlVerificationRepository(session)),
+        candidate_approval=VerificationCandidateApprovalAdapter(
+            build_fact_review_service(session), SqlVerificationRepository(session)
+        ),
     )
 
 

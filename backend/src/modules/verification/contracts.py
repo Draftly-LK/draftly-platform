@@ -58,6 +58,34 @@ class EvidenceReadPort(Protocol):
 
 
 @dataclass(frozen=True)
+class FactEvidenceInvalidation:
+    """Document lifecycle supplies immutable reference IDs, never fact values.
+
+    Implemented by Task 4. Consumers already withhold evidence_stale facts;
+    refresh must create new reviewable observations rather than clear history.
+    """
+
+    source_file_id: str
+    detected_document_ids: tuple[str, ...] = ()
+    extraction_run_ids: tuple[str, ...] = ()
+    reason: str = "interpretation-changed"
+
+
+class FactEvidenceInvalidationPort(Protocol):
+    async def invalidate(
+        self,
+        *,
+        user_id: str,
+        matter_id: str,
+        actor_id: str,
+        change: FactEvidenceInvalidation,
+        correlation_id: str,
+    ) -> tuple[str, ...]:
+        """Mark affected live facts stale in the caller's transaction; return IDs."""
+        ...
+
+
+@dataclass(frozen=True)
 class CandidateApprovalInput:
     candidate_id: str
     user_id: str
@@ -71,6 +99,9 @@ class CandidateApprovalInput:
     page_no: int
     model_reported_confidence: float
     review_state: str
+    version: int = 1
+    correlation_id: str = ""
+    original_value: str | None = None
 
 
 class CandidateApprovalPort(Protocol):
@@ -79,3 +110,26 @@ class CandidateApprovalPort(Protocol):
     async def approve(
         self, candidate: CandidateApprovalInput, *, reviewer_id: str, reviewer_role: str
     ) -> str: ...
+
+    async def project(
+        self, user_id: str, matter_id: str, candidate_id: str
+    ) -> CandidateReviewProjection | None: ...
+
+    async def edit(
+        self,
+        *,
+        user_id: str,
+        matter_id: str,
+        candidate_id: str,
+        value: str,
+        expected_version: int,
+        reviewer_role: str,
+        correlation_id: str,
+    ) -> CandidateReviewProjection: ...
+
+
+@dataclass(frozen=True)
+class CandidateReviewProjection:
+    value: str
+    review_state: str
+    version: int

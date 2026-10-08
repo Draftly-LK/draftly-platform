@@ -607,6 +607,25 @@ edit derived values.
 
 ## 14. Decisions to confirm before coding
 
+### Approved matter scope records (2026-10-09)
+
+`MatterSubjectReference` is a stable matter-local `party` or `parcel` reference
+with an ordinal, not a raw identity record. Protected party identity remains
+party-owned. `MatterTransactionReference` records parcel subject IDs and explicit
+party-role associations. V0 validates the owner and matter for every reference;
+organization support remains deferred. There is no automatic cross-matter merge
+or implied transferee assignment from a source identity card.
+
+`GET/POST /matters/{matterId}/subjects` and `/transactions` expose these records.
+List reads accept bounded `limit` (maximum 100) and signed `cursor`.
+`POST /transactions/{transactionId}/associations` replaces the association set
+with `If-Match`, appends a transaction revision, and returns an ETag. Creating
+and association commands require `Idempotency-Key`, authorize `CAP_MATTER_ROUTE`,
+and append reference-only audit in the request transaction. They store no names,
+NICs or addresses. `MatterScopePort.lock` serializes these writes with canonical
+verification review; `validate_scope` and `get_transaction` are the public ports
+for other owners. The database migration ships with these records.
+
 1. Use `inquiry | active | closed | archived` as the matter lifecycle.
 2. Keep the ten canonical workflow phases in `task_service`.
 3. Expose phase, blocking, and readiness through a rebuildable matter

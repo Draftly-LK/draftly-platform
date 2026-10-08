@@ -86,6 +86,25 @@ def _f(
 
 
 FACT_TYPES: tuple[FactTypeDefinition, ...] = (
+    # Holder observations never establish a transaction role or a form requirement.
+    _f("rta.party.holder_nic", "holderNic", FactSubject.PARTY, FactValueKind.IDENTIFIER, False),
+    _f("rta.party.holder_name_en", "holderNameEn", FactSubject.PARTY, FactValueKind.TEXT, False),
+    _f("rta.party.holder_name_si", "holderNameSi", FactSubject.PARTY, FactValueKind.TEXT, False),
+    _f(
+        "rta.party.holder_date_of_birth",
+        "holderDateOfBirth",
+        FactSubject.PARTY,
+        FactValueKind.DATE,
+        False,
+    ),
+    _f("rta.party.holder_address", "holderAddress", FactSubject.PARTY, FactValueKind.TEXT, False),
+    _f(
+        "rta.parcel.surveyor_registration",
+        "surveyorRegistration",
+        FactSubject.PARCEL,
+        FactValueKind.IDENTIFIER,
+        False,
+    ),
     # ── Regime and instrument ────────────────────────────────────────────────
     _f("rta.regime.coverage_confirmed", None, FactSubject.REGIME, FactValueKind.BOOLEAN, True),
     _f("rta.instrument.exact_subtype", None, FactSubject.INSTRUMENT, FactValueKind.ENUM, True),

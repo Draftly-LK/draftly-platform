@@ -632,6 +632,7 @@ async def edit_candidate_field(
         value=body.value,
         expected_version=expected_version,
         correlation_id=ctx.correlation_id,
+        reviewer_role=ctx.account_role.value,
     )
     return _to_candidate_read(saved)
 

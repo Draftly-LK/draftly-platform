@@ -1,5 +1,28 @@
 # document_service — implementation design
 
+## Canonical fact register contract (2026-10-09)
+
+`document.contracts.DocumentFactPort` exposes bounded candidate observations and
+validates source evidence for verification-owned decisions. Processing rows and
+source bytes remain document-owned and immutable through human review. Validation
+checks owner/matter, pinned SHA-256, source/candidate state, page bounds, current
+document class/group relationship and readable artifacts. It returns page OCR
+and an exact supporting text span only when that substring exists in actual OCR;
+page-level fallback never manufactures a bounding box.
+
+The legacy document review edit/approval surface now delegates to canonical
+verification commands. Edits persist unverified successors; acceptance requires
+explicit matter scope, evidence review, capability and practising authorization.
+The document review read overlays canonical value/status/version while retaining
+the original machine candidate. A generic NIC identifies its holder, not a
+transferee. Legacy `transfereeNic` observations from NIC sources read as `holderNic`;
+the prescribed Form 8 key is unchanged. Holder name (English/Sinhala), birth date,
+address and surveyor registration observations are retained in the register.
+
+Interpretation generation/refresh and dependent invalidation remain Task 4.
+It must invoke verification's public `FactEvidenceInvalidationPort` in the same
+transaction and honor the matter scope lock used by review commands.
+
 Companion to `backend/backend-implementation-plan-v0.md`. One markdown per
 service under `backend/docs/services/`. This is the first.
 
