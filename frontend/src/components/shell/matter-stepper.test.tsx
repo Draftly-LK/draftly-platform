@@ -16,6 +16,26 @@ describe("MatterStepper", () => {
     expect(screen.getByText("Step 3 of 6: Review")).toBeTruthy();
   });
 
+  it("shows Drafting once a form exists, even while the matter is still in review", () => {
+    renderWithIntl(<MatterStepper state="LEGAL_REVIEW" hasForm />);
+    const steps = screen.getAllByRole("listitem");
+    expect(steps[3]?.getAttribute("aria-current")).toBe("step");
+    expect(steps[2]?.textContent).toContain("Review (completed)");
+    expect(screen.getByText("Step 4 of 6: Drafting")).toBeTruthy();
+  });
+
+  it("never moves a matter backwards or off a hold because a form exists", () => {
+    renderWithIntl(<MatterStepper state="APPROVAL_PENDING" hasForm />);
+    expect(screen.getByText("Step 5 of 6: Approval")).toBeTruthy();
+  });
+
+  it("ticks Approval once the form is approved, leaving the export", () => {
+    renderWithIntl(<MatterStepper state="APPROVED" />);
+    const steps = screen.getAllByRole("listitem");
+    expect(steps[4]?.textContent).toContain("Approval (completed)");
+    expect(screen.getByText("Step 6 of 6: Export")).toBeTruthy();
+  });
+
   it("shows a hold on the stage it interrupted, in words as well as colour", () => {
     renderWithIntl(<MatterStepper state="LITIGATION_HOLD" />);
     const current = screen.getAllByRole("listitem").find((step) => step.getAttribute("aria-current") === "step");

@@ -27,7 +27,8 @@ const STATE_STAGE: Record<RtaMatterState, MatterStage> = {
   READY_TO_DRAFT: "drafting",
   DRAFTING: "drafting",
   APPROVAL_PENDING: "approval",
-  APPROVED: "approval",
+  // Approval is done once recorded; what is left is the export.
+  APPROVED: "export",
   EXPORTED: "export",
   SUBMITTED: "export",
   REGISTERED: "export",

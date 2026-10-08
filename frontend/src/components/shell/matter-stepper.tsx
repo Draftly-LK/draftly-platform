@@ -10,18 +10,28 @@ import { STAGE_ORDER, stageForState } from "./matter-stage";
 const COMPLETE_STATES: ReadonlySet<RtaMatterState> = new Set(["REGISTERED", "CLOSED"]);
 /** Work has stopped on the current stage; it is not a different stage. */
 const HOLD_STATES: ReadonlySet<RtaMatterState> = new Set(["LITIGATION_HOLD", "CANCELLED"]);
+const DRAFTING_INDEX = STAGE_ORDER.indexOf("drafting");
 
 /**
  * Where the matter is in its six stages: numbered circles joined by a line,
  * finished stages ticked, the current one raised. Every circle carries a label
  * (visible from `sm`, read aloud on phones), and phones also get a one-line
  * "Step 2 of 6" summary, so colour is never the only cue.
+ *
+ * `hasForm`: a form can be generated while the matter is still in review (the
+ * server holds it there until every blocking checklist item is cleared), so a
+ * matter with a form shows Drafting as its current stage.
  */
-export function MatterStepper({ state }: { state: RtaMatterState }) {
+export function MatterStepper({ state, hasForm = false }: { state: RtaMatterState; hasForm?: boolean }) {
   const t = useTranslations("matterNav");
   const complete = COMPLETE_STATES.has(state);
   const hold = HOLD_STATES.has(state);
-  const currentIndex = complete ? STAGE_ORDER.length : STAGE_ORDER.indexOf(stageForState(state));
+  const stateIndex = STAGE_ORDER.indexOf(stageForState(state));
+  const currentIndex = complete
+    ? STAGE_ORDER.length
+    : hasForm && !hold
+      ? Math.max(stateIndex, DRAFTING_INDEX)
+      : stateIndex;
   const currentStage = STAGE_ORDER[Math.min(currentIndex, STAGE_ORDER.length - 1)];
 
   return (

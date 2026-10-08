@@ -163,6 +163,13 @@ class Settings(BaseSettings):
     # document to review are still reported. Does not bypass the §10A gate
     # above; that remains a separate decision.
     extraction_send_all: bool = False
+    # Demo override (local/test/ci only; see `src/demo_gates.py`): approval no
+    # longer waits on every critical fact type in the rule pack or on open
+    # checklist items, so a synthetic matter can be walked to an approved,
+    # exported form. The form's own critical fields, open legal issues and the
+    # registration-ready rules still apply. Both set-aside rules are open
+    # decisions; this switch does not decide them.
+    demo_relaxed_gates: bool = False
     # Rasterization density; recorded with each page so coordinate mapping
     # stays exact when a box-producing engine is added later (§4, §6).
     raster_dpi: int = 200
