@@ -17,32 +17,34 @@ from src.modules.document.ports import (
 #: Marker prefix tests can embed in fixture bytes: b"STUB-KIND:form8-instrument"
 _KIND_MARKER = b"STUB-KIND:"
 
-#: Deterministic sample values per kind — obviously synthetic.
+#: Deterministic sample values per kind — obviously synthetic. None of them may
+#: echo a real matter's identifiers (map, parcel, certificate, plan, amount, NIC),
+#: because these values are shown on screen in recorded demos.
 _SAMPLE_FIELDS: dict[str, dict[str, str | None]] = {
     "identity-card": {
-        "transfereeNic": "945873370V",
+        "transfereeNic": "900010002V",
         "holderNameEn": "Synthetic Person",
-        "holderDateOfBirth": "1994-01-01",
+        "holderDateOfBirth": "1990-01-01",
     },
     "title-certificate": {
-        "titleCertificateNo": "00030085090",
-        "cadastralMapNo": "520005",
-        "parcelNo": "0020",
-        "extent": "0.0153 hectares",
+        "titleCertificateNo": "00099900001",
+        "cadastralMapNo": "900001",
+        "parcelNo": "0099",
+        "extent": "0.0250 hectares",
     },
     "form8-instrument": {
         "district": "Colombo",
-        "dsDivision": "Homagama",
-        "cadastralMapNo": "520005",
-        "parcelNo": "0020",
-        "extent": "0.0153 hectares",
-        "transfereeNic": "945873370V",
-        "consideration": "Rs. 4,590,000",
+        "dsDivision": "Synthetic DS Division",
+        "cadastralMapNo": "900001",
+        "parcelNo": "0099",
+        "extent": "0.0250 hectares",
+        "transfereeNic": "900010002V",
+        "consideration": "Rs. 1,000,000",
     },
     "survey-plan": {
-        "surveyPlanNo": "2338",
-        "lotNo": "17",
-        "extent": "0.0153 hectares",
+        "surveyPlanNo": "9001",
+        "lotNo": "7",
+        "extent": "0.0250 hectares",
     },
 }
 

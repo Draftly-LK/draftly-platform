@@ -59,7 +59,7 @@ class TestNormalization:
             assert normalize_field_value(token) is None
 
     def test_real_values_survive_with_whitespace_stripped(self):
-        assert normalize_field_value("  945873370V ") == "945873370V"
+        assert normalize_field_value("  900010002V ") == "900010002V"
 
     def test_normalize_fields_covers_all_keys_and_ignores_extras(self):
         raw = {"district": "Colombo", "bogus": "x", "extent": "undetected"}
@@ -72,7 +72,7 @@ class TestNormalization:
 
 class TestValidators:
     def test_nic_formats(self):
-        assert is_valid_nic("945873370V")
+        assert is_valid_nic("900010002V")
         assert is_valid_nic("199452270054")  # 12-digit new format
         assert not is_valid_nic("bad-nic")
         assert not is_valid_nic("12345")
@@ -82,11 +82,11 @@ class TestValidators:
         assert not is_valid_iso_date("01/01/1994")
 
     def test_extent(self):
-        assert is_valid_extent("0.0153 hectares")
+        assert is_valid_extent("0.0250 hectares")
         assert is_valid_extent("2 ha")
         assert not is_valid_extent("six perches")
 
     def test_validate_field_returns_none_without_validator(self):
         assert FORM8_INSTRUMENT.validate_field("district", "Colombo") is None
-        assert FORM8_INSTRUMENT.validate_field("transfereeNic", "945873370V") is True
+        assert FORM8_INSTRUMENT.validate_field("transfereeNic", "900010002V") is True
         assert FORM8_INSTRUMENT.validate_field("nonexistent", "x") is None
