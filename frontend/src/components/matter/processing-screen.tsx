@@ -34,6 +34,8 @@ interface ProcessingEntry extends ApiSourceProcessingStatus {
   statusUnavailable?: boolean;
 }
 
+class ProcessingPaginationError extends Error {}
+
 export function ProcessingScreen({ matterId }: { matterId: string }) {
   return isApiEnabled() ? (
     <ApiBoundProcessingScreen matterId={matterId} />
@@ -110,7 +112,7 @@ function ProcessingFlow({
         if (!response.page.hasMore) break;
         const next = response.page.nextCursor;
         if (!next || cursors.has(next) || cursors.size >= 100)
-          throw new Error(t("paginationError"));
+          throw new ProcessingPaginationError();
         cursors.add(next);
         cursor = next;
       } while (isCurrent());
@@ -121,7 +123,12 @@ function ProcessingFlow({
     }
     void load()
       .catch((cause: unknown) => {
-        if (isCurrent()) setError(apiErrorMessage(cause, t("error")));
+        if (isCurrent())
+          setError(
+            cause instanceof ProcessingPaginationError
+              ? t("paginationError")
+              : apiErrorMessage(cause, t("error")),
+          );
       })
       .finally(() => {
         if (isCurrent()) setLoading(false);
@@ -150,7 +157,9 @@ function ProcessingFlow({
       const file = await getSourceFile(getToken, id);
       if (!isCurrent()) return;
       if (file.state !== "STORED" && file.state !== "PROCESSING_FAILED") {
-        replace(await getSourceProcessingStatus(getToken, id));
+        const status = await getSourceProcessingStatus(getToken, id);
+        if (!isCurrent()) return;
+        replace(status);
         setError(t("staleSource"));
         return;
       }

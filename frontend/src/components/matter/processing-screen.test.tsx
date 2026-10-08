@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithIntl } from "@/test/render";
 import type { ApiProcessingRun, ApiSourceFile } from "@/types/rta";
@@ -201,6 +202,76 @@ describe("ProcessingScreen persisted outcomes", () => {
     ).toBeNull();
   });
 
+  it("disables retry after a status read fails until refresh restores the recorded failure", async () => {
+    const failed = source({
+      state: "PROCESSING_FAILED",
+      failureReason: "NOT_CONFIGURED",
+    });
+    mocks.list.mockResolvedValue(page([failed]));
+    mocks.status.mockRejectedValue(new Error("synthetic status outage"));
+    renderWithIntl(<ProcessingScreen matterId="m-synthetic" />);
+    const retry = await screen.findByRole("button", {
+      name: "Retry processing",
+    });
+    expect(retry.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(retry);
+    expect(mocks.source).not.toHaveBeenCalled();
+    expect(mocks.process).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("link", { name: /Continue to document inbox/ }),
+    ).toBeNull();
+
+    mocks.status.mockResolvedValue(status(failed, run(failed)));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Refresh processing status" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: "Retry processing" })
+          .hasAttribute("disabled"),
+      ).toBe(false),
+    );
+    expect(mocks.status).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryByRole("link", { name: /Continue to document inbox/ }),
+    ).toBeNull();
+  });
+
+  it("withholds successful continuation after a status read fails until refresh confirms success", async () => {
+    const done = source({ state: "PROCESSED" });
+    mocks.list.mockResolvedValue(page([done]));
+    mocks.status.mockRejectedValue(new Error("synthetic status outage"));
+    renderWithIntl(<ProcessingScreen matterId="m-synthetic" />);
+    expect(
+      await screen.findByText("Processing outcome is unavailable."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Success")).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /Continue to document inbox/ }),
+    ).toBeNull();
+
+    mocks.status.mockResolvedValue(
+      status(
+        done,
+        run(done, {
+          state: "succeeded",
+          outcome: "PROCESSED",
+          failureReason: null,
+          reasons: [],
+        }),
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Refresh processing status" }),
+    );
+    expect(await screen.findByText("Success")).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: /Continue to document inbox/ }),
+    ).toBeTruthy();
+    expect(mocks.status).toHaveBeenCalledTimes(2);
+  });
+
   it("shows retained failed pages and manual review without claiming full success", async () => {
     const file = source({ state: "PROCESSED" });
     mocks.list.mockResolvedValue(page([file]));
@@ -286,6 +357,68 @@ describe("ProcessingScreen persisted outcomes", () => {
     expect(screen.queryByText("Success")).toBeNull();
   });
 
+  it("ignores an old matter's delayed ineligible-source status after switching matters", async () => {
+    const old = source();
+    const oldDone = source({ state: "PROCESSED" });
+    const next = source({
+      id: "sf-next-matter",
+      matterId: "m-next-synthetic",
+      originalFilename: "synthetic-next-matter.pdf",
+      state: "PROCESSED",
+    });
+    const succeeded = (file: ApiSourceFile) =>
+      status(
+        file,
+        run(file, {
+          state: "succeeded",
+          outcome: "PROCESSED",
+          failureReason: null,
+          reasons: [],
+        }),
+      );
+    let finishOldStatus!: (value: ReturnType<typeof status>) => void;
+    const oldStatus = new Promise<ReturnType<typeof status>>((resolve) => {
+      finishOldStatus = resolve;
+    });
+    mocks.list.mockImplementation(async (_token, matterId) =>
+      page([matterId === old.matterId ? old : next]),
+    );
+    mocks.status
+      .mockResolvedValueOnce(status(old))
+      .mockImplementation(async (_token, id) =>
+        id === old.id ? oldStatus : succeeded(next),
+      );
+    mocks.source.mockResolvedValue(oldDone);
+    function MatterSwitch() {
+      const [matterId, setMatterId] = useState(old.matterId);
+      return (
+        <>
+          <button onClick={() => setMatterId(next.matterId)}>
+            Switch synthetic matter
+          </button>
+          <ProcessingScreen matterId={matterId} />
+        </>
+      );
+    }
+    renderWithIntl(<MatterSwitch />);
+    fireEvent.click(await screen.findByRole("button", { name: "Process" }));
+    await waitFor(() => expect(mocks.status).toHaveBeenCalledTimes(2));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Switch synthetic matter" }),
+    );
+    expect(await screen.findByText(next.originalFilename)).toBeTruthy();
+    expect(screen.getByText("Success")).toBeTruthy();
+
+    await act(async () => finishOldStatus(succeeded(oldDone)));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen
+        .getByRole("link", { name: /Continue to document inbox/ })
+        .getAttribute("href"),
+    ).toBe(`/matters/${next.matterId}/documents`);
+    expect(mocks.process).not.toHaveBeenCalled();
+  });
+
   it("loads later source-file pages before offering completion", async () => {
     const done = source({ state: "PROCESSED" });
     const waiting = source({
@@ -321,6 +454,11 @@ describe("ProcessingScreen persisted outcomes", () => {
     renderWithIntl(<ProcessingScreen matterId="m-synthetic" />);
     expect(await screen.findByRole("alert")).toBeTruthy();
     expect(
+      screen.getByText(
+        "The complete file list could not be loaded. Refresh processing status.",
+      ),
+    ).toBeTruthy();
+    expect(
       screen.getByRole("button", { name: "Refresh processing status" }),
     ).toBeTruthy();
     expect(
@@ -341,6 +479,10 @@ describe("ProcessingScreen persisted outcomes", () => {
     mocks.list.mockRejectedValue(new Error("synthetic outage"));
     renderWithIntl(<ProcessingScreen matterId="m-synthetic" />);
     expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(
+      screen.getByText("Something went wrong. Please try again."),
+    ).toBeTruthy();
+    expect(screen.queryByText("synthetic outage")).toBeNull();
     expect(screen.queryByText("No documents uploaded yet.")).toBeNull();
     mocks.list.mockResolvedValue(page([source()]));
     fireEvent.click(
