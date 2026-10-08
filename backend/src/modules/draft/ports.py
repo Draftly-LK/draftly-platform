@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from src.modules.content_governance.contracts import MatterState
 from src.modules.draft.domain.models import FactCandidate, GeneratedForm, GeneratedFormField
 
 
@@ -73,4 +74,16 @@ class GeneratedFormRepository(Protocol):
         ...
 
 
-__all__ = ["CandidateFactReadPort", "GeneratedFormRepository"]
+class MatterWorkflowCommandPort(Protocol):
+    """Advance the §10.1 matter state from a recorded drafting act.
+
+    Implemented by ``matter``, which owns the state machine and refuses any move
+    it does not allow (a form drafted before the gates pass moves nothing).
+    """
+
+    async def advance_state(
+        self, *, user_id: str, matter_id: str, state: MatterState, reason: str
+    ) -> None: ...
+
+
+__all__ = ["CandidateFactReadPort", "GeneratedFormRepository", "MatterWorkflowCommandPort"]

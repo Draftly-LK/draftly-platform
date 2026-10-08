@@ -370,7 +370,7 @@
   "documents": {
     "title": "Documents",
     "description": "Receive, classify, and review synthetic matter evidence.",
-    "upload": "Upload document",
+    "upload": "Upload documents",
     "uploadReady": "{name} added to processing queue",
     "file": "File",
     "type": "Detected type",
@@ -431,7 +431,15 @@
     "no": "No",
     "reviewAction": "Review",
     "backendNotConfigured": "Backend not configured.",
-    "loadError": "Failed to load documents"
+    "loadError": "Failed to load documents",
+    "uploadHint": "Synthetic documents only: an NIC, a Bim Saviya title certificate, an RTA Form 8 transfer, or a survey plan. PDF or image files.",
+    "uploading": "{count, plural, one {Uploading # file…} other {Uploading # files…}}",
+    "uploadDone": "{count, plural, one {# file added. Process it to read its contents.} other {# files added. Process them to read their contents.}}",
+    "uploadSomeFailed": "{count, plural, one {# file could not be uploaded.} other {# files could not be uploaded.}}",
+    "uploadFailed": "The file could not be uploaded.",
+    "emptyFiles": "No documents yet. Upload the evidence this matter needs.",
+    "waitingToProcess": "{count, plural, one {# file waiting to be processed} other {# files waiting to be processed}}",
+    "waitingToProcessBody": "Run the extraction pipeline before classifying documents."
   },
   "facts": {
     "deedNumber": "Deed number",
@@ -548,7 +556,9 @@
     "closeReview": "Close",
     "reviewFact": "Review or correct",
     "viewFact": "View",
-    "reviewedByLawyer": "Reviewed by a lawyer"
+    "reviewedByLawyer": "Reviewed by a lawyer",
+    "verifiedFromDocuments": "{count, plural, one {# fact verified from your documents} other {# facts verified from your documents}}",
+    "verifiedFromDocumentsBody": "Generate the form next, then confirm each value here before approval."
   },
   "sections": {
     "parcel": "Land parcel particulars",
@@ -2460,7 +2470,7 @@
     "overlayNote": "OCR word polygons are shown for review. Fields are not linked to polygons in V1.",
     "fieldsTitle": "Candidate fields",
     "fieldsDescription": "AI-extracted values remain unverified until you approve each one.",
-    "unverified": "Unverified",
+    "unverified": "Awaiting approval",
     "approved": "Approved",
     "save": "Save edit",
     "approve": "Approve",
@@ -2475,7 +2485,8 @@
       "likely_blank": "This page is likely blank.",
       "ocr_sparse": "OCR found very little text on this page.",
       "ocr_failed": "OCR failed for this page."
-    }
+    },
+    "approveAll": "{count, plural, one {Approve # field} other {Approve all # fields}}"
   },
   "classificationReview": {
     "title": "Classification Review",
@@ -2485,7 +2496,7 @@
     "boundaryConfidence": "Boundary confidence",
     "classificationStatus": "Current classification",
     "selectClass": "Select document class",
-    "confirmClassification": "Confirm classification",
+    "confirmClassification": "Confirm type",
     "classifyNow": "Classify",
     "boundaryActions": "Boundary review",
     "confirmBoundary": "Confirm current page ranges as-is",
@@ -2499,7 +2510,20 @@
     "lawyerConfirmed": "Lawyer-confirmed",
     "chooseClass": "Choose a class...",
     "saving": "Saving...",
-    "backendNotConfigured": "Backend not configured."
+    "backendNotConfigured": "Backend not configured.",
+    "decisionsTitle": "Document type and pages",
+    "classConfirmed": "Type confirmed",
+    "pagesLabel": "Pages",
+    "boundaryConfirmed": "Pages confirmed",
+    "previewError": "Could not load the uploaded document.",
+    "loadingPreview": "Loading the document…",
+    "previewTitle": "Uploaded document, {pages}",
+    "previewSection": "Uploaded document",
+    "documentDone": "This document is reviewed.",
+    "nextDocumentHint": "Another document is still waiting for review.",
+    "allDocumentsHint": "Every document is reviewed. Next, check the verified facts.",
+    "nextDocument": "Next document",
+    "goToFacts": "Go to verified facts"
   },
   "missingDocuments": {
     "title": "Missing documents",

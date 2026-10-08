@@ -166,7 +166,10 @@ class SynchronousProcessingJob:
         """Persist rebuildable page artifacts and map groups to existing candidates."""
         run_id = ids.new_id(ids.PROCESSING_RUN)
         for page in report.pages:
-            base = f"{source_file.storage_object_key}/derivatives/{run_id}/pages/{page.page_no}"
+            # Derivatives sit under their own prefix, beside the original rather than
+            # inside its key: on filesystem storage the original key is a file, so a
+            # path beneath it cannot exist. Earlier runs keep the refs they recorded.
+            base = f"derivatives/{source_file.storage_object_key}/{run_id}/pages/{page.page_no}"
             for kind, suffix, payload in (
                 ("corrected_webp", "page.webp", page.corrected_webp),
                 ("corrected_ocr_json", "ocr.json", page.ocr_json),

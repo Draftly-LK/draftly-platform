@@ -1,16 +1,16 @@
 "use client";
 
-import { AlertCircle, ChevronRight, File, FileWarning, LoaderCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, File, FileWarning, LoaderCircle, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { humanizeMessageKey } from "@/lib/i18n/humanize";
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
-import { getDocumentInbox } from "@/lib/api/documents";
+import { getDocumentInbox, uploadSourceFile } from "@/lib/api/documents";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { ApiDocumentInbox } from "@/types/rta";
 
@@ -48,10 +48,13 @@ function DocumentsFlow({
   const [inbox, setInbox] = useState<ApiDocumentInbox | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Bumped after an upload so the inbox reloads in place, without the full-page spinner. */
+  const [refresh, setRefresh] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    if (refresh === 0) setLoading(true);
     setError(null);
 
     getDocumentInbox(getToken, matterId)
@@ -70,7 +73,7 @@ function DocumentsFlow({
     return () => {
       cancelled = true;
     };
-  }, [getToken, matterId, t]);
+  }, [getToken, matterId, refresh, t]);
 
   if (loading) {
     return (
@@ -101,12 +104,47 @@ function DocumentsFlow({
 
   if (!inbox) return null;
 
+  const upload = (
+    <UploadDocuments
+      getToken={getToken}
+      matterId={matterId}
+      // The process prompt is the next step once files are waiting, so the upload steps back to secondary.
+      primary={inbox.unprocessedSourceFileIds.length === 0}
+      onStatus={setUploadStatus}
+      onUploaded={() => setRefresh((value) => value + 1)}
+    />
+  );
+
   return (
     <AppShell matterId={matterId}>
-      <PageHeader title={t("title")} description={t("description")} />
+      <PageHeader title={t("title")} description={t("description")} action={upload} />
       <div className="p-6">
+        <p className="text-muted-ink -mt-2 mb-4 text-xs">{t("uploadHint")}</p>
+        <div aria-live="polite">
+          {uploadStatus ? (
+            <p
+              role={uploadStatus.tone === "error" ? "alert" : undefined}
+              className={`mb-4 flex items-start gap-2 rounded-card border p-3 text-sm ${uploadStatus.tone === "error" ? "border-red bg-red-bg text-red" : "border-border bg-surface"}`}
+            >
+              {uploadStatus.tone === "busy" ? (
+                <LoaderCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 animate-spin" strokeWidth={1.5} />
+              ) : uploadStatus.tone === "error" ? (
+                <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+              ) : (
+                <CheckCircle2 aria-hidden="true" className="text-teal mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+              )}
+              <span>{uploadStatus.text}</span>
+            </p>
+          ) : null}
+        </div>
+        {inbox.sourceFiles.length === 0 ? (
+          <div className="border-border bg-surface mb-6 rounded-card border p-6 text-center">
+            <Upload aria-hidden="true" className="text-forest mx-auto size-6" strokeWidth={1.5} />
+            <p className="mt-2 font-medium">{t("emptyFiles")}</p>
+          </div>
+        ) : null}
         {/* Summary bar */}
-        <div className="border-border bg-surface mb-6 flex flex-wrap gap-4 rounded-card border p-4">
+        <div className="border-border bg-surface mb-6 grid grid-cols-2 gap-4 rounded-card border p-4 text-center sm:grid-cols-3 lg:grid-cols-5">
           <div>
             <p className="text-muted-ink text-xs font-semibold">
               {t("totalDocuments", { count: inbox.documents.length })}
@@ -152,20 +190,16 @@ function DocumentsFlow({
         {/* Unprocessed files prompt */}
         {inbox.unprocessedSourceFileIds.length > 0 && (
           <div className="border-border-strong bg-selected-bg mb-6 rounded border p-4">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="font-medium">
-                  {inbox.unprocessedSourceFileIds.length} files waiting to be processed
+                  {t("waitingToProcess", { count: inbox.unprocessedSourceFileIds.length })}
                 </p>
-                <p className="text-muted-ink text-sm">
-                  Run the extraction pipeline before classifying documents.
-                </p>
+                <p className="text-muted-ink text-sm">{t("waitingToProcessBody")}</p>
               </div>
-              <Link href={`/matters/${matterId}/processing`}>
-                <Button variant="primary">
-                  {tProcessing("readyToProcess")}
-                  <ChevronRight className="size-4" strokeWidth={1.5} />
-                </Button>
+              <Link href={`/matters/${matterId}/processing`} className={buttonClass("primary")}>
+                {tProcessing("readyToProcess")}
+                <ChevronRight className="size-4" strokeWidth={1.5} />
               </Link>
             </div>
           </div>
@@ -302,6 +336,92 @@ function DocumentsFlow({
         )}
       </div>
     </AppShell>
+  );
+}
+
+interface UploadStatus {
+  tone: "busy" | "done" | "error";
+  text: string;
+}
+
+/**
+ * Adds files to an existing matter, the same call the new-matter wizard makes
+ * (`POST /matters/{id}/source-files`), one file at a time. Uploading only
+ * stores the file; reading it is the separate processing step.
+ */
+function UploadDocuments({
+  getToken,
+  matterId,
+  primary,
+  onStatus,
+  onUploaded,
+}: {
+  getToken: TokenProvider;
+  matterId: string;
+  primary: boolean;
+  onStatus: (status: UploadStatus) => void;
+  onUploaded: () => void;
+}) {
+  const t = useTranslations("documents");
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function upload(files: File[]) {
+    if (files.length === 0) return;
+    setBusy(true);
+    onStatus({ tone: "busy", text: t("uploading", { count: files.length }) });
+    let failed = 0;
+    let reason: string | null = null;
+    for (const file of files) {
+      try {
+        await uploadSourceFile(getToken, matterId, file);
+      } catch (cause: unknown) {
+        failed += 1;
+        reason = apiErrorMessage(cause, t("uploadFailed"));
+      }
+    }
+    setBusy(false);
+    const added = files.length - failed;
+    onStatus(
+      failed === 0
+        ? { tone: "done", text: t("uploadDone", { count: added }) }
+        : { tone: "error", text: `${t("uploadSomeFailed", { count: failed })} ${reason ?? ""}`.trim() },
+    );
+    if (added > 0) onUploaded();
+  }
+
+  return (
+    <>
+      <input
+        ref={input}
+        type="file"
+        multiple
+        accept="application/pdf,image/*"
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          // Clear it so choosing the same file again still fires a change.
+          event.target.value = "";
+          void upload(files);
+        }}
+      />
+      <Button
+        type="button"
+        variant={primary ? "primary" : "secondary"}
+        disabled={busy}
+        aria-busy={busy || undefined}
+        onClick={() => input.current?.click()}
+      >
+        {busy ? (
+          <LoaderCircle aria-hidden="true" className="size-4 animate-spin" strokeWidth={1.5} />
+        ) : (
+          <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        )}
+        {t("upload")}
+      </Button>
+    </>
   );
 }
 

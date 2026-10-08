@@ -16490,6 +16490,53 @@
         ]
       }
     },
+    "/api/v1/source-files/{source_file_id}/content": {
+      "get": {
+        "description": "The original uploaded file, so a document can be seen while it is reviewed.\n\nThe same matter scope and capability as reading the file's record; a file in\na matter the actor cannot see is a 404. Never cached, never sniffed.",
+        "operationId": "get_source_file_content_api_v1_source_files__source_file_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_file_id",
+            "required": true,
+            "schema": {
+              "title": "Source File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Source File Content",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/source-files/{source_file_id}/process": {
       "post": {
         "description": "Run the pipeline over one stored file and report what it did.\n\nThe response is a terminal run envelope, not a promise. With no provider\nconfigured, or with the data-protection gate closed, ``state`` is ``failed``\nwith ``failureReason`` ``NOT_CONFIGURED`` / ``DATA_PROTECTION_GATE`` — the\nfile stays readable and honestly unprocessed.",
