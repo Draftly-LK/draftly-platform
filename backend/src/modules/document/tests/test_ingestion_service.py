@@ -22,12 +22,14 @@ from src.modules.content_governance.contracts import (
     BoundaryStatus,
     DocumentClassStatus,
     DocumentVersionRelationship,
+    MatterState,
     ProcessingFailureReason,
     SourceFileState,
 )
 from src.modules.document.application.ingestion_service import SourceFileIngestionService
 from src.modules.document.application.processing_job import SynchronousProcessingJob
 from src.modules.document.domain.errors import (
+    SourceFileNotFoundError,
     SourceFileTooLargeError,
     UnknownDocumentClassError,
 )
@@ -261,6 +263,18 @@ class FakeChecklistLinks:
         return 1
 
 
+class FakeMatterWorkflow:
+    """Records the states the document module names; the real matter decides."""
+
+    def __init__(self) -> None:
+        self.requested: list[MatterState] = []
+
+    async def advance_state(
+        self, *, user_id: str, matter_id: str, state: MatterState, reason: str
+    ) -> None:
+        self.requested.append(state)
+
+
 def make_candidate(
     *, class_id: str | None = TITLE_CLASS, confidence: float = 0.9, pages: tuple[int, int] = (1, 2)
 ) -> DocumentCandidate:
@@ -284,6 +298,7 @@ def build_service(
     max_upload_bytes: int = 10_000,
     max_page_count: int = 300,
     checklist_links: FakeChecklistLinks | None = None,
+    matter_workflow: FakeMatterWorkflow | None = None,
 ) -> SourceFileIngestionService:
     return SourceFileIngestionService(
         repository=repository or FakeRepository(),  # type: ignore[arg-type]
@@ -293,6 +308,7 @@ def build_service(
         max_upload_bytes=max_upload_bytes,
         max_page_count=max_page_count,
         checklist_links=checklist_links,
+        matter_workflow=matter_workflow,
     )
 
 
@@ -798,3 +814,111 @@ async def test_a_missing_stored_object_is_a_typed_not_found(tmp_path) -> None:  
     storage = FilesystemSourceFileStorage(tmp_path)
     with pytest.raises(SourceObjectNotFoundError):
         await storage.get("sources/usr_1/mat_1/src_gone", version="sha256:whatever")
+
+
+# ── §10.1 matter progress and the original-file viewer ───────────────────────
+
+
+async def _processed(service: SourceFileIngestionService):  # type: ignore[no-untyped-def]
+    uploaded = await upload(service)
+    return await service.process_source_file(
+        user_id=USER,
+        source_file_id=uploaded.source_file.id,
+        actor_id=USER,
+        correlation_id="corr_progress",
+        expected_version=uploaded.source_file.version,
+    )
+
+
+async def test_a_completed_run_puts_the_matter_in_review() -> None:
+    workflow = FakeMatterWorkflow()
+    service = build_service(matter_workflow=workflow)
+
+    await _processed(service)
+
+    assert workflow.requested == [MatterState.REVIEW_REQUIRED]
+
+
+async def test_a_failed_run_moves_nothing() -> None:
+    workflow = FakeMatterWorkflow()
+    service = build_service(
+        matter_workflow=workflow,
+        jobs=SynchronousProcessingJob(
+            storage=FakeStorage(),
+            pipeline=None,
+            provider_name="none",
+            data_protection_approved=True,
+        ),
+    )
+
+    await _processed(service)
+
+    assert workflow.requested == []
+
+
+async def test_the_matter_reaches_legal_review_only_when_every_document_is_decided() -> None:
+    workflow = FakeMatterWorkflow()
+    service = build_service(matter_workflow=workflow)
+    run = await _processed(service)
+    document = run.documents[0].document
+
+    classified = await service.decide_classification(
+        user_id=USER,
+        document_id=document.id,
+        class_id=TITLE_CLASS,
+        actor_id=USER,
+        correlation_id="corr_class",
+        expected_version=document.version,
+    )
+    # The pages are still a candidate, so the review is not finished.
+    assert MatterState.LEGAL_REVIEW not in workflow.requested
+
+    fragment = run.documents[0].fragments[0]
+    await service.decide_boundary(
+        user_id=USER,
+        document_id=document.id,
+        ranges=[
+            FragmentRange(
+                source_file_id=fragment.source_file_id,
+                page_start=fragment.page_start,
+                page_end=fragment.page_end,
+                order_in_document=0,
+            )
+        ],
+        actor_id=USER,
+        correlation_id="corr_boundary",
+        expected_version=classified.document.version,
+    )
+
+    assert workflow.requested[-2:] == [MatterState.REVIEW_REQUIRED, MatterState.LEGAL_REVIEW]
+
+
+async def test_the_original_is_read_back_exactly_and_the_view_is_audited() -> None:
+    audit = FakeAudit()
+    service = build_service(audit=audit)
+    data = synthetic_pdf()
+    uploaded = await upload(service, data=data)
+
+    source, read = await service.read_original(
+        user_id=USER,
+        source_file_id=uploaded.source_file.id,
+        actor_id=USER,
+        correlation_id="corr_view",
+    )
+
+    assert read == data
+    assert source.id == uploaded.source_file.id
+    assert ("rta.source-file.viewed", source.id) in audit.events
+
+
+async def test_another_account_cannot_read_the_original() -> None:
+    service = build_service()
+    uploaded = await upload(service)
+
+    with pytest.raises(SourceFileNotFoundError):
+        await service.read_original(
+            user_id="usr_other",
+            source_file_id=uploaded.source_file.id,
+            actor_id="usr_other",
+            correlation_id="corr_view",
+        )

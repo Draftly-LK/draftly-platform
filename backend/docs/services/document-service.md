@@ -152,6 +152,14 @@ raster. Never return raw object-storage keys.
 This endpoint serves evidence. Accept, correct, reject, and conflict-resolution
 actions remain in `verification_service`.
 
+Implemented today (V0): `GET /api/v1/source-files/{id}/content` streams the
+original upload for the review screen, so a lawyer sees the document while
+classifying it. It is matter-scoped like the file's record (another account
+gets 404), re-checks the bytes against the hash taken at upload, sends
+`Cache-Control: private, no-store` and `nosniff`, and audits
+`rta.source-file.viewed`. It stands in for the short-lived signed URL above
+until the viewer manifest exists.
+
 ### retry_processing(ctx, job_id) -> ProcessingRead
 
 Idempotent. Retrying a `succeeded` run is a no-op that returns the current

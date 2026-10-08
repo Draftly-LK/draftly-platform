@@ -300,6 +300,15 @@ the runbook for both:
   extraction, stub matter access) are what the app has today; it is for
   synthetic data only.
 
+Local extraction has two stand-ins, both refused outside `local`/`test`/`ci`:
+`EXTRACTION_PROVIDER=stub` drives the legacy pipeline (detect and classify
+only), and `EXTRACTION_PROVIDER=vision-stub` drives the V1 pipeline (page
+review, candidate fields, facts) with deterministic adapters in place of
+Cloud Vision and Gemini. Both recognise a document only by a `STUB-KIND:<kind>`
+marker in an uploaded image's bytes and return invented sample values, so a
+synthetic matter can be walked from upload to an approvable form with nothing
+leaving the machine. A rendered PDF carries no marker and lands as `other`.
+
 The retrieval engine runs as its own HTTP service on the internal compose
 network, which keeps to the boundary rule above: the platform reaches it through
 an interface and never imports research paths. Its image ships a prebuilt index

@@ -7,6 +7,8 @@ import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import { useEffect, useState } from "react";
 import { isApiEnabled, apiErrorMessage } from "@/lib/api/client";
 import { listForms, getForm, recordFieldDecision } from "@/lib/api/drafts";
+import { listMatterFacts } from "@/lib/api/facts";
+import { buttonClass } from "@/components/ui/button";
 import { listCheckResults } from "@/lib/api/checks";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { AppShell } from "@/components/shell/app-shell";
@@ -38,6 +40,8 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
   const [checkResults, setCheckResults] = useState<ApiCheckResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Facts already verified from documents, for the empty state; null when unknown. */
+  const [verifiedCount, setVerifiedCount] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +65,15 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
         const checksResult = await listCheckResults(getToken, matterId);
         if (!cancelled) {
           setCheckResults(checksResult.items);
+        }
+
+        // Facts approved on the documents exist before any form does; count them so the
+        // empty state can say so instead of reading as if nothing had been done.
+        const facts = await listMatterFacts(getToken, matterId).catch(() => null);
+        if (!cancelled && facts) {
+          setVerifiedCount(
+            facts.items.filter((fact) => ["LAWYER_CONFIRMED", "LOCKED_FOR_FORM"].includes(fact.status)).length,
+          );
         }
       } catch (cause) {
         if (!cancelled) {
@@ -147,12 +160,21 @@ function ApiBoundFactsScreen({ matterId }: { matterId: string }) {
         <div className="p-6">
           <div className="border-border bg-surface rounded-card border p-6 text-center">
             <FileText className="mx-auto size-12 text-muted-ink" strokeWidth={1.5} aria-hidden="true" />
-            <h2 className="mt-4 text-lg font-semibold">{t("noFormsEmpty")}</h2>
-            <p className="text-muted-ink mt-2">{t("noFormsEmptyBody")}</p>
+            {verifiedCount ? (
+              <>
+                <h2 className="mt-4 text-lg font-semibold">{t("verifiedFromDocuments", { count: verifiedCount })}</h2>
+                <p className="text-muted-ink mt-2">{t("verifiedFromDocumentsBody")}</p>
+              </>
+            ) : (
+              <>
+                <h2 className="mt-4 text-lg font-semibold">{t("noFormsEmpty")}</h2>
+                <p className="text-muted-ink mt-2">{t("noFormsEmptyBody")}</p>
+              </>
+            )}
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <Link
                 href={`/matters/${matterId}/drafts`}
-                className="border-border-strong bg-surface hover:bg-hover-bg rounded-control border px-3 py-2 text-sm font-medium"
+                className={verifiedCount ? buttonClass("primary") : buttonClass("secondary")}
               >
                 {t("generateFormLink")}
               </Link>

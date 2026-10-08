@@ -14,6 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
+from src.modules.content_governance.contracts import MatterState
+
 if TYPE_CHECKING:
     from src.modules.document.domain.ingestion import ProcessingRun, SourceFile
     from src.modules.document.domain.v1 import (
@@ -217,6 +219,18 @@ class BatchPageClassifierPort(Protocol):
         allowed_type_ids: tuple[str, ...],
         text_limit: int | None,
     ) -> list[PageClassification]: ...
+
+
+class MatterWorkflowCommandPort(Protocol):
+    """Advance the §10.1 matter state from a recorded document act.
+
+    Implemented by ``matter``, which owns the state machine and refuses any move
+    it does not allow. This module only names the state the act implies.
+    """
+
+    async def advance_state(
+        self, *, user_id: str, matter_id: str, state: MatterState, reason: str
+    ) -> None: ...
 
 
 class StructuredDocumentExtractorPort(Protocol):

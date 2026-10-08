@@ -33,6 +33,7 @@ from src.modules.content_governance.contracts import (
     FormFieldMapping,
     FormTemplateDefinition,
     GeneratedFormState,
+    MatterState,
     SubtypeDecisionStatus,
     UnresolvedReason,
     get_subtype,
@@ -68,7 +69,11 @@ from src.modules.draft.domain.policies import (
     stale_bindings,
     stale_state,
 )
-from src.modules.draft.ports import CandidateFactReadPort, GeneratedFormRepository
+from src.modules.draft.ports import (
+    CandidateFactReadPort,
+    GeneratedFormRepository,
+    MatterWorkflowCommandPort,
+)
 from src.modules.task.contracts import ChecklistBlockerPort
 from src.modules.verification.contracts import ConfirmedFactReadPort, FactTierSummary
 from src.platform import ids
@@ -124,8 +129,10 @@ class DraftService:
         audit: AuditPort,
         candidates: CandidateFactReadPort | None = None,
         clock: Callable[[], datetime] = _utc_now,
+        matter_workflow: MatterWorkflowCommandPort | None = None,
     ) -> None:
         self._repo = repository
+        self._matter_workflow = matter_workflow
         self._facts = facts
         self._issues = issues
         self._checklist = checklist
@@ -208,6 +215,10 @@ class DraftService:
                 f"{saved_form.template_id}@{saved_form.template_version}"
                 f"#{saved_form.form_version}:{saved_form.state.value}"
             ),
+        )
+        # §10.1 READY_TO_DRAFT -> DRAFTING: form created.
+        await self._advance_matter(
+            user_id, saved_form.matter_id, MatterState.DRAFTING, AuditAction.RTA_FORM_GENERATED
         )
         return self._view(saved_form, saved_fields, template, result, candidates, facts)
 
@@ -355,6 +366,14 @@ class DraftService:
             after_ref=f"{field_id}:{action.value}@{decision_id}",
             reason=reason,
         )
+        if saved_form.state is GeneratedFormState.APPROVAL_PENDING:
+            # §10.1 DRAFTING -> APPROVAL_PENDING: the derived state says preflight passes.
+            await self._advance_matter(
+                user_id,
+                saved_form.matter_id,
+                MatterState.APPROVAL_PENDING,
+                AuditAction.RTA_FORM_FIELD_DECIDED,
+            )
         candidates = await self._read_candidates(user_id, form.matter_id)
         return self._view(saved_form, fields, template, result, candidates, facts)
 
@@ -389,6 +408,15 @@ class DraftService:
         form_field.transformation_id = None
 
     # ── Preflight and staleness ──────────────────────────────────────────────
+
+    async def _advance_matter(
+        self, user_id: str, matter_id: str, state: MatterState, reason: AuditAction
+    ) -> None:
+        """Name the state a drafting write implies; the matter refuses any move it does not allow."""
+        if self._matter_workflow is not None:
+            await self._matter_workflow.advance_state(
+                user_id=user_id, matter_id=matter_id, state=state, reason=reason.value
+            )
 
     async def run_preflight(
         self, *, user_id: str, form_id: str, actor_id: str, correlation_id: str

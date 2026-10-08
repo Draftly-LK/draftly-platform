@@ -146,7 +146,8 @@ class Settings(BaseSettings):
     supermemory_real_data_approved: bool = False
 
     # ── Document processing (document-processing.md) ────────────────────────
-    # "vision-gemini" | "gemini" | "stub". The stub is local/test/ci only.
+    # "vision-gemini" | "gemini" | "stub" | "vision-stub". The stubs are local/test/ci only;
+    # "vision-stub" runs the V1 pipeline (review, facts) with deterministic stand-ins.
     extraction_provider: str = "stub"
     # §10A data-protection gate: while false, the pipeline refuses documents
     # not flagged synthetic and routes them to manual_review. Flip only after

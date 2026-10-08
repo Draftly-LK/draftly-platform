@@ -370,7 +370,7 @@
   "documents": {
     "title": "Documents",
     "description": "Receive, classify, and review synthetic matter evidence.",
-    "upload": "Upload document",
+    "upload": "ලේඛන උඩුගත කරන්න",
     "uploadReady": "{name} added to processing queue",
     "file": "File",
     "type": "Detected type",
@@ -431,7 +431,15 @@
     "no": "No",
     "reviewAction": "Review",
     "backendNotConfigured": "Backend not configured.",
-    "loadError": "Failed to load documents"
+    "loadError": "Failed to load documents",
+    "uploadHint": "කෘත්‍රිම ලේඛන පමණි: ජාතික හැඳුනුම්පතක්, බිම් සවිය හිමිකම් සහතිකයක්, RTA 8 වන පෝරම පැවරුමක් හෝ මිනුම් සැලැස්මක්. PDF හෝ රූප ගොනු.",
+    "uploading": "ගොනු {count} ක් උඩුගත වෙමින්…",
+    "uploadDone": "ගොනු {count} ක් එක් කළා. අන්තර්ගතය කියවීමට ඒවා සකසන්න.",
+    "uploadSomeFailed": "ගොනු {count} ක් උඩුගත කළ නොහැකි විය.",
+    "uploadFailed": "ගොනුව උඩුගත කළ නොහැකි විය.",
+    "emptyFiles": "තවම ලේඛන නැත. මෙම කාරණයට අවශ්‍ය සාක්ෂි උඩුගත කරන්න.",
+    "waitingToProcess": "ගොනු {count} ක් සැකසීමට බලා සිටී",
+    "waitingToProcessBody": "ලේඛන වර්ගීකරණයට පෙර උපුටා ගැනීමේ ක්‍රියාවලිය ධාවනය කරන්න."
   },
   "facts": {
     "deedNumber": "Deed number",
@@ -548,7 +556,9 @@
     "closeReview": "Close",
     "reviewFact": "Review or correct",
     "viewFact": "View",
-    "reviewedByLawyer": "Reviewed by a lawyer"
+    "reviewedByLawyer": "Reviewed by a lawyer",
+    "verifiedFromDocuments": "ඔබගේ ලේඛනවලින් කරුණු {count} ක් තහවුරු කළා",
+    "verifiedFromDocumentsBody": "ඊළඟට පෝරමය සාදන්න, ඉන්පසු අනුමැතියට පෙර එක් එක් අගය මෙහි තහවුරු කරන්න."
   },
   "sections": {
     "parcel": "Land parcel particulars",
@@ -2461,7 +2471,7 @@
     "overlayNote": "සමාලෝචනය සඳහා OCR වචන බහුඅස්‍ර පෙන්වයි. V1 හි ක්ෂේත්‍ර බහුඅස්‍ර සමඟ සම්බන්ධ නොවේ.",
     "fieldsTitle": "අපේක්ෂක ක්ෂේත්‍ර",
     "fieldsDescription": "AI මඟින් උපුටාගත් අගයන් ඔබ එක් එක් අගය අනුමත කරන තුරු සත්‍යාපනය නොකළ ලෙස පවතී.",
-    "unverified": "සත්‍යාපනය නොකළ",
+    "unverified": "අනුමැතිය බලාපොරොත්තුවෙන්",
     "approved": "අනුමතයි",
     "save": "සංස්කරණය සුරකින්න",
     "approve": "අනුමත කරන්න",
@@ -2476,7 +2486,8 @@
       "likely_blank": "මෙම පිටුව හිස් වීමට ඉඩ ඇත.",
       "ocr_sparse": "OCR මඟින් මෙම පිටුවේ ඉතා සුළු පෙළක් පමණක් හඳුනාගෙන ඇත.",
       "ocr_failed": "මෙම පිටුව සඳහා OCR අසාර්ථක විය."
-    }
+    },
+    "approveAll": "ක්ෂේත්‍ර {count} ම අනුමත කරන්න"
   },
   "classificationReview": {
     "title": "වර්ගීකරණ සමාලෝචනය",
@@ -2486,7 +2497,7 @@
     "boundaryConfidence": "සීමාව විශ්වාසය",
     "classificationStatus": "වර්තමාන වර්ගීකරණය",
     "selectClass": "ඩොකුමෙන්ටුව අන්තර්ගත තෝරන්න",
-    "confirmClassification": "වර්ගීකරණය තහවුරු කරන්න",
+    "confirmClassification": "වර්ගය තහවුරු කරන්න",
     "classifyNow": "වර්ගීකරණය",
     "boundaryActions": "සීමා සමාලෝචනය",
     "confirmBoundary": "වර්තමාන පිටුවල පරාසය සඳහා සම්මතයි තහවුරු කරන්න",
@@ -2500,7 +2511,20 @@
     "lawyerConfirmed": "Lawyer-confirmed",
     "chooseClass": "Choose a class...",
     "saving": "Saving...",
-    "backendNotConfigured": "Backend not configured."
+    "backendNotConfigured": "Backend not configured.",
+    "decisionsTitle": "ලේඛන වර්ගය සහ පිටු",
+    "classConfirmed": "වර්ගය තහවුරු කළා",
+    "pagesLabel": "පිටු",
+    "boundaryConfirmed": "පිටු තහවුරු කළා",
+    "previewError": "උඩුගත කළ ලේඛනය පූරණය කළ නොහැකි විය.",
+    "loadingPreview": "ලේඛනය පූරණය වෙමින්…",
+    "previewTitle": "උඩුගත කළ ලේඛනය, {pages}",
+    "previewSection": "උඩුගත කළ ලේඛනය",
+    "documentDone": "මෙම ලේඛනය සමාලෝචනය කළා.",
+    "nextDocumentHint": "තවත් ලේඛනයක් සමාලෝචනය සඳහා බලා සිටී.",
+    "allDocumentsHint": "සියලු ලේඛන සමාලෝචනය කළා. ඊළඟට, තහවුරු කළ කරුණු පරීක්ෂා කරන්න.",
+    "nextDocument": "ඊළඟ ලේඛනය",
+    "goToFacts": "තහවුරු කළ කරුණු වෙත යන්න"
   },
   "missingDocuments": {
     "title": "Missing documents",

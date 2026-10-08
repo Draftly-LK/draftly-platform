@@ -2,12 +2,11 @@
 
 import {
   AlertTriangle,
-  ArrowLeft,
   Check,
+  CheckCheck,
   LoaderCircle,
   Save,
 } from "lucide-react";
-import Link from "next/link";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { humanizeMessageKey } from "@/lib/i18n/humanize";
@@ -24,7 +23,9 @@ import {
   getPrivateDocumentArtifact,
 } from "@/lib/api/documents";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
-import type { ApiDocumentReview, ApiReviewCandidate } from "@/types/rta";
+import type { ApiDetectedDocument, ApiDocumentReview, ApiReviewCandidate } from "@/types/rta";
+import { DocumentDecisions, isDocumentDecided } from "./document-decisions";
+import { ReviewNextStep } from "./review-next-step";
 
 interface OcrPoint {
   x: number;
@@ -63,6 +64,7 @@ function DocumentProcessingReviewFlow({
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [document, setDocument] = useState<ApiDetectedDocument | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -174,6 +176,23 @@ function DocumentProcessingReviewFlow({
     }
   };
 
+  /** Approves every field still waiting, one at a time, stopping at the first refusal. */
+  const approveAll = async () => {
+    if (!review) return;
+    for (const field of review.candidates) {
+      if (field.reviewState === "approved") continue;
+      setBusy(field.id);
+      setError(null);
+      try {
+        updateCandidate(await approveReviewCandidate(getToken, field.id, field.version));
+      } catch (cause) {
+        setError(apiErrorMessage(cause, t("approveError")));
+        break;
+      }
+    }
+    setBusy(null);
+  };
+
   if (legacy)
     return (
       <ClassificationReviewScreen matterId={matterId} documentId={documentId} />
@@ -188,6 +207,7 @@ function DocumentProcessingReviewFlow({
       </AppShell>
     );
 
+  const pending = review.candidates.filter((field) => field.reviewState !== "approved").length;
   const warnings = page
     ? [
         page.rotationStatus === "rotation_uncertain"
@@ -272,8 +292,18 @@ function DocumentProcessingReviewFlow({
             </div>
             <p className="text-muted-ink mt-2 text-xs">{t("overlayNote")}</p>
           </section>
+          <div className="min-w-0 space-y-6">
+          <DocumentDecisions getToken={getToken} matterId={matterId} documentId={documentId} onChange={setDocument} />
           <section className="border-border bg-surface rounded-card border p-4">
-            <h2 className="font-semibold">{t("fieldsTitle")}</h2>
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">{t("fieldsTitle")}</h2>
+              {pending > 0 ? (
+                <Button size="sm" variant="primary" disabled={busy !== null} onClick={() => void approveAll()}>
+                  <CheckCheck aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  {t("approveAll", { count: pending })}
+                </Button>
+              ) : null}
+            </div>
             <p className="text-muted-ink mb-4 text-sm">
               {t("fieldsDescription")}
             </p>
@@ -303,6 +333,8 @@ function DocumentProcessingReviewFlow({
                         : t("unverified")}
                     </span>
                     <Button
+                      size="sm"
+                      className="whitespace-nowrap"
                       onClick={() => void save(field)}
                       disabled={
                         busy === field.id || field.reviewState === "approved"
@@ -312,7 +344,9 @@ function DocumentProcessingReviewFlow({
                       {t("save")}
                     </Button>
                     <Button
+                      size="sm"
                       variant="primary"
+                      className="whitespace-nowrap"
                       onClick={() => void approve(field)}
                       disabled={
                         busy === field.id || field.reviewState === "approved"
@@ -326,16 +360,14 @@ function DocumentProcessingReviewFlow({
               ))}
             </div>
           </section>
+          </div>
         </div>
-        <Link
-          className="mt-6 inline-flex"
-          href={`/matters/${matterId}/documents`}
-        >
-          <Button>
-            <ArrowLeft className="size-4" />
-            {t("back")}
-          </Button>
-        </Link>
+        <ReviewNextStep
+          getToken={getToken}
+          matterId={matterId}
+          documentId={documentId}
+          done={document !== null && isDocumentDecided(document) && pending === 0}
+        />
       </div>
     </AppShell>
   );

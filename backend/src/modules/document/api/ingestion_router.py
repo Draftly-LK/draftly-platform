@@ -317,6 +317,44 @@ async def get_source_file(
     return _to_source_read(view)
 
 
+#: Only these types are ever stored (upload validates them); anything else is served as a download.
+_INLINE_MEDIA_TYPES = {"application/pdf", "image/png", "image/jpeg", "image/webp", "image/tiff"}
+
+
+@router.get("/source-files/{source_file_id}/content")
+async def get_source_file_content(
+    source_file_id: str,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+    uow: UnitOfWork = Depends(get_uow),
+) -> Response:
+    """The original uploaded file, so a document can be seen while it is reviewed.
+
+    The same matter scope and capability as reading the file's record; a file in
+    a matter the actor cannot see is a 404. Never cached, never sniffed.
+    """
+    view = await service.get_source_file(user_id=ctx.actor_id, source_file_id=source_file_id)
+    await _authorized_matter(ctx, view.source_file.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    async with uow:
+        source, data = await service.read_original(
+            user_id=ctx.actor_id,
+            source_file_id=source_file_id,
+            actor_id=ctx.actor_id,
+            correlation_id=ctx.correlation_id,
+        )
+    inline = source.media_type in _INLINE_MEDIA_TYPES
+    return Response(
+        content=data,
+        media_type=source.media_type if inline else "application/octet-stream",
+        headers={
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": "inline" if inline else "attachment",
+        },
+    )
+
+
 @router.post("/source-files/{source_file_id}/process", response_model=ProcessingRunRead)
 async def process_source_file(
     source_file_id: str,
