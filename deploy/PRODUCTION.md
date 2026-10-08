@@ -266,6 +266,9 @@ not case data, and are still shown.
   extraction provider and the real matter-access adapter. Those are open
   decisions in `backend/backend-implementation-plan-v0.md` for the team to
   approve; this deployment does not choose them. Use synthetic data only.
+  To walk a synthetic matter from upload to approval on this server, set
+  `EXTRACTION_PROVIDER=vision-stub` and `DEMO_RELAXED_GATES=true` in
+  `deploy/.env` and redeploy. Set them back to `stub` and `false` afterwards.
 - **Not shared with development.** The local database holds a copy of what
   was in the old shared development database at the time of the move (73
   tables, 937 rows). Remove any test accounts you do not want before real use.
