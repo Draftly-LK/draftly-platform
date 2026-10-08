@@ -181,7 +181,7 @@ function DashboardFlow({
       body: t("nextProcessBody"),
     },
     resolve: {
-      href: `/matters/${matterId}/checks`,
+      href: `/matters/${matterId}/missing-documents`,
       title: t("nextResolve"),
       body: t("nextResolveBody"),
     },

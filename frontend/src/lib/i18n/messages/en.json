@@ -355,7 +355,7 @@
     "action": {
       "upload": "Upload documents",
       "process": "Open documents",
-      "resolve": "Open checks",
+      "resolve": "Open missing documents",
       "draft": "Open drafts",
       "review": "Review the form"
     },
