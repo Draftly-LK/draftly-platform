@@ -21,6 +21,9 @@ class ConfirmedFactValue:
     value: Any
     version: int
     evidence_reference_ids: tuple[str, ...] = field(default_factory=tuple)
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    scope_status: str = "legacy-unassigned"
 
 
 @dataclass(frozen=True)
@@ -34,6 +37,8 @@ class FactTierSummary:
     #: Without it, no negative conclusion about a registered interest is
     #: recordable (§6.4, §7.2).
     has_current_search_evidence: bool = False
+    #: Lossless eligible values. Consumers must select an explicit scope.
+    scoped_confirmed: tuple[ConfirmedFactValue, ...] = ()
 
 
 class ConfirmedFactReadPort(Protocol):

@@ -283,6 +283,26 @@ Naming that seam here keeps the enforcement point unambiguous.
 
 ## 12. Open decisions
 
+### Scoped read contract (2026-10-09)
+
+The approved lawyer-led workflow adds `transaction_id`, `scope_status`, and
+`evidence_stale` to fact versions. Existing rows are explicitly
+`legacy-unassigned`; migration does not invent subjects or transaction roles.
+`ConfirmedFactValue` carries transaction and subject references, and
+`FactTierSummary.scoped_confirmed` preserves eligible values in each scope.
+The compatibility `confirmed` map omits types spanning several scopes,
+unresolved competing values, stale facts, and explicitly unassigned facts.
+A later version alone never resolves conflicting live values. Version allocation
+is scoped by user, matter, transaction, subject, and fact type. Existing
+unambiguous legacy single-subject reads remain compatible.
+
+`evidence_stale` is an additive eligibility seam for document interpretation
+invalidation; interpretation refresh and downstream propagation are separate
+workflow work. V0 uses the approved user/matter boundary; organization support
+is deferred.
+
+### Earlier decisions
+
 Recommended defaults in bold; confirm or override before coding.
 
 1. **ParticularVersion rows** — the frontend has no separate version entity;

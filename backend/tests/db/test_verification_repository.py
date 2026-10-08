@@ -154,7 +154,7 @@ async def test_no_machine_confidence_makes_an_unreviewed_fact_confirmed(
     assert BUYER not in summary.confirmed
 
 
-async def test_the_confirmed_tier_holds_the_latest_lawyer_confirmed_version(
+async def test_the_confirmed_tier_withholds_unresolved_lawyer_confirmed_alternatives(
     db_session: AsyncSession, matter: SeedReport
 ) -> None:
     repository = SqlVerificationRepository(db_session)
@@ -174,9 +174,8 @@ async def test_the_confirmed_tier_holds_the_latest_lawyer_confirmed_version(
 
     summary = await SqlConfirmedFactReader(db_session).summarise(matter.lawyer_id, matter.matter_id)
 
-    assert summary.confirmed[BUYER].fact_id == "fact_synthetic_2"
-    assert summary.confirmed[BUYER].value == "Later Buyer (synthetic)"
-    assert summary.conflicted_fact_type_ids == (EXTENT,)
+    assert BUYER not in summary.confirmed
+    assert summary.conflicted_fact_type_ids == tuple(sorted((BUYER, EXTENT)))
     assert EXTENT not in summary.confirmed
 
 

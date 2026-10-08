@@ -78,6 +78,13 @@ class ExtractedFactRow(Base):
     matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
     fact_type_id: Mapped[str] = mapped_column(String(128), nullable=False)
     subject_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    transaction_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scope_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy-unassigned", server_default="legacy-unassigned"
+    )
+    evidence_stale: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     value: Mapped[Any] = mapped_column(JSON, nullable=True)
     normalized_value: Mapped[Any] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False)

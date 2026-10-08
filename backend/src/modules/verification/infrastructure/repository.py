@@ -9,6 +9,7 @@ V0 predicate honest about evidence it has never seen.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import datetime
 from typing import Any
 
@@ -76,6 +77,9 @@ def _to_fact(row: ExtractedFactRow) -> ExtractedFact:
         matter_id=row.matter_id,
         fact_type_id=row.fact_type_id,
         subject_id=row.subject_id,
+        transaction_id=row.transaction_id,
+        scope_status=row.scope_status or "legacy-unassigned",
+        evidence_stale=bool(row.evidence_stale),
         value=row.value,
         normalized_value=row.normalized_value,
         status=FactStatus(row.status),
@@ -152,6 +156,9 @@ class SqlVerificationRepository:
             matter_id=fact.matter_id,
             fact_type_id=fact.fact_type_id,
             subject_id=fact.subject_id,
+            transaction_id=fact.transaction_id,
+            scope_status=fact.scope_status,
+            evidence_stale=fact.evidence_stale,
             value=fact.value,
             normalized_value=fact.normalized_value,
             status=fact.status.value,
@@ -227,13 +234,23 @@ class SqlVerificationRepository:
         )
         return [_to_fact(row) for row in result.scalars().all()]
 
-    async def next_version(self, user_id: str, matter_id: str, fact_type_id: str) -> int:
+    async def next_version(
+        self,
+        user_id: str,
+        matter_id: str,
+        fact_type_id: str,
+        *,
+        transaction_id: str | None = None,
+        subject_id: str | None = None,
+    ) -> int:
         result = await self._session.execute(
             select(ExtractedFactRow.version)
             .where(
                 ExtractedFactRow.user_id == user_id,
                 ExtractedFactRow.matter_id == matter_id,
                 ExtractedFactRow.fact_type_id == fact_type_id,
+                ExtractedFactRow.transaction_id == transaction_id,
+                ExtractedFactRow.subject_id == subject_id,
             )
             .order_by(ExtractedFactRow.version.desc())
             .limit(1)
@@ -298,23 +315,46 @@ class SqlConfirmedFactReader:
 
     async def summarise(self, user_id: str, matter_id: str) -> FactTierSummary:
         facts = await self._repo.list_live_facts(user_id, matter_id)
-        confirmed: dict[str, ConfirmedFactValue] = {}
-        conflicted: list[str] = []
+        groups: dict[tuple[str | None, str | None, str], list[ExtractedFact]] = defaultdict(list)
         for fact in facts:
-            if fact.status is FactStatus.CONFLICTED:
-                conflicted.append(fact.fact_type_id)
-            if not fact.is_confirmed:
+            if not fact.is_live or fact.status.value == "REJECTED":
                 continue
-            existing = confirmed.get(fact.fact_type_id)
-            # Later confirmed version wins; the earlier one stays in the table.
-            if existing is None or fact.version >= existing.version:
-                confirmed[fact.fact_type_id] = ConfirmedFactValue(
+            groups[(fact.transaction_id, fact.subject_id, fact.fact_type_id)].append(fact)
+        scoped: list[ConfirmedFactValue] = []
+        conflicted: set[str] = set()
+        for (_, _, fact_type_id), group in groups.items():
+            # A later version alone is never a conflict-resolution decision.
+            if any(f.status is FactStatus.CONFLICTED for f in group) or any(
+                f.value != group[0].value for f in group[1:]
+            ):
+                conflicted.add(fact_type_id)
+                continue
+            eligible = [
+                f
+                for f in group
+                if f.is_confirmed and not f.evidence_stale and f.scope_status != "unassigned"
+            ]
+            if not eligible:
+                continue
+            fact = max(eligible, key=lambda f: (f.version, f.id))
+            scoped.append(
+                ConfirmedFactValue(
                     fact_id=fact.id,
                     fact_type_id=fact.fact_type_id,
                     value=fact.value,
                     version=fact.version,
                     evidence_reference_ids=fact.evidence_reference_ids,
+                    transaction_id=fact.transaction_id,
+                    subject_id=fact.subject_id,
+                    scope_status=fact.scope_status,
                 )
+            )
+        confirmed = {
+            value.fact_type_id: value
+            for value in scoped
+            if value.fact_type_id not in conflicted
+            and sum(1 for key in groups if key[2] == value.fact_type_id) == 1
+        }
         unconfirmed_critical = tuple(
             sorted(
                 fact_type_id
@@ -327,6 +367,7 @@ class SqlConfirmedFactReader:
             unconfirmed_critical_fact_type_ids=unconfirmed_critical,
             conflicted_fact_type_ids=tuple(sorted(set(conflicted))),
             has_current_search_evidence=SEARCH_EVIDENCE_FACT_TYPE_ID in confirmed,
+            scoped_confirmed=tuple(scoped),
         )
 
 

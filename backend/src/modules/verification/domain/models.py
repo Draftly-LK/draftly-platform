@@ -68,6 +68,10 @@ class ExtractedFact:
     version: int = 1
     normalized_value: Any = None
     subject_id: str | None = None
+    transaction_id: str | None = None
+    scope_status: str = "legacy-unassigned"
+    #: Additive invalidation seam; document lifecycle owners invalidate via a port.
+    evidence_stale: bool = False
     #: The provider's own estimate. It routes work to a human; it never
     #: verifies anything (§6.4).
     model_reported_confidence: float | None = None
