@@ -47,7 +47,8 @@ Ubuntu 24.04, 4 vCPU, 8 GB RAM, 2 GB swap, public address `13.140.183.52`.
 | What | Where |
 | --- | --- |
 | Repository clone (what production runs) | `/home/deploy/draftly-platform`, owned by the `deploy` user |
-| All runtime secrets | `/home/deploy/draftly-platform/deploy/.env` (mode 600, git-ignored) |
+| Runtime environment secrets | `/home/deploy/draftly-platform/deploy/.env` (mode 600, git-ignored) |
+| Vision ADC credential | `google/vision.json` in the private `source-files` Docker volume; mode 600, runtime UID 10001 |
 | Research inputs for retrieval | `/home/deploy/draftly-platform/deploy/.research` (sparse clone, git-ignored) |
 | GitHub access for the server | `/home/deploy/.ssh/`: `github_deploy` (platform repo) and `draftly_research_deploy` (research repo, read-only), selected through `~/.ssh/config` |
 | CI login | `/home/deploy/.ssh/authorized_keys`, one key pinned to a forced command |
@@ -128,6 +129,7 @@ here. Repository Settings, then:
 | `GEMINI_API_KEY` | `deploy/.env` | Google AI Studio |
 | `PARTY_IDENTIFIER_KEY`, `PARTY_BLIND_INDEX_KEY`, `API_CURSOR_SIGNING_KEY` | `deploy/.env` (generated on the server) | **Do not rotate casually.** The first two encrypt and index stored party identifiers; changing them makes existing rows unreadable. Back them up in your password manager |
 | CI SSH key | GitHub secret `VPS_SSH_KEY` and `authorized_keys` | Generate a new pair, replace both |
+| Vision service-account key | Private source-files volume: `google/vision.json` | Install replacement IAM key, recreate backend/worker, test, then revoke old key |
 | Research repo deploy key | `/home/deploy/.ssh/draftly_research_deploy`, GitHub repo Deploy keys | Replace both |
 
 After changing anything in `deploy/.env`, apply it with
@@ -247,14 +249,37 @@ not case data, and are still shown.
 
 ## Known limitations and approval gates
 
-- **Gemini approval (`PROVIDER_DATA_APPROVAL=true`).** The owner approved
-  sending typed research questions and statute text to Google's Gemini API on
-  2026-09-21, so `deploy/.env` sets this flag and legal research produces
-  grounded answers. Without it the research composer is not built and every
-  question returns "insufficient authority". The flag is also the gate that lets
-  non-synthetic documents reach a provider, but `EXTRACTION_PROVIDER` is still
-  `stub`, so no document is sent to a provider yet. Record provider region,
-  retention and training terms before switching extraction to Gemini.
+- **Document processing.** The owner authorised enabling Vision OCR and Gemini
+  document processing on 2026-10-09. The live settings are
+  `EXTRACTION_PROVIDER=vision-gemini`, `PROVIDER_DATA_APPROVAL=true`, and
+  `GEMINI_CLASSIFY_MODEL=GEMINI_EXTRACT_MODEL=gemini-3.5-flash-lite`. The previous
+  `gemini-2.5-flash-lite` setting returned 404 for generation with the deployed
+  API key; the replacement passed a synthetic OCR/classification/extraction test.
+  Originals and derivatives remain in the existing private filesystem volume.
+- **Vision credentials.** Project `draftly-502319` has billing and Vision enabled.
+  The dedicated `draftly-vps-vision` service account has Service Usage Consumer,
+  without storage or database permissions. Its ADC credential file is protected
+  in the persistent source-files volume at `/app/.data/google/vision.json`
+  (directory mode 0700, file mode 0600, runtime UID 10001). `deploy/.env` holds
+  only `GOOGLE_APPLICATION_CREDENTIALS=/app/.data/google/vision.json`; credential
+  contents are never placed in the repository, environment file, or image.
+  This VPS currently uses a service-account key: operators must rotate/revoke
+  it through IAM and protect volume backups as credentials. Workload federation
+  remains the preferred replacement when the host has a suitable identity.
+  Backend and worker both receive the ADC path through the shared Compose config.
+  Both services mount the source-files volume. On a replacement host, provision
+  a new dedicated runtime credential into that volume, with directory mode 0700
+  and file mode 0600 owned by UID 10001, before selecting `vision-gemini`.
+  To rotate, create and install a replacement IAM key through a protected
+  transfer, recreate backend and worker, test synthetic OCR and extraction,
+  then revoke the previous key. Never print the credential to verify it.
+- **Provider processing location and terms.** The current adapters use the
+  global Vision endpoint and Gemini Developer API; no regional processing
+  guarantee is configured. Google's [Vision data-usage policy](https://docs.cloud.google.com/vision/docs/data-usage)
+  says synchronous image content is processed in memory and is not used to
+  train Vision models; request metadata is temporarily logged. Evidence sent
+  to Gemini remains subject to the configured API account's terms. Changing
+  region, provider account, or storage requires a separate configuration review.
 - **Database on the same server.** The database moved from Neon (Singapore)
   to PostgreSQL on this VPS on 2026-09-21, which took API calls from 1.5 to 5
   seconds down to tens of milliseconds. The trade-off is that the server and its
