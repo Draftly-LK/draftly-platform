@@ -51,7 +51,10 @@ from src.modules.matter.infrastructure.repository import (
     _decode_cursor,
     _encode_cursor,
 )
-from src.modules.matter.infrastructure.workflow_commands import SqlMatterWorkflowCommandAdapter
+from src.modules.matter.infrastructure.workflow_commands import (
+    DemoMatterWorkflowCommandAdapter,
+    SqlMatterWorkflowCommandAdapter,
+)
 from src.modules.verification.contracts import ConfirmedFactValue, FactTierSummary
 from src.platform.errors import ConflictError
 from src.platform.pagination import InvalidCursorError
@@ -525,3 +528,40 @@ async def test_a_missing_matter_is_logged_and_skipped() -> None:
         )
     assert [entry["event"] for entry in logs] == ["matter.advance_state.matter_missing"]
     assert len(session.statements) == 1
+
+
+# ── Demo workflow adapter (DEMO_RELAXED_GATES) ──────────────────────────────
+
+
+async def test_demo_adapter_takes_every_step_from_review_to_drafting() -> None:
+    row = await _stored_row(_matter(rta_state=MatterState.LEGAL_REVIEW))
+    session = FakeSession()
+    session.queue(row)  # where the matter stands
+    for _ in range(2):  # READY_TO_DRAFT, then DRAFTING: read, write, re-read
+        session.queue(row)
+        session.queue("mat_1")
+        session.queue(row)
+
+    with structlog.testing.capture_logs() as logs:
+        await DemoMatterWorkflowCommandAdapter(cast(AsyncSession, session)).advance_state(
+            user_id="usr_1", matter_id="mat_1", state=MatterState.DRAFTING, reason="form"
+        )
+
+    assert row.rta_state == "DRAFTING"
+    assert len(session.statements) == 7
+    assert logs == []
+
+
+async def test_demo_adapter_leaves_moves_off_the_drafting_path_to_the_base_rules() -> None:
+    row = await _stored_row(_matter(rta_state=MatterState.LITIGATION_HOLD))
+    session = FakeSession()
+    session.queue(row)
+    session.queue(row)
+
+    with structlog.testing.capture_logs() as logs:
+        await DemoMatterWorkflowCommandAdapter(cast(AsyncSession, session)).advance_state(
+            user_id="usr_1", matter_id="mat_1", state=MatterState.APPROVED, reason="approval"
+        )
+
+    assert row.rta_state == "LITIGATION_HOLD"
+    assert [entry["event"] for entry in logs] == ["matter.advance_state.refused"]

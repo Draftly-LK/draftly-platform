@@ -309,6 +309,15 @@ marker in an uploaded image's bytes and return invented sample values, so a
 synthetic matter can be walked from upload to an approvable form with nothing
 leaving the machine. A rendered PDF carries no marker and lands as `other`.
 
+`DEMO_RELAXED_GATES=true` (off by default, refused outside `local`/`test`/`ci`)
+lets such a matter go on to approval and export. Approval then no longer waits
+on every critical fact type in the rule pack or on open checklist items, and
+the matter takes each state from legal review to approved in order
+(`src/demo_gates.py`). Both of those rules are open decisions in the workflow
+plan; the switch sets them aside for synthetic demos and does not decide them.
+The form's own critical fields, open legal issues, warning dispositions and the
+registration-ready rules still apply.
+
 The retrieval engine runs as its own HTTP service on the internal compose
 network, which keeps to the boundary rule above: the platform reaches it through
 an interface and never imports research paths. Its image ships a prebuilt index
