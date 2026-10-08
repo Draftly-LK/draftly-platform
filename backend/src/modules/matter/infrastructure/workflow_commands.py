@@ -60,4 +60,40 @@ class SqlMatterWorkflowCommandAdapter:
         await self._matters.update(replace(matter, rta_state=state), matter.version)
 
 
-__all__ = ["SqlMatterWorkflowCommandAdapter"]
+#: The ordinary §10.1 path from review to approval, one step at a time.
+_DRAFTING_PATH: tuple[MatterState, ...] = (
+    MatterState.LEGAL_REVIEW,
+    MatterState.READY_TO_DRAFT,
+    MatterState.DRAFTING,
+    MatterState.APPROVAL_PENDING,
+    MatterState.APPROVED,
+)
+
+
+class DemoMatterWorkflowCommandAdapter(SqlMatterWorkflowCommandAdapter):
+    """``DEMO_RELAXED_GATES`` only: walk the review-to-approval path in order.
+
+    With the demo gates relaxed, the gate each step waits on has already passed
+    by the time a later act names a later state (a form generated, a form
+    approved), so the matter takes every step between, each one still checked
+    against the transition table. Off this path it behaves exactly like the
+    base adapter.
+    """
+
+    async def advance_state(
+        self, *, user_id: str, matter_id: str, state: MatterState, reason: str
+    ) -> None:
+        if state in _DRAFTING_PATH:
+            matter = await self._matters.get(user_id, matter_id)
+            if matter is not None and matter.rta_state in _DRAFTING_PATH:
+                start = _DRAFTING_PATH.index(matter.rta_state) + 1
+                for step in _DRAFTING_PATH[start : _DRAFTING_PATH.index(state)]:
+                    await super().advance_state(
+                        user_id=user_id, matter_id=matter_id, state=step, reason=reason
+                    )
+        await super().advance_state(
+            user_id=user_id, matter_id=matter_id, state=state, reason=reason
+        )
+
+
+__all__ = ["DemoMatterWorkflowCommandAdapter", "SqlMatterWorkflowCommandAdapter"]

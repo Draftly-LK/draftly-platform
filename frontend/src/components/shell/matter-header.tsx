@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
+import { listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useDemoStore } from "@/lib/store";
@@ -19,6 +20,8 @@ import { MatterStepper } from "./matter-stepper";
 interface HeaderData {
   reference: string;
   state: RtaMatterState | null;
+  /** Whether a form has been generated for this matter. */
+  hasForm?: boolean;
   /** Why the matter could not be loaded, shown under the title. */
   error?: string;
 }
@@ -42,11 +45,16 @@ export function MatterHeader({ matterId }: { matterId: string }) {
  * this the header would vanish and reload on each tab switch; with it the
  * header paints at once and refreshes quietly behind.
  */
-const matterCache = new Map<string, ApiRtaMatter>();
+const matterCache = new Map<string, CachedMatter>();
+
+interface CachedMatter {
+  matter: ApiRtaMatter;
+  hasForm: boolean;
+}
 
 function ApiBoundMatterHeader({ matterId }: { matterId: string }) {
   const getToken = useTokenProvider();
-  const [matter, setMatter] = useState<ApiRtaMatter | null>(() => matterCache.get(matterId) ?? null);
+  const [matter, setMatter] = useState<CachedMatter | null>(() => matterCache.get(matterId) ?? null);
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations("matterNav");
 
@@ -76,11 +84,24 @@ function ApiBoundMatterHeader({ matterId }: { matterId: string }) {
     );
   }
   // First visit: hold the header's space so the page below does not jump when it arrives.
-  return <MatterHeaderShell matterId={matterId} data={matter ? { reference: matter.reference, state: matter.state } : null} />;
+  return (
+    <MatterHeaderShell
+      matterId={matterId}
+      data={matter ? { reference: matter.matter.reference, state: matter.matter.state, hasForm: matter.hasForm } : null}
+    />
+  );
 }
 
-function fetchMatter(getToken: TokenProvider, matterId: string): Promise<ApiRtaMatter> {
-  return getMatter(getToken, matterId);
+async function fetchMatter(getToken: TokenProvider, matterId: string): Promise<CachedMatter> {
+  // The form count only moves the stepper on, so a failed lookup counts as none.
+  const [matter, hasForm] = await Promise.all([
+    getMatter(getToken, matterId),
+    listForms(getToken, matterId, { limit: 1 }).then(
+      (forms) => forms.items.length > 0,
+      () => false,
+    ),
+  ]);
+  return { matter, hasForm };
 }
 
 function DemoMatterHeader({ matterId }: { matterId: string }) {
@@ -131,7 +152,7 @@ function MatterHeaderShell({
         </div>
       </div>
       {data?.state ? (
-        <MatterStepper state={data.state} />
+        <MatterStepper state={data.state} hasForm={data.hasForm} />
       ) : data === null ? (
         <div aria-hidden="true" className="h-[68px] sm:h-[76px]" />
       ) : null}

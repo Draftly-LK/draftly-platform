@@ -539,13 +539,16 @@ def build_draft_service(session: AsyncSession) -> DraftService:
     )
     from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
 
+    facts, checklist, matter_workflow = _approval_gate_inputs(
+        session, SqlConfirmedFactReader(session), SqlMatterWorkflowCommandAdapter(session)
+    )
     return DraftService(
         repository=SqlGeneratedFormRepository(session),
-        facts=SqlConfirmedFactReader(session),
+        facts=facts,
         issues=build_check_service(session),
-        checklist=build_checklist_service(session),
+        checklist=checklist,
         audit=AuditService(repository=SqlAuditRepository(session)),
-        matter_workflow=SqlMatterWorkflowCommandAdapter(session),
+        matter_workflow=matter_workflow,
     )
 
 
@@ -572,17 +575,49 @@ def build_approval_service(session: AsyncSession) -> ApprovalService:
     )
     from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
 
+    facts, checklist, matter_commands = _approval_gate_inputs(
+        session, SqlConfirmedFactReader(session), SqlMatterWorkflowCommandAdapter(session)
+    )
     return ApprovalService(
         approvals=SqlApprovalRepository(session),
         exports=SqlFormExportRepository(session),
         events=SqlRegistrationEventRepository(session),
         forms=build_draft_service(session),
-        facts=SqlConfirmedFactReader(session),
+        facts=facts,
         issues=build_check_service(session),
-        checklist=build_checklist_service(session),
+        checklist=checklist,
         audit=AuditService(repository=SqlAuditRepository(session)),
         form_commands=SqlGeneratedFormCommandAdapter(session),
-        matter_commands=SqlMatterWorkflowCommandAdapter(session),
+        matter_commands=matter_commands,
+    )
+
+
+def _approval_gate_inputs(
+    session: AsyncSession, facts: Any, matter_workflow: Any
+) -> tuple[Any, Any, Any]:
+    """The fact, checklist and matter-state ports drafting and approval share.
+
+    ``DEMO_RELAXED_GATES`` swaps in the overrides from `src/demo_gates.py`, and
+    like the other stand-ins it is refused outside the stub environments.
+    """
+    settings = get_settings()
+    if not settings.demo_relaxed_gates:
+        return facts, build_checklist_service(session), matter_workflow
+    if settings.environment not in STUB_IDENTITY_ENVIRONMENTS:
+        raise ServiceMisconfiguredError(
+            f"DEMO_RELAXED_GATES is not permitted in environment '{settings.environment}'. "
+            f"It sets approval rules aside for synthetic demos and is limited to "
+            f"{sorted(STUB_IDENTITY_ENVIRONMENTS)}."
+        )
+    from src.demo_gates import FormScopedFactReader, NonBlockingChecklist
+    from src.modules.matter.infrastructure.workflow_commands import (
+        DemoMatterWorkflowCommandAdapter,
+    )
+
+    return (
+        FormScopedFactReader(facts),
+        NonBlockingChecklist(),
+        DemoMatterWorkflowCommandAdapter(session),
     )
 
 

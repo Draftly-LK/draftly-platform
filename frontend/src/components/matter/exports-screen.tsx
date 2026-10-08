@@ -17,6 +17,7 @@ import {
   listExports,
   listRegistrationEvents,
 } from "@/lib/api/approvals";
+import { listSourceFiles } from "@/lib/api/documents";
 import { listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
@@ -27,10 +28,13 @@ import type {
   ApiRtaMatter,
   ExportFormat,
   RegistrationEventType,
+  RtaMatterState,
 } from "@/types/rta";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
+
+const EXPORTED_STATES: ReadonlySet<RtaMatterState> = new Set(["EXPORTED", "SUBMITTED", "REGISTERED", "CLOSED"]);
 
 export function ExportsScreen({ matterId }: { matterId: string }) {
   return isApiEnabled() ? (
@@ -89,6 +93,10 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
   const [dayBookReference, setDayBookReference] = useState("");
   const [registryOffice, setRegistryOffice] = useState("");
   const [resultNote, setResultNote] = useState("");
+  // The instrument the act was performed on, and the uploaded document that shows it happened.
+  const [eventFormId, setEventFormId] = useState("");
+  const [evidenceFileId, setEvidenceFileId] = useState("");
+  const [sourceFiles, setSourceFiles] = useState<Array<{ id: string; name: string }>>([]);
   const [creatingEvent, setCreatingEvent] = useState(false);
 
   // Fetch all data
@@ -96,11 +104,12 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
     setLoading(true);
     setError(null);
     try {
-      const [matterResult, exportsResult, eventsResult, formsResult] = await Promise.all([
+      const [matterResult, exportsResult, eventsResult, formsResult, filesResult] = await Promise.all([
         getMatter(getToken, matterId),
         listExports(getToken, matterId),
         listRegistrationEvents(getToken, matterId),
         listForms(getToken, matterId),
+        listSourceFiles(getToken, matterId),
       ]);
       setMatter(matterResult);
       setExportList(exportsResult);
@@ -113,10 +122,15 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
         formVersion: form.formVersion,
       }));
       setAvailableForms(forms);
+      // An approved form's export is the approved manifest; a working draft is the exception then.
+      const approvedForm = formsResult.items.some((form) => form.state === "APPROVED");
+      setSelectedFormat(approvedForm ? "APPROVED_MANIFEST" : "WORKING_DRAFT_MANIFEST");
+      setSourceFiles(filesResult.items.map((file) => ({ id: file.id, name: file.originalFilename })));
 
       // Set default form if only one exists
       if (forms.length === 1) {
         setSelectedFormId(forms[0]!.id);
+        setEventFormId(forms[0]!.id);
       }
     } catch (cause) {
       setError(apiErrorMessage(cause, t("loadError")));
@@ -146,13 +160,14 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       });
       setShowExportForm(false);
       setSelectedFormId(availableForms.length === 1 ? availableForms[0]!.id : "");
-      setSelectedFormat("WORKING_DRAFT_MANIFEST");
+      // An approved export moves the matter on, which unlocks the registry events below.
+      setMatter(await getMatter(getToken, matterId));
     } catch (cause) {
       setError(apiErrorMessage(cause, t("createError")));
     } finally {
       setCreatingExport(false);
     }
-  }, [getToken, selectedFormId, selectedFormat, availableForms, exportList, t]);
+  }, [getToken, matterId, selectedFormId, selectedFormat, availableForms, exportList, t]);
 
   // Handle create registration event
   const handleCreateEvent = useCallback(async () => {
@@ -167,6 +182,8 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       const result = await createRegistrationEvent(getToken, matterId, {
         eventType,
         eventDate,
+        evidenceReferenceIds: [evidenceFileId],
+        ...(eventFormId && { generatedFormId: eventFormId }),
         ...(dayBookReference && { dayBookReference }),
         ...(registryOffice && { registryOffice }),
         ...(resultNote && { resultNote }),
@@ -183,12 +200,25 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
       setDayBookReference("");
       setRegistryOffice("");
       setResultNote("");
+      setEvidenceFileId("");
     } catch (cause) {
       setError(apiErrorMessage(cause, t("createError")));
     } finally {
       setCreatingEvent(false);
     }
-  }, [getToken, matterId, eventType, eventDate, dayBookReference, registryOffice, resultNote, eventList, t]);
+  }, [
+    getToken,
+    matterId,
+    eventType,
+    eventDate,
+    evidenceFileId,
+    eventFormId,
+    dayBookReference,
+    registryOffice,
+    resultNote,
+    eventList,
+    t,
+  ]);
 
   if (loading) {
     return (
@@ -223,6 +253,9 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
     APPROVED_MANIFEST: t("approvedManifestDescription"),
     EVIDENCE_SCHEDULE: t("evidenceScheduleDescription"),
   };
+
+  /** Registry events follow an approved export; before it the matter cannot be submitted. */
+  const exported = matter !== null && EXPORTED_STATES.has(matter.state);
 
   const eventTypeLabels: Record<RegistrationEventType, string> = {
     ATTESTED: t("attestedEvent"),
@@ -375,11 +408,12 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
             <div>
               <h2 className="text-lg font-semibold">{t("registrationSection")}</h2>
               <p className="text-muted-ink text-sm">{t("registrationDescription")}</p>
+              {!exported && <p className="text-amber-text mt-1 text-sm">{t("exportFirst")}</p>}
             </div>
             <Button
               variant="primary"
               onClick={() => setShowEventForm(!showEventForm)}
-              disabled={creatingEvent}
+              disabled={creatingEvent || !exported}
             >
               <Plus className="size-4" strokeWidth={1.5} />
               {t("recordEvent")}
@@ -387,7 +421,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
           </div>
 
           {/* Create event form */}
-          {showEventForm && (
+          {showEventForm && exported && (
             <div className="mb-6 rounded-card border border-border bg-surface p-4">
               <div className="space-y-4">
                 <div>
@@ -415,6 +449,41 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                     onChange={(e) => setEventDate(e.target.value)}
                     className="border-border-control bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
                   />
+                </div>
+
+                <div>
+                  <label htmlFor="event-form" className="block text-sm font-semibold">{t("eventInstrument")}</label>
+                  <select
+                    id="event-form"
+                    value={eventFormId}
+                    onChange={(e) => setEventFormId(e.target.value)}
+                    className="border-border-control bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
+                  >
+                    <option value="">{t("chooseForm")}</option>
+                    {availableForms.map((form) => (
+                      <option key={form.id} value={form.id}>
+                        {t("formOption", { title: formTitle(form.templateId), version: form.formVersion })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="event-evidence" className="block text-sm font-semibold">{t("eventEvidence")}</label>
+                  <p className="text-muted-ink mt-1 text-xs">{t("eventEvidenceHint")}</p>
+                  <select
+                    id="event-evidence"
+                    value={evidenceFileId}
+                    onChange={(e) => setEvidenceFileId(e.target.value)}
+                    className="border-border-control bg-surface mt-2 w-full rounded-control border px-3 py-2 text-sm"
+                  >
+                    <option value="">{t("chooseEvidence")}</option>
+                    {sourceFiles.map((file) => (
+                      <option key={file.id} value={file.id}>
+                        {file.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -453,7 +522,7 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
                 <div className="flex gap-2 pt-2">
                   <Button
                     variant="primary"
-                    disabled={!eventDate || creatingEvent}
+                    disabled={!eventDate || !evidenceFileId || creatingEvent}
                     onClick={() => void handleCreateEvent()}
                   >
                     {creatingEvent ? (
