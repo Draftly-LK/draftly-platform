@@ -57,7 +57,10 @@ Unknown rights/provenance, incomplete approvals, blocked indexing, quarantine,
 retirement and inappropriate audiences refuse the entire release. Licensed and
 restricted sources require a written permission reference. Restricted internal
 sources cannot enter the public catalogue or permit source-file download/full
-reader display. The public read adapter returns metadata only even when another
+reader display. Internal `snippet-only` display requires the exact approved
+internal audience, an explicit `approved-span` or `short-quotation-only` policy
+and a written licence reference, in addition to the independent approval records.
+The public read adapter returns metadata only even when another
 explicit policy permits more. Consumers must separately enforce quotation,
 display and download permissions before returning any content.
 

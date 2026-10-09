@@ -43,10 +43,19 @@ def validate_source(source: LegalSource, audience: CorpusAudience) -> None:
         or policy.display == "blocked"
     ):
         raise PublicationDenied("Source cannot enter the public catalogue")
-    if source.source_use_class == "restricted-internal-research" and (
-        policy.display in {"full-text", "snippet-only"} or policy.download == "source-file"
-    ):
-        raise PublicationDenied("Restricted source text cannot be displayed or downloaded")
+    if source.source_use_class == "restricted-internal-research":
+        if policy.display == "full-text" or policy.download == "source-file":
+            raise PublicationDenied(
+                "Restricted source cannot permit a full reader or file download"
+            )
+        if policy.display == "snippet-only" and (
+            audience != "internal-research"
+            or policy.quotation not in {"approved-span", "short-quotation-only"}
+            or not source.licence_reference
+        ):
+            raise PublicationDenied(
+                "Internal snippets require explicit quotation and licence approval"
+            )
     indexed_sha = source.indexed.sha256 if source.indexed else None
     if (
         source.original.sha256 != metadata.source_sha256
