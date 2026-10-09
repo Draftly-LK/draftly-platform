@@ -4,39 +4,51 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithIntl } from "@/test/render";
 import { RequirementsPanel } from "./requirements-panel";
+import { ApiError } from "@/lib/api/client";
 
 const mocks = vi.hoisted(() => ({
   calls: [] as unknown[][],
   fail: false,
   inboxFail: false,
+  assessmentPending: false,
 }));
 vi.mock("@/lib/api/auth", () => ({
   getMe: async () => ({ id: "synthetic-actor" }),
 }));
 vi.mock("@/lib/api/matters", () => ({
-  getChecklist: async () => ({
-    items: [
-      {
-        id: "item",
-        group: "TITLE",
-        version: 4,
-        labelKey: "Synthetic original",
-        physicalOriginalPolicy: "ORIGINAL_INSPECTED",
-        applicability: "REQUIRED",
-        collection: "RECEIVED",
-        digitalReview: "UNREVIEWED",
-        physicalOriginal: "UNKNOWN",
-        currency: "UNKNOWN",
-        consistency: "NOT_CHECKED",
-        computedResolution: "OPEN",
-        lifecycle: "OPEN",
-        acceptedDocumentClassIds: ["rta.doc.title_certificate"],
-        liveLinkCount: 1,
-        inspectionHistory: [],
-        waivable: false,
-      },
-    ],
-  }),
+  getChecklist: async () => {
+    if (mocks.assessmentPending)
+      throw new ApiError(
+        404,
+        "checklist_snapshot_not_found",
+        "Synthetic snapshot missing",
+        "synthetic",
+        {},
+      );
+    return {
+      items: [
+        {
+          id: "item",
+          group: "TITLE",
+          version: 4,
+          labelKey: "Synthetic original",
+          physicalOriginalPolicy: "ORIGINAL_INSPECTED",
+          applicability: "REQUIRED",
+          collection: "RECEIVED",
+          digitalReview: "UNREVIEWED",
+          physicalOriginal: "UNKNOWN",
+          currency: "UNKNOWN",
+          consistency: "NOT_CHECKED",
+          computedResolution: "OPEN",
+          lifecycle: "OPEN",
+          acceptedDocumentClassIds: ["rta.doc.title_certificate"],
+          liveLinkCount: 1,
+          inspectionHistory: [],
+          waivable: false,
+        },
+      ],
+    };
+  },
 }));
 vi.mock("@/lib/api/documents", () => ({
   getCompleteDocumentInbox: async () => {
@@ -87,8 +99,29 @@ beforeEach(() => {
   mocks.calls = [];
   mocks.fail = false;
   mocks.inboxFail = false;
+  mocks.assessmentPending = false;
   sessionStorage.clear();
   vi.stubGlobal("crypto", webcrypto);
+});
+it("guides an unassessed matter to the existing setup editor without treating it as a failed request", async () => {
+  mocks.assessmentPending = true;
+  renderWithIntl(
+    <RequirementsPanel
+      matterId="synthetic-matter"
+      getToken={token}
+      mode="checks"
+    />,
+  );
+  const action = await screen.findByRole("link", {
+    name: "Review matter setup",
+  });
+  expect(action.getAttribute("href")).toBe(
+    "/matters/synthetic-matter/facts#transaction-scope",
+  );
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(
+    screen.getByText(/Requirements are still being assessed/),
+  ).toBeTruthy();
 });
 it("keeps requirements available when the document inbox is unavailable", async () => {
   mocks.inboxFail = true;

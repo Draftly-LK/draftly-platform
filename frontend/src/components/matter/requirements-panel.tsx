@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClass } from "@/components/ui/button";
 import {
   ApiError,
   apiErrorMessage,
@@ -64,6 +64,7 @@ export function RequirementsPanel({
   const [notice, setNotice] = useState("");
   const [stale, setStale] = useState(false);
   const [inboxError, setInboxError] = useState(false);
+  const [assessmentPending, setAssessmentPending] = useState(false);
   const epoch = useRef(0);
   const contextEpoch = useRef(0);
   const openedTarget = useRef<string | null>(null);
@@ -114,9 +115,18 @@ export function RequirementsPanel({
     let alive = true;
     setLoading(true);
     setSelected(null);
+    setError(null);
+    setAssessmentPending(false);
     load()
       .catch((cause: unknown) => {
-        if (alive) setError(apiErrorMessage(cause, t("unavailable")));
+        if (!alive) return;
+        if (
+          cause instanceof ApiError &&
+          cause.status === 404 &&
+          cause.code === "checklist_snapshot_not_found"
+        )
+          setAssessmentPending(true);
+        else setError(apiErrorMessage(cause, t("unavailable")));
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -269,6 +279,19 @@ export function RequirementsPanel({
         <p className="text-red text-sm" role="alert">
           {error}
         </p>
+      )}
+      {assessmentPending && (
+        <div className="space-y-3">
+          <p role="status" className="text-muted-ink text-sm">
+            {t("assessmentPending")}
+          </p>
+          <Link
+            className={buttonClass("primary")}
+            href={`/matters/${encodeURIComponent(matterId)}/facts#transaction-scope`}
+          >
+            {t("reviewSetup")}
+          </Link>
+        </div>
       )}
       {notice && (
         <p className="text-muted-ink text-sm" role="status">
