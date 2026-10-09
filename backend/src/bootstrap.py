@@ -173,6 +173,7 @@ def build_checklist_service(session: AsyncSession) -> ChecklistService:
     from src.modules.task.infrastructure.repository import SqlChecklistRepository
 
     return ChecklistService(
+        matter_lock=_build_document_matter_lock(session),
         repository=SqlChecklistRepository(session),
         audit=AuditService(repository=SqlAuditRepository(session)),
     )
@@ -510,6 +511,7 @@ def build_check_service(session: AsyncSession) -> CheckService:
     from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
 
     return CheckService(
+        matter_lock=_build_document_matter_lock(session),
         repository=SqlCheckRepository(session),
         facts=SqlConfirmedFactReader(session),
         audit=AuditService(repository=SqlAuditRepository(session)),
@@ -583,6 +585,7 @@ def build_draft_service(session: AsyncSession) -> DraftService:
         session, SqlConfirmedFactReader(session), SqlMatterWorkflowCommandAdapter(session)
     )
     return DraftService(
+        matter_lock=_build_document_matter_lock(session),
         repository=SqlGeneratedFormRepository(session),
         facts=facts,
         issues=build_check_service(session),
@@ -619,6 +622,7 @@ def build_approval_service(session: AsyncSession) -> ApprovalService:
         session, SqlConfirmedFactReader(session), SqlMatterWorkflowCommandAdapter(session)
     )
     return ApprovalService(
+        matter_lock=_build_document_matter_lock(session),
         approvals=SqlApprovalRepository(session),
         exports=SqlFormExportRepository(session),
         events=SqlRegistrationEventRepository(session),
@@ -857,7 +861,39 @@ def build_ingestion_service(session: AsyncSession) -> SourceFileIngestionService
         max_upload_bytes=settings.max_source_file_bytes,
         max_page_count=settings.max_source_file_pages,
         checklist_links=build_checklist_service(session),
+        matter_lock=_build_document_matter_lock(session),
+        fact_invalidation=_build_fact_evidence_invalidation(session),
+        refresh_extractor=v1_pipeline,
+        matter_document_types=matter_types,
+        refresh_provider=settings.extraction_provider,
+        refresh_data_approved=settings.provider_data_approval,
         matter_workflow=SqlMatterWorkflowCommandAdapter(session),
+    )
+
+
+def _build_document_matter_lock(session: AsyncSession) -> Any:
+    from src.modules.matter.infrastructure.scope_repository import SqlMatterScopeRepository
+
+    return SqlMatterScopeRepository(session)
+
+
+def _build_fact_evidence_invalidation(session: AsyncSession) -> Any:
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.check.infrastructure.evidence_invalidation import SqlCheckInputInvalidation
+    from src.modules.document.application.invalidation import DocumentEvidenceInvalidation
+    from src.modules.draft.infrastructure.evidence_invalidation import SqlFormInputInvalidation
+    from src.modules.task.infrastructure.evidence_invalidation import SqlDocumentLinkInvalidation
+    from src.modules.verification.infrastructure.evidence_invalidation import (
+        SqlFactEvidenceInvalidation,
+    )
+
+    audit = AuditService(repository=SqlAuditRepository(session))
+    return DocumentEvidenceInvalidation(
+        SqlFactEvidenceInvalidation(session, audit),
+        SqlDocumentLinkInvalidation(session, audit),
+        SqlCheckInputInvalidation(session, audit),
+        SqlFormInputInvalidation(session, audit),
     )
 
 

@@ -59,3 +59,15 @@ class GeneratedFormReadPort(Protocol):
     """Read one form's snapshot. Returns ``None`` for absent or foreign."""
 
     async def get_form_snapshot(self, user_id: str, form_id: str) -> FormSnapshot | None: ...
+
+
+class FormInputInvalidationPort(Protocol):
+    async def invalidate_inputs(
+        self,
+        *,
+        user_id: str,
+        matter_id: str,
+        fact_ids: tuple[str, ...],
+        actor_id: str,
+        correlation_id: str,
+    ) -> None: ...

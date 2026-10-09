@@ -48,6 +48,12 @@ class MatterReadPort(Protocol):
     ) -> MatterAccessSummary | None: ...
 
 
+class MatterMutationLockPort(Protocol):
+    async def lock(self, user_id: str, matter_id: str) -> None:
+        """Lock the owned matter in the caller's transaction before evidence changes."""
+        ...
+
+
 SubjectKind = Literal["party", "parcel"]
 TransactionRole = Literal[
     "transferor",

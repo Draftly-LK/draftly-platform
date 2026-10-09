@@ -32,10 +32,36 @@ export interface ListSourceFilesParams {
 export function getDocumentReview(
   getToken: TokenProvider,
   documentId: string,
+  generation?: number,
 ): Promise<ApiDocumentReview> {
   return apiFetch<ApiDocumentReview>(
-    `/api/v1/detected-documents/${encodeURIComponent(documentId)}/review`,
+    `/api/v1/detected-documents/${encodeURIComponent(documentId)}/review${generation === undefined ? "" : `?generation=${generation}`}`,
     { getToken },
+  );
+}
+
+export function getDetectedDocument(
+  getToken: TokenProvider,
+  documentId: string,
+) {
+  return apiFetch<ApiDetectedDocument>(
+    `/api/v1/detected-documents/${encodeURIComponent(documentId)}`,
+    { getToken },
+  );
+}
+
+export function refreshDocumentExtraction(
+  getToken: TokenProvider,
+  documentId: string,
+  version: number,
+) {
+  return apiFetch<ApiDetectedDocument>(
+    `/api/v1/detected-documents/${encodeURIComponent(documentId)}/refresh-extraction`,
+    {
+      method: "POST",
+      headers: ifMatch(version),
+      getToken,
+    },
   );
 }
 

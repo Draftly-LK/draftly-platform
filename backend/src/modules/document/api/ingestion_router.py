@@ -178,6 +178,10 @@ def _to_document_read(view: DocumentView) -> DetectedDocumentRead:
         ],
         source_file_ids=list(view.source_file_ids),
         spans_multiple_sources=view.spans_multiple_sources,
+        interpretation_generation=document.interpretation_generation,
+        extraction_state=document.extraction_state,
+        latest_refresh_run_id=document.latest_refresh_run_id,
+        refresh_failure_reason=document.refresh_failure_reason,
         created_at=document.created_at.isoformat(),
         updated_at=document.updated_at.isoformat(),
         version=document.version,
@@ -507,7 +511,7 @@ async def decide_boundary(
                 source_file_id=fragment.source_file_id,
                 page_start=fragment.page_start,
                 page_end=fragment.page_end,
-                order_in_document=fragment.order_in_document or index,
+                order_in_document=fragment.order_in_document,
             )
             for index, fragment in enumerate(body.fragments)
         ],
@@ -551,6 +555,47 @@ async def decide_classification(
     return _to_document_read(view)
 
 
+@router.get("/detected-documents/{document_id}", response_model=DetectedDocumentRead)
+async def get_detected_document(
+    document_id: str,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+) -> DetectedDocumentRead:
+    view = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
+    await _authorized_matter(ctx, view.document.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    response.headers["ETag"] = f'"{view.document.version}"'
+    response.headers["Cache-Control"] = "private, no-store"
+    return _to_document_read(view)
+
+
+@router.post(
+    "/detected-documents/{document_id}/refresh-extraction", response_model=DetectedDocumentRead
+)
+async def refresh_extraction(
+    document_id: str,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+    uow: UnitOfWork = Depends(get_uow),
+    expected_version: int = Depends(require_if_match),
+) -> DetectedDocumentRead:
+    _ = uow
+    view = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
+    await _authorized_matter(ctx, view.document.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    saved = await service.refresh_extraction(
+        user_id=ctx.actor_id,
+        document_id=document_id,
+        actor_id=ctx.actor_id,
+        correlation_id=ctx.correlation_id,
+        expected_version=expected_version,
+    )
+    response.headers["ETag"] = f'"{saved.document.version}"'
+    return _to_document_read(saved)
+
+
 def _to_candidate_read(candidate: object) -> ReviewCandidateRead:
     return ReviewCandidateRead.model_validate(candidate, from_attributes=True)
 
@@ -558,11 +603,14 @@ def _to_candidate_read(candidate: object) -> ReviewCandidateRead:
 @router.get("/detected-documents/{document_id}/review", response_model=DocumentReviewRead)
 async def get_document_review(
     document_id: str,
+    generation: Annotated[int | None, Query(ge=1)] = None,
     ctx: RequestContext = Depends(get_request_context),
     service: DocumentReviewService = Depends(get_review_service),
     session: AsyncSession = Depends(get_db),
 ) -> DocumentReviewRead:
-    review = await service.get_review(user_id=ctx.actor_id, detected_document_id=document_id)
+    review = await service.get_review(
+        user_id=ctx.actor_id, detected_document_id=document_id, generation=generation
+    )
     await _authorized_matter(ctx, review.matter_id, session, CAP_DOCUMENT_CLASSIFY)
     return DocumentReviewRead(
         id=review.id,
@@ -570,10 +618,13 @@ async def get_document_review(
         detected_document_id=review.detected_document_id,
         type_id=review.type_id,
         suggested_name=review.suggested_name,
+        interpretation_generation=review.interpretation_generation,
+        current=review.current,
         pages=[
             ReviewPageRead(
                 id=page.id,
                 page_no=page.page_no,
+                source_file_id=page.source_file_id,
                 corrected_width=page.corrected_width,
                 corrected_height=page.corrected_height,
                 quality_status=page.quality_status,

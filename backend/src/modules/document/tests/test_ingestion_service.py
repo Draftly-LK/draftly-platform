@@ -189,6 +189,9 @@ class FakeRepository:
         self.runs.append(run)
         return run
 
+    async def snapshot_interpretation(self, document, fragments, actor_id):
+        return None
+
 
 class FakeStorage:
     """In-memory stand-in that records the version each read was pinned to."""

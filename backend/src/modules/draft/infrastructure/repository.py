@@ -145,9 +145,9 @@ class SqlGeneratedFormRepository:
 
     async def _form_row(self, user_id: str, form_id: str) -> GeneratedFormRow | None:
         result = await self._session.execute(
-            select(GeneratedFormRow).where(
-                GeneratedFormRow.user_id == user_id, GeneratedFormRow.id == form_id
-            )
+            select(GeneratedFormRow)
+            .execution_options(populate_existing=True)
+            .where(GeneratedFormRow.user_id == user_id, GeneratedFormRow.id == form_id)
         )
         return result.scalar_one_or_none()
 

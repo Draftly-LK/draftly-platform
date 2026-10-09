@@ -71,6 +71,7 @@ def _to_evidence(row: EvidenceReferenceRow) -> EvidenceReference:
         precision=row.precision or "page",
         candidate_version=row.candidate_version,
         candidate_id=row.candidate_id,
+        interpretation_generation=row.interpretation_generation,
     )
 
 
@@ -281,6 +282,7 @@ class SqlVerificationRepository:
             precision=evidence.precision,
             candidate_version=evidence.candidate_version,
             candidate_id=evidence.candidate_id,
+            interpretation_generation=evidence.interpretation_generation,
         )
         self._session.add(row)
         await self._session.flush()

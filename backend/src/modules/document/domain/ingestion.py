@@ -109,6 +109,10 @@ class DetectedDocument:
     issue_or_execution_date_fact_id: str | None = None
     version_relationship: DocumentVersionRelationship | None = None
     duplicate_of_detected_document_id: str | None = None
+    interpretation_generation: int = 1
+    extraction_state: str = "current"
+    latest_refresh_run_id: str | None = None
+    refresh_failure_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -232,6 +236,7 @@ class ProcessingRun:
     #: Full V1 page/group result. Repository adapters persist it into owned
     #: child tables; it is not placed in logs or event payloads.
     v1_report: V1PipelineReport | None = None
+    kind: str = "source"
 
     @property
     def succeeded(self) -> bool:

@@ -56,6 +56,7 @@ class EvidenceReference:
     precision: str = "page"
     candidate_version: int | None = None
     candidate_id: str | None = None
+    interpretation_generation: int | None = None
 
 
 @dataclass(frozen=True)

@@ -167,6 +167,10 @@ class DetectedDocumentRead(_CamelModel):
     created_at: str
     updated_at: str
     version: int
+    interpretation_generation: int = 1
+    extraction_state: str = "current"
+    latest_refresh_run_id: str | None = None
+    refresh_failure_reason: str | None = None
 
 
 class DocumentInboxRead(_CamelModel):
@@ -277,6 +281,7 @@ class ReviewPageRead(_CamelModel):
     classification_confidence: float
     image_url: str
     ocr_url: str
+    source_file_id: str | None = None
 
 
 class ReviewCandidateRead(_CamelModel):
@@ -298,6 +303,8 @@ class DocumentReviewRead(_CamelModel):
     suggested_name: str | None
     pages: list[ReviewPageRead]
     candidates: list[ReviewCandidateRead]
+    interpretation_generation: int = 1
+    current: bool = False
 
 
 class CandidateEditRequest(_StrictCamel):

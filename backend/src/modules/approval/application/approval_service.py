@@ -89,6 +89,7 @@ from src.modules.content_governance.contracts import (
     require_template,
 )
 from src.modules.draft.contracts import FormSnapshot, GeneratedFormReadPort
+from src.modules.matter.contracts import MatterMutationLockPort
 from src.modules.task.contracts import ChecklistBlockerPort
 from src.modules.verification.contracts import ConfirmedFactReadPort, FactTierSummary
 from src.platform import ids
@@ -151,6 +152,7 @@ class ApprovalService:
         form_commands: GeneratedFormCommandPort | None = None,
         matter_commands: MatterWorkflowCommandPort | None = None,
         clock: Callable[[], datetime] = _utc_now,
+        matter_lock: MatterMutationLockPort | None = None,
     ) -> None:
         self._approvals = approvals
         self._exports = exports
@@ -166,6 +168,7 @@ class ApprovalService:
         self._form_commands = form_commands
         self._matter_commands = matter_commands
         self._clock = clock
+        self._matter_lock = matter_lock
 
     # ── Approval (§9.6) ──────────────────────────────────────────────────────
 
@@ -499,6 +502,9 @@ class ApprovalService:
         return snapshot
 
     async def _read(self, user_id: str, form_id: str) -> _Context:
+        if self._matter_lock:
+            snapshot = await self._snapshot(user_id, form_id)
+            await self._matter_lock.lock(user_id, snapshot.matter_id)
         """Read the snapshot once and evaluate the four §14.6 sources over it."""
         snapshot = await self._snapshot(user_id, form_id)
         try:

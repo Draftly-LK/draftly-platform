@@ -147,6 +147,7 @@ class ReviewPage:
     classification_confidence: float
     corrected_webp_ref: tuple[str, str]
     corrected_ocr_ref: tuple[str, str]
+    source_file_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -170,6 +171,8 @@ class DocumentReview:
     suggested_name: str | None
     pages: tuple[ReviewPage, ...]
     candidates: tuple[ReviewCandidate, ...]
+    interpretation_generation: int = 1
+    current: bool = False
 
 
 def quality_status(

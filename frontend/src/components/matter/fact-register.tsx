@@ -54,6 +54,7 @@ export function FactRegister(props: {
   matterId: string;
   documentId?: string;
   onDecision?: () => void;
+  sourceRevision?: number;
 }) {
   return (
     <RegisterContent
@@ -66,10 +67,12 @@ function RegisterContent({
   matterId,
   documentId,
   onDecision,
+  sourceRevision,
 }: {
   matterId: string;
   documentId?: string;
   onDecision?: () => void;
+  sourceRevision?: number;
 }) {
   const t = useTranslations("factRegister");
   const root = useTranslations();
@@ -201,12 +204,13 @@ function RegisterContent({
   }, [getToken, matterId]);
   useEffect(() => {
     const epoch = generation.current;
+    setLoading(true);
     void loadFacts();
     void loadResources();
     return () => {
       epoch.value++;
     };
-  }, [loadFacts, loadResources]);
+  }, [loadFacts, loadResources, sourceRevision]);
   const subjectLabel = (subject: ApiMatterSubject) =>
     `${t(subject.kind === "party" ? "partyNumber" : "parcelNumber", { number: subject.ordinal })}${subjectContext(subject, facts) ? ` · ${subjectContext(subject, facts)}` : ""}`;
   const subjectName = (id: string | null) =>
@@ -408,6 +412,7 @@ function RegisterContent({
                 key={selected.id}
                 matterId={matterId}
                 initial={selected}
+                sourceRevision={sourceRevision}
                 subjects={subjects}
                 transactions={transactions}
                 sources={sources}

@@ -91,7 +91,7 @@ function DocumentProcessingReviewFlow({
       active = false;
       epoch.value++;
     };
-  }, [documentId, matterId, getToken, t]);
+  }, [documentId, matterId, getToken, t, document?.version]);
 
   const page = review?.pages[pageIndex];
   useEffect(() => {
@@ -250,6 +250,7 @@ function DocumentProcessingReviewFlow({
               onChange={setDocument}
             />
             <FactRegister
+              sourceRevision={document?.version}
               matterId={matterId}
               documentId={documentId}
               onDecision={() => {

@@ -238,6 +238,7 @@ class FactReviewService:
             precision=source.precision,
             candidate_version=locator.candidate_version,
             candidate_id=locator.candidate_id,
+            interpretation_generation=source.locator.interpretation_generation,
         )
 
     async def list_facts(
@@ -467,6 +468,7 @@ class FactReviewService:
                         ref.candidate_id,
                         ref.candidate_version,
                         ref.text_span,
+                        ref.interpretation_generation,
                     )
                     evidence.append(await self._evidence(ctx, matter_id, locator))
             else:

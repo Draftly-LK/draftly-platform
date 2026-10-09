@@ -502,6 +502,7 @@ export interface ApiPageInfo {
 /** Canonical register wire contract; values and immutable lineage are form-free. */
 export type ApiFactValue = string | number | boolean | null;
 export interface ApiFactEvidenceInput {
+  interpretationGeneration?: number | null;
   sourceFileId: string;
   pageNumber: number;
   sourceSha256: string;
@@ -512,6 +513,7 @@ export interface ApiFactEvidenceInput {
   snippet?: string;
 }
 export interface ApiFactEvidence {
+  interpretationGeneration?: number | null;
   id: string;
   sourceFileId: string;
   detectedDocumentId: string | null;
@@ -853,6 +855,15 @@ export interface ApiDocumentFragment {
 
 /** Mirrors `DetectedDocumentRead`. */
 export interface ApiDetectedDocument {
+  interpretationGeneration?: number;
+  extractionState?:
+    | "current"
+    | "refresh_required"
+    | "failed"
+    | "unsupported"
+    | "unavailable";
+  latestRefreshRunId?: string | null;
+  refreshFailureReason?: string | null;
   id: string;
   matterId: string;
   classId: string | null;
@@ -920,6 +931,7 @@ export interface ApiProcessingRun {
 }
 
 export interface ApiDocumentReviewPage {
+  sourceFileId?: string | null;
   id: string;
   pageNo: number;
   correctedWidth: number;
@@ -944,6 +956,8 @@ export interface ApiReviewCandidate {
 }
 
 export interface ApiDocumentReview {
+  interpretationGeneration?: number;
+  current?: boolean;
   id: string;
   matterId: string;
   detectedDocumentId: string;

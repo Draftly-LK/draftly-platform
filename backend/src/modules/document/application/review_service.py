@@ -34,8 +34,10 @@ class DocumentReviewService:
         self._audit = audit
         self._candidate_approval = candidate_approval
 
-    async def get_review(self, *, user_id: str, detected_document_id: str) -> DocumentReview:
-        review = await self._repo.get_document_review(user_id, detected_document_id)
+    async def get_review(
+        self, *, user_id: str, detected_document_id: str, generation: int | None = None
+    ) -> DocumentReview:
+        review = await self._repo.get_document_review(user_id, detected_document_id, generation)
         if review is None:
             raise DocumentReviewNotFoundError()
         candidates = []

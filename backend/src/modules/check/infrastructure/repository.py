@@ -103,6 +103,27 @@ class SqlCheckRepository:
 
     # ── Check results (append-only) ──────────────────────────────────────────
 
+    async def stale_input_result_ids(self, user_id: str, matter_id: str) -> tuple[str, ...]:
+        rows = (
+            await self._session.execute(
+                select(CrossDocumentCheckRow)
+                .where(
+                    CrossDocumentCheckRow.user_id == user_id,
+                    CrossDocumentCheckRow.matter_id == matter_id,
+                )
+                .order_by(CrossDocumentCheckRow.created_at.desc(), CrossDocumentCheckRow.id.desc())
+            )
+        ).scalars()
+        seen: set[str] = set()
+        result: list[str] = []
+        for row in rows:
+            if row.check_definition_id in seen:
+                continue
+            seen.add(row.check_definition_id)
+            if row.explanation_key == "rta.check.input_changed":
+                result.append(row.id)
+        return tuple(result)
+
     async def create_results(self, results: list[CheckResult]) -> list[CheckResult]:
         rows = []
         for result in results:

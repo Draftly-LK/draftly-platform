@@ -2627,6 +2627,14 @@
     "saving": "Saving...",
     "backendNotConfigured": "Backend not configured.",
     "decisionsTitle": "Document type and pages",
+    "refreshExtraction": "Refresh extraction",
+    "extraction": {
+      "current": "Extraction matches the current document type and pages. Facts still need review.",
+      "refresh_required": "The document changed. Previous extraction and its dependent facts are historical until refreshed and reviewed.",
+      "failed": "Extraction refresh failed. Previous values remain historical. Retry the refresh or record facts manually with evidence.",
+      "unsupported": "Automatic extraction is unavailable for this type. Review the original and record facts manually with evidence.",
+      "unavailable": "Current extraction is unavailable. Confirm the type and pages, then refresh extraction."
+    },
     "classConfirmed": "Type confirmed",
     "pagesLabel": "Pages",
     "boundaryConfirmed": "Pages confirmed",

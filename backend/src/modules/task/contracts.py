@@ -24,3 +24,15 @@ class ChecklistLinkCommandPort(Protocol):
     async def supersede_document_links(
         self, *, user_id: str, detected_document_id: str, replacement_link_id: str | None = None
     ) -> int: ...
+
+
+class DocumentLinkInvalidationPort(Protocol):
+    async def invalidate_documents(
+        self,
+        *,
+        user_id: str,
+        matter_id: str,
+        document_ids: tuple[str, ...],
+        actor_id: str,
+        correlation_id: str,
+    ) -> None: ...

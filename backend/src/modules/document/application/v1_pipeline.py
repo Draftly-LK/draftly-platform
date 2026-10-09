@@ -130,6 +130,19 @@ class V1DocumentPipeline:
         self._classification_confidence_threshold = classification_confidence_threshold
         self._classification_text_limit = classification_text_limit
 
+    async def extract_document(
+        self,
+        *,
+        type_id: str,
+        text: str,
+        page_numbers: tuple[int, ...],
+        fields: tuple[ExtractionFieldSchema, ...],
+    ) -> tuple[ExtractedCandidate, ...]:
+        """Extract an explicitly confirmed interpretation without reclassifying pages."""
+        return await self._extractor.extract_document(
+            type_id=type_id, text=text, page_numbers=page_numbers, fields=fields
+        )
+
     async def process(
         self,
         data: bytes,

@@ -41,6 +41,7 @@ export function FactReviewPanel({
   subjectLabel,
   getToken,
   onSaved,
+  sourceRevision,
 }: {
   matterId: string;
   initial: ApiMatterFact;
@@ -51,6 +52,7 @@ export function FactReviewPanel({
   subjectLabel: (subject: ApiMatterSubject) => string;
   getToken: TokenProvider;
   onSaved: (fact: ApiMatterFact) => void;
+  sourceRevision?: number;
 }) {
   const t = useTranslations("factRegister");
   const root = useTranslations();
@@ -150,7 +152,7 @@ export function FactReviewPanel({
     return () => {
       epoch.value++;
     };
-  }, [initial.id, renew]);
+  }, [initial.id, renew, sourceRevision]);
   const active =
     reviewReady && !["REJECTED", "SUPERSEDED"].includes(fact.status);
   const evidenceAvailable =

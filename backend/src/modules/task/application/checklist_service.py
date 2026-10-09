@@ -37,6 +37,7 @@ from src.modules.content_governance.contracts import (
     compile_checklist,
     get_requirement,
 )
+from src.modules.matter.contracts import MatterMutationLockPort
 from src.modules.task.domain.errors import (
     ChecklistItemNotFoundError,
     ChecklistSnapshotNotFoundError,
@@ -90,9 +91,16 @@ class ChecklistView:
 class ChecklistService:
     """Owns compiled checklists and every decision recorded against an item."""
 
-    def __init__(self, *, repository: SqlChecklistRepository, audit: AuditPort) -> None:
+    def __init__(
+        self,
+        *,
+        repository: SqlChecklistRepository,
+        audit: AuditPort,
+        matter_lock: MatterMutationLockPort | None = None,
+    ) -> None:
         self._repo = repository
         self._audit = audit
+        self._matter_lock = matter_lock
 
     # ── Compilation (implements matter's ChecklistCommandPort) ────────────────
 
@@ -106,6 +114,8 @@ class ChecklistService:
         correlation_id: str,
     ) -> tuple[str, CompiledChecklist]:
         """Compile, or return the existing snapshot with the same fingerprint."""
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         previous = await self._repo.latest_snapshot(user_id, matter_id)
         reviewed = await self._repo.reviewed_requirement_ids(user_id, matter_id)
         enriched = CompilerInput(
@@ -498,6 +508,8 @@ class ChecklistService:
     async def _load(
         self, user_id: str, matter_id: str, item_id: str
     ) -> tuple[ChecklistItem, RequirementDefinition]:
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         item = await self._repo.get_item(user_id, item_id)
         if item is None or item.matter_id != matter_id:
             raise ChecklistItemNotFoundError()

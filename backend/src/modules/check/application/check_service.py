@@ -45,6 +45,7 @@ from src.modules.content_governance.contracts import (
     PartyContext,
     RtaWorkflowRole,
 )
+from src.modules.matter.contracts import MatterMutationLockPort
 from src.modules.verification.contracts import ConfirmedFactReadPort
 from src.platform import ids
 
@@ -78,6 +79,7 @@ class CheckService:
         facts: ConfirmedFactReadPort,
         audit: AuditPort,
         clock: Callable[[], datetime] = _utc_now,
+        matter_lock: MatterMutationLockPort | None = None,
     ) -> None:
         self._repo = repository
         self._facts = facts
@@ -86,6 +88,7 @@ class CheckService:
         # every result, so a slow run cannot look like several. Injectable so a
         # deadline test does not depend on the day it is run.
         self._clock = clock
+        self._matter_lock = matter_lock
 
     # ── Running ──────────────────────────────────────────────────────────────
 
@@ -107,6 +110,8 @@ class CheckService:
         retroactively reinterprets a conclusion that has already been shown to a
         lawyer (§7.1).
         """
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         now = self._clock()
         summary = await self._facts.summarise(user_id, matter_id)
         evaluations = run_all(
@@ -315,12 +320,15 @@ class CheckService:
     async def gates(self, user_id: str, matter_id: str) -> IssueGateSummary:
         """Implements `check.contracts.IssueGatePort` for draft and approval."""
         issues = await self._repo.list_all_issues(user_id, matter_id)
+        stale = await self._repo.stale_input_result_ids(user_id, matter_id)
         return IssueGateSummary(
-            blocks_draft_generation=blocks_draft_generation(issues),
-            blocks_approval=blocks_approval(issues),
-            blocks_registration_ready_export=blocks_registration_ready_export(issues),
+            blocks_draft_generation=bool(stale) or blocks_draft_generation(issues),
+            blocks_approval=bool(stale) or blocks_approval(issues),
+            blocks_registration_ready_export=bool(stale)
+            or blocks_registration_ready_export(issues),
             open_statutory_blocker_ids=open_statutory_blocker_ids(issues),
             open_blocking_issue_ids=open_blocking_issue_ids(issues),
+            stale_check_ids=stale,
         )
 
     # ── Decisions ────────────────────────────────────────────────────────────
@@ -346,6 +354,8 @@ class CheckService:
         above all accepting risk on a statutory blocker — leaves no trace of a
         half-applied change.
         """
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         issue = await self.get_issue(user_id=user_id, matter_id=matter_id, issue_id=issue_id)
         guard_issue_decision(
             issue,

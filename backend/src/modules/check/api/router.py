@@ -196,6 +196,7 @@ def _to_gates_read(gates: IssueGateSummary) -> IssueGatesRead:
         blocks_registration_ready_export=gates.blocks_registration_ready_export,
         open_statutory_blocker_ids=list(gates.open_statutory_blocker_ids),
         open_blocking_issue_ids=list(gates.open_blocking_issue_ids),
+        stale_check_ids=list(gates.stale_check_ids),
     )
 
 

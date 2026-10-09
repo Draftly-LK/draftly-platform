@@ -356,7 +356,7 @@ async def machine_candidate(session, matter):
             matter_id=matter.matter_id,
             class_id="rta.doc.nic",
             class_status="LAWYER_CONFIRMED",
-            boundary_status="LAWYER_CONFIRMED",
+            boundary_status="CONFIRMED",
         )
     )
     await session.flush()
@@ -369,7 +369,7 @@ async def machine_candidate(session, matter):
             source_file_id=source.id,
             page_start=1,
             page_end=1,
-            boundary_status="LAWYER_CONFIRMED",
+            boundary_status="CONFIRMED",
         )
     )
     run_id, logical_id, candidate_id = new_id("run"), new_id("logical"), new_id("candidate")

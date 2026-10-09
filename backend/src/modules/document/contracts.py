@@ -15,6 +15,7 @@ class FactEvidenceLocator:
     candidate_id: str | None = None
     candidate_version: int | None = None
     snippet: str | None = None
+    interpretation_generation: int | None = None
 
 
 @dataclass(frozen=True)

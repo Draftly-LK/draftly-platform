@@ -74,6 +74,7 @@ from src.modules.draft.ports import (
     GeneratedFormRepository,
     MatterWorkflowCommandPort,
 )
+from src.modules.matter.contracts import MatterMutationLockPort
 from src.modules.task.contracts import ChecklistBlockerPort
 from src.modules.verification.contracts import ConfirmedFactReadPort, FactTierSummary
 from src.platform import ids
@@ -130,9 +131,11 @@ class DraftService:
         candidates: CandidateFactReadPort | None = None,
         clock: Callable[[], datetime] = _utc_now,
         matter_workflow: MatterWorkflowCommandPort | None = None,
+        matter_lock: MatterMutationLockPort | None = None,
     ) -> None:
         self._repo = repository
         self._matter_workflow = matter_workflow
+        self._matter_lock = matter_lock
         self._facts = facts
         self._issues = issues
         self._checklist = checklist
@@ -162,6 +165,8 @@ class DraftService:
         executed: every template in this repository is a transcription, so the
         returned preflight always reports ``registration_ready`` false (§9.5).
         """
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         gates = await self._issues.gates(user_id, matter_id)
         confirmed_subtype_id = guard_generation(
             subtype_id=subtype_id,
@@ -510,6 +515,9 @@ class DraftService:
         self, user_id: str, form_id: str
     ) -> tuple[GeneratedForm, FormTemplateDefinition, list[GeneratedFormField]]:
         form = await self._repo.get_form(user_id, form_id)
+        if form is not None and self._matter_lock:
+            await self._matter_lock.lock(user_id, form.matter_id)
+            form = await self._repo.get_form(user_id, form_id)
         if form is None:
             raise GeneratedFormNotFoundError()
         return (

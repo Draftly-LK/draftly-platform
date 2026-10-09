@@ -102,6 +102,9 @@ class FakeCheckRepository:
         self.results.extend(results)
         return results
 
+    async def stale_input_result_ids(self, user_id: str, matter_id: str) -> tuple[str, ...]:
+        return ()
+
     async def list_results(
         self, user_id: str, matter_id: str, *, limit: int, cursor: str | None
     ) -> tuple[list[CheckResult], str | None]:

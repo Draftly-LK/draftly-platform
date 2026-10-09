@@ -98,6 +98,7 @@ class IssueGatesRead(_Camel):
     blocks_registration_ready_export: bool
     open_statutory_blocker_ids: list[str]
     open_blocking_issue_ids: list[str]
+    stale_check_ids: list[str] = []
 
 
 class PageInfo(_Camel):

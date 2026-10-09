@@ -38,6 +38,8 @@ from src.modules.content_governance.contracts import (
 )
 from src.modules.document.domain.errors import (
     DetectedDocumentNotFoundError,
+    DetectedDocumentStaleError,
+    ExtractionProviderError,
     SourceFileNotFoundError,
     SourceFileStaleError,
     SourceFileSupersedeTargetError,
@@ -69,14 +71,24 @@ from src.modules.document.domain.ingestion_policies import (
     source_contains_multiple_documents,
     validate_boundary_decision,
 )
+from src.modules.document.domain.interpretation import InterpretationPage
+from src.modules.document.domain.v1 import ExtractedCandidate
 from src.modules.document.infrastructure.repository import SqlDocumentIngestionRepository
 from src.modules.document.ports import (
+    MatterDocumentTypesPort,
     MatterWorkflowCommandPort,
     ProcessingJobPort,
     SourceFileStoragePort,
+    StructuredDocumentExtractorPort,
 )
+from src.modules.matter.contracts import MatterMutationLockPort
 from src.modules.task.contracts import ChecklistLinkCommandPort
+from src.modules.verification.contracts import (
+    FactEvidenceInvalidation,
+    FactEvidenceInvalidationPort,
+)
 from src.platform import ids
+from src.platform.errors import DomainRuleError, DraftlyError
 
 log = structlog.get_logger(__name__)
 
@@ -206,6 +218,12 @@ class SourceFileIngestionService:
         max_page_count: int,
         checklist_links: ChecklistLinkCommandPort | None = None,
         matter_workflow: MatterWorkflowCommandPort | None = None,
+        matter_lock: MatterMutationLockPort | None = None,
+        fact_invalidation: FactEvidenceInvalidationPort | None = None,
+        refresh_extractor: StructuredDocumentExtractorPort | None = None,
+        matter_document_types: MatterDocumentTypesPort | None = None,
+        refresh_provider: str = "none",
+        refresh_data_approved: bool = False,
     ) -> None:
         self._repo = repository
         self._matter_workflow = matter_workflow
@@ -215,6 +233,12 @@ class SourceFileIngestionService:
         self._max_upload_bytes = max_upload_bytes
         self._max_page_count = max_page_count
         self._checklist_links = checklist_links
+        self._matter_lock = matter_lock
+        self._fact_invalidation = fact_invalidation
+        self._refresh_extractor = refresh_extractor
+        self._matter_document_types = matter_document_types
+        self._refresh_provider = refresh_provider
+        self._refresh_data_approved = refresh_data_approved
 
     @property
     def max_upload_bytes(self) -> int:
@@ -760,7 +784,9 @@ class SourceFileIngestionService:
         pages"). Ranges may name more than one file, which is how a bundle
         split across uploads is joined.
         """
-        document = await self._require_document(user_id, document_id)
+        document = await self._document_for_update(user_id, document_id)
+        if document.version != expected_version:
+            raise DetectedDocumentStaleError(expectedVersion=expected_version)
         page_counts: dict[str, int | None] = {}
         for fragment_range in ranges:
             source = await self._repo.get_source_file(user_id, fragment_range.source_file_id)
@@ -770,6 +796,8 @@ class SourceFileIngestionService:
         validate_boundary_decision(ranges, page_counts=page_counts)
 
         previous = await self._repo.list_fragments_for_document(user_id, document.id)
+        if _range_signature(previous) != _range_signature(ranges):
+            await self._invalidate(document, previous, actor_id, correlation_id)
         now = datetime.now(tz=UTC)
         await self._repo.replace_fragments(
             user_id,
@@ -794,6 +822,9 @@ class SourceFileIngestionService:
         )
         document.boundary_status = BoundaryStatus.CONFIRMED
         saved = await self._repo.update_document(document, expected_version)
+        await self._repo.snapshot_interpretation(
+            saved, await self._repo.list_fragments_for_document(user_id, saved.id), actor_id
+        )
         await self._record(
             user_id=user_id,
             matter_id=saved.matter_id,
@@ -830,12 +861,20 @@ class SourceFileIngestionService:
         free-text class, and ``UNIDENTIFIED`` stays available as a real answer
         rather than being resolved to the nearest plausible class.
         """
-        document = await self._require_document(user_id, document_id)
+        document = await self._document_for_update(user_id, document_id)
+        if document.version != expected_version:
+            raise DetectedDocumentStaleError(expectedVersion=expected_version)
         if get_document_class(class_id) is None:
             raise UnknownDocumentClassError(classId=class_id)
 
         before = f"{document.class_id or '-'}/{document.class_status.value}"
         if class_id != document.class_id:
+            await self._invalidate(
+                document,
+                await self._repo.list_fragments_for_document(user_id, document.id),
+                actor_id,
+                correlation_id,
+            )
             # The stored score measured the class it was produced for. Carrying
             # it over to a class the lawyer chose would attribute a model's
             # confidence to a human's decision.
@@ -847,6 +886,9 @@ class SourceFileIngestionService:
             else DocumentClassStatus.LAWYER_CONFIRMED
         )
         saved = await self._repo.update_document(document, expected_version)
+        await self._repo.snapshot_interpretation(
+            saved, await self._repo.list_fragments_for_document(user_id, saved.id), actor_id
+        )
         await self._record(
             user_id=user_id,
             matter_id=saved.matter_id,
@@ -865,6 +907,170 @@ class SourceFileIngestionService:
         return await self._document_view(user_id, saved)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
+
+    async def refresh_extraction(
+        self,
+        *,
+        user_id: str,
+        document_id: str,
+        actor_id: str,
+        correlation_id: str,
+        expected_version: int,
+    ) -> DocumentView:
+        document = await self._document_for_update(user_id, document_id)
+        if document.version != expected_version:
+            raise DetectedDocumentStaleError(expectedVersion=expected_version)
+        if document.version_relationship is DocumentVersionRelationship.SUPERSEDED:
+            raise DomainRuleError("The document has been superseded.")
+        fragments = await self._repo.list_fragments_for_document(user_id, document_id)
+        if not fragments or document.boundary_status is not BoundaryStatus.CONFIRMED:
+            raise DomainRuleError("Confirm the document's pages before refreshing extraction.")
+        if document.class_status is not DocumentClassStatus.LAWYER_CONFIRMED:
+            raise DomainRuleError("Confirm the document type before refreshing extraction.")
+        if document.extraction_state == "current" and document.latest_refresh_run_id:
+            return await self._document_view(user_id, document)
+        # Existing generation-one candidates may be explicitly refreshed once;
+        # their interpretation becomes historical before any provider call.
+        if document.extraction_state == "current":
+            await self._invalidate(document, fragments, actor_id, correlation_id)
+            await self._repo.snapshot_interpretation(document, fragments, actor_id)
+        run = ProcessingRun(
+            id=ids.new_id(ids.PROCESSING_RUN),
+            user_id=user_id,
+            matter_id=document.matter_id,
+            source_file_id=fragments[0].source_file_id,
+            provider=self._refresh_provider,
+            outcome=SourceFileState.PROCESSING_FAILED,
+            started_at=datetime.now(UTC),
+            correlation_id=correlation_id,
+        )
+        pages: list[InterpretationPage] = []
+        run.kind = "interpretation"
+        candidates: tuple[ExtractedCandidate, ...] = ()
+        try:
+            if self._refresh_extractor is None or self._matter_document_types is None:
+                raise DomainRuleError("Extraction is unavailable.", reason="NOT_CONFIGURED")
+            if not self._refresh_data_approved:
+                raise DomainRuleError(
+                    "The provider data gate is closed.", reason="DATA_PROTECTION_GATE"
+                )
+            types = await self._matter_document_types.for_matter(
+                user_id=user_id, matter_id=document.matter_id
+            )
+            fields = types.extraction_schemas.get(document.class_id or "", ())
+            if not fields:
+                raise DomainRuleError(
+                    "This type requires manual review.", reason="UNSUPPORTED_TYPE"
+                )
+            text: list[str] = []
+            checked: set[str] = set()
+            for fragment in sorted(fragments, key=lambda item: item.order_in_document):
+                source = await self._require_source(user_id, fragment.source_file_id)
+                if (
+                    source.matter_id != document.matter_id
+                    or source.state is not SourceFileState.PROCESSED
+                    or source.superseded_by_source_file_id
+                    or source.page_count is None
+                    or fragment.page_end > source.page_count
+                ):
+                    raise DomainRuleError(
+                        "The cached source is not current.", reason="SOURCE_NOT_CURRENT"
+                    )
+                if source.id not in checked:
+                    original = await self._storage.get(
+                        source.storage_object_key, version=source.storage_object_version
+                    )
+                    if hashlib.sha256(original).hexdigest() != source.sha256:
+                        raise SourceObjectIntegrityError()
+                    checked.add(source.id)
+                for number in range(fragment.page_start, fragment.page_end + 1):
+                    page = await self._repo.cached_interpretation_page(
+                        user_id, document.matter_id, source.id, number
+                    )
+                    if page is None or page.quality_status in {"ocr_failed", "likely_blank"}:
+                        raise DomainRuleError(
+                            "A page needs manual review.", reason="PAGE_REVIEW_REQUIRED"
+                        )
+                    await self._storage.get(page.image_ref[0], version=page.image_ref[1])
+                    page_text = (
+                        await self._storage.get(page.text_ref[0], version=page.text_ref[1])
+                    ).decode("utf-8")
+                    if not page_text.strip():
+                        raise DomainRuleError(
+                            "Cached OCR is unavailable.", reason="OCR_UNAVAILABLE"
+                        )
+                    pages.append(page)
+                    text.append(f"[Page {len(pages)}]\n{page_text}")
+            candidates = await self._refresh_extractor.extract_document(
+                type_id=document.class_id or "",
+                text="\n\n".join(text),
+                page_numbers=tuple(range(1, len(pages) + 1)),
+                fields=fields,
+            )
+            keys = {field.key for field in fields}
+            if any(c.key not in keys or not 1 <= c.page_no <= len(pages) for c in candidates):
+                raise ExtractionProviderError()
+            run.outcome = SourceFileState.PROCESSED
+            run.pages_processed = len(pages)
+            run.ai_extraction_calls = 1
+            document.extraction_state = "current"
+        except (DraftlyError, OSError, ValueError, KeyError) as exc:
+            reason = (
+                str(exc.details.get("reason", exc.code))
+                if isinstance(exc, DraftlyError)
+                else "CACHE_UNAVAILABLE"
+            )
+            run.reasons = (reason,)
+            document.extraction_state = "unsupported" if reason == "UNSUPPORTED_TYPE" else "failed"
+        run.finished_at = datetime.now(UTC)
+        await self._repo.create_run(run)
+        if run.succeeded:
+            await self._repo.create_interpretation_extraction(document, run, pages, candidates)
+        document.latest_refresh_run_id = run.id
+        document.refresh_failure_reason = run.reasons[0] if run.reasons else None
+        saved = await self._repo.update_document(document, expected_version)
+        await self._record(
+            user_id=user_id,
+            matter_id=document.matter_id,
+            actor_id=actor_id,
+            correlation_id=correlation_id,
+            action=AuditAction.RTA_DOCUMENT_CLASSIFIED,
+            target_type=AuditTargetType.DETECTED_DOCUMENT,
+            target_id=document.id,
+            after_ref=f"generation:{document.interpretation_generation}/refresh:{run.id}/{document.extraction_state}",
+        )
+        return await self._document_view(user_id, saved)
+
+    async def _document_for_update(self, user_id: str, document_id: str) -> DetectedDocument:
+        document = await self._require_document(user_id, document_id)
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, document.matter_id)
+            document = await self._require_document(user_id, document_id)
+        return document
+
+    async def _invalidate(
+        self,
+        document: DetectedDocument,
+        fragments: Sequence[DocumentFragment],
+        actor_id: str,
+        correlation_id: str,
+    ) -> None:
+        await self._repo.snapshot_interpretation(document, list(fragments), None)
+        document.interpretation_generation += 1
+        document.extraction_state = "refresh_required"
+        document.latest_refresh_run_id = None
+        document.refresh_failure_reason = None
+        if self._fact_invalidation:
+            await self._fact_invalidation.invalidate(
+                user_id=document.user_id,
+                matter_id=document.matter_id,
+                actor_id=actor_id,
+                change=FactEvidenceInvalidation(
+                    source_file_id=fragments[0].source_file_id if fragments else "",
+                    detected_document_ids=(document.id,),
+                ),
+                correlation_id=correlation_id,
+            )
 
     async def _advance(
         self,
@@ -890,6 +1096,7 @@ class SourceFileIngestionService:
         inbox = await self.get_document_inbox(user_id=user_id, matter_id=matter_id, limit=500)
         if (
             inbox.documents
+            and all(view.document.extraction_state == "current" for view in inbox.documents)
             and not inbox.boundary_review_document_ids
             and not inbox.classification_review_document_ids
             and not inbox.unprocessed_source_file_ids
@@ -981,6 +1188,15 @@ class SourceFileIngestionService:
                 correlation_id=correlation_id,
             )
         )
+
+
+def _range_signature(
+    fragments: Sequence[DocumentFragment | FragmentRange],
+) -> tuple[tuple[str, int, int], ...]:
+    return tuple(
+        (f.source_file_id, f.page_start, f.page_end)
+        for f in sorted(fragments, key=lambda item: item.order_in_document)
+    )
 
 
 def _describe_ranges(fragments: Sequence[DocumentFragment]) -> str:

@@ -137,13 +137,19 @@ export function FactEvidence({
         const review = await getDocumentReview(
           getToken,
           evidence.detectedDocumentId,
+          evidence.interpretationGeneration ?? 1,
         );
         if (
           review.matterId !== matterId ||
           review.detectedDocumentId !== evidence.detectedDocumentId
         )
           throw new Error("Foreign review");
-        const page = review.pages.find((p) => p.pageNo === evidence.pageNumber);
+        const page = review.pages.find(
+          (p) =>
+            p.pageNo === evidence.pageNumber &&
+            (p.sourceFileId === evidence.sourceFileId ||
+              (!p.sourceFileId && !evidence.interpretationGeneration)),
+        );
         if (!page) throw new Error("Page unavailable");
         path = page.imageUrl;
       }

@@ -83,6 +83,7 @@ def _to_fact_read(view: FactView | RegisterFactView) -> FactRead:
                 page_text=reference.page_text,
                 candidate_id=reference.candidate_id,
                 candidate_version=reference.candidate_version,
+                interpretation_generation=reference.interpretation_generation,
                 precision=cast(Literal["page", "text"], reference.precision),
                 bounding_box=(
                     BoundingBoxRead(

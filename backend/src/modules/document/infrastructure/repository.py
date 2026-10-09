@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, true, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.content_governance.contracts import (
@@ -38,9 +38,11 @@ from src.modules.document.domain.ingestion import (
     SourceFile,
 )
 from src.modules.document.domain.ingestion_policies import failure_explanation_key
+from src.modules.document.domain.interpretation import InterpretationPage
 from src.modules.document.domain.registry import observational_field_key
 from src.modules.document.domain.v1 import (
     DocumentReview,
+    ExtractedCandidate,
     ProcessedLogicalDocument,
     ReviewCandidate,
     ReviewPage,
@@ -48,6 +50,7 @@ from src.modules.document.domain.v1 import (
 from src.modules.document.infrastructure.orm import (
     DetectedDocumentRow,
     DocumentFragmentRow,
+    DocumentInterpretationRow,
     DocumentProcessingPageRow,
     ProcessingCandidateFieldRow,
     ProcessingLogicalDocumentRow,
@@ -118,6 +121,10 @@ def _to_document(row: DetectedDocumentRow) -> DetectedDocument:
             else None
         ),
         duplicate_of_detected_document_id=row.duplicate_of_detected_document_id,
+        interpretation_generation=row.interpretation_generation,
+        extraction_state=row.extraction_state,
+        latest_refresh_run_id=row.latest_refresh_run_id,
+        refresh_failure_reason=row.refresh_failure_reason,
     )
 
 
@@ -133,6 +140,10 @@ def _apply_document(row: DetectedDocumentRow, document: DetectedDocument) -> Non
     )
     row.duplicate_of_detected_document_id = document.duplicate_of_detected_document_id
     row.boundary_status = document.boundary_status.value
+    row.interpretation_generation = document.interpretation_generation
+    row.extraction_state = document.extraction_state
+    row.latest_refresh_run_id = document.latest_refresh_run_id
+    row.refresh_failure_reason = document.refresh_failure_reason
 
 
 def _to_fragment(row: DocumentFragmentRow) -> DocumentFragment:
@@ -203,9 +214,9 @@ class SqlDocumentIngestionRepository:
 
     async def _source_row(self, user_id: str, source_file_id: str) -> SourceFileRow | None:
         result = await self._session.execute(
-            select(SourceFileRow).where(
-                SourceFileRow.user_id == user_id, SourceFileRow.id == source_file_id
-            )
+            select(SourceFileRow)
+            .execution_options(populate_existing=True)
+            .where(SourceFileRow.user_id == user_id, SourceFileRow.id == source_file_id)
         )
         return result.scalar_one_or_none()
 
@@ -302,6 +313,10 @@ class SqlDocumentIngestionRepository:
             ),
             duplicate_of_detected_document_id=document.duplicate_of_detected_document_id,
             boundary_status=document.boundary_status.value,
+            interpretation_generation=document.interpretation_generation,
+            extraction_state=document.extraction_state,
+            latest_refresh_run_id=document.latest_refresh_run_id,
+            refresh_failure_reason=document.refresh_failure_reason,
             created_at=document.created_at,
             updated_at=document.updated_at,
             version=document.version,
@@ -316,9 +331,9 @@ class SqlDocumentIngestionRepository:
 
     async def _document_row(self, user_id: str, document_id: str) -> DetectedDocumentRow | None:
         result = await self._session.execute(
-            select(DetectedDocumentRow).where(
-                DetectedDocumentRow.user_id == user_id, DetectedDocumentRow.id == document_id
-            )
+            select(DetectedDocumentRow)
+            .execution_options(populate_existing=True)
+            .where(DetectedDocumentRow.user_id == user_id, DetectedDocumentRow.id == document_id)
         )
         return result.scalar_one_or_none()
 
@@ -439,6 +454,132 @@ class SqlDocumentIngestionRepository:
         await self._session.flush()
         return await self.create_fragments(fragments)
 
+    async def snapshot_interpretation(
+        self,
+        document: DetectedDocument,
+        fragments: list[DocumentFragment],
+        actor_id: str | None,
+    ) -> None:
+        existing = (
+            await self._session.execute(
+                select(DocumentInterpretationRow.id).where(
+                    DocumentInterpretationRow.detected_document_id == document.id,
+                    DocumentInterpretationRow.generation == document.interpretation_generation,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing:
+            return
+        self._session.add(
+            DocumentInterpretationRow(
+                id=ids.new_id("interpretation"),
+                user_id=document.user_id,
+                matter_id=document.matter_id,
+                detected_document_id=document.id,
+                generation=document.interpretation_generation,
+                class_id=document.class_id,
+                actor_id=actor_id,
+                fragments=[
+                    {
+                        "source_file_id": f.source_file_id,
+                        "page_start": f.page_start,
+                        "page_end": f.page_end,
+                        "order_in_document": f.order_in_document,
+                    }
+                    for f in sorted(fragments, key=lambda item: item.order_in_document)
+                ],
+            )
+        )
+        await self._session.flush()
+
+    async def cached_interpretation_page(
+        self,
+        user_id: str,
+        matter_id: str,
+        source_file_id: str,
+        page_number: int,
+    ) -> InterpretationPage | None:
+        row = (
+            await self._session.execute(
+                select(DocumentProcessingPageRow)
+                .join(
+                    SourceFileProcessingRunRow,
+                    SourceFileProcessingRunRow.id == DocumentProcessingPageRow.processing_run_id,
+                )
+                .where(
+                    DocumentProcessingPageRow.user_id == user_id,
+                    DocumentProcessingPageRow.matter_id == matter_id,
+                    DocumentProcessingPageRow.source_file_id == source_file_id,
+                    DocumentProcessingPageRow.page_no == page_number,
+                    SourceFileProcessingRunRow.outcome == "PROCESSED",
+                )
+                .order_by(
+                    SourceFileProcessingRunRow.started_at.desc(),
+                    DocumentProcessingPageRow.id.desc(),
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        return InterpretationPage(
+            source_file_id,
+            page_number,
+            row.id,
+            row.quality_status,
+            (row.corrected_webp_key, row.corrected_webp_version),
+            (row.plain_text_key, row.plain_text_version),
+        )
+
+    async def create_interpretation_extraction(
+        self,
+        document: DetectedDocument,
+        run: ProcessingRun,
+        pages: list[InterpretationPage],
+        candidates: tuple[ExtractedCandidate, ...],
+    ) -> None:
+        logical_id = ids.new_id(ids.LOGICAL_DOCUMENT)
+        self._session.add(
+            ProcessingLogicalDocumentRow(
+                id=logical_id,
+                user_id=document.user_id,
+                matter_id=document.matter_id,
+                source_file_id=pages[0].source_file_id,
+                processing_run_id=run.id,
+                detected_document_id=document.id,
+                document_index=0,
+                type_id=document.class_id,
+                page_numbers=[p.page_number for p in pages],
+                interpretation_generation=document.interpretation_generation,
+                page_sources=[
+                    {
+                        "source_file_id": p.source_file_id,
+                        "page_number": p.page_number,
+                        "page_id": p.page_id,
+                    }
+                    for p in pages
+                ],
+            )
+        )
+        await self._session.flush()
+        for candidate in candidates:
+            page = pages[candidate.page_no - 1]
+            self._session.add(
+                ProcessingCandidateFieldRow(
+                    id=ids.new_id(ids.CANDIDATE_FIELD),
+                    user_id=document.user_id,
+                    matter_id=document.matter_id,
+                    logical_document_id=logical_id,
+                    key=candidate.key,
+                    candidate_value=candidate.value,
+                    source_file_id=page.source_file_id,
+                    page_no=page.page_number,
+                    model_reported_confidence=candidate.model_reported_confidence,
+                    review_state="unverified",
+                )
+            )
+        await self._session.flush()
+
     # ── Processing runs ──────────────────────────────────────────────────────
 
     async def create_run(self, run: ProcessingRun) -> ProcessingRun:
@@ -455,6 +596,7 @@ class SqlDocumentIngestionRepository:
             started_at=run.started_at,
             finished_at=run.finished_at,
             correlation_id=run.correlation_id,
+            kind=run.kind,
         )
         self._session.add(row)
         # SQLAlchemy cannot infer insert ordering here because the V1 child
@@ -571,26 +713,42 @@ class SqlDocumentIngestionRepository:
         await self._session.flush()
 
     async def get_document_review(
-        self, user_id: str, detected_document_id: str
+        self, user_id: str, detected_document_id: str, generation: int | None = None
     ) -> DocumentReview | None:
         logical = (
             await self._session.execute(
-                select(ProcessingLogicalDocumentRow).where(
+                select(ProcessingLogicalDocumentRow)
+                .where(
                     ProcessingLogicalDocumentRow.user_id == user_id,
                     ProcessingLogicalDocumentRow.detected_document_id == detected_document_id,
+                    ProcessingLogicalDocumentRow.interpretation_generation == generation
+                    if generation is not None
+                    else true(),
                 )
+                .order_by(ProcessingLogicalDocumentRow.interpretation_generation.desc())
+                .limit(1)
             )
         ).scalar_one_or_none()
         if logical is None:
             return None
+        document = await self.get_document(user_id, detected_document_id)
         page_rows = list(
             (
                 await self._session.execute(
                     select(DocumentProcessingPageRow)
                     .where(
                         DocumentProcessingPageRow.user_id == user_id,
-                        DocumentProcessingPageRow.processing_run_id == logical.processing_run_id,
-                        DocumentProcessingPageRow.page_no.in_(logical.page_numbers),
+                        DocumentProcessingPageRow.id.in_(
+                            [p["page_id"] for p in logical.page_sources]
+                        )
+                        if logical.page_sources is not None
+                        else (
+                            (
+                                DocumentProcessingPageRow.processing_run_id
+                                == logical.processing_run_id
+                            )
+                            & DocumentProcessingPageRow.page_no.in_(logical.page_numbers)
+                        ),
                     )
                     .order_by(DocumentProcessingPageRow.page_no)
                 )
@@ -598,6 +756,9 @@ class SqlDocumentIngestionRepository:
             .scalars()
             .all()
         )
+        if logical.page_sources is not None:
+            order = {page["page_id"]: index for index, page in enumerate(logical.page_sources)}
+            page_rows.sort(key=lambda page: order[page.id])
         candidate_rows = list(
             (
                 await self._session.execute(
@@ -618,10 +779,18 @@ class SqlDocumentIngestionRepository:
             detected_document_id=detected_document_id,
             type_id=logical.type_id,
             suggested_name=logical.suggested_name,
+            interpretation_generation=logical.interpretation_generation,
+            current=bool(
+                document
+                and document.interpretation_generation == logical.interpretation_generation
+                and document.extraction_state == "current"
+                and document.version_relationship is not DocumentVersionRelationship.SUPERSEDED
+            ),
             pages=tuple(
                 ReviewPage(
                     id=row.id,
                     page_no=row.page_no,
+                    source_file_id=row.source_file_id,
                     corrected_width=row.corrected_width,
                     corrected_height=row.corrected_height,
                     quality_status=row.quality_status,
@@ -694,7 +863,14 @@ class SqlDocumentIngestionRepository:
                 ProcessingLogicalDocumentRow,
                 ProcessingLogicalDocumentRow.id == ProcessingCandidateFieldRow.logical_document_id,
             )
-            .join(SourceFileRow, SourceFileRow.id == ProcessingLogicalDocumentRow.source_file_id)
+            .join(
+                SourceFileRow,
+                SourceFileRow.id
+                == func.coalesce(
+                    ProcessingCandidateFieldRow.source_file_id,
+                    ProcessingLogicalDocumentRow.source_file_id,
+                ),
+            )
             .where(
                 ProcessingCandidateFieldRow.user_id == user_id,
                 ProcessingLogicalDocumentRow.user_id == user_id,
@@ -811,6 +987,7 @@ class SqlDocumentIngestionRepository:
             .where(
                 SourceFileProcessingRunRow.user_id == user_id,
                 SourceFileProcessingRunRow.source_file_id == source_file_id,
+                SourceFileProcessingRunRow.kind == "source",
             )
             .order_by(
                 SourceFileProcessingRunRow.started_at.desc(), SourceFileProcessingRunRow.id.desc()
@@ -849,6 +1026,7 @@ class SqlDocumentIngestionRepository:
                 SourceFileProcessingRunRow.user_id == user_id,
                 SourceFileProcessingRunRow.matter_id == matter_id,
                 SourceFileProcessingRunRow.source_file_id == source_file_id,
+                SourceFileProcessingRunRow.kind == "source",
             )
             .order_by(
                 SourceFileProcessingRunRow.started_at.desc(), SourceFileProcessingRunRow.id.desc()

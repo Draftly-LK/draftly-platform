@@ -36,6 +36,7 @@ class FactEvidenceRead(_CamelModel):
     precision: Literal["page", "text"] = "page"
     candidate_id: str | None = None
     candidate_version: int | None = None
+    interpretation_generation: int | None = None
 
 
 class FactRead(_CamelModel):
@@ -82,6 +83,7 @@ class EvidenceInput(_CamelModel):
     candidate_id: str | None = Field(default=None, max_length=64)
     candidate_version: int | None = Field(default=None, ge=1)
     snippet: str | None = Field(default=None, max_length=2000)
+    interpretation_generation: int | None = Field(default=None, ge=1)
 
 
 class ManualFactRequest(_CamelModel):
