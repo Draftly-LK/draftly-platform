@@ -5,7 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { webcrypto } from "node:crypto";
 import en from "@/lib/i18n/messages/en.json";
 import { renderWithIntl } from "@/test/render";
-import type { ApiMatterFact } from "@/types/rta";
+import type { ApiMatterFact, ApiMatterTransaction } from "@/types/rta";
 import { FactsScreen } from "./facts-screen";
 const token = async () => "synthetic-token";
 vi.mock("@/lib/api/use-token-provider", () => ({
@@ -67,6 +67,7 @@ let refuse: number, more: boolean;
 let brokenCursor: boolean, historyMore: boolean;
 let failurePaths: Record<string, number>;
 let pending: ((value: Response) => void) | null;
+let transactions: ApiMatterTransaction[];
 const response = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -83,6 +84,20 @@ beforeEach(() => {
   historyMore = false;
   pending = null;
   failurePaths = {};
+  transactions = [
+    {
+      id: "tx-1",
+      userId: "synthetic-lawyer",
+      matterId: "mat-1",
+      ordinal: 1,
+      version: 1,
+      partyRoles: [
+        { subjectId: "party-1", role: "owner" },
+        { subjectId: "party-2", role: "transferee" },
+      ],
+      parcelSubjectIds: [],
+    },
+  ];
   vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://api.test");
   vi.stubGlobal(
     "fetch",
@@ -177,22 +192,27 @@ beforeEach(() => {
           page: pageInfo,
         });
       if (path.includes("/transactions"))
-        return response({
-          items: [
-            {
-              id: "tx-1",
-              matterId: "mat-1",
-              ordinal: 1,
-              version: 1,
-              partyRoles: [
-                { subjectId: "party-1", role: "owner" },
-                { subjectId: "party-2", role: "transferee" },
-              ],
-              parcelSubjectIds: [],
-            },
-          ],
-          page: pageInfo,
-        });
+        if (init.method === "POST") {
+          if (refuse) {
+            const status = refuse;
+            refuse = 0;
+            return response(
+              {
+                error: {
+                  code: "precondition_failed",
+                  message: "Synthetic scope refusal",
+                },
+              },
+              status,
+            );
+          }
+          return response({
+            ...transactions[0],
+            matterId: "mat-1",
+            id: "tx-1",
+            ...body,
+          });
+        } else return response({ items: transactions, page: pageInfo });
       if (path.includes("/history"))
         return response({
           items: facts,
@@ -291,6 +311,209 @@ async function open() {
   await screen.findByRole("button", { name: "Accept fact" });
 }
 describe("canonical register", () => {
+  it("does not save old displayed transaction scope with a refreshed version", async () => {
+    renderWithIntl(<FactsScreen matterId="mat-1" />);
+    await screen.findByText("SYNTHETIC CURRENT");
+    fireEvent.click(screen.getByText(en.factRegister.scopeTitle));
+    const editor = within(
+      screen.getByText(en.factRegister.scopeTitle).closest("details")!,
+    );
+    const select = editor.getByLabelText(en.factRegister.editTransaction);
+    await within(select).findByRole("option", { name: "Transaction 1" });
+    fireEvent.change(select, { target: { value: "tx-1" } });
+    expect((editor.getByLabelText(/^Party 1/) as HTMLSelectElement).value).toBe(
+      "owner",
+    );
+    const updated = {
+      ...transactions[0]!,
+      version: 9,
+      partyRoles: [{ subjectId: "party-2", role: "donor" as const }],
+      parcelSubjectIds: ["parcel-1"],
+    };
+    transactions = [updated, { ...updated, id: "tx-2", ordinal: 2 }];
+    fireEvent.click(
+      screen.getByRole("button", { name: en.factRegister.refresh }),
+    );
+    await within(select).findByRole("option", { name: "Transaction 2" });
+    expect(
+      (
+        editor.getByRole("button", {
+          name: en.factRegister.saveTransaction,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.click(
+      editor.getByRole("button", { name: en.factRegister.saveTransaction }),
+    );
+    expect(
+      calls.filter(
+        (c) => c.init.method === "POST" && c.path.includes("/transactions"),
+      ),
+    ).toEqual([]);
+    const renewScope = editor.getByRole("button", {
+      name: "Review current transaction scope",
+    });
+    renewScope.focus();
+    fireEvent.click(renewScope);
+    expect(document.activeElement).toBe(select);
+    expect((editor.getByLabelText(/^Party 1/) as HTMLSelectElement).value).toBe(
+      "",
+    );
+    expect((editor.getByLabelText(/^Party 2/) as HTMLSelectElement).value).toBe(
+      "donor",
+    );
+    expect(
+      (editor.getByLabelText("Parcel 1") as HTMLInputElement).checked,
+    ).toBe(true);
+    fireEvent.click(
+      editor.getByRole("button", { name: en.factRegister.saveTransaction }),
+    );
+    await waitFor(() => expect((select as HTMLSelectElement).value).toBe(""));
+    const command = calls.find(
+      (c) => c.init.method === "POST" && c.path.includes("/transactions"),
+    )!;
+    expect(command.path).toBe(
+      "/api/v1/matters/mat-1/transactions/tx-1/associations",
+    );
+    expect((command.init.headers as Record<string, string>)["If-Match"]).toBe(
+      '"9"',
+    );
+    expect(command.body).toEqual({
+      partyRoles: [{ subjectId: "party-2", role: "donor" }],
+      parcelSubjectIds: ["parcel-1"],
+    });
+  });
+  it("does not turn a selected transaction into creation when its reference read fails", async () => {
+    renderWithIntl(<FactsScreen matterId="mat-1" />);
+    await screen.findByText("SYNTHETIC CURRENT");
+    fireEvent.click(screen.getByText(en.factRegister.scopeTitle));
+    const editor = within(
+      screen.getByText(en.factRegister.scopeTitle).closest("details")!,
+    );
+    const select = editor.getByLabelText(en.factRegister.editTransaction);
+    await within(select).findByRole("option", { name: "Transaction 1" });
+    fireEvent.change(select, { target: { value: "tx-1" } });
+    failurePaths["/api/v1/matters/mat-1/transactions?limit=100"] = 503;
+    fireEvent.click(
+      screen.getByRole("button", { name: en.factRegister.refresh }),
+    );
+    await screen.findByText(en.factRegister.referencesUnavailable);
+    expect(
+      (
+        editor.getByRole("button", {
+          name: en.factRegister.saveTransaction,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.click(
+      editor.getByRole("button", { name: en.factRegister.saveTransaction }),
+    );
+    expect(
+      calls.filter(
+        (c) => c.init.method === "POST" && c.path.includes("/transactions"),
+      ),
+    ).toEqual([]);
+    expect((select as HTMLSelectElement).value).toBe("tx-1");
+    expect(
+      (
+        editor.getByRole("button", {
+          name: "Review current transaction scope",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    delete failurePaths["/api/v1/matters/mat-1/transactions?limit=100"];
+    transactions = [
+      {
+        ...transactions[0]!,
+        version: 9,
+        partyRoles: [{ subjectId: "party-2", role: "donor" }],
+      },
+    ];
+    fireEvent.click(
+      screen.getByRole("button", { name: en.factRegister.refresh }),
+    );
+    await within(select).findByRole("option", { name: "Transaction 1" });
+    fireEvent.click(
+      editor.getByRole("button", { name: "Review current transaction scope" }),
+    );
+    fireEvent.click(
+      editor.getByRole("button", { name: en.factRegister.saveTransaction }),
+    );
+    await waitFor(() => expect((select as HTMLSelectElement).value).toBe(""));
+    expect(
+      calls.filter(
+        (c) => c.init.method === "POST" && c.path.endsWith("/transactions"),
+      ),
+    ).toEqual([]);
+    const command = calls.find(
+      (c) => c.init.method === "POST" && c.path.endsWith("/associations"),
+    )!;
+    expect((command.init.headers as Record<string, string>)["If-Match"]).toBe(
+      '"9"',
+    );
+    expect(command.body.partyRoles).toEqual([
+      { subjectId: "party-2", role: "donor" },
+    ]);
+  });
+  it("requires deliberate scope review after a 412 before using renewed transaction preconditions", async () => {
+    renderWithIntl(<FactsScreen matterId="mat-1" />);
+    await screen.findByText("SYNTHETIC CURRENT");
+    fireEvent.click(screen.getByText(en.factRegister.scopeTitle));
+    const editor = within(
+      screen.getByText(en.factRegister.scopeTitle).closest("details")!,
+    );
+    const select = editor.getByLabelText(en.factRegister.editTransaction);
+    await within(select).findByRole("option", { name: "Transaction 1" });
+    fireEvent.change(select, { target: { value: "tx-1" } });
+    const updated = {
+      ...transactions[0]!,
+      version: 9,
+      partyRoles: [{ subjectId: "party-2", role: "donor" as const }],
+    };
+    transactions = [updated, { ...updated, id: "tx-2", ordinal: 2 }];
+    refuse = 412;
+    fireEvent.click(
+      editor.getByRole("button", { name: en.factRegister.saveTransaction }),
+    );
+    await editor.findByText(en.factRegister.staleReview);
+    await within(select).findByRole("option", { name: "Transaction 2" });
+    const first = calls.filter(
+      (c) => c.init.method === "POST" && c.path.includes("/transactions"),
+    );
+    expect(first).toHaveLength(1);
+    expect((first[0]!.init.headers as Record<string, string>)["If-Match"]).toBe(
+      '"1"',
+    );
+    expect(
+      (
+        editor.getByRole("button", {
+          name: en.factRegister.saveTransaction,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    fireEvent.click(
+      editor.getByRole("button", { name: "Review current transaction scope" }),
+    );
+    expect((editor.getByLabelText(/^Party 2/) as HTMLSelectElement).value).toBe(
+      "donor",
+    );
+    fireEvent.click(
+      editor.getByRole("button", { name: en.factRegister.saveTransaction }),
+    );
+    await waitFor(() => expect((select as HTMLSelectElement).value).toBe(""));
+    const attempts = calls.filter(
+      (c) => c.init.method === "POST" && c.path.includes("/transactions"),
+    );
+    expect(attempts).toHaveLength(2);
+    expect(
+      (attempts[1]!.init.headers as Record<string, string>)["If-Match"],
+    ).toBe('"9"');
+    expect(
+      (attempts[1]!.init.headers as Record<string, string>)["Idempotency-Key"],
+    ).not.toBe(
+      (attempts[0]!.init.headers as Record<string, string>)["Idempotency-Key"],
+    );
+  });
   it("renders governed enum meanings in current, original and history values", async () => {
     facts = [
       fact({

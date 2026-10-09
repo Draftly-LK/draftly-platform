@@ -267,6 +267,9 @@ export function FactScopeInput({
   const t = useTranslations("factRegister");
   const roleLabel = useEnumLabel("factRegister.roles");
   const [current, setCurrent] = useState("");
+  const [reviewedTransaction, setReviewedTransaction] =
+    useState<ApiMatterTransaction>();
+  const transactionSelect = useRef<HTMLSelectElement>(null);
   const [parcels, setParcels] = useState<string[]>([]);
   const [roles, setRoles] = useState<Record<string, TransactionRole | "">>({});
   const [busy, setBusy] = useState(false);
@@ -274,6 +277,24 @@ export function FactScopeInput({
   const [stale, setStale] = useState(false);
   const active = useRef(true);
   const key = useIntentKey();
+  const selectedTransaction = transactions.find((tx) => tx.id === current);
+  const scopeOutdated = Boolean(
+    current &&
+      (!reviewedTransaction ||
+        !selectedTransaction ||
+        reviewedTransaction.id !== current ||
+        reviewedTransaction.version !== selectedTransaction.version),
+  );
+  function reviewTransaction(tx?: ApiMatterTransaction) {
+    setReviewedTransaction(tx);
+    setParcels(tx?.parcelSubjectIds ?? []);
+    setRoles(
+      Object.fromEntries(
+        tx?.partyRoles.map((role) => [role.subjectId, role.role]) ?? [],
+      ),
+    );
+    setStale(false);
+  }
   useEffect(() => {
     active.current = true;
     return () => {
@@ -301,7 +322,10 @@ export function FactScopeInput({
     }
   }
   async function save() {
-    const tx = transactions.find((tx) => tx.id === current);
+    if (scopeOutdated || stale || (current && !reviewedTransaction)) return;
+    // This version belongs to the scope the lawyer actually reviewed. An
+    // unresolved nonempty selection must never fall through to creation.
+    const tx = current ? reviewedTransaction : undefined;
     const body = {
       parcelSubjectIds: parcels,
       partyRoles: Object.entries(roles).flatMap(([subjectId, role]) =>
@@ -323,6 +347,7 @@ export function FactScopeInput({
       if (result.matterId !== matterId) throw new Error("Foreign transaction");
       key.reset();
       setCurrent("");
+      setReviewedTransaction(undefined);
       setParcels([]);
       setRoles({});
       onChanged();
@@ -344,7 +369,7 @@ export function FactScopeInput({
       <div className="space-y-4 pt-4">
         <p className="text-muted-ink text-sm">{t("scopeNotice")}</p>
         {error != null && <RegisterError cause={error} />}{" "}
-        {stale && (
+        {(stale || scopeOutdated) && (
           <p role="status" className="text-amber-text text-sm">
             {t("staleReview")}
           </p>
@@ -360,23 +385,20 @@ export function FactScopeInput({
         <label className="block text-sm font-medium">
           {t("editTransaction")}
           <select
+            ref={transactionSelect}
             className={controlClass}
             value={current}
             disabled={busy}
             onChange={(e) => {
               const tx = transactions.find((tx) => tx.id === e.target.value);
               setCurrent(e.target.value);
-              setParcels(tx?.parcelSubjectIds ?? []);
-              setRoles(
-                Object.fromEntries(
-                  tx?.partyRoles.map((role) => [role.subjectId, role.role]) ??
-                    [],
-                ),
-              );
-              setStale(false);
+              reviewTransaction(tx);
             }}
           >
             <option value="">{t("newTransaction")}</option>
+            {current && !selectedTransaction && (
+              <option value={current}>{t("scopeUnavailable")}</option>
+            )}
             {transactions.map((tx) => (
               <option key={tx.id} value={tx.id}>
                 {t("transactionNumber", { number: tx.ordinal })}
@@ -384,6 +406,17 @@ export function FactScopeInput({
             ))}
           </select>
         </label>
+        {current && (stale || scopeOutdated) && (
+          <Button
+            disabled={busy || !selectedTransaction}
+            onClick={() => {
+              reviewTransaction(selectedTransaction);
+              transactionSelect.current?.focus();
+            }}
+          >
+            {t("reviewTransaction")}
+          </Button>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           {subjects.map((s) =>
             s.kind === "parcel" ? (
@@ -391,7 +424,7 @@ export function FactScopeInput({
                 <input
                   type="checkbox"
                   checked={parcels.includes(s.id)}
-                  disabled={busy}
+                  disabled={busy || stale || scopeOutdated}
                   className="mt-1"
                   onChange={(e) =>
                     setParcels((old) =>
@@ -409,7 +442,7 @@ export function FactScopeInput({
                 <select
                   className={controlClass}
                   value={roles[s.id] ?? ""}
-                  disabled={busy}
+                  disabled={busy || stale || scopeOutdated}
                   onChange={(e) =>
                     setRoles((old) => ({
                       ...old,
@@ -433,6 +466,7 @@ export function FactScopeInput({
           disabled={
             busy ||
             stale ||
+            scopeOutdated ||
             (!parcels.length && !Object.values(roles).some(Boolean))
           }
           onClick={() => void save()}

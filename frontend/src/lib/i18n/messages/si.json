@@ -3084,6 +3084,7 @@
     "newTransaction": "නව ගනුදෙනුව",
     "noRole": "ගනුදෙනු භූමිකාවක් නැත",
     "saveTransaction": "ගනුදෙනු විෂය සුරකින්න",
+    "reviewTransaction": "වත්මන් ගනුදෙනු විෂය සමාලෝචනය කරන්න",
     "roles": {
       "transferor": "පැවරුම්කරු",
       "transferee": "පැවරුම්ලාභියා",

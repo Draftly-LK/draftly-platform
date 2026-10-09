@@ -3083,6 +3083,7 @@
     "newTransaction": "New transaction",
     "noRole": "No transaction role",
     "saveTransaction": "Save transaction scope",
+    "reviewTransaction": "Review current transaction scope",
     "roles": {
       "transferor": "Transferor",
       "transferee": "Transferee",
