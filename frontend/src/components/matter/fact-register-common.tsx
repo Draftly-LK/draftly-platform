@@ -1,5 +1,6 @@
 "use client";
 import { useRef } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
   AlertCircle,
@@ -101,13 +102,25 @@ export function Status({ fact }: { fact: ApiMatterFact }) {
 export function RegisterError({ cause }: { cause: unknown }) {
   const t = useTranslations("factRegister");
   const key =
-    cause instanceof ApiError && [401, 403].includes(cause.status)
-      ? "permissionRefused"
-      : cause instanceof ApiError && cause.status === 404
-        ? "recordUnavailable"
-        : cause instanceof ApiError && [409, 422].includes(cause.status)
-          ? "decisionRefused"
-          : "apiUnavailable";
+    cause instanceof ApiError && cause.status === 401
+      ? "sessionExpired"
+      : cause instanceof ApiError && cause.status === 403
+        ? cause.code === "practice_status_required"
+          ? "practiceRequired"
+          : cause.code === "capability_denied"
+            ? "capabilityRequired"
+            : "permissionRefused"
+        : cause instanceof ApiError && cause.status === 404
+          ? "recordUnavailable"
+          : cause instanceof ApiError && [409, 422].includes(cause.status)
+            ? "decisionRefused"
+            : "apiUnavailable";
+  const action =
+    key === "sessionExpired"
+      ? { href: "/sign-in", label: "signInAgain" as const }
+      : key === "practiceRequired"
+        ? { href: "/profile", label: "reviewProfile" as const }
+        : null;
   return (
     <div
       role="alert"
@@ -120,6 +133,14 @@ export function RegisterError({ cause }: { cause: unknown }) {
           <p lang="en" className="mt-1 break-words">
             {cause.message}
           </p>
+        )}
+        {action && (
+          <Link
+            href={action.href}
+            className="mt-2 inline-flex min-h-10 items-center font-medium underline underline-offset-4"
+          >
+            {t(action.label)}
+          </Link>
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
+import { StrictMode } from "react";
 import { webcrypto } from "node:crypto";
 import en from "@/lib/i18n/messages/en.json";
 import { renderWithIntl } from "@/test/render";
@@ -64,6 +65,7 @@ const fact = (overrides: Partial<ApiMatterFact> = {}): ApiMatterFact => ({
 let facts: ApiMatterFact[],
   calls: { path: string; init: RequestInit; body: Record<string, unknown> }[];
 let refuse: number, more: boolean;
+let refuseCode: string | undefined;
 let brokenCursor: boolean, historyMore: boolean;
 let failurePaths: Record<string, number>;
 let pending: ((value: Response) => void) | null;
@@ -86,6 +88,7 @@ beforeEach(() => {
   facts = [fact()];
   calls = [];
   refuse = 0;
+  refuseCode = undefined;
   more = false;
   brokenCursor = false;
   historyMore = false;
@@ -256,7 +259,10 @@ beforeEach(() => {
             {
               error: {
                 code:
-                  status === 412 ? "precondition_failed" : "capability_denied",
+                  refuseCode ??
+                  (status === 412
+                    ? "precondition_failed"
+                    : "capability_denied"),
                 message: "Synthetic refusal",
                 details: { currentFactId: "fact-1" },
               },
@@ -353,8 +359,120 @@ describe("canonical register", () => {
     renderWithIntl(<FactsScreen matterId="mat-1" />);
     fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
     await screen.findByLabelText("Reason for this decision");
+    expect(await screen.findByText(en.factRegister.staleReview)).toBeTruthy();
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.queryByText("Lawyer confirmed")).toBeNull();
+    expect(calls.filter((c) => c.path.endsWith("/accept"))).toHaveLength(1);
+  });
+  it.each([
+    [401, "unauthenticated"],
+    [403, "practice_status_required"],
+  ] as const)(
+    "shows one refusal after quick and detailed acceptance both return %s",
+    async (status, code) => {
+      facts = [fact({ status: "EXTRACTED_CANDIDATE" })];
+      refuse = status;
+      refuseCode = code;
+      renderWithIntl(<FactsScreen matterId="mat-1" />);
+      fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+      await screen.findByRole("alert");
+      expect(screen.queryByText("Lawyer confirmed")).toBeNull();
+
+      await open();
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+      expect(
+        screen.getByText(
+          status === 401
+            ? en.factRegister.sessionExpired
+            : en.factRegister.practiceRequired,
+        ),
+      ).toBeTruthy();
+      await waitFor(() =>
+        expect(
+          (
+            screen.getByRole("button", {
+              name: "Accept fact",
+            }) as HTMLButtonElement
+          ).disabled,
+        ).toBe(false),
+      );
+      refuse = status;
+      fireEvent.click(screen.getByRole("button", { name: "Accept fact" }));
+      await waitFor(() =>
+        expect(calls.filter((c) => c.path.endsWith("/accept"))).toHaveLength(2),
+      );
+      const panel = within(
+        screen.getByRole("region", { name: en.factRegister.reviewPanel }),
+      );
+      expect(await panel.findByRole("alert")).toBeTruthy();
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+      expect(screen.queryByText("Lawyer confirmed")).toBeNull();
+      fireEvent.click(
+        screen.getByRole("button", { name: en.facts.closeReview }),
+      );
+      await open();
+      expect(screen.getAllByRole("alert")).toHaveLength(1);
+      expect(
+        within(
+          screen.getByRole("region", { name: en.factRegister.reviewPanel }),
+        ).queryByRole("alert"),
+      ).toBeNull();
+    },
+  );
+  it("keeps the quick practice refusal when detailed review reports a different refusal", async () => {
+    facts = [fact({ status: "EXTRACTED_CANDIDATE" })];
+    refuse = 403;
+    refuseCode = "practice_status_required";
+    renderWithIntl(<FactsScreen matterId="mat-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+    await screen.findByText(en.factRegister.practiceRequired);
+    await open();
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Accept fact",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
+    );
+    refuse = 403;
+    refuseCode = "capability_denied";
+    fireEvent.click(screen.getByRole("button", { name: "Accept fact" }));
+    await screen.findByText(en.factRegister.capabilityRequired);
+    expect(screen.getByText(en.factRegister.practiceRequired)).toBeTruthy();
+    expect(screen.queryByText("Lawyer confirmed")).toBeNull();
+  });
+  it("retains quick refusal through StrictMode review initialization", async () => {
+    facts = [
+      fact({
+        status: "EXTRACTED_CANDIDATE",
+        subjectId: null,
+        transactionId: null,
+        scopeStatus: "unassigned",
+      }),
+    ];
+    refuse = 403;
+    refuseCode = "practice_status_required";
+    renderWithIntl(
+      <StrictMode>
+        <FactsScreen matterId="mat-1" />
+      </StrictMode>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+    await screen.findByText(en.factRegister.practiceRequired);
+    await open();
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Accept fact",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false),
+    );
+    expect(screen.getByText(en.factRegister.practiceRequired)).toBeTruthy();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(calls.filter((c) => c.path.endsWith("/accept"))).toHaveLength(1);
   });
   it("retries an ambiguous quick acceptance using the same key and displayed version", async () => {

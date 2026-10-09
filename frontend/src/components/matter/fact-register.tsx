@@ -97,6 +97,19 @@ function RegisterContent({
   const [referencePartial, setReferencePartial] = useState(false);
   const [factPartial, setFactPartial] = useState(false);
   const [selected, setSelected] = useState<ApiMatterFact | null>(null);
+  const [reviewError, setReviewError] = useState<{
+    factId: string;
+    cause: unknown;
+  } | null>(null);
+  const handleReviewError = useCallback((factId: string, cause: unknown) => {
+    setReviewError((previous) =>
+      cause !== null
+        ? { factId, cause }
+        : previous?.factId === factId
+          ? null
+          : previous,
+    );
+  }, []);
   const [subjectFilter, setSubjectFilter] = useState("");
   const [transactionFilter, setTransactionFilter] = useState("");
   const [manual, setManual] = useState(false);
@@ -425,6 +438,9 @@ function RegisterContent({
                     fact={fact}
                     getToken={getToken}
                     reviewing={selected?.id === fact.id}
+                    reviewError={
+                      reviewError?.factId === fact.id ? reviewError.cause : null
+                    }
                     onSaved={(next) => saved(next, fact.id, false)}
                     onReview={() => setSelected(fact)}
                   />
@@ -456,6 +472,7 @@ function RegisterContent({
                 subjectLabel={subjectLabel}
                 getToken={getToken}
                 onSaved={saved}
+                onErrorChange={handleReviewError}
               />
             )}
           </article>
@@ -473,6 +490,7 @@ function RegisterContent({
           subjectLabel={subjectLabel}
           getToken={getToken}
           onSaved={saved}
+          onErrorChange={handleReviewError}
         />
       )}
       {cursor && (
