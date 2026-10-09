@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
+import { LocaleSwitch } from "@/components/shell/locale-switch";
 import { buttonClass } from "@/components/ui/button";
 
 export function SettingsScreen() {
@@ -45,7 +46,10 @@ export function SettingsScreen() {
         </section>
         <section className="py-5">
           <h2 className="text-xl font-semibold">{t("language")}</h2>
-          <p className="text-muted-ink mt-2">{t("reducedMotion")}</p>
+          <div className="mt-4">
+            <LocaleSwitch />
+          </div>
+          <p className="text-muted-ink mt-4 text-sm leading-6">{t("reducedMotion")}</p>
         </section>
       </div>
     </AppShell>

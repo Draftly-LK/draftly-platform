@@ -16,7 +16,7 @@ export function LocaleSwitch() {
     <div
       role="group"
       aria-label={t("interfaceLanguage")}
-      className="rail:justify-center mb-2 flex flex-wrap gap-1"
+      className="border-border bg-surface rounded-control inline-flex max-w-full flex-wrap gap-0.5 border p-0.5"
     >
       {(["en", "si"] as const).map((value) => (
         <button
@@ -28,14 +28,9 @@ export function LocaleSwitch() {
           }
           aria-pressed={locale === value}
           onClick={() => select(value)}
-          className="rounded-control text-on-dark px-2 py-2 text-xs hover:bg-white/10 aria-pressed:bg-white/10"
+          className="rounded-control text-muted-ink hover:bg-hover-bg aria-pressed:bg-selected-bg aria-pressed:text-forest min-h-8 px-3 py-1 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none [@media(pointer:coarse)]:min-h-11"
         >
-          <span className="rail:hidden">
-            {value === "en" ? t("englishLanguage") : t("sinhalaLanguage")}
-          </span>
-          <span aria-hidden="true" className="rail:inline hidden">
-            {value === "en" ? t("englishShort") : t("sinhalaShort")}
-          </span>
+          {value === "en" ? t("englishLanguage") : t("sinhalaLanguage")}
         </button>
       ))}
     </div>

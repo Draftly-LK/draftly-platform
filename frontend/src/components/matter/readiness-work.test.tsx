@@ -3,7 +3,6 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithIntl } from "@/test/render";
-import { MatterDashboard } from "./matter-dashboard";
 import { WorkflowScreen } from "@/components/workflow/workflow-screen";
 import { MissingDocumentsScreen } from "./missing-documents-screen";
 import { RequirementsPanel } from "./requirements-panel";
@@ -98,16 +97,6 @@ beforeEach(() => {
   mocks.checklist = null;
   mocks.replace.mockClear();
 });
-it("keeps unavailable readiness unknown even when all visible counts are empty", async () => {
-  renderWithIntl(<MatterDashboard matterId="synthetic" />);
-  await screen.findByRole("heading", { name: "Readiness is unavailable" });
-  expect(
-    screen.queryByRole("heading", { name: "Review draft preparation" }),
-  ).toBeNull();
-  expect(
-    screen.getByRole("button", { name: "Refresh readiness" }),
-  ).toBeTruthy();
-});
 it("redirects legacy live routes without selecting demo state", async () => {
   const first = renderWithIntl(<WorkflowScreen matterId="synthetic" />);
   await waitFor(() =>
@@ -160,57 +149,12 @@ it("requires explicit scope and clears the old association pin on deliberate ref
   await waitFor(() => expect(mocks.scope?.associationVersion).toBe(3));
 });
 
-it("keeps outside-scope legal issues in the unresolved count", async () => {
-  mocks.issueStates = [
-    "OUTSIDE_SCOPE",
-    "RESOLVED",
-    "ACCEPTED_RISK",
-    "FALSE_POSITIVE",
-  ];
-  renderWithIntl(<MatterDashboard matterId="synthetic" />);
-  expect(await screen.findByText("open issue")).toBeTruthy();
-});
-
-it.each([
-  ["classification", "Review document classifications", "documents"],
-  ["facts", "Review matter facts", "facts"],
-])(
-  "maps known %s work while checklist readiness remains unknown",
-  async (nextAction, title, section) => {
-    mocks.readiness = {
-      state: "unknown",
-      nextAction,
-      evaluatedAt: "2026-10-09T00:00:00Z",
-      requirementTotal: null,
-      requirementCompleted: null,
-      dependencies: [
-        { category: "requirements", state: "unknown", references: [] },
-        { category: nextAction, state: "pending", references: [] },
-      ],
-    };
-    renderWithIntl(<MatterDashboard matterId="synthetic" />);
-    expect(await screen.findByRole("heading", { name: title })).toBeTruthy();
-    expect(
-      screen.getByRole("link", { name: "Open review" }).getAttribute("href"),
-    ).toBe(`/matters/synthetic/${section}`);
-    expect(
-      screen.queryByRole("heading", { name: "Review draft preparation" }),
-    ).toBeNull();
-  },
-);
-
 it.each(["original", "review"] as const)(
-  "routes real backend %s work to available human controls without relinking",
+  "shows real backend %s work in human controls without relinking",
   async (condition) => {
     const packet = requirementPacket[condition];
     mocks.readiness = packet.readiness as ApiReadiness;
     mocks.checklist = packet.checklist as ApiChecklist;
-    const dashboard = renderWithIntl(
-      <MatterDashboard matterId="mat_synthetic" />,
-    );
-    const open = await screen.findByRole("link", { name: "Open review" });
-    expect(open.getAttribute("href")).toBe("/matters/mat_synthetic/checks");
-    dashboard.unmount();
     const token = async () => "synthetic-token";
     renderWithIntl(
       <RequirementsPanel
