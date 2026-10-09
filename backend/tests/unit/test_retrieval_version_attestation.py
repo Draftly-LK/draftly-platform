@@ -1,6 +1,7 @@
 """Platform-owned frozen engine handoff, using synthetic import/index seams."""
 
 import hashlib
+import importlib.util
 import json
 import runpy
 import sys
@@ -48,7 +49,17 @@ async def test_frozen_producer_and_consumer_share_actual_index_identity(monkeypa
     sys.modules["draftly.retrieval.api"].app = app
     sys.modules["case_api"].router = APIRouter()
     sys.modules["case_api"].install_dense_gate = lambda: None
-    runpy.run_path(str(Path(__file__).parents[3] / "deploy/retrieval/serve_frozen.py"))
+    deployment = Path(__file__).parents[3] / "deploy/retrieval"
+    # Docker installs both modules beside one another under /app. Load the real
+    # sibling here without leaving its module or deployment paths in other tests.
+    spec = importlib.util.spec_from_file_location("legal_release", deployment / "legal_release.py")
+    assert spec is not None and spec.loader is not None
+    legal_release = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, "legal_release", legal_release)
+    spec.loader.exec_module(legal_release)
+    for name in ("TRUST", "REQUIRED", "ACTIVE"):
+        monkeypatch.setattr(legal_release, name, tmp_path / name)
+    runpy.run_path(str(deployment / "serve_frozen.py"))
     expected = "statutes-index-v1:" + hashlib.sha256(recorded["statutes"].encode()).hexdigest()
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app), base_url="http://synthetic.invalid"
@@ -56,6 +67,17 @@ async def test_frozen_producer_and_consumer_share_actual_index_identity(monkeypa
         response = await client.get("/search", params={"q": "synthetic"})
         assert response.headers["X-Draftly-Corpus-Version"] == expected
         assert "X-Draftly-Corpus-Version" not in (await client.get("/health")).headers
+        metadata = await client.get("/v1/legal-authorities", params={"release_version": expected})
+        assert metadata.json() == {
+            "corpusVersion": expected,
+            "sourceReleaseVersion": None,
+            "authorities": [],
+            "coverageGaps": ["authority-metadata-unsupported"],
+        }
+        mismatch = await client.get(
+            "/v1/legal-authorities", params={"release_version": "wrong-caller-version"}
+        )
+        assert mismatch.status_code == 409
     adapter = HttpStatuteRetrievalAdapter(
         base_url="http://synthetic.invalid", transport=httpx.ASGITransport(app)
     )

@@ -162,12 +162,18 @@
               {
                 "sourceFileId": "src_doc_first",
                 "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                "storageVersion": "1"
+                "storageVersion": "1",
+                "detectedDocumentId": "doc_first",
+                "interpretationGeneration": 1,
+                "pageNumbers": [1]
               },
               {
                 "sourceFileId": "src_doc_second",
                 "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                "storageVersion": "1"
+                "storageVersion": "1",
+                "detectedDocumentId": "doc_second",
+                "interpretationGeneration": 1,
+                "pageNumbers": [1]
               }
             ]
           },
@@ -182,12 +188,18 @@
                 {
                   "sourceFileId": "src_doc_first",
                   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "storageVersion": "1"
+                  "storageVersion": "1",
+                  "detectedDocumentId": "doc_first",
+                  "interpretationGeneration": 1,
+                  "pageNumbers": [1]
                 },
                 {
                   "sourceFileId": "src_doc_second",
                   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "storageVersion": "1"
+                  "storageVersion": "1",
+                  "detectedDocumentId": "doc_second",
+                  "interpretationGeneration": 1,
+                  "pageNumbers": [1]
                 }
               ]
             }
@@ -282,7 +294,7 @@
           "applicability": "CONDITIONAL",
           "collection": "RECEIVED",
           "digitalReview": "UNREVIEWED",
-          "physicalOriginal": "ORIGINAL_INSPECTED",
+          "physicalOriginal": "UNKNOWN",
           "currency": "CURRENT",
           "consistency": "MATCHED",
           "resolution": "SATISFIED",
@@ -301,12 +313,18 @@
               {
                 "sourceFileId": "src_doc_first",
                 "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                "storageVersion": "1"
+                "storageVersion": "1",
+                "detectedDocumentId": "doc_first",
+                "interpretationGeneration": 1,
+                "pageNumbers": [1]
               },
               {
                 "sourceFileId": "src_doc_second",
                 "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                "storageVersion": "1"
+                "storageVersion": "1",
+                "detectedDocumentId": "doc_second",
+                "interpretationGeneration": 1,
+                "pageNumbers": [1]
               }
             ]
           },
@@ -321,12 +339,18 @@
                 {
                   "sourceFileId": "src_doc_first",
                   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "storageVersion": "1"
+                  "storageVersion": "1",
+                  "detectedDocumentId": "doc_first",
+                  "interpretationGeneration": 1,
+                  "pageNumbers": [1]
                 },
                 {
                   "sourceFileId": "src_doc_second",
                   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "storageVersion": "1"
+                  "storageVersion": "1",
+                  "detectedDocumentId": "doc_second",
+                  "interpretationGeneration": 1,
+                  "pageNumbers": [1]
                 }
               ]
             }
@@ -425,12 +449,18 @@
               {
                 "sourceFileId": "src_doc_first",
                 "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                "storageVersion": "1"
+                "storageVersion": "1",
+                "detectedDocumentId": "doc_first",
+                "interpretationGeneration": 1,
+                "pageNumbers": [1]
               },
               {
                 "sourceFileId": "src_doc_second",
                 "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                "storageVersion": "1"
+                "storageVersion": "1",
+                "detectedDocumentId": "doc_second",
+                "interpretationGeneration": 1,
+                "pageNumbers": [1]
               }
             ]
           },
@@ -445,12 +475,18 @@
                 {
                   "sourceFileId": "src_doc_first",
                   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "storageVersion": "1"
+                  "storageVersion": "1",
+                  "detectedDocumentId": "doc_first",
+                  "interpretationGeneration": 1,
+                  "pageNumbers": [1]
                 },
                 {
                   "sourceFileId": "src_doc_second",
                   "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                  "storageVersion": "1"
+                  "storageVersion": "1",
+                  "detectedDocumentId": "doc_second",
+                  "interpretationGeneration": 1,
+                  "pageNumbers": [1]
                 }
               ]
             }

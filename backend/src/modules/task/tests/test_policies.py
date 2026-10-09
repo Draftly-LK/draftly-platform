@@ -361,7 +361,7 @@ def _link(**overrides: Any) -> SatisfactionLink:
         "detected_document_id": "doc_1",
         "document_version": 1,
         "interpretation_generation": 1,
-        "originals": (OriginalSourcePin("src_1", "a" * 64, "1"),),
+        "originals": (OriginalSourcePin("src_1", "a" * 64, "1", "doc_1", 1, (1,)),),
         "digital_review": DigitalReviewStatus.AI_ORGANIZED,
         "created_at": NOW,
         "created_by": "usr_1",
@@ -380,3 +380,14 @@ def test_rejected_and_superseded_links_do_not_count_as_live() -> None:
 
 def test_legacy_unbound_link_is_history_only():
     assert not _link(document_version=None, interpretation_generation=None, originals=()).is_live
+
+
+@pytest.mark.parametrize(
+    ("document_id", "generation", "pages"),
+    [("", 0, ()), ("", 1, (1,)), ("doc_1", 0, (1,)), ("doc_1", 1, ())],
+)
+def test_imprecise_original_pin_is_history_only(document_id, generation, pages):
+    from src.modules.document.contracts import OriginalSourcePin
+
+    pin = OriginalSourcePin("src_1", "a" * 64, "1", document_id, generation, pages)
+    assert not _link(originals=(pin,)).is_live
