@@ -13,6 +13,7 @@ import { getMe } from "@/lib/api/auth";
 import {
   pendingOperationIntent,
   clearManualIntent,
+  clearPendingOperationIntent,
   type ManualIntent,
 } from "@/lib/api/mutation-intent";
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
@@ -81,6 +82,10 @@ export function FactReviewPanel({
   const [alternativesError, setAlternativesError] = useState<unknown>(null);
   const [notice, setNotice] = useState(false);
   const [reviewReady, setReviewReady] = useState(false);
+  const [renewal, setRenewal] = useState<{
+    operation: string;
+    target: string;
+  } | null>(null);
   const generation = useRef({ value: 0 });
   const [retryUnavailable, setRetryUnavailable] = useState(false);
   const [historyBusy, setHistoryBusy] = useState(false);
@@ -159,7 +164,9 @@ export function FactReviewPanel({
     };
   }, [initial.id, renew, sourceRevision]);
   const active =
-    reviewReady && !["REJECTED", "SUPERSEDED"].includes(fact.status);
+    reviewReady &&
+    !renewal &&
+    !["REJECTED", "SUPERSEDED"].includes(fact.status);
   const evidenceAvailable =
     !fact.evidenceStale && (fact.evidence.length > 0 || evidence !== undefined);
   const resolved =
@@ -267,12 +274,14 @@ export function FactReviewPanel({
     } catch (cause) {
       if (run !== generation.current.value) return;
       if (cause instanceof ApiError && cause.status === 412) {
-        if (intent) clearManualIntent(intent);
+        if (intent && !intent.reused) clearManualIntent(intent);
         const current =
           typeof cause.details.currentFactId === "string"
             ? cause.details.currentFactId
             : fact.id;
-        await renew(current, true);
+        setRenewal({ operation: `fact:${fact.id}:${action}`, target: current });
+        setReviewReady(false);
+        setNotice(true);
       } else if (
         cause instanceof ApiError &&
         cause.status === 409 &&
@@ -290,6 +299,22 @@ export function FactReviewPanel({
           if (run === generation.current.value) setAlternativesError(error);
         }
       } else setError(cause);
+    } finally {
+      if (run === generation.current.value) setBusy(false);
+    }
+  }
+  async function renewDecision() {
+    if (!renewal) return;
+    const run = generation.current.value;
+    setBusy(true);
+    try {
+      const actor = await getMe(getToken);
+      if (run !== generation.current.value) return;
+      clearPendingOperationIntent(actor.id, matterId, renewal.operation);
+      setRenewal(null);
+      await renew(renewal.target, true);
+    } catch (cause) {
+      if (run === generation.current.value) setError(cause);
     } finally {
       if (run === generation.current.value) setBusy(false);
     }
@@ -350,6 +375,11 @@ export function FactReviewPanel({
           <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
           {t("staleReview")}
         </p>
+      )}
+      {renewal && (
+        <Button disabled={busy || loading} onClick={() => void renewDecision()}>
+          {t("refresh")}
+        </Button>
       )}
       {error != null && <RegisterError cause={error} />}
       {retryUnavailable && (

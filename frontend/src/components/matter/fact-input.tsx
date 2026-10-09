@@ -14,6 +14,7 @@ import {
   pendingManualIntent,
   pendingOperationIntent,
   clearManualIntent,
+  clearPendingOperationIntent,
   type ManualIntent,
 } from "@/lib/api/mutation-intent";
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
@@ -317,6 +318,24 @@ export function FactScopeInput({
       epoch.current++;
     };
   }, [getToken, matterId]);
+  async function renewScope() {
+    const run = scopeEpoch.current;
+    const tx = selectedTransaction;
+    if (!tx) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const actor = await getMe(getToken);
+      if (run !== scopeEpoch.current) return;
+      clearPendingOperationIntent(actor.id, matterId, `transaction:${tx.id}`);
+      reviewTransaction(tx);
+      transactionSelect.current?.focus();
+    } catch (cause) {
+      if (run === scopeEpoch.current) setError(cause);
+    } finally {
+      if (run === scopeEpoch.current) setBusy(false);
+    }
+  }
   async function addSubject(kind: "party" | "parcel") {
     const run = scopeEpoch.current;
     setBusy(true);
@@ -400,7 +419,7 @@ export function FactScopeInput({
     } catch (cause) {
       if (run !== scopeEpoch.current) return;
       if (cause instanceof ApiError && cause.status === 412) {
-        if (intent) clearManualIntent(intent);
+        if (intent && !intent.reused) clearManualIntent(intent);
         setStale(true);
         onChanged();
       } else setError(cause);
@@ -461,10 +480,7 @@ export function FactScopeInput({
         {current && (stale || scopeOutdated) && (
           <Button
             disabled={busy || !selectedTransaction}
-            onClick={() => {
-              reviewTransaction(selectedTransaction);
-              transactionSelect.current?.focus();
-            }}
+            onClick={() => void renewScope()}
           >
             {t("reviewTransaction")}
           </Button>

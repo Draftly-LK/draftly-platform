@@ -662,7 +662,9 @@ intent helper. Fact decisions use the same metadata-only mechanism. Actor identi
 and mutation share one captured token, held only in memory; persisted keys are
 actor/matter/operation scoped. Raw scopes, facts, reasons and tokens are not stored.
 Successful responses clear the pending intent so a deliberate repeated create is a
-new operation. Ambiguous responses retain the original request key; known 412
-refusals clear it and require renewed review. Unavailable browser storage retains
-the existing visible RAM-fallback notice. Refresh/re-entry behavior is untested
+new operation. Ambiguous responses retain the original request key and expected
+version even after a later 412. Only a newly issued, definitively refused intent
+is cleared automatically. The explicit scope/fact renewal controls discard the
+pending operation for the current actor before renewed review. Unavailable browser
+storage retains the existing visible RAM-fallback notice. Refresh/re-entry behavior is untested
 under the owner's explicit test waiver.
