@@ -35,7 +35,9 @@ allowing human page review. No replacement bytes or OCR content are invented.
 
 The legacy document review edit/approval surface now delegates to canonical
 verification commands. Edits persist unverified successors; acceptance requires
-explicit matter scope, evidence review, capability and practising authorization.
+evidence review, capability and practising authorization. Unassigned observations
+may be accepted directly; they remain excluded from scoped checks and form binding
+until explicit association and renewed review.
 The document review read overlays canonical value/status/version while retaining
 the original machine candidate. A generic NIC identifies its holder, not a
 transferee. Legacy `transfereeNic` observations from NIC sources read as `holderNic`;

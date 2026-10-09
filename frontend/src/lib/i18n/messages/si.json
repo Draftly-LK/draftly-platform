@@ -3221,7 +3221,7 @@
     "factTransaction": "තොරතුරේ ගනුදෙනුව",
     "chooseSubject": "විෂයක් තෝරන්න",
     "chooseTransaction": "ගනුදෙනුවක් තෝරන්න",
-    "associationRequired": "පිළිගැනීමට පෙර ගනුදෙනුව සහ විෂය තෝරා සම්බන්ධතාව සුරකින්න.",
+    "associationRequired": "Acceptance confirms the document observation. Assign its transaction and subject when preparing checks or drafts.",
     "correctedValue": "නිවැරදි කළ අගය",
     "reason": "මෙම තීරණය සඳහා හේතුව",
     "attachEvidence": "සහායක සාක්ෂි එක් කරන්න",
@@ -3302,7 +3302,8 @@
     "decisionRefused": "සේවාදායකය මෙම අගය, විෂය හෝ සාක්ෂි ප්‍රතික්ෂේප කළේය. නැවත උත්සාහ කිරීමට පෙර විස්තර සමාලෝචනය කරන්න.",
     "retryStorageUnavailable": "නැවත උත්සාහ කිරීමේ ආරක්ෂාව මෙම විවෘත ටැබයේ පමණක් ඇත. සුරැකීමේ ප්‍රතිඵලය අවිනිශ්චිත නම් මෙම පිටුව විවෘතව තබා මෙහි නැවත උත්සාහ කරන්න.",
     "newManualIntent": "නව සටහනක් ආරම්භ කරන්න",
-    "partialFacts": "කරුණු ලේඛනයේ කොටසක් පමණක් පූරණය වී ඇත. ඉතිරි වාර්තා ලබා ගැනීමට නැවත පූරණය කරන්න."
+    "partialFacts": "කරුණු ලේඛනයේ කොටසක් පමණක් පූරණය වී ඇත. ඉතිරි වාර්තා ලබා ගැනීමට නැවත පූරණය කරන්න.",
+    "quickAccept": "Accept"
   },
   "requirementsWork": {
     "selectRequirement": "විස්තර සහ සමාලෝචන ක්‍රියා බැලීමට වම්පස ඇති අවශ්‍යතාවක් තෝරන්න.",

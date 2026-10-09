@@ -319,6 +319,60 @@ async function open() {
   await screen.findByRole("button", { name: "Accept fact" });
 }
 describe("canonical register", () => {
+  it("accepts an unassigned extracted fact directly and retains confirmation after reload", async () => {
+    facts = [
+      fact({
+        status: "EXTRACTED_CANDIDATE",
+        subjectId: null,
+        transactionId: null,
+        scopeStatus: "unassigned",
+      }),
+    ];
+    const view = renderWithIntl(<FactsScreen matterId="mat-1" />);
+    const accept = await screen.findByRole("button", { name: "Accept" });
+    fireEvent.click(accept);
+    await screen.findByText("Lawyer confirmed");
+    const command = calls.find((c) => c.path.endsWith("/accept"))!;
+    expect(command.body).toEqual({
+      expectedScopeToken: "server-token-2",
+      resolveFactIds: [],
+    });
+    expect((command.init.headers as Record<string, string>)["If-Match"]).toBe(
+      '"2"',
+    );
+    expect(calls.some((c) => c.path.endsWith("/associate"))).toBe(false);
+    expect(screen.queryByLabelText("Reason for this decision")).toBeNull();
+    view.unmount();
+    renderWithIntl(<FactsScreen matterId="mat-1" />);
+    await screen.findByText("Lawyer confirmed");
+    expect(screen.queryByRole("button", { name: "Accept" })).toBeNull();
+  });
+  it("opens detailed review on a refused quick acceptance without showing confirmation", async () => {
+    facts = [fact({ status: "EXTRACTED_CANDIDATE" })];
+    refuse = 412;
+    renderWithIntl(<FactsScreen matterId="mat-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+    await screen.findByLabelText("Reason for this decision");
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.queryByText("Lawyer confirmed")).toBeNull();
+    expect(calls.filter((c) => c.path.endsWith("/accept"))).toHaveLength(1);
+  });
+  it("retries an ambiguous quick acceptance using the same key and displayed version", async () => {
+    facts = [fact({ status: "EXTRACTED_CANDIDATE" })];
+    refuse = 504;
+    renderWithIntl(<FactsScreen matterId="mat-1" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Accept" }));
+    await screen.findByRole("alert");
+    expect(screen.queryByText("Lawyer confirmed")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await screen.findByText("Lawyer confirmed");
+    const commands = calls.filter((c) => c.path.endsWith("/accept"));
+    expect(commands).toHaveLength(2);
+    expect(new Headers(commands[1]!.init.headers).get("Idempotency-Key")).toBe(
+      new Headers(commands[0]!.init.headers).get("Idempotency-Key"),
+    );
+    expect(new Headers(commands[1]!.init.headers).get("If-Match")).toBe('"2"');
+  });
   it.each(["initial", "hashchange"])(
     "opens transaction setup from the %s hash and focuses its summary",
     async (navigation) => {
@@ -690,7 +744,7 @@ describe("canonical register", () => {
     expect(
       (screen.getByRole("button", { name: "Accept fact" }) as HTMLButtonElement)
         .disabled,
-    ).toBe(true);
+    ).toBe(false);
     fireEvent.change(screen.getByLabelText("Fact transaction"), {
       target: { value: "tx-1" },
     });
@@ -776,11 +830,19 @@ describe("canonical register", () => {
     await screen.findByRole("button", { name: en.factRegister.refresh });
     await waitFor(() => {
       expect(calls.filter((c) => c.path.endsWith("/accept"))).toHaveLength(1);
-      expect((screen.getByRole("button", { name: "Accept fact" }) as HTMLButtonElement).disabled).toBe(true);
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Accept fact",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true);
     });
-    expect(screen.queryByText(
-      "The record changed. Review the refreshed value and alternatives before deciding again.",
-    )).toBeNull();
+    expect(
+      screen.queryByText(
+        "The record changed. Review the refreshed value and alternatives before deciding again.",
+      ),
+    ).toBeNull();
     expect(calls.filter((c) => c.path.endsWith("/accept")).length).toBe(1);
     expect(calls.filter((c) => c.path.endsWith("/facts/fact-1"))).toHaveLength(
       1,

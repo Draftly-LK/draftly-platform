@@ -331,9 +331,16 @@ approval. `POST /facts/{factId}/{accept|correct|reject|associate}` requires
 `Idempotency-Key` and `If-Match` (the integer version in quotes). Correction,
 rejection and association require reasons. Association creates an unverified
 successor and requires matter-owned references. Acceptance/correction requires
-assigned scope, current readable evidence, current `expectedScopeToken`, and
+current readable evidence, current `expectedScopeToken`, and
 the exact set of differing live alternatives in `resolveFactIds` with a reason.
 An arriving competing fact changes the token and refuses the stale decision.
+An unassigned document observation can be accepted directly without a reason
+when unchanged. Its successor remains `scopeStatus=unassigned`; acceptance
+does not select a party, parcel or transaction and does not make it eligible for
+scoped checks or form binding. Unassigned observations are reviewed individually,
+since different documents may describe different subjects. Assigned facts retain
+scope-wide conflict tokens and explicit alternative resolution. Later association
+still creates an unverified successor requiring review in the selected scope.
 Negative conclusions retain the current-search-evidence guard; a search must
 be eligible in the exact same transaction and subject. Another scope's search
 or an ambiguous legacy relationship cannot satisfy it.
