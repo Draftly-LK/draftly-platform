@@ -294,10 +294,14 @@ async def send_receipt(
 ) -> SendReceiptRead | None:
     async with UnitOfWork(session):
         await service.lock(ctx, matter_id)
-        current = await service.get_or_create_session(ctx, matter_id)
+        current = await service.find_current_session(ctx, matter_id)
         if not idempotency_key or len(idempotency_key) > 255:
             raise IdempotencyKeyRequiredError()
-        if not conversation_id or current.active_conversation_id != conversation_id:
+        if (
+            current is None
+            or not conversation_id
+            or current.active_conversation_id != conversation_id
+        ):
             return None
         stored = await SqlIdempotencyStore(session).receipt(
             user_id=ctx.actor_id, route=_SEND_MESSAGE_ROUTE, key=idempotency_key

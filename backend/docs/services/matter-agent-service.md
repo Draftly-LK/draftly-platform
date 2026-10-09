@@ -857,3 +857,5 @@ expired, foreign or previous-conversation receipt returns no acceptance proof.
 The client clears only a matching key/matter/conversation receipt. A later deliberate
 identical question receives a fresh key, while ambiguous acceptance retains the
 original retry key. Receipt reads never enqueue, compose or meter work.
+An absent session or active segment returns no acceptance proof. This read never
+provisions a session or conversation, or writes an audit event or outbox entry.

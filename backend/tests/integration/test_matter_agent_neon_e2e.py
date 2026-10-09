@@ -54,6 +54,7 @@ from src.modules.matter.domain.models import (
 )
 from src.modules.matter.infrastructure.orm import MatterRow
 from src.modules.matter_agent.infrastructure.orm import (
+    AgentConversationRow,
     AgentJobRow,
     AgentMessageRow,
     AgentPendingActionRow,
@@ -781,6 +782,73 @@ async def test_actual_retrieval_outcomes_meter_once_and_worker_replay_is_inert(
         assert rows == [("consumed" if consumed else "released", 1)]
     assert len(calls) == (0 if sources == "cases" else 1)
     assert composer.compose.await_count == int(case_success)
+
+
+async def _receipt_state(sessions: async_sessionmaker[AsyncSession]) -> dict:
+    """Capture persisted state, including updates as well as inserted effects."""
+    async with sessions() as session:
+        return {
+            row.__tablename__: (await session.execute(row.__table__.select())).mappings().all()
+            for row in (
+                AgentSessionRow,
+                AgentConversationRow,
+                AgentJobRow,
+                AgentMessageRow,
+                AuditEventRow,
+                OutboxRow,
+                IdempotencyKeyRow,
+            )
+        }
+
+
+@pytest.mark.parametrize("session_exists", [False, True], ids=["no-session", "no-active-segment"])
+@pytest.mark.parametrize("conversation_id", [None, "mismatched-conversation"])
+async def test_send_receipt_without_current_segment_does_not_write(
+    pg_sessions, seeded, monkeypatch, session_exists, conversation_id
+):
+    from unittest.mock import AsyncMock
+
+    from src.platform.db.idempotency import SqlIdempotencyStore
+
+    if session_exists:
+        async with pg_sessions() as session:
+            session.add(AgentSessionRow(id="asess-inactive", user_id=OWNER, matter_id=MATTER))
+            await session.commit()
+    before = await _receipt_state(pg_sessions)
+    receipt = AsyncMock(return_value=None)
+    monkeypatch.setattr(SqlIdempotencyStore, "receipt", receipt)
+
+    async with _client(pg_sessions) as client:
+        for _ in range(2):
+            result = await client.get(
+                f"/api/v1/matters/{MATTER}/agent/send-receipt",
+                params={"conversationId": conversation_id} if conversation_id else {},
+                headers={"Idempotency-Key": "synthetic-opaque-send-key"},
+            )
+            assert result.status_code == 200
+            assert result.json() is None
+    assert await _receipt_state(pg_sessions) == before
+    receipt.assert_not_awaited()
+
+
+@pytest.mark.parametrize("session_exists", [False, True], ids=["no-session", "no-active-segment"])
+async def test_accepted_send_job_without_current_segment_does_not_write(
+    pg_sessions, seeded, session_exists
+):
+    from src.bootstrap import build_agent_service
+    from src.platform.db.unit_of_work import UnitOfWork
+
+    if session_exists:
+        async with pg_sessions() as session:
+            session.add(AgentSessionRow(id="asess-inactive", user_id=OWNER, matter_id=MATTER))
+            await session.commit()
+    before = await _receipt_state(pg_sessions)
+    ctx = RequestContext(actor_id=OWNER, account_role=Role.APPROVER)
+    async with pg_sessions() as session, UnitOfWork(session):
+        service = build_agent_service(session)
+        await service.lock(ctx, MATTER)
+        assert await service.accepted_send_job(ctx, MATTER, "ajob-unaccepted") is None
+    assert await _receipt_state(pg_sessions) == before
 
 
 async def test_send_receipt_is_exact_current_actor_matter_and_conversation(

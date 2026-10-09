@@ -159,6 +159,18 @@ class AgentService:
         self._action_executor = action_executor
         self._scopes = scopes
 
+    async def find_current_session(
+        self, ctx: RequestContext, matter_id: str
+    ) -> AgentSession | None:
+        """Read an authorized current segment without provisioning session state."""
+        if not self._settings.enabled:
+            raise AgentDisabledError()
+        await self._require_matter(ctx, matter_id)
+        session = await self._sessions.find(user_id=ctx.actor_id, matter_id=matter_id)
+        if session is None or session.active_conversation_id is None:
+            return None
+        return session
+
     async def get_or_create_session(self, ctx: RequestContext, matter_id: str) -> AgentSession:
         """Return the matter's session, provisioning it lazily on first use."""
         if not self._settings.enabled:
@@ -250,7 +262,9 @@ class AgentService:
         self, ctx: RequestContext, matter_id: str, job_id: str
     ) -> AgentJob | None:
         """Resolve receipt targets only within the actor's current matter segment."""
-        session = await self.get_or_create_session(ctx, matter_id)
+        session = await self.find_current_session(ctx, matter_id)
+        if session is None:
+            return None
         source = await self._jobs.retry_source(
             job_id=job_id, user_id=ctx.actor_id, matter_id=matter_id
         )
