@@ -20,6 +20,7 @@ export function InlineAlert({
   children: ReactNode;
   className?: string;
 }) {
+  if (tone === "warning") return null;
   const { box, icon: Icon, role } = tones[tone];
   return (
     <div role={role} className={cn("flex items-start gap-2 rounded border-l-2 p-3 text-sm", box, className)}>

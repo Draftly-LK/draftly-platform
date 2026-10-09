@@ -3304,6 +3304,7 @@
     "partialFacts": "Only part of the fact register is loaded. Refresh to retrieve the remaining records."
   },
   "requirementsWork": {
+    "selectRequirement": "Select a requirement on the left to view its details and review actions.",
     "documentsTitle": "Missing requirements",
     "checksTitle": "Requirements and human review",
     "notice": "Receipt, evidence review and original inspection are recorded separately. Satisfaction follows the existing requirement policy.",

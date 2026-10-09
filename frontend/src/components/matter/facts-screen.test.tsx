@@ -753,9 +753,14 @@ describe("canonical register", () => {
     facts = [fact({ version: 9, scopeToken: "fresh-server-token" })];
     refuse = 412;
     fireEvent.click(screen.getByRole("button", { name: "Accept fact" }));
-    await screen.findByText(
+    await screen.findByRole("button", { name: en.factRegister.refresh });
+    await waitFor(() => {
+      expect(calls.filter((c) => c.path.endsWith("/accept"))).toHaveLength(1);
+      expect((screen.getByRole("button", { name: "Accept fact" }) as HTMLButtonElement).disabled).toBe(true);
+    });
+    expect(screen.queryByText(
       "The record changed. Review the refreshed value and alternatives before deciding again.",
-    );
+    )).toBeNull();
     expect(calls.filter((c) => c.path.endsWith("/accept")).length).toBe(1);
     expect(calls.filter((c) => c.path.endsWith("/facts/fact-1"))).toHaveLength(
       1,

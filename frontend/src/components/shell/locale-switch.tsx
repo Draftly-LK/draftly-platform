@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { LOCALE_COOKIE } from "@/lib/i18n/multilingual";
+import { Button } from "@/components/ui/button";
 
 export function LocaleSwitch() {
   const locale = useLocale();
@@ -13,21 +14,17 @@ export function LocaleSwitch() {
     router.refresh();
   };
   return (
-    <div
-      role="group"
-      aria-label={t("interfaceLanguage")}
-      className="border-border bg-surface rounded-control inline-flex max-w-full flex-wrap gap-0.5 border p-0.5"
-    >
-      <button
-        type="button"
+    <div role="group" aria-label={t("interfaceLanguage")}>
+      <Button
+        variant="secondary"
+        size="sm"
         lang="en"
         aria-label={t("englishLanguage")}
         aria-pressed={locale === "en"}
         onClick={selectEnglish}
-        className="rounded-control text-muted-ink hover:bg-hover-bg aria-pressed:bg-selected-bg aria-pressed:text-forest min-h-8 px-3 py-1 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none [@media(pointer:coarse)]:min-h-11"
       >
         {t("englishLanguage")}
-      </button>
+      </Button>
     </div>
   );
 }

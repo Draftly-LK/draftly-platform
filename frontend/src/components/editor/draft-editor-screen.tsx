@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   CircleDashed,
   LoaderCircle,
-  Triangle,
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
@@ -208,28 +207,6 @@ function DraftEditorScreenContent({ matterId, source }: { matterId: string; sour
         </div>
       </header>
 
-      {/* The watermark is permanent: nothing here is approved for execution. */}
-      <div className="border-amber bg-amber-bg text-amber-text flex items-center gap-2 border-b px-6 py-3 font-medium">
-        <TriangleAlert className="size-5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
-        {tRoot(form.preflight.watermarkKey ?? "rta.form.watermark.draft_not_approved")}
-      </div>
-
-      {form.knownSourceDefectKeys.length > 0 && (
-        <div className="border-amber bg-amber-bg text-amber-text border-b px-6 py-4">
-          <div className="flex items-start gap-3">
-            <Triangle className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
-            <div>
-              <h2 className="font-semibold">{t("knownDefects")}</h2>
-              <ul className="mt-2 list-inside list-disc space-y-1 text-sm">
-                {form.knownSourceDefectKeys.map((key) => (
-                  <li key={key}>{tRoot(key)}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
       {error && (
         <div role="alert" className="border-red bg-red-bg text-red mx-6 mt-6 flex gap-3 rounded border p-4 text-sm">
           <AlertCircle className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
@@ -294,17 +271,6 @@ function DraftEditorScreenContent({ matterId, source }: { matterId: string; sour
             <h3 className="text-red mb-2 font-semibold">{t("blocking")}</h3>
             <ul className="space-y-2">
               {form.preflight.blocking.map((item) => (
-                <PreflightItem key={`${item.code}-${item.subjectId ?? ""}`} item={item} form={form} />
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {form.preflight.warnings.length > 0 && (
-          <div className="mb-6">
-            <h3 className="text-amber-text mb-2 font-semibold">{t("warnings")}</h3>
-            <ul className="space-y-2">
-              {form.preflight.warnings.map((item) => (
                 <PreflightItem key={`${item.code}-${item.subjectId ?? ""}`} item={item} form={form} />
               ))}
             </ul>

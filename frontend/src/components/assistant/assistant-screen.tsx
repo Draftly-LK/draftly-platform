@@ -214,11 +214,7 @@ export function AssistantScreen() {
                       <Trash2 className="size-5" strokeWidth={1.5} />
                     </IconButton>
                   </header>
-                  <div className="border-amber bg-amber-bg text-amber-text border-l-2 px-5 py-4">
-                    <h3 className="font-semibold">{t("pendingTitle")}</h3>
-                    <p className="mt-1 text-sm">{t("pendingBody")}</p>
-                    <p className="mt-2 font-mono text-xs">{t("pendingEndpoint", { id: activeConversation.id })}</p>
-                  </div>
+
                 </article>
               ))}
             </section>
