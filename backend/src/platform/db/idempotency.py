@@ -99,6 +99,26 @@ class SqlIdempotencyStore:
             raise IdempotencyConflictError()
         return row.response
 
+    async def receipt(self, *, user_id: str, route: str, key: str) -> dict[str, Any] | None:
+        """Read acceptance only; the caller must authorize its resource and validate the stored target."""
+        row = (
+            await self._session.execute(
+                select(IdempotencyKeyRow).where(
+                    IdempotencyKeyRow.user_id == user_id,
+                    IdempotencyKeyRow.route == route,
+                    IdempotencyKeyRow.idempotency_key == key,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        created = row.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        if datetime.now(tz=UTC) - created >= RETENTION:
+            return None
+        return row.response
+
     async def store(
         self,
         *,

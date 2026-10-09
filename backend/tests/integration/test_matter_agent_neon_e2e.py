@@ -652,3 +652,236 @@ async def test_queued_source_cutoff_is_applied_before_sql_history_limit(pg_sessi
         )
         assert [row.id for row in history] == [source.id]
         await session.commit()
+
+
+@pytest.mark.parametrize(
+    "status,sources,versioned,case_success,consumed",
+    [
+        (503, "statutes", True, False, False),
+        (200, "cases", True, False, False),
+        (200, "statutes", True, False, True),
+        (503, "all", True, True, True),
+        (200, "statutes", False, False, False),
+    ],
+)
+async def test_actual_retrieval_outcomes_meter_once_and_worker_replay_is_inert(
+    pg_sessions, seeded, monkeypatch, status, sources, versioned, case_success, consumed
+):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import httpx
+
+    from src.api.deps import build_billing_service
+    from src.modules.matter_agent.infrastructure.fake_model import FakeAgentModelAdapter
+    from src.modules.research.application.service import ResearchService
+    from src.modules.research.domain.cases import SimilarCase
+    from src.modules.research.domain.models import ComposedClaim
+    from src.modules.research.infrastructure.retrieval.case_http import HttpCaseSearchAdapter
+    from src.modules.research.infrastructure.retrieval.http_adapter import (
+        HttpStatuteRetrievalAdapter,
+    )
+
+    calls = []
+
+    def transport(request):
+        calls.append(request.url.path)
+        return httpx.Response(
+            status,
+            json=[],
+            headers={"X-Draftly-Corpus-Version": "statutes-index-v1:" + "a" * 64}
+            if versioned
+            else {},
+        )
+
+    retrieval = HttpStatuteRetrievalAdapter(
+        base_url="http://synthetic.invalid", transport=httpx.MockTransport(transport)
+    )
+    cases = HttpCaseSearchAdapter(
+        base_url="http://synthetic.invalid",
+        transport=httpx.MockTransport(lambda request: httpx.Response(503)),
+    )
+    if case_success:
+        cases = AsyncMock()
+        cases.search_cases.return_value = SimpleNamespace(
+            corpus_version="synthetic-case-v1",
+            items=[
+                SimilarCase(
+                    None,
+                    "commonlii-synthetic",
+                    "Synthetic case",
+                    "Synthetic reference",
+                    "",
+                    1,
+                    ["lexical"],
+                    False,
+                    "Synthetic case supporting passage",
+                )
+            ],
+        )
+    composer = AsyncMock()
+    composer.compose.return_value = (
+        ComposedClaim("Synthetic partial supported answer.", ("COMMONLII-SYNTHETIC",)),
+    )
+    monkeypatch.setattr(
+        "src.bootstrap.build_research_service",
+        lambda session: ResearchService(session, retrieval, composer, cases),
+    )
+    model = FakeAgentModelAdapter(
+        turns=[
+            ModelTurn(
+                tool_calls=(
+                    ProposedToolCall(
+                        name="research_legal_question",
+                        arguments={"question": "Synthetic research inquiry", "sources": sources},
+                    ),
+                )
+            )
+        ]
+    )
+    monkeypatch.setattr("src.bootstrap.build_agent_model", lambda: model)
+    async with pg_sessions() as session:
+        await build_billing_service(session).ensure_trial(OWNER)
+        await session.commit()
+    async with _client(pg_sessions) as client:
+        sent = await client.post(
+            f"/api/v1/matters/{MATTER}/agent/messages",
+            json={"content": "Synthetic research inquiry"},
+            headers={"Idempotency-Key": "outcome-synthetic"},
+        )
+        assert sent.status_code == 202
+    await _drain_turn(pg_sessions)
+    await _drain_turn(pg_sessions)
+    async with _client(pg_sessions) as client:
+        replay = await client.post(
+            f"/api/v1/matters/{MATTER}/agent/messages",
+            json={"content": "Synthetic research inquiry"},
+            headers={"Idempotency-Key": "outcome-synthetic"},
+        )
+        assert replay.json()["jobId"] == sent.json()["jobId"]
+        answer = next(
+            m
+            for m in (await client.get(f"/api/v1/matters/{MATTER}/agent/messages")).json()["items"]
+            if m["role"] == "assistant"
+        )
+        if case_success:
+            assert answer["citations"][0]["corpusVersion"] == "synthetic-case-v1"
+            assert answer["citations"][0]["passage"] == "Synthetic case supporting passage"
+        else:
+            assert answer["citations"] == []
+    async with pg_sessions() as session:
+        rows = (
+            await session.execute(
+                text(
+                    "SELECT state, quantity FROM usage_ledger_entries WHERE user_id=:id AND metric='research_queries.monthly'"
+                ),
+                {"id": OWNER},
+            )
+        ).all()
+        assert rows == [("consumed" if consumed else "released", 1)]
+    assert len(calls) == (0 if sources == "cases" else 1)
+    assert composer.compose.await_count == int(case_success)
+
+
+async def test_send_receipt_is_exact_current_actor_matter_and_conversation(
+    pg_sessions, seeded, monkeypatch
+):
+    from src.platform.db.idempotency import SqlIdempotencyStore
+
+    lookups = []
+    original = SqlIdempotencyStore.receipt
+
+    async def receipt(self, **kwargs):
+        lookups.append(kwargs)
+        return await original(self, **kwargs)
+
+    monkeypatch.setattr(SqlIdempotencyStore, "receipt", receipt)
+    async with _client(pg_sessions) as client:
+        sent = await client.post(
+            f"/api/v1/matters/{MATTER}/agent/messages",
+            json={"content": "Synthetic receipt question"},
+            headers={"Idempotency-Key": "exact-send-key"},
+        )
+        conversation = (await client.get(f"/api/v1/matters/{MATTER}/agent")).json()[
+            "activeConversationId"
+        ]
+        url = f"/api/v1/matters/{MATTER}/agent/send-receipt"
+        headers = {"Idempotency-Key": "exact-send-key"}
+        accepted = await client.get(url, params={"conversationId": conversation}, headers=headers)
+        assert accepted.status_code == 200
+        assert accepted.json() == {
+            "sendKey": "exact-send-key",
+            "matterId": MATTER,
+            "conversationId": conversation,
+            "jobId": sent.json()["jobId"],
+        }
+        from datetime import timedelta
+
+        from sqlalchemy import update
+
+        async with pg_sessions() as session:
+            await session.execute(
+                update(IdempotencyKeyRow)
+                .where(IdempotencyKeyRow.idempotency_key == "exact-send-key")
+                .values(created_at=datetime.now(UTC) - timedelta(hours=25))
+            )
+            await session.commit()
+        assert (
+            await client.get(url, params={"conversationId": conversation}, headers=headers)
+        ).json() is None
+        async with pg_sessions() as session:
+            await session.execute(
+                update(IdempotencyKeyRow)
+                .where(IdempotencyKeyRow.idempotency_key == "exact-send-key")
+                .values(created_at=datetime.now(UTC))
+            )
+            await session.commit()
+        before = len(lookups)
+        assert (await client.get(url)).status_code == 400
+        assert (await client.get(url, headers=headers)).json() is None
+        assert (
+            await client.get(
+                url, params={"conversationId": "foreign-conversation"}, headers=headers
+            )
+        ).json() is None
+        assert (
+            await client.get(
+                url.replace(MATTER, "foreign-matter"),
+                params={"conversationId": conversation},
+                headers=headers,
+            )
+        ).status_code == 404
+        assert len(lookups) == before
+        assert (
+            await client.get(
+                url,
+                params={"conversationId": conversation},
+                headers={"Idempotency-Key": "unaccepted-key"},
+            )
+        ).json() is None
+        new_conversation = (
+            await client.post(f"/api/v1/matters/{MATTER}/agent/conversations")
+        ).json()["id"]
+        assert (
+            await client.get(url, params={"conversationId": new_conversation}, headers=headers)
+        ).json() is None
+    async with pg_sessions() as session:
+        session.add(
+            IdempotencyKeyRow(
+                id="idem-foreign-actor",
+                user_id="foreign-actor",
+                route="POST /matters/{matterId}/agent/messages",
+                idempotency_key="foreign-actor-key",
+                request_hash="synthetic",
+                response=sent.json(),
+            )
+        )
+        await session.commit()
+    async with _client(pg_sessions) as client:
+        assert (
+            await client.get(
+                url,
+                params={"conversationId": new_conversation},
+                headers={"Idempotency-Key": "foreign-actor-key"},
+            )
+        ).json() is None

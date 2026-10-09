@@ -17,6 +17,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import type { DigitalReviewStatus } from "@/types/rta";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -25,6 +26,7 @@ import { getMe } from "@/lib/api/auth";
 import {
   clearManualIntent,
   pendingOperationIntent,
+  readPendingOperationIntent,
   type ManualIntent,
 } from "@/lib/api/mutation-intent";
 import { PageHeader } from "@/components/shell/page-header";
@@ -40,6 +42,7 @@ import {
   confirmAgentAction,
   getAgentJob,
   getAgentSession,
+  getAgentSendReceipt,
   getLatestAgentJob,
   getAgentAction,
   type ApiPendingAction,
@@ -372,6 +375,31 @@ export function MatterConversation({
           actorId: actor.id,
           conversationId: session.activeConversationId,
         };
+        const intent = readPendingOperationIntent(
+          actor.id,
+          matterId,
+          "agent-send",
+        );
+        if (intent && session.activeConversationId) {
+          try {
+            const receipt = await getAgentSendReceipt(
+              getToken,
+              matterId,
+              session.activeConversationId,
+              intent.key,
+            );
+            if (controller.signal.aborted) return;
+            if (
+              receipt?.sendKey === intent.key &&
+              receipt.matterId === matterId &&
+              receipt.conversationId === session.activeConversationId &&
+              receipt.jobId
+            )
+              clearManualIntent(intent);
+          } catch {
+            // Acceptance remains ambiguous; preserve the same key for a transport retry.
+          }
+        }
         await Promise.all([loadPage(), loadContext()]);
         const latest = await getLatestAgentJob(getToken, matterId);
         if (controller.signal.aborted) return;
@@ -744,7 +772,7 @@ function MessageRow({
             </time>
           </div>
           <p className="mt-1 whitespace-pre-wrap leading-7">
-            {renderCitedText(message.content, message.citations, onCitation)}
+            {renderCitedText(message.content, message.citations, onCitation, t)}
           </p>
           {assistant && message.citations.length > 0 && (
             <div
@@ -778,6 +806,7 @@ function renderCitedText(
   content: string,
   citations: ApiAgentCitation[],
   onCitation: (citation: ApiAgentCitation) => void,
+  t: ReturnType<typeof useTranslations>,
 ) {
   return content.split(/(\[\d+\])/g).map((part, index) => {
     const match = /^\[(\d+)\]$/.exec(part);
@@ -789,7 +818,7 @@ function renderCitedText(
         key={`${citation.sourceId}-${index}`}
         type="button"
         className="text-forest focus-visible:outline-ring mx-0.5 font-semibold hover:underline focus-visible:outline-2"
-        aria-label={`${citation.label}, ${citation.verificationStatus}`}
+        aria-label={`${citation.label}, ${t(`verification.${citation.verificationStatus}`)}`}
         onClick={() => onCitation(citation)}
       >
         {part}
@@ -1072,7 +1101,7 @@ function ContextPanel({
             </div>
           )}
           {selectedCitation.corpusVersion && (
-            <p className="text-muted-ink mt-2 text-xs">
+            <p className="text-muted-ink mt-2 break-words text-xs">
               {t("sourceVersion", { version: selectedCitation.corpusVersion })}
             </p>
           )}
@@ -1165,6 +1194,7 @@ function ProposalCard({
   onReject: () => void;
   t: ReturnType<typeof useTranslations>;
 }) {
+  const reviewLabel = useTranslations("enums.requirementStatus");
   return (
     <div
       className="border-amber bg-amber-bg rounded-card ml-12 mt-3 border p-4"
@@ -1186,7 +1216,11 @@ function ProposalCard({
                 {t("proposalVersion", { version: action.targetVersion })}
               </dd>
             </div>
-            {proposalDetails(action).map(([label, value]) => (
+            {proposalDetails(action, (value) =>
+              isDigitalReviewStatus(value)
+                ? reviewLabel(value)
+                : t("reviewStatusUnknown"),
+            ).map(([label, value]) => (
               <div key={label}>
                 <dt className="text-muted-ink">
                   {t(`proposalFields.${label}`)}
@@ -1287,7 +1321,21 @@ function describe(
   return t("errorUnknown");
 }
 
-function proposalDetails(action: ApiPendingAction): [string, string][] {
+function isDigitalReviewStatus(value: string): value is DigitalReviewStatus {
+  return (
+    [
+      "UNREVIEWED",
+      "AI_ORGANIZED",
+      "LAWYER_CONFIRMED",
+      "REJECTED",
+      "SUPERSEDED",
+    ] satisfies DigitalReviewStatus[]
+  ).some((status) => status === value);
+}
+function proposalDetails(
+  action: ApiPendingAction,
+  reviewLabel: (value: string) => string,
+): [string, string][] {
   const args = action.arguments;
   const reviewed =
     args.reviewed && typeof args.reviewed === "object"
@@ -1312,9 +1360,11 @@ function proposalDetails(action: ApiPendingAction): [string, string][] {
       : [
           [
             field,
-            typeof rows[field] === "object"
-              ? JSON.stringify(rows[field])
-              : String(rows[field]),
+            field === "digitalReview"
+              ? reviewLabel(String(rows[field]))
+              : typeof rows[field] === "object"
+                ? JSON.stringify(rows[field])
+                : String(rows[field]),
           ] as [string, string],
         ],
   );

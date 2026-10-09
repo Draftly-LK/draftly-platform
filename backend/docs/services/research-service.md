@@ -610,7 +610,17 @@ The current source contract does not supply amendment-to-section relationships,
 commencement/effective/repeal dates, an as-of query date or a consolidated-law
 view. The bundled release lists 57 statutes and 18 amendments; that count does
 not establish currency or completeness for a matter. The HTTP adapter maps
-returned excerpts and attaches the caller's corpus label; the endpoint does not
-attest its deployed revision. Discovery of all applicable amendments/Gazettes
+returned excerpts only when the engine attests its frozen artifact with
+`X-Draftly-Corpus-Version: statutes-index-v1:<sha256>`. This identity derives from
+the same recorded fingerprint the serving engine uses to select its immutable
+index. The caller's bundled corpus label is never substituted. Old engines without
+this header, or malformed identities, are unavailable for grounded statute answers. Discovery of all applicable amendments/Gazettes
 and date-sensitive applicability requires the separately reviewed follow-up.
 Retrieval failure logs retain only the exception class, never a query URL.
+
+`SearchResult.status` distinguishes completed searches from unavailable retrieval.
+A total outage, missing source attestation, or unavailable case-only search releases
+the reserved query. A completed empty search remains a chargeable abstention. If
+at least one requested source completes, supported claims from that source can be
+returned and charged once while failed-channel degradation remains explicit in the
+research result. Legal verification and source identity remain separate concepts.

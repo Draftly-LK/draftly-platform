@@ -232,3 +232,51 @@ it("deliberate renewal clears a reloaded operation pin without clearing another 
     ).key,
   ).toBe(other.key);
 });
+
+it("reads only existing actor-scoped opaque intent metadata and cannot clear a newer send", async () => {
+  const api = await import("./mutation-intent");
+  expect(api.readPendingOperationIntent("", "matter", "agent-send")).toBeNull();
+  expect(
+    api.readPendingOperationIntent("reader", "matter", "agent-send"),
+  ).toBeNull();
+  const old = await api.pendingOperationIntent(
+    "reader",
+    "matter",
+    "agent-send",
+    request,
+  );
+  vi.resetModules();
+  const reloaded = await import("./mutation-intent");
+  expect(
+    reloaded.readPendingOperationIntent("reader", "matter", "agent-send")?.key,
+  ).toBe(old.key);
+  expect(
+    reloaded.readPendingOperationIntent("foreign", "matter", "agent-send"),
+  ).toBeNull();
+  const newer = await reloaded.pendingOperationIntent(
+    "reader",
+    "matter",
+    "agent-send",
+    { value: "different" },
+  );
+  reloaded.clearManualIntent(old);
+  expect(
+    reloaded.readPendingOperationIntent("reader", "matter", "agent-send")?.key,
+  ).toBe(newer.key);
+  vi.stubGlobal("sessionStorage", {
+    getItem: () => {
+      throw new Error("disabled");
+    },
+  });
+  expect(
+    reloaded.readPendingOperationIntent("reader", "matter", "agent-send")
+      ?.persistent,
+  ).toBe(false);
+  expect(
+    reloaded.readPendingOperationIntent("reader", "matter", "agent-send")?.key,
+  ).toBe(newer.key);
+  reloaded.clearManualIntent(newer);
+  expect(
+    reloaded.readPendingOperationIntent("reader", "matter", "agent-send"),
+  ).toBeNull();
+});

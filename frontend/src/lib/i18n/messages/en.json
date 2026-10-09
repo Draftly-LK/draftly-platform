@@ -2773,6 +2773,7 @@
     "collapseContext": "Hide matter context",
     "errorRetry": "Review the conversation and send a new message to continue.",
     "fullView": "Open full conversation",
+    "reviewStatusUnknown": "Review status unavailable",
     "proposalTarget": "Target",
     "proposalVersion": "Version {version}",
     "sourceVersion": "Source version: {version}",

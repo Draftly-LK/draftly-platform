@@ -16,16 +16,24 @@ step changes.
 
 Fails closed like `NullLegalRetrieval`: any network error, timeout, or
 malformed response degrades to no passages rather than raising, so a slow or
-unreachable retrieval container turns into "insufficient authority," never a
-500.
+unreachable or unattested retrieval container is explicitly unavailable, never
+a fabricated successful empty search. The caller version cannot attest the remote
+index; only the frozen serving artifact supplies that identity.
 """
 
 from __future__ import annotations
 
+import re
+
 import httpx
 import structlog
 
-from src.modules.research.domain.models import RetrievalPassage, Scope, SearchResult
+from src.modules.research.domain.models import (
+    RetrievalPassage,
+    RetrievalStatus,
+    Scope,
+    SearchResult,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -49,7 +57,7 @@ class HttpStatuteRetrievalAdapter:
         self._transport = transport
 
     async def search(self, query: str, scope: Scope, corpus_version: str) -> SearchResult:
-        del scope  # the engine has no matter- or scope-aware index yet
+        del scope, corpus_version  # only the serving engine may attest its source identity
         try:
             async with httpx.AsyncClient(
                 timeout=self._timeout, transport=self._transport
@@ -61,11 +69,21 @@ class HttpStatuteRetrievalAdapter:
                 hits = response.json()
         except (httpx.HTTPError, ValueError) as exc:
             log.warning("research.retrieval_engine_unreachable", error_class=type(exc).__name__)
-            return SearchResult(degraded_channels=["retrieval-engine"])
+            return SearchResult(
+                degraded_channels=["retrieval-engine"], status=RetrievalStatus.UNAVAILABLE
+            )
 
         if not isinstance(hits, list):
             log.warning("research.retrieval_engine_bad_response", body_type=type(hits).__name__)
-            return SearchResult(degraded_channels=["retrieval-engine"])
+            return SearchResult(
+                degraded_channels=["retrieval-engine"], status=RetrievalStatus.UNAVAILABLE
+            )
+
+        version = response.headers.get("X-Draftly-Corpus-Version", "")
+        if not re.fullmatch(r"statutes-index-v1:[0-9a-f]{64}", version):
+            return SearchResult(
+                degraded_channels=["source-version"], status=RetrievalStatus.UNAVAILABLE
+            )
 
         passages: list[RetrievalPassage] = []
         for hit in hits:
@@ -73,10 +91,10 @@ class HttpStatuteRetrievalAdapter:
                 continue
             try:
                 section_id = str(hit["section_id"])
-                excerpt = str(hit.get("excerpt") or "").strip()
+                excerpt = str(hit.get("excerpt") or "")
             except KeyError:
                 continue
-            if not excerpt:
+            if not excerpt.strip():
                 continue
             section = section_id.rsplit(":s", 1)[-1]
             passages.append(
@@ -87,11 +105,13 @@ class HttpStatuteRetrievalAdapter:
                     reference=f"Section {section}",
                     text=excerpt,
                     page=0,  # not carried by this API; only the bundled adapter has it
-                    corpus_version=corpus_version,
+                    corpus_version=version,
                     verified=False,
                 )
             )
         # Dense and graph expansion are not part of this engine's deployed
         # index (RETRIEVAL_WITH_EMBEDDINGS=0 — see deploy/README.md); say so
         # rather than implying coverage this response does not have.
-        return SearchResult(passages=passages, degraded_channels=["dense", "graph"])
+        return SearchResult(
+            passages=passages, degraded_channels=["dense", "graph"], corpus_version=version
+        )

@@ -14,7 +14,7 @@ from src.modules.research.infrastructure.retrieval.http_adapter import (
     HttpStatuteRetrievalAdapter,
 )
 
-CORPUS_VERSION = "statutes-bm25-v1:test"
+CORPUS_VERSION = "statutes-index-v1:" + "a" * 64
 SCOPE = Scope(ScopeType.LIBRARY)
 
 
@@ -32,6 +32,7 @@ async def test_maps_hits_into_passages() -> None:
         assert request.url.params["q"] == "prescription"
         return httpx.Response(
             200,
+            headers={"X-Draftly-Corpus-Version": CORPUS_VERSION},
             json=[
                 {
                     "source_id": "SRC071",
@@ -61,6 +62,7 @@ async def test_a_hit_with_no_excerpt_is_skipped_rather_than_grounding_on_nothing
         del request
         return httpx.Response(
             200,
+            headers={"X-Draftly-Corpus-Version": CORPUS_VERSION},
             json=[
                 {"source_id": "SRC071", "section_id": "SRC071:s14", "title": "x", "excerpt": ""},
                 {
@@ -122,6 +124,7 @@ async def test_a_hit_missing_section_id_is_skipped_not_fatal() -> None:
         del request
         return httpx.Response(
             200,
+            headers={"X-Draftly-Corpus-Version": CORPUS_VERSION},
             json=[
                 {"source_id": "SRC071", "title": "no section_id", "excerpt": "text"},
                 {
@@ -150,3 +153,42 @@ async def test_http_failure_log_never_contains_private_query_url(monkeypatch):
     assert result.degraded_channels == ["retrieval-engine"]
     assert "SYNTHETIC_PRIVATE_QUERY" not in str(logger.warning.call_args)
     assert logger.warning.call_args.kwargs == {"error_class": "HTTPStatusError"}
+
+
+@pytest.mark.parametrize("version", [None, "caller-v1", "statutes-index-v1:short"])
+async def test_missing_or_malformed_engine_attestation_does_not_acquire_caller_version(version):
+    headers = {} if version is None else {"X-Draftly-Corpus-Version": version}
+    result = await _adapter(
+        lambda request: httpx.Response(
+            200,
+            headers=headers,
+            json=[
+                {
+                    "source_id": "SYN",
+                    "section_id": "SYN:s1",
+                    "excerpt": "Synthetic original excerpt",
+                }
+            ],
+        )
+    ).search("synthetic", SCOPE, "caller-static-v1")
+    assert result.passages == []
+    assert "source-version" in result.degraded_channels
+
+
+async def test_actual_engine_version_overrides_unrelated_caller_label_and_preserves_excerpt():
+    actual = "statutes-index-v1:" + "b" * 64
+    result = await _adapter(
+        lambda request: httpx.Response(
+            200,
+            headers={"X-Draftly-Corpus-Version": actual},
+            json=[
+                {
+                    "source_id": "SYN",
+                    "section_id": "SYN:s1",
+                    "excerpt": "Synthetic original excerpt",
+                }
+            ],
+        )
+    ).search("synthetic", SCOPE, "caller-static-v1")
+    assert result.passages[0].corpus_version == actual
+    assert result.passages[0].text == "Synthetic original excerpt"

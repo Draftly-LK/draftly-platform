@@ -178,3 +178,24 @@ export function clearPendingOperationIntent(
     /* RAM fallback is cleared too. */
   }
 }
+
+/** Read opaque pending metadata without minting or replacing a logical request. */
+export function readPendingOperationIntent(
+  actorId: string,
+  matterId: string,
+  operation: string,
+): ManualIntent | null {
+  if (!actorId || !matterId || !operation) return null;
+  const storageKey = `draftly:operation-intent:v1:${encodeURIComponent(actorId)}:${encodeURIComponent(matterId)}:${encodeURIComponent(operation)}`;
+  let stored: unknown,
+    persistent = true;
+  try {
+    stored = JSON.parse(sessionStorage.getItem(storageKey) ?? "null");
+  } catch {
+    persistent = false;
+  }
+  const metadata = valid(stored) ? stored : memory.get(storageKey);
+  return valid(metadata)
+    ? { ...metadata, storageKey, persistent, reused: true }
+    : null;
+}

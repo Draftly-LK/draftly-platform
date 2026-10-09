@@ -9259,6 +9259,34 @@
         "title": "SearchRequest",
         "type": "object"
       },
+      "SendReceiptRead": {
+        "properties": {
+          "conversationId": {
+            "title": "Conversationid",
+            "type": "string"
+          },
+          "jobId": {
+            "title": "Jobid",
+            "type": "string"
+          },
+          "matterId": {
+            "title": "Matterid",
+            "type": "string"
+          },
+          "sendKey": {
+            "title": "Sendkey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sendKey",
+          "matterId",
+          "conversationId",
+          "jobId"
+        ],
+        "title": "SendReceiptRead",
+        "type": "object"
+      },
       "SessionRead": {
         "description": "The matter's single session. There is never a second one.",
         "properties": {
@@ -14189,6 +14217,93 @@
           }
         ],
         "summary": "Send Message",
+        "tags": [
+          "matter-agent"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/agent/send-receipt": {
+      "get": {
+        "operationId": "send_receipt_api_v1_matters__matter_id__agent_send_receipt_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conversationId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conversationid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SendReceiptRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Send Receipt Api V1 Matters  Matter Id  Agent Send Receipt Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Receipt",
         "tags": [
           "matter-agent"
         ]

@@ -101,6 +101,13 @@ class JobRead(_CamelModel):
     failure_class: str | None = None
 
 
+class SendReceiptRead(_CamelModel):
+    send_key: str
+    matter_id: str
+    conversation_id: str
+    job_id: str
+
+
 class PendingActionRead(_CamelModel):
     """An inline card. ``targetVersion`` is what a stale confirm trips on."""
 

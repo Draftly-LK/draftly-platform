@@ -15,6 +15,7 @@ from src.modules.research.domain.models import (
     AuthorityKind,
     ComposedClaim,
     RetrievalPassage,
+    RetrievalStatus,
     Scope,
     ScopeType,
     SearchResult,
@@ -135,12 +136,23 @@ class ResearchService:
             self._search_cases(content) if want_cases else no_cases(),
         )
         case_unavailable = want_cases and case_version is None
-        versions = ([CORPUS_VERSION] if want_statutes else []) + (
-            [case_version] if case_version else []
+        versions = list(
+            dict.fromkeys(
+                ([statutes.corpus_version] if statutes.corpus_version else [])
+                + [p.corpus_version for p in statutes.passages if p.corpus_version]
+                + ([case_version] if case_version else [])
+            )
+        )
+        completed = (want_statutes and statutes.status is RetrievalStatus.COMPLETE) or (
+            want_cases and not case_unavailable
         )
         degraded = list(statutes.degraded_channels) + ([CASE_CHANNEL] if case_unavailable else [])
         return (
-            SearchResult(passages=[*statutes.passages, *cases], degraded_channels=degraded),
+            SearchResult(
+                passages=[*statutes.passages, *cases],
+                degraded_channels=degraded,
+                status=RetrievalStatus.COMPLETE if completed else RetrievalStatus.UNAVAILABLE,
+            ),
             versions,
             case_unavailable,
         )
@@ -345,7 +357,7 @@ class ResearchService:
             ScopeType(conversation.scope_type), conversation.scope_target_id, conversation.matter_id
         )
         result, versions, case_unavailable = await self.retrieve(content, scope, sources)
-        corpus_version = "+".join(versions) or CORPUS_VERSION
+        corpus_version = "+".join(versions) or "unknown"
         job.corpus_version = corpus_version
         answer_id, assistant_id = _id("rans"), _id("rmsg")
         composed: tuple[ComposedClaim, ...] = ()

@@ -2774,6 +2774,7 @@
     "collapseContext": "කාරණ සන්දර්භය සඟවන්න",
     "errorRetry": "ඉදිරියට යාමට සංවාදය සමාලෝචනය කර නව පණිවිඩයක් යවන්න.",
     "fullView": "සම්පූර්ණ සංවාදය විවෘත කරන්න",
+    "reviewStatusUnknown": "සමාලෝචන තත්ත්වය නොමැත",
     "proposalTarget": "අදාළ වාර්තාව",
     "proposalVersion": "අනුවාදය {version}",
     "sourceVersion": "මූලාශ්‍ර අනුවාදය: {version}",

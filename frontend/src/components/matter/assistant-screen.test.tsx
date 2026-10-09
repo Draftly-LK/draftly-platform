@@ -10,6 +10,7 @@ const turns = vi.hoisted(() => ({
   read: vi.fn(),
   stream: vi.fn(),
   latest: vi.fn(),
+  receipt: vi.fn(),
   messages: vi.fn(),
   action: vi.fn(),
   confirm: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock("@/lib/api/agent", async (importOriginal) => {
     getAgentJob: turns.read,
     streamAgentJobEvents: turns.stream,
     getLatestAgentJob: turns.latest,
+    getAgentSendReceipt: turns.receipt,
     getAgentSession: async () => ({ activeConversationId: "conv-1" }),
     getAgentAction: turns.action,
     confirmAgentAction: turns.confirm,
@@ -79,6 +81,7 @@ vi.mock("./source-file-preview", () => ({
 
 import { ApiError } from "@/lib/api/client";
 import messages from "@/lib/i18n/messages/en.json";
+import sinhala from "@/lib/i18n/messages/si.json";
 import { MatterAssistantScreen } from "./assistant-screen";
 import { MatterConversation } from "./matter-conversation";
 
@@ -86,6 +89,7 @@ beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
   turns.latest.mockReset().mockResolvedValue(null);
+  turns.receipt.mockReset().mockResolvedValue(null);
   turns.messages.mockReset().mockResolvedValue({
     items: [],
     page: { hasMore: false, nextCursor: null },
@@ -340,7 +344,7 @@ describe("persistent shared conversation", () => {
               verificationStatus: "unverified",
               locator: null,
               passage: "Synthetic retrieved passage",
-              corpusVersion: "synthetic-corpus-v1",
+              corpusVersion: "statutes-index-v1:" + "b".repeat(64),
             },
           ],
         },
@@ -357,7 +361,7 @@ describe("persistent shared conversation", () => {
       screen.getAllByText("Synthetic retrieved passage").length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText("Source version: synthetic-corpus-v1").length,
+      screen.getAllByText("Source version: statutes-index-v1:" + "b".repeat(64)).length,
     ).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: "Open source" })).toBeNull();
   });
@@ -451,7 +455,7 @@ describe("recorded work after interrupted responses", () => {
       targetRef: "checklist-item:synthetic",
       targetVersion: 2,
       state: "proposed",
-      arguments: { digitalReview: "REVIEWED_OK" },
+      arguments: { digitalReview: "LAWYER_CONFIRMED" },
       result: {},
     };
     turns.messages.mockResolvedValue({
@@ -717,7 +721,7 @@ describe("conversation refusal and navigation", () => {
       <MatterConversation matterId="keyboard-synthetic" embedded />,
     );
     const citation = await screen.findByRole("button", {
-      name: "Synthetic authority, verified",
+      name: "Synthetic authority, Verified",
     });
     citation.focus();
     fireEvent.click(citation);
@@ -780,3 +784,144 @@ it("shows a new turn's recorded work after tool failure without offering a dupli
   expect(turns.send).toHaveBeenCalledTimes(1);
   expect(turns.retry).not.toHaveBeenCalled();
 });
+
+it.each(["succeeded", "running"])(
+  "retires an exactly accepted lost-response intent after remount (%s)",
+  async (state) => {
+    const matterId = `accepted-lost-${state}`;
+    const completed = {
+      jobId: "accepted-job",
+      state: "succeeded",
+      toolCallCount: 0,
+      failureClass: null,
+    };
+    turns.send
+      .mockRejectedValueOnce(new Error("lost accepted response"))
+      .mockResolvedValue(completed);
+    turns.read.mockResolvedValue(completed);
+    const first = renderWithIntl(
+      <MatterConversation matterId={matterId} embedded />,
+    );
+    await waitFor(() => expect(turns.latest).toHaveBeenCalled());
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Synthetic what is missing?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByRole("alert");
+    const oldKey = turns.send.mock.calls[0]?.[3];
+    first.unmount();
+    turns.latest.mockResolvedValue({ ...completed, state });
+    turns.receipt.mockResolvedValue({
+      sendKey: oldKey,
+      matterId,
+      conversationId: "conv-1",
+      jobId: completed.jobId,
+    });
+    renderWithIntl(<MatterAssistantScreen matterId={matterId} />);
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("button", { name: /New conversation/ })
+          .hasAttribute("disabled"),
+      ).toBe(false),
+    );
+    await waitFor(() => expect(turns.latest).toHaveBeenCalledTimes(2));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Synthetic what is missing?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(turns.send).toHaveBeenCalledTimes(2));
+    expect(turns.send.mock.calls[1]?.[3]).not.toBe(oldKey);
+  },
+);
+
+it.each(["en", "si"] as const)(
+  "localizes review decisions and citation accessibility status in %s",
+  async (locale) => {
+    const catalogue = locale === "en" ? messages : sinhala;
+    turns.messages.mockResolvedValue({
+      items: [
+        {
+          id: "localized",
+          role: "assistant",
+          content: "Synthetic citation [1]",
+          pendingActionId: "localized-action",
+          citations: [
+            {
+              sourceId: "synthetic",
+              sourceType: "fact",
+              label: "Synthetic source",
+              verificationStatus: "verified",
+            },
+          ],
+        },
+      ],
+      page: { hasMore: false },
+    });
+    turns.action.mockResolvedValue({
+      id: "localized-action",
+      actionKind: "checklist-decision",
+      state: "executed",
+      arguments: { digitalReview: "LAWYER_CONFIRMED" },
+      result: {},
+    });
+    renderWithIntl(
+      <MatterConversation matterId={`localized-${locale}`} embedded />,
+      locale,
+    );
+    await screen.findByRole("button", {
+      name: `Synthetic source, ${catalogue.matterAssistant.verification.verified}`,
+    });
+    expect(screen.getByTestId("proposal-card").textContent).toContain(
+      catalogue.enums.requirementStatus.LAWYER_CONFIRMED,
+    );
+    expect(screen.getByTestId("proposal-card").textContent).not.toContain(
+      "LAWYER_CONFIRMED",
+    );
+  },
+);
+
+it.each(["matter", "conversation", "key", "missing-job", "unavailable"])(
+  "preserves a pending send when receipt is %s",
+  async (mismatch) => {
+    const matterId = `unproven-${mismatch}`;
+    const completed = {
+      jobId: "accepted-other-job",
+      state: "succeeded",
+      toolCallCount: 0,
+      failureClass: null,
+    };
+    turns.send
+      .mockRejectedValueOnce(new Error("lost response"))
+      .mockResolvedValue(completed);
+    turns.read.mockResolvedValue(completed);
+    const first = renderWithIntl(
+      <MatterConversation matterId={matterId} embedded />,
+    );
+    await waitFor(() => expect(turns.latest).toHaveBeenCalled());
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Synthetic same question" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await screen.findByRole("alert");
+    const key = turns.send.mock.calls[0]?.[3];
+    first.unmount();
+    if (mismatch === "unavailable")
+      turns.receipt.mockRejectedValue(new Error("unavailable"));
+    else
+      turns.receipt.mockResolvedValue({
+        matterId: mismatch === "matter" ? "foreign" : matterId,
+        conversationId: mismatch === "conversation" ? "foreign" : "conv-1",
+        sendKey: mismatch === "key" ? "foreign" : key,
+        jobId: mismatch === "missing-job" ? "" : completed.jobId,
+      });
+    renderWithIntl(<MatterAssistantScreen matterId={matterId} />);
+    await waitFor(() => expect(turns.latest).toHaveBeenCalledTimes(2));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Synthetic same question" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(turns.send).toHaveBeenCalledTimes(2));
+    expect(turns.send.mock.calls[1]?.[3]).toBe(key);
+  },
+);

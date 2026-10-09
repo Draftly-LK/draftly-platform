@@ -5,6 +5,7 @@ import {
   getLatestAgentJob,
   getAgentAction,
   getAgentSession,
+  getAgentSendReceipt,
   isTerminalJobState,
   listAgentConversations,
   listAgentMessages,
@@ -245,4 +246,41 @@ describe("streamAgentJobEvents", () => {
       false,
     );
   });
+});
+
+it("reads an acceptance receipt with opaque key header and explicit conversation, without resending content", async () => {
+  const original = globalThis.fetch;
+  const oldBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://synthetic.invalid";
+  let url = "",
+    options: RequestInit | undefined;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    url = String(input);
+    options = init;
+    return new Response("null", {
+      headers: { "Content-Type": "application/json" },
+    });
+  }) as typeof fetch;
+  try {
+    expect(
+      await getAgentSendReceipt(
+        async () => "synthetic-token",
+        "mat-synthetic",
+        "conv synthetic",
+        "opaque-key",
+      ),
+    ).toBeNull();
+    expect(url).toContain(
+      "/matters/mat-synthetic/agent/send-receipt?conversationId=conv+synthetic",
+    );
+    expect(new Headers(options?.headers).get("Idempotency-Key")).toBe(
+      "opaque-key",
+    );
+    expect(options?.method).toBe("GET");
+    expect(options?.body).toBeUndefined();
+  } finally {
+    globalThis.fetch = original;
+    if (oldBase === undefined) delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    else process.env.NEXT_PUBLIC_API_BASE_URL = oldBase;
+  }
 });

@@ -159,3 +159,130 @@ async def test_cancelled_research_releases_reserved_usage_and_propagates_cancell
         )
     billing.release_usage.assert_awaited_once()
     billing.consume_usage.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "status,sources,expected_reason,charged",
+    [
+        (503, SourceScope.STATUTES, "legal_research_unavailable", False),
+        (200, SourceScope.CASES, "legal_research_unavailable", False),
+        (200, SourceScope.STATUTES, "insufficient_authority", True),
+        (200, SourceScope.ALL, "insufficient_authority", True),
+    ],
+)
+async def test_actual_http_outage_case_outage_and_completed_empty_are_distinct(
+    status, sources, expected_reason, charged
+):
+    import httpx
+
+    from src.modules.research.application.service import ResearchService
+    from src.modules.research.infrastructure.retrieval.http_adapter import (
+        HttpStatuteRetrievalAdapter,
+    )
+
+    service, _, billing, _ = setup()
+    research = ResearchService(
+        None,
+        HttpStatuteRetrievalAdapter(
+            base_url="http://synthetic.invalid",
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    status,
+                    json=[],
+                    headers={"X-Draftly-Corpus-Version": "statutes-index-v1:" + "a" * 64},
+                )
+            ),
+        ),
+        AsyncMock(),
+    )
+    research.resolve_scope = AsyncMock(return_value=Scope(ScopeType.MATTER, "mat-1", "mat-1"))
+    service._research = research
+    result = await service.answer(
+        CTX, "mat-1", question="synthetic", sources=sources, operation_id="job"
+    )
+    assert result.unavailable_reason == expected_reason
+    assert billing.consume_usage.await_count == int(charged)
+    assert billing.release_usage.await_count == int(not charged)
+    research.composer.compose.assert_not_called()
+
+
+async def test_unattested_remote_excerpt_cannot_reach_composer_or_spend_quota():
+    import httpx
+
+    from src.modules.research.application.service import ResearchService
+    from src.modules.research.infrastructure.retrieval.http_adapter import (
+        HttpStatuteRetrievalAdapter,
+    )
+
+    service, _, billing, _ = setup()
+    research = ResearchService(
+        None,
+        HttpStatuteRetrievalAdapter(
+            base_url="http://synthetic.invalid",
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    json=[
+                        {
+                            "source_id": "SYN",
+                            "section_id": "SYN:s1",
+                            "excerpt": "Synthetic exact excerpt",
+                        }
+                    ],
+                )
+            ),
+        ),
+        AsyncMock(),
+    )
+    research.resolve_scope = AsyncMock(return_value=Scope(ScopeType.MATTER, "mat-1", "mat-1"))
+    service._research = research
+    answer = await service.answer(
+        CTX, "mat-1", question="synthetic", sources=SourceScope.STATUTES, operation_id="job"
+    )
+    assert answer.unavailable_reason == "legal_research_unavailable"
+    assert not answer.passages
+    research.composer.compose.assert_not_called()
+    billing.release_usage.assert_awaited_once()
+    billing.consume_usage.assert_not_called()
+
+
+async def test_partial_completed_search_retains_degradation_and_only_supported_case_claims():
+    from src.modules.research.application.service import ResearchService
+    from src.modules.research.domain.cases import SimilarCase
+    from src.modules.research.domain.models import RetrievalStatus
+
+    service, _, billing, _ = setup()
+    retrieval, cases, composer = AsyncMock(), AsyncMock(), AsyncMock()
+    retrieval.search.return_value = SearchResult(
+        degraded_channels=["retrieval-engine"], status=RetrievalStatus.UNAVAILABLE
+    )
+    cases.search_cases.return_value = SimpleNamespace(
+        corpus_version="synthetic-case-v1",
+        items=[
+            SimilarCase(
+                None,
+                "COMMONLII-SYNTHETIC",
+                "Synthetic case",
+                "Synthetic reference",
+                "",
+                1,
+                ["lexical"],
+                False,
+                "Synthetic case excerpt",
+            )
+        ],
+    )
+    composer.compose.return_value = (
+        ComposedClaim("Synthetic partial answer.", ("COMMONLII-SYNTHETIC",)),
+    )
+    research = ResearchService(None, retrieval, composer, cases)
+    research.resolve_scope = AsyncMock(return_value=Scope(ScopeType.MATTER, "mat-1", "mat-1"))
+    service._research = research
+    answer = await service.answer(
+        CTX, "mat-1", question="synthetic", sources=SourceScope.ALL, operation_id="job"
+    )
+    assert answer.degraded_channels == ("retrieval-engine",)
+    assert answer.passages[0].corpus_version == "synthetic-case-v1"
+    assert answer.unavailable_reason is None
+    billing.consume_usage.assert_awaited_once()
+    billing.release_usage.assert_not_called()

@@ -109,6 +109,29 @@ export interface ApiPendingAction {
 const AGENT_BASE = (matterId: string) =>
   `${API_VERSION_PREFIX}/matters/${matterId}/agent`;
 
+export interface ApiAgentSendReceipt {
+  sendKey: string;
+  matterId: string;
+  conversationId: string;
+  jobId: string;
+}
+
+export function getAgentSendReceipt(
+  getToken: TokenProvider,
+  matterId: string,
+  conversationId: string,
+  sendKey: string,
+): Promise<ApiAgentSendReceipt | null> {
+  return apiFetch<ApiAgentSendReceipt | null>(
+    `${AGENT_BASE(matterId)}/send-receipt?${new URLSearchParams({ conversationId })}`,
+    {
+      method: "GET",
+      getToken,
+      headers: { "Idempotency-Key": sendKey },
+    },
+  );
+}
+
 export function getLatestAgentJob(
   getToken: TokenProvider,
   matterId: string,

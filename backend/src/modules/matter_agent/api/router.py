@@ -38,6 +38,7 @@ from src.modules.matter_agent.api.schemas import (
     PendingActionRead,
     RejectActionRequest,
     SendMessageRequest,
+    SendReceiptRead,
     SessionRead,
 )
 from src.modules.matter_agent.application.agent_service import AgentService
@@ -280,6 +281,40 @@ async def send_message(
             response=read.model_dump(by_alias=True),
         )
     return read
+
+
+@router.get("/matters/{matter_id}/agent/send-receipt", response_model=SendReceiptRead | None)
+async def send_receipt(
+    matter_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[AgentService, Depends(get_agent_service)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    conversation_id: Annotated[str | None, Query(alias="conversationId")] = None,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> SendReceiptRead | None:
+    async with UnitOfWork(session):
+        await service.lock(ctx, matter_id)
+        current = await service.get_or_create_session(ctx, matter_id)
+        if not idempotency_key or len(idempotency_key) > 255:
+            raise IdempotencyKeyRequiredError()
+        if not conversation_id or current.active_conversation_id != conversation_id:
+            return None
+        stored = await SqlIdempotencyStore(session).receipt(
+            user_id=ctx.actor_id, route=_SEND_MESSAGE_ROUTE, key=idempotency_key
+        )
+        if stored is None:
+            return None
+        accepted = await service.accepted_send_job(
+            ctx, matter_id, JobRead.model_validate(stored).job_id
+        )
+        if accepted is None:
+            return None
+        return SendReceiptRead(
+            send_key=idempotency_key,
+            matter_id=matter_id,
+            conversation_id=conversation_id,
+            job_id=accepted.job_id,
+        )
 
 
 @router.get("/matters/{matter_id}/agent/latest-job", response_model=JobRead | None)

@@ -846,3 +846,14 @@ when recorded retry or new action-state history would be lost. The model factory
 requires the existing enabled, key and `provider_data_approval` gates; closed gates
 return an unavailable adapter without provider transport. Tests inject synthetic
 models explicitly. This implementation does not enable or choose provider flags.
+
+### Accepted send reconciliation after refresh
+
+`GET /matters/{id}/agent/send-receipt?conversationId=...` reads acceptance for the
+opaque `Idempotency-Key` header without resending content. Current actor/matter and
+active-conversation authorization precede replay-store lookup; the stored job's
+source is then checked against that same actor, matter and segment. An absent,
+expired, foreign or previous-conversation receipt returns no acceptance proof.
+The client clears only a matching key/matter/conversation receipt. A later deliberate
+identical question receives a fresh key, while ambiguous acceptance retains the
+original retry key. Receipt reads never enqueue, compose or meter work.

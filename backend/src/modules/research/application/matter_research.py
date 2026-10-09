@@ -6,7 +6,7 @@ from typing import Any
 from src.modules.auth.ports import AuditEventInput, AuditPort
 from src.modules.research.application.service import ResearchService
 from src.modules.research.contracts import GroundedResearch
-from src.modules.research.domain.models import ComposedClaim, SourceScope
+from src.modules.research.domain.models import ComposedClaim, RetrievalStatus, SourceScope
 from src.platform.request_context import RequestContext
 
 
@@ -44,11 +44,14 @@ class MatterResearchService:
         )
         try:
             result, _, _ = await self._research.retrieve(question, scope, sources)
-            composed = (
-                await self._research.composer.compose(question, result.passages)
-                if result.passages
-                else ()
-            )
+            if result.status is RetrievalStatus.UNAVAILABLE:
+                await self._billing.release_usage(ctx.actor_id, reservation.id)
+                return GroundedResearch(
+                    unavailable_reason="legal_research_unavailable",
+                    degraded_channels=tuple(result.degraded_channels),
+                )
+            eligible = [p for p in result.passages if p.text.strip() and p.corpus_version]
+            composed = await self._research.composer.compose(question, eligible) if eligible else ()
             available = {
                 p.authority_id.upper(): p
                 for p in result.passages

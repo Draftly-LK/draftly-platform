@@ -5,7 +5,12 @@ import re
 import sqlite3
 from pathlib import Path
 
-from src.modules.research.domain.models import RetrievalPassage, Scope, SearchResult
+from src.modules.research.domain.models import (
+    RetrievalPassage,
+    RetrievalStatus,
+    Scope,
+    SearchResult,
+)
 
 CORPUS_DB = Path(__file__).with_name("corpus") / "statutes.sqlite"
 CORPUS_FINGERPRINT = "8a7f096671b28cf0ff5fcf90b5dd1c1300f343e8ec401c73cd8f9538abccd765"
@@ -62,8 +67,14 @@ class StatuteRetrievalAdapter:
 
     async def search(self, query: str, scope: Scope, corpus_version: str) -> SearchResult:
         del scope
+        if not CORPUS_DB.exists():
+            return SearchResult(
+                degraded_channels=["statute-corpus"], status=RetrievalStatus.UNAVAILABLE
+            )
         passages = await asyncio.to_thread(self._search, query, corpus_version)
-        return SearchResult(passages=passages, degraded_channels=["dense"])
+        return SearchResult(
+            passages=passages, degraded_channels=["dense"], corpus_version=corpus_version
+        )
 
     def _search(self, query: str, corpus_version: str) -> list[RetrievalPassage]:
         if not CORPUS_DB.exists():

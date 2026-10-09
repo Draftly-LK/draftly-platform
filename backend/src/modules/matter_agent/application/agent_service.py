@@ -246,6 +246,22 @@ class AgentService:
         )
         return created
 
+    async def accepted_send_job(
+        self, ctx: RequestContext, matter_id: str, job_id: str
+    ) -> AgentJob | None:
+        """Resolve receipt targets only within the actor's current matter segment."""
+        session = await self.get_or_create_session(ctx, matter_id)
+        source = await self._jobs.retry_source(
+            job_id=job_id, user_id=ctx.actor_id, matter_id=matter_id
+        )
+        if (
+            source is None
+            or source.message.session_id != session.id
+            or source.message.conversation_id != session.active_conversation_id
+        ):
+            return None
+        return source.job
+
     async def retry_turn(self, ctx: RequestContext, matter_id: str, job_id: str) -> AgentJob:
         """Retry a failed answer using its saved message, without replaying tools.
 
