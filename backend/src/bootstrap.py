@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from src.modules.document.application.review_service import DocumentReviewService
     from src.modules.matter.application.scope_service import MatterScopeService
     from src.modules.matter_agent.application.agent_service import AgentService
+    from src.modules.task.application.readiness_service import ReadinessService
     from src.modules.verification.application.review_service import FactReviewService
 
 if TYPE_CHECKING:
@@ -1190,3 +1191,24 @@ def build_dispatcher() -> MessageDispatcher:
         dispatcher.register_event(event_name, make_event_handler(event_name))
 
     return dispatcher
+
+
+def build_readiness_service(session: AsyncSession) -> ReadinessService:
+    from src.modules.check.application.readiness import CheckReadinessReader
+    from src.modules.document.application.readiness import DocumentReadinessReader
+    from src.modules.matter.infrastructure.scope_repository import SqlMatterScopeRepository
+    from src.modules.task.application.readiness_service import ReadinessService
+    from src.modules.verification.application.readiness import FactReadinessReader
+
+    return ReadinessService(
+        build_matter_service(session),
+        _build_document_matter_lock(session),
+        build_checklist_service(session),
+        {
+            "documents": DocumentReadinessReader(build_ingestion_service(session)),
+            "facts": FactReadinessReader(build_fact_review_service(session)),
+            "checks": CheckReadinessReader(
+                build_check_service(session), SqlMatterScopeRepository(session)
+            ),
+        },
+    )

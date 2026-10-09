@@ -5497,6 +5497,61 @@
         "title": "MatterRead",
         "type": "object"
       },
+      "MatterReadinessRead": {
+        "properties": {
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessDependencyRead"
+            },
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "evaluatedAt": {
+            "title": "Evaluatedat",
+            "type": "string"
+          },
+          "nextAction": {
+            "title": "Nextaction",
+            "type": "string"
+          },
+          "requirementCompleted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirementcompleted"
+          },
+          "requirementTotal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirementtotal"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "nextAction",
+          "evaluatedAt",
+          "dependencies",
+          "requirementTotal",
+          "requirementCompleted"
+        ],
+        "title": "MatterReadinessRead",
+        "type": "object"
+      },
       "MergePartiesRequest": {
         "properties": {
           "reason": {
@@ -7470,6 +7525,105 @@
           "retention_class"
         ],
         "title": "ProtocolRead",
+        "type": "object"
+      },
+      "ReadinessDependencyRead": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessReferenceRead"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "state",
+          "references"
+        ],
+        "title": "ReadinessDependencyRead",
+        "type": "object"
+      },
+      "ReadinessReferenceRead": {
+        "properties": {
+          "associationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generation"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "ReadinessReferenceRead",
         "type": "object"
       },
       "RecordBeneficialOwnerRequest": {
@@ -15654,6 +15808,53 @@
         "summary": "List Matter Parties",
         "tags": [
           "parties"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/readiness": {
+      "get": {
+        "operationId": "get_readiness_api_v1_matters__matter_id__readiness_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatterReadinessRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Readiness",
+        "tags": [
+          "checklist"
         ]
       }
     },

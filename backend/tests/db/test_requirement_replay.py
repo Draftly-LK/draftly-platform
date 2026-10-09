@@ -45,7 +45,10 @@ async def test_requirement_decision_replay_is_once_and_authorization_precedes_re
     ).status_code == 409
     identity["ctx"] = replace(identity["ctx"], account_role=Role.ADMINISTRATOR)
     assert (await http.post(path, json=body, headers=headers)).status_code == 403
+    readiness = await http.get(f"/api/v1/matters/{matter.matter_id}/readiness")
+    assert readiness.status_code == 200 and readiness.json()["state"] in {"unknown", "blocked"}
     identity["ctx"] = replace(identity["ctx"], actor_id="usr_synthetic_foreign")
+    assert (await http.get(f"/api/v1/matters/{matter.matter_id}/readiness")).status_code == 404
     assert (await http.post(path, json=body, headers=headers)).status_code == 404
 
 

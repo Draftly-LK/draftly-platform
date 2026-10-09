@@ -6,5 +6,7 @@ describe("matter sections", () => {
     expect(sectionForPath("/matters/m1", "m1")).toBe("overview");
     expect(sectionForPath("/matters/m1/documents/d1/review", "m1")).toBe("documents");
     expect(sectionForPath("/matters/other/facts", "m1")).toBeNull();
+    expect(sectionForPath("/matters/m1/workflow", "m1")).toBe("checks");
+    expect(sectionForPath("/matters/m1/missing-documents", "m1")).toBe("documents");
   });
 });

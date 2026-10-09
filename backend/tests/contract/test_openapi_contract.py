@@ -74,3 +74,33 @@ def test_document_correction_contract_publishes_pins_history_and_command_headers
         # absent headers instead of FastAPI's required-parameter 422.
         headers = {item["name"].lower() for item in parameters if item["in"] == "header"}
         assert {"if-match", "idempotency-key"} <= headers
+
+
+def test_requirement_readiness_and_scoped_check_contracts_publish_pins_and_headers() -> None:
+    schema = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    paths, models = schema["paths"], schema["components"]["schemas"]
+    base = "/api/v1/matters/{matter_id}/checklist-items/{item_id}"
+    for action in ("decisions", "links", "original-inspection"):
+        headers = {
+            p["name"].lower(): p
+            for p in paths[f"{base}/{action}"]["post"]["parameters"]
+            if p["in"] == "header"
+        }
+        assert {"if-match", "idempotency-key"} <= headers.keys()
+        assert not headers["if-match"]["required"] and not headers["idempotency-key"]["required"]
+    assert {"documentVersion", "interpretationGeneration"} <= set(
+        models["LinkDocumentRequest"]["required"]
+    )
+    assert {"originals"} <= models["OriginalInspectionRead"]["properties"].keys()
+    item_model = paths[f"{base}/decisions"]["post"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]["$ref"].rsplit("/", 1)[-1]
+    assert {"inspectionHistory", "version"} <= models[item_model]["properties"].keys()
+    assert {"transactionId", "associationVersion"} <= set(models["RunChecksRequest"]["required"])
+    assert {"transactionId", "subjectId", "associationVersion"} <= models["CheckResultRead"][
+        "properties"
+    ].keys()
+    assert "/api/v1/matters/{matter_id}/readiness" in paths
+    assert {"state", "nextAction", "dependencies", "evaluatedAt"} <= models["MatterReadinessRead"][
+        "properties"
+    ].keys()

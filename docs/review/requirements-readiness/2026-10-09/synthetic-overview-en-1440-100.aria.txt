@@ -1,0 +1,39 @@
+- main:
+  - heading "Overview" [level=1]
+  - paragraph: Where this matter stands and what to do next.
+  - region "Record required human review":
+    - text: Next action
+    - heading "Record required human review" [level=2]
+    - paragraph: Required original inspections and lawyer reviews remain open.
+    - link "Open review":
+      - /url: /matters/mat-synthetic/checks
+    - paragraph: Evaluated at 2026-10-09T00:00:00Z
+    - term: Instrument
+    - definition: Transfer by sale
+    - term: Matter state
+    - definition: Evidence collection
+    - term: Handling
+    - definition: Prepared by Draftly
+  - region "Checklist progress":
+    - heading "Checklist progress" [level=2]
+    - img "0% of the checklist satisfied"
+    - paragraph: 0 of 1 requirements satisfied
+    - paragraph: Nothing blocking
+    - paragraph: 1 still outstanding
+  - list:
+    - listitem:
+      - link "Documents 0 files uploaded":
+        - /url: /matters/mat-synthetic/documents
+    - listitem:
+      - link "Checks 0 open issues":
+        - /url: /matters/mat-synthetic/checks
+    - listitem:
+      - link "Verified facts 0 of 0 lawyer verified":
+        - /url: /matters/mat-synthetic/facts
+    - listitem:
+      - link "Drafts 0 forms generated":
+        - /url: /matters/mat-synthetic/drafts
+  - heading "Ask the matter assistant" [level=2]
+  - paragraph: This snapshot reports the matter's current records. It is not a legal conclusion and does not replace lawyer review.
+  - link "Open matter assistant":
+    - /url: /matters/mat-synthetic/assistant

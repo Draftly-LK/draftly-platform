@@ -135,3 +135,28 @@ class ChecklistRead(_Camel):
     created_at: str
     items: list[ChecklistItemRead]
     blocking_requirement_ids: list[str]
+
+
+class ReadinessReferenceRead(_Camel):
+    kind: str
+    id: str
+    version: int | None = None
+    generation: int | None = None
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    association_version: int | None = None
+
+
+class ReadinessDependencyRead(_Camel):
+    category: str
+    state: str
+    references: list[ReadinessReferenceRead]
+
+
+class MatterReadinessRead(_Camel):
+    state: str
+    next_action: str
+    evaluated_at: str
+    dependencies: list[ReadinessDependencyRead]
+    requirement_total: int | None
+    requirement_completed: int | None

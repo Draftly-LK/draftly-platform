@@ -1,0 +1,225 @@
+{
+  "thirdPassMechanicalProbes": 14,
+  "thirdPassEvidence": "task-5-browser-3.log reached behavior tail after all 14 mandatory screenshot+ARIA probes; no product changes after third pass",
+  "expectedRecoveryConsole": [
+    "error: Failed to load resource: the server responded with a status of 503 (Service Unavailable)"
+  ],
+  "fixture": "Synthetic HTTP contract responses; real React components, production CSS/fonts, no performance claim",
+  "probes": [
+    {
+      "locale": "en",
+      "width": 1024,
+      "screen": "unavailable",
+      "zoom": 100,
+      "overflow": false,
+      "panes": [],
+      "canvas": "rgb(243, 245, 248)",
+      "font": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "controls": [],
+      "language": "en",
+      "serious": []
+    }
+  ],
+  "focus": {
+    "visible": true,
+    "outline": "2px"
+  },
+  "errors": [],
+  "requests": [
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checks",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist-items/item-synthetic/links",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist-items/item-synthetic/original-inspection",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist-items/item-synthetic/original-inspection",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checks/run",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checks",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checks",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist-items/item-synthetic/links",
+      "method": "GET"
+    }
+  ],
+  "commands": [
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist-items/item-synthetic/original-inspection",
+      "body": {
+        "method": "SYNTHETIC sighting"
+      },
+      "ifMatch": "\"4\"",
+      "keyPresent": true
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checklist-items/item-synthetic/original-inspection",
+      "body": {
+        "method": "SYNTHETIC sighting"
+      },
+      "ifMatch": "\"4\"",
+      "keyPresent": true
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/checks/run",
+      "body": {
+        "transactionId": "transaction-synthetic",
+        "associationVersion": 3,
+        "subjectId": "parcel-synthetic"
+      },
+      "keyPresent": false
+    }
+  ],
+  "retrySameKey": true
+}

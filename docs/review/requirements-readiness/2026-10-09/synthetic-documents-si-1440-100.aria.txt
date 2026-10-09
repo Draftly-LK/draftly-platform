@@ -1,0 +1,66 @@
+- main:
+  - heading "ලේඛන" [level=1]
+  - paragraph: ආදර්ශ කාරණයේ සාක්ෂි ලබාගෙන, වර්ග කර, සමාලෝචනය කරන්න.
+  - button "ලේඛන උඩුගත කරන්න"
+  - paragraph: "කෘත්‍රිම ලේඛන පමණි: ජාතික හැඳුනුම්පතක්, බිම් සවිය හිමිකම් සහතිකයක්, RTA 8 වන පෝරම පැවරුමක් හෝ මිනුම් සැලැස්මක්. PDF හෝ රූප ගොනු."
+  - paragraph: තවම ලේඛන නැත. මෙම කාරණයට අවශ්‍ය සාක්ෂි උඩුගත කරන්න.
+  - region "අවශ්‍ය ලේඛන හා සාක්ෂි":
+    - heading "අවශ්‍ය ලේඛන හා සාක්ෂි" [level=2]
+    - paragraph: ලැබීම, සාක්ෂි සමාලෝචනය සහ මුල් පිටපත් පරීක්ෂාව වෙන වෙනම සටහන් වේ. සම්පූර්ණ වීම පවතින අවශ්‍යතා ප්‍රතිපත්තිය අනුව තීරණය වේ.
+    - list:
+      - listitem:
+        - button "Nic"
+        - paragraph: ලැබී ඇත · සමාලෝචනය කර නැත · තහවුරු නැත
+    - heading "Nic" [level=3]
+    - paragraph: සමාලෝචිත අනුවාදය 4
+    - term: ලැබීම
+    - definition: ලැබී ඇත
+    - term: සාක්ෂි සමාලෝචනය
+    - definition: සමාලෝචනය කර නැත
+    - term: භෞතික මුල් පිටපත
+    - definition: තහවුරු නැත
+    - term: කාලීන බව
+    - definition: තහවුරු නැත
+    - term: ගැළපීම
+    - definition: පරීක්ෂා කර නැත
+    - button "නවතම අවශ්‍යතාව සමාලෝචනය කරන්න"
+    - text: අදාළ ලේඛනය
+    - combobox "අදාළ ලේඛනය":
+      - option "ලේඛනයක් තෝරන්න" [selected]
+      - option "Nic · doc-synthetic"
+    - button "ලැබීම සහ සබැඳිය සටහන් කරන්න" [disabled]
+    - group: පරීක්ෂණ සහ සාක්ෂි ඉතිහාසය
+  - paragraph: මුළු ගණන 1
+  - paragraph: "1"
+  - paragraph: පිටු කාණ්ඩ සමාලෝචනය අවශ්‍ය 0
+  - paragraph: "0"
+  - paragraph: වර්ග සමාලෝචනය අවශ්‍ය 0
+  - paragraph: "0"
+  - paragraph: හඳුනා නොගත් 0
+  - paragraph: "0"
+  - paragraph: සැකසීමට ඇති 0
+  - paragraph: "0"
+  - heading "හඳුනාගත් ලේඛන" [level=2]
+  - table:
+    - rowgroup:
+      - row "ලේඛනය වර්ගය පිටු කාණ්ඩය පිටු මුල් ගොනු කිහිපයක පිටු ඇත ක්‍රියා":
+        - cell "ලේඛනය"
+        - cell "වර්ගය"
+        - cell "පිටු කාණ්ඩය"
+        - cell "පිටු"
+        - cell "මුල් ගොනු කිහිපයක පිටු ඇත"
+        - cell "ක්‍රියා"
+    - rowgroup:
+      - row "doc-synt Nic තහවුරු කළ 0 නැත සමාලෝචනය":
+        - cell "doc-synt":
+          - img
+          - text: doc-synt
+        - cell "Nic"
+        - cell "තහවුරු කළ"
+        - cell "0"
+        - cell "නැත"
+        - cell "සමාලෝචනය":
+          - link "සමාලෝචනය":
+            - /url: /matters/mat-synthetic/documents/doc-synthetic/review
+            - text: සමාලෝචනය
+            - img

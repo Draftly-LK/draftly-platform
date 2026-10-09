@@ -7,7 +7,10 @@ decide an item's satisfaction on its own.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Protocol
+
+from src.platform.request_context import RequestContext
 
 
 class ChecklistBlockerPort(Protocol):
@@ -36,3 +39,27 @@ class DocumentLinkInvalidationPort(Protocol):
         actor_id: str,
         correlation_id: str,
     ) -> None: ...
+
+
+@dataclass(frozen=True)
+class ReadinessReference:
+    kind: str
+    id: str
+    version: int | None = None
+    generation: int | None = None
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    association_version: int | None = None
+
+
+@dataclass(frozen=True)
+class ReadinessDependency:
+    category: str
+    state: str
+    references: tuple[ReadinessReference, ...] = ()
+
+
+class ReadinessSourcePort(Protocol):
+    async def readiness_dependencies(
+        self, ctx: RequestContext, matter_id: str
+    ) -> tuple[ReadinessDependency, ...]: ...

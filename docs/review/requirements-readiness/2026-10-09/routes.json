@@ -1,0 +1,33 @@
+{
+  "scope": "Production Next route existence, synthetic IDs; API contract fixture covers interactions separately",
+  "results": [
+    {
+      "route": "/matters/mat-synthetic",
+      "status": 200
+    },
+    {
+      "route": "/matters/mat-synthetic/documents",
+      "status": 200
+    },
+    {
+      "route": "/matters/mat-synthetic/checks",
+      "status": 200
+    },
+    {
+      "route": "/matters/mat-synthetic/facts",
+      "status": 200
+    },
+    {
+      "route": "/matters/mat-synthetic/documents/doc-synthetic/review",
+      "status": 200
+    },
+    {
+      "route": "/matters/mat-synthetic/workflow",
+      "status": 200
+    },
+    {
+      "route": "/matters/mat-synthetic/missing-documents",
+      "status": 200
+    }
+  ]
+}

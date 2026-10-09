@@ -895,7 +895,6 @@ names `task.review-requested` and `matter.signing-scheduled`.
     party, reserved life interest, mortgage or encumbrance, divided or
     undivided share, subdivision, and missing original evidence.
 
-
 ### Lawyer-led requirements and manual review (2026-10-09)
 
 The current runtime uses governed checklist requirements, not new StepRun or
@@ -926,6 +925,20 @@ precondition replay the original response/ETag; changed requests conflict. Repla
 is historical, so clients reload current eligibility after recovery. The browser
 stores only opaque actor/matter/operation retry metadata for 24 hours; explicit
 renewal discards that operation's obsolete pin after refreshing current state.
+
+GET /api/v1/matters/{id}/readiness is an operational dependency projection, not
+legal approval. It returns state, nextAction, evaluatedAt, requirement counts and
+versioned blocker references. Document, verification and check owners contribute
+current dependency state; missing/unavailable dependencies are unknown. Reads are
+bounded (document/check pages: 10 x 100; canonical facts: 4 x 25); incomplete or
+repeated pagination cannot clear work. Fresh scoped checks alone cannot prove
+whole-matter coverage because no approved per-scope required-run definition exists.
+Such coverage stays unknown/check-review. Counts and next actions must not be
+replaced with client-side empty/null-as-zero heuristics.
+
+Known pending document/fact work remains the next action when a checklist is absent
+or unavailable; overall state stays unknown and requirement counts stay null.
+Unknown-only dependencies show recovery rather than an invented completion.
 
 Migration task0002 is additive after document0004: link document/generation/source
 pins and item original-inspection source/history JSON. Existing rows are not

@@ -39,6 +39,7 @@ from src.modules.task.api.schemas import (
     ChecklistItemRead,
     ChecklistRead,
     LinkDocumentRequest,
+    MatterReadinessRead,
     OriginalInspectionRead,
     OriginalInspectionRequest,
     OriginalSourceRead,
@@ -381,3 +382,17 @@ async def list_links(
         raise MatterNotFoundError()
     links = await service.list_links(user_id=ctx.actor_id, item_id=item_id)
     return [_to_link_read(link) for link in links]
+
+
+@router.get("/matters/{matter_id}/readiness", response_model=MatterReadinessRead)
+async def get_readiness(
+    matter_id: str,
+    ctx: RequestContext = Depends(get_request_context),
+    session: AsyncSession = Depends(get_db),
+) -> MatterReadinessRead:
+    from src.bootstrap import build_readiness_service
+
+    view = await build_readiness_service(session).evaluate(ctx, matter_id)
+    return MatterReadinessRead.model_validate(
+        {**asdict(view), "evaluated_at": view.evaluated_at.isoformat()}
+    )

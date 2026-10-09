@@ -529,3 +529,23 @@ eventual application architecture. It does prescribe the user-visible states,
 relationships, safeguards, and task flow that an implementation must preserve.
 
 The Harvey research and screenshot source ledger are in [README.md](README.md).
+
+## Lawyer-led requirements and readiness delivery (2026-10-09)
+
+In API mode, Documents includes the current missing requirements and exact-version
+supporting-document receipt controls. Checks separates governed human original
+inspections/requirement decisions from explicitly scoped automated runs. Receipt,
+evidence review, physical originals, consistency and currency are distinct statuses.
+Inspection/evidence history remains visible. There is no generic legal completion
+button. Changed preconditions require deliberate refresh and reselection; ambiguous
+network retries retain the logical request key and displayed version.
+
+Automated check selection starts empty, uses stable matter subject ordinals, and
+pins the displayed transaction association revision. Result and issue history show
+their recorded scope and revision. Old live workflow and missing-document routes
+redirect to Checks and Documents respectively; labelled offline demo mode remains.
+Overview consumes server-owned readiness and never treats an unavailable dependency
+as zero remaining work or a legal completion claim. Fresh scoped checks alone do
+not establish whole-matter coverage. EN/SI mechanical evidence is under
+`docs/review/requirements-readiness/2026-10-09/`; human terminology/identity approval
+remains with the controller at the planned final walkthrough.
