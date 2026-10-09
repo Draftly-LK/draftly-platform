@@ -140,7 +140,11 @@ class SyntheticRequirementEvidence:
     """Explicit synthetic document port; scope/eligibility use migrated DB tests."""
 
     async def requirement_document(self, user_id, matter_id, document_id):
-        from src.modules.document.contracts import OriginalSourcePin, RequirementDocument
+        from src.modules.document.contracts import (
+            FactEvidenceLocator,
+            OriginalSourcePin,
+            RequirementDocument,
+        )
 
         return RequirementDocument(
             document_id,
@@ -148,8 +152,16 @@ class SyntheticRequirementEvidence:
             1,
             "rta.doc.title_certificate",
             True,
-            (OriginalSourcePin("src_synthetic", "a" * 64, "1"),),
-            (),
+            (OriginalSourcePin("src_synthetic", "a" * 64, "1", document_id, 1, (1,)),),
+            (
+                FactEvidenceLocator(
+                    "src_synthetic",
+                    1,
+                    "a" * 64,
+                    detected_document_id=document_id,
+                    interpretation_generation=1,
+                ),
+            ),
         )
 
     async def requirement_locators(self, user_id, matter_id, evidence_reference_ids):

@@ -21,9 +21,13 @@ class ChangingEvidence(SyntheticRequirementEvidence):
     changed = None
 
     async def requirement_document(self, user_id, matter_id, document_id):
+        document = await super().requirement_document(user_id, matter_id, document_id)
         document = replace(
-            await super().requirement_document(user_id, matter_id, document_id),
-            originals=(OriginalSourcePin("src_" + document_id, "a" * 64, "1"),),
+            document,
+            originals=(replace(document.originals[0], source_file_id="src_" + document_id),),
+            pages=tuple(
+                replace(page, source_file_id="src_" + document_id) for page in document.pages
+            ),
         )
         if document_id != "doc_first":
             return document
@@ -32,10 +36,28 @@ class ChangingEvidence(SyntheticRequirementEvidence):
         if self.changed == "version":
             return replace(document, version=2)
         if self.changed == "generation":
-            return replace(document, interpretation_generation=2)
+            return replace(
+                document,
+                interpretation_generation=2,
+                originals=(replace(document.originals[0], interpretation_generation=2),),
+                pages=tuple(replace(page, interpretation_generation=2) for page in document.pages),
+            )
         if self.changed == "original":
             return replace(
-                document, originals=(OriginalSourcePin("src_replacement", "b" * 64, "2"),)
+                document,
+                originals=(
+                    OriginalSourcePin("src_replacement", "b" * 64, "2", document_id, 1, (1,)),
+                ),
+                pages=tuple(
+                    replace(page, source_file_id="src_replacement", source_sha256="b" * 64)
+                    for page in document.pages
+                ),
+            )
+        if self.changed == "pages":
+            return replace(
+                document,
+                originals=(replace(document.originals[0], page_numbers=(2,)),),
+                pages=tuple(replace(page, page_number=2) for page in document.pages),
             )
         return document
 
@@ -58,7 +80,7 @@ async def received_original_requirement():
 
 
 @pytest.mark.parametrize(
-    "change", ["version", "generation", "original", "unavailable", "superseded-history"]
+    "change", ["version", "generation", "original", "pages", "unavailable", "superseded-history"]
 )
 @pytest.mark.parametrize("projection", ["checklist", "item"])
 async def test_one_stale_member_withdraws_review_without_erasing_history(change, projection):
@@ -75,6 +97,10 @@ async def test_one_stale_member_withdraws_review_without_erasing_history(change,
         **WHO, item_id=item_id, expected_version=4, method="Synthetic original review"
     )
     assert before.computed_resolution is ResolutionStatus.SATISFIED
+    assert before.item.original_inspection.originals == (
+        OriginalSourcePin("src_doc_first", "a" * 64, "1", "doc_first", 1, (1,)),
+        OriginalSourcePin("src_doc_second", "a" * 64, "1", "doc_second", 1, (1,)),
+    )
     if change == "superseded-history":
         await h.service.supersede_document_links(user_id=USER_ID, detected_document_id="doc_first")
     h.service._documents.changed = "version" if change == "superseded-history" else change
