@@ -268,6 +268,37 @@ async def test_accept_requires_evidence_and_correction_preserves_history(db_sess
         )
 
 
+async def test_accept_unassigned_observations_without_inventing_scope_or_resolving_other_documents(
+    db_session, matter
+):
+    ctx, data = await scoped_input(db_session, matter)
+    service = build_fact_review_service(db_session)
+    unassigned = replace(data, transaction_id=None, subject_id=None)
+    first = await service.add_manual(ctx, matter.matter_id, unassigned, key="unassigned-first")
+    second = await service.add_manual(
+        ctx,
+        matter.matter_id,
+        replace(unassigned, value="SYNTHETIC DIFFERENT DOCUMENT"),
+        key="unassigned-second",
+    )
+    view = await service.get_view(ctx, matter.matter_id, first.id)
+    assert view.conflict_fact_ids == ()
+    command = ReviewFactInput("accept", first.version, expected_scope_token=view.scope_token)
+    accepted = await service.decide(ctx, matter.matter_id, first.id, command, key="quick-accept")
+    assert accepted.is_confirmed
+    assert accepted.scope_status == "unassigned"
+    assert accepted.transaction_id is None and accepted.subject_id is None
+    assert (await service.get_view(ctx, matter.matter_id, second.id)).fact.is_live
+    assert (
+        await service.decide(ctx, matter.matter_id, first.id, command, key="quick-accept")
+    ).id == accepted.id
+    history = await service.history(ctx, matter.matter_id, accepted.id)
+    assert [d.decision for d in history.decisions] == ["manual", "accept"]
+    summary = await SqlConfirmedFactReader(db_session).summarise(ctx.actor_id, matter.matter_id)
+    assert summary.confirmed == {} and summary.scoped_confirmed == ()
+    assert summary.conflicted_fact_type_ids == () and summary.scoped_conflicts == ()
+
+
 async def test_competing_arrival_requires_reload_and_explicit_resolution(db_session, matter):
     ctx, data = await scoped_input(db_session, matter)
     service = build_fact_review_service(db_session)
@@ -451,6 +482,25 @@ async def machine_candidate(session, matter):
     return ctx, data.transaction_id, candidate_id
 
 
+async def test_accept_machine_observation_directly_preserves_evidence_and_history(
+    db_session, matter
+):
+    ctx, _, candidate_id = await machine_candidate(db_session, matter)
+    service = build_fact_review_service(db_session)
+    accepted = await service.decide_candidate(
+        ctx, matter.matter_id, candidate_id, action="accept", expected_version=1
+    )
+    assert accepted.is_confirmed and accepted.scope_status == "unassigned"
+    assert accepted.transaction_id is None and accepted.subject_id is None
+    assert accepted.original_value == "199900000000"
+    current = await service.get_view(ctx, matter.matter_id, accepted.id)
+    assert current.evidence[0].text_span == "199900000000"
+    history = await service.history(ctx, matter.matter_id, accepted.id)
+    assert [decision.decision for decision in history.decisions] == ["accept"]
+    summary = await SqlConfirmedFactReader(db_session).summarise(ctx.actor_id, matter.matter_id)
+    assert summary.confirmed == {} and summary.scoped_confirmed == ()
+
+
 async def test_machine_original_nic_alias_association_and_compatibility_retry(db_session, matter):
     ctx, txn_id, candidate_id = await machine_candidate(db_session, matter)
     service = build_fact_review_service(db_session)
@@ -465,10 +515,6 @@ async def test_machine_original_nic_alias_association_and_compatibility_retry(db
     assert view.evidence[0].precision == "text"
     assert view.evidence[0].text_span == "199900000000"
     assert view.evidence[0].bounding_box is None
-    with pytest.raises(DomainRuleError):
-        await service.decide_candidate(
-            ctx, matter.matter_id, candidate_id, action="accept", expected_version=1
-        )
     edited = await service.decide_candidate(
         ctx, matter.matter_id, candidate_id, action="edit", expected_version=1, value="199900000001"
     )

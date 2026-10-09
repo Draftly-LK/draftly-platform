@@ -113,6 +113,30 @@ async def test_stale_or_explicitly_unassigned_facts_are_ineligible() -> None:
         assert result.scoped_confirmed == ()
 
 
+async def test_independent_unassigned_observations_are_gaps_not_scope_conflicts() -> None:
+    result = await _summarise(
+        _fact_row(
+            "first",
+            TYPE,
+            FactStatus.LAWYER_CONFIRMED,
+            value="Synthetic A",
+            scope_status="unassigned",
+        ),
+        _fact_row(
+            "second",
+            TYPE,
+            FactStatus.LAWYER_CONFIRMED,
+            value="Synthetic B",
+            scope_status="unassigned",
+        ),
+    )
+    assert result.confirmed == {} and result.scoped_confirmed == ()
+    assert result.conflicted_fact_type_ids == ()
+    assert result.scoped_conflicts == ()
+    assert all(gap[3] == "unassigned" for gap in result.scoped_gaps)
+    assert len(result.scoped_gaps) == 2
+
+
 async def test_competing_unreviewed_value_blocks_confirmed_scope() -> None:
     result = await _summarise(
         _fact_row(

@@ -207,6 +207,11 @@ class FactReviewService:
         return fact
 
     async def _peers(self, fact: ExtractedFact) -> list[ExtractedFact]:
+        # Unassigned observations may describe different parties or parcels.
+        # Reviewing one document does not resolve another document's observation.
+        # Conflicts are compared only after the lawyer identifies their scope.
+        if fact.scope_status == "unassigned":
+            return [fact] if fact.is_live and fact.status is not FactStatus.REJECTED else []
         peers = await self._repo.list_scope(
             fact.user_id, fact.matter_id, fact.fact_type_id, fact.transaction_id, fact.subject_id
         )
@@ -437,10 +442,6 @@ class FactReviewService:
         value = data.value if data.action in ("correct", "edit") else fact.value
         evidence: list[EvidenceReference] = []
         if data.action in ("accept", "correct"):
-            if scope != "assigned":
-                raise DomainRuleError(
-                    "Associate this fact with its transaction and subject before accepting it."
-                )
             if fact.evidence_stale:
                 raise DomainRuleError("This fact's evidence is stale.")
             if data.expected_scope_token != scope_token(peers):

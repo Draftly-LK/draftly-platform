@@ -495,7 +495,11 @@ class SqlConfirmedFactReader:
         facts = await self._repo.list_live_facts(user_id, matter_id)
         groups: dict[tuple[str | None, str | None, str], list[ExtractedFact]] = defaultdict(list)
         for fact in facts:
-            if not fact.is_live or fact.status.value == "REJECTED":
+            if (
+                not fact.is_live
+                or fact.status.value == "REJECTED"
+                or fact.scope_status == "unassigned"
+            ):
                 continue
             groups[(fact.transaction_id, fact.subject_id, fact.fact_type_id)].append(fact)
         scoped: list[ConfirmedFactValue] = []
