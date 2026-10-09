@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "scans": [
+    {
+      "screen": "checklist-en",
+      "violations": []
+    },
+    {
+      "screen": "checklist-si",
+      "violations": []
+    }
+  ],
+  "errors": [],
+  "checks": [
+    "direct checklist URL",
+    "active navigation",
+    "overview excludes checklist",
+    "keyboard navigation",
+    "refresh persistence",
+    "1024 layout",
+    "Sinhala navigation"
+  ]
+}

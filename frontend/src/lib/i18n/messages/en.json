@@ -115,6 +115,7 @@
   },
   "matterNav": {
     "overview": "Overview",
+    "checklist": "Checklist",
     "documents": "Documents",
     "facts": "Verified facts",
     "workflow": "Workflow",
@@ -3456,6 +3457,8 @@
   },
   "workChecklist": {
     "heading": "Matter checklist",
+    "pageDescription": "Review and complete the work remaining in this matter.",
+    "offline": "The matter checklist needs a server connection.",
     "assistant": "Matter assistant",
     "add": "Add task",
     "refresh": "Refresh checklist",
