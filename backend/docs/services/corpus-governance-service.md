@@ -336,6 +336,38 @@ manifests, never by walking research-repository directories at runtime.
 
 ## 8. Takedown and quarantine
 
+### Implemented signed release boundary (2026-10-09)
+
+`corpus_governance.infrastructure.manifest.validate_release` verifies canonical
+UTF-8 JSON with a caller-trusted raw Ed25519 public key, then applies the domain
+policy to every entry and verifies exact original and optional indexed-text
+checksums beneath the supplied release root. The source identity exposed by the
+read DTO always hashes the original; a separately reviewed derivative has its
+own hash. A changed approval, metadata field or source hash changes the immutable
+`legal-sources-v1:<sha256>` release identity. No production key or approval is
+created by this implementation.
+
+Rights, content and audience approval records each retain their reviewer,
+timestamp and reference. Content approval binds both original and derivative.
+Each signed envelope has exactly one audience. Missing, unknown, quarantined,
+retired, blocked, checksum-mismatched and wrong-audience records fail closed.
+The validator returns frozen records and already-checked immutable index bytes;
+builders must consume those bytes rather than reopen mutable paths.
+
+`contracts.LegalAuthorityReadPort` exposes metadata only.
+`ManifestAuthorityReader` requires the exact validated release identity; a
+mismatch is unavailable, never a lookup in a newer release. Related discovery
+follows reviewed incoming and outgoing edges and returns the original records,
+preserving edge direction, section references and supporting pages. No source
+bytes, file paths or approval commands cross this DTO boundary.
+
+This boundary does not yet wire a production index build or runtime reader.
+Consumers must enforce the recorded quotation/display/download policy separately;
+an indexing permission is not permission to emit a passage. The subsequent
+retrieval integration owns that wiring. Runtime quarantine requires withdrawing
+the affected release from service, not mutating a frozen release in place.
+See [the release operator contract](../legal-source-releases.md).
+
 A maintainer or legal reviewer can quarantine a source immediately. Quarantine:
 
 - removes it from the applicable research and catalogue releases;
