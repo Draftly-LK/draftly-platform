@@ -1,15 +1,17 @@
-"""Checklist-backed adapter for V1 classification types and extraction schemas."""
+"""Governed recognition and extraction, independent of requirement routing."""
 
 from __future__ import annotations
 
-from src.modules.content_governance.contracts import fact_type_for_field
+from src.modules.content_governance.contracts import (
+    DOCUMENT_CLASSES,
+    fact_type_for_field,
+    get_document_class,
+)
 from src.modules.document.domain.registry import get_template
 from src.modules.document.ports import (
     ExtractionFieldSchema,
     MatterDocumentTypes,
 )
-from src.modules.task.application.checklist_service import ChecklistService
-from src.modules.task.domain.errors import ChecklistSnapshotNotFoundError
 
 _TEMPLATE_BY_CLASS_ID = {
     "rta.doc.nic": "identity-card",
@@ -26,28 +28,20 @@ def template_kind_for_class(class_id: str) -> str | None:
     return _TEMPLATE_BY_CLASS_ID.get(class_id)
 
 
-class ChecklistMatterDocumentTypesAdapter:
-    """Reads the current governed checklist; never accepts a model-invented type."""
+class GovernedMatterDocumentTypesAdapter:
+    """Offer catalogue classes before a form exists; never accept model-invented types.
 
-    def __init__(self, checklist: ChecklistService) -> None:
-        self._checklist = checklist
+    The ingestion owner authorizes the source/matter before calling this port.
+    This projection reads no matter data and creates no checklist or requirement.
+    Catalogue recognition does not assert extraction support or legal sufficiency.
+    """
 
     async def for_matter(self, *, user_id: str, matter_id: str) -> MatterDocumentTypes:
-        try:
-            checklist = await self._checklist.get_checklist(user_id=user_id, matter_id=matter_id)
-        except ChecklistSnapshotNotFoundError:
-            return MatterDocumentTypes(allowed_type_ids=(), extraction_schemas={})
-
-        allowed = sorted(
-            {
-                class_id
-                for item in checklist.items
-                for class_id in item.requirement.accepted_document_class_ids
-            }
-        )
+        allowed = sorted(definition.id for definition in DOCUMENT_CLASSES)
         schemas: dict[str, tuple[ExtractionFieldSchema, ...]] = {}
         for class_id in allowed:
-            kind = _TEMPLATE_BY_CLASS_ID.get(class_id)
+            definition = get_document_class(class_id)
+            kind = definition.extraction_template_kind if definition else None
             template = get_template(kind) if kind else None
             if template is None:
                 continue

@@ -307,8 +307,13 @@ not case data, and are still shown.
   used, so a question that missed a matching statute before can still miss it
   now. Set `RETRIEVAL_WITH_EMBEDDINGS=1` and rebuild the retrieval image to
   add the dense channel (spends Gemini credits at build time). If the
-  retrieval container is unreachable, search degrades to no passages —
-  answers become "insufficient authority," not an error.
+  retrieval container is unreachable, matter research reports unavailable and
+  releases its reserved query. The frozen serving wrapper now attests successful
+  `/search` responses with `X-Draftly-Corpus-Version: statutes-index-v1:<sha256>`,
+  derived from its recorded index fingerprint. Deploy the wrapper before the
+  consuming backend: old engines without a valid header are unavailable for
+  grounded statute answers. The header identifies an artifact; it does not
+  establish legal currency, verification or corpus completeness.
 - **Single server.** One VPS is a single point of failure. Restoring from
   nothing takes `vps.sh setup`, `init`, a filled `deploy/.env` and
   `vps.sh deploy`.

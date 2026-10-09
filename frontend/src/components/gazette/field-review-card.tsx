@@ -112,6 +112,7 @@ export function FieldReviewCard({
         )}
       >
         {printed ?? t("unresolvedValue")}
+        {field.missingCause && <div className="mt-1 text-xs">{tRoot(`formScope.causes.${field.missingCause}`)}</div>}
         {!populated && field.unresolvedReason && (
           <div className="mt-1 text-xs">{t(`unresolvedReason.${field.unresolvedReason}`)}</div>
         )}

@@ -351,12 +351,17 @@ def test_touch_updates_only_the_timestamp() -> None:
 
 
 def _link(**overrides: Any) -> SatisfactionLink:
+    from src.modules.document.contracts import OriginalSourcePin
+
     values: dict[str, Any] = {
         "id": "lnk_1",
         "user_id": "usr_1",
         "matter_id": "mat_1",
         "checklist_item_id": "cli_1",
         "detected_document_id": "doc_1",
+        "document_version": 1,
+        "interpretation_generation": 1,
+        "originals": (OriginalSourcePin("src_1", "a" * 64, "1"),),
         "digital_review": DigitalReviewStatus.AI_ORGANIZED,
         "created_at": NOW,
         "created_by": "usr_1",
@@ -371,3 +376,7 @@ def test_rejected_and_superseded_links_do_not_count_as_live() -> None:
     assert not _link(digital_review=DigitalReviewStatus.REJECTED).is_live
     assert not _link(digital_review=DigitalReviewStatus.SUPERSEDED).is_live
     assert not _link(superseded_by_link_id="lnk_2").is_live
+
+
+def test_legacy_unbound_link_is_history_only():
+    assert not _link(document_version=None, interpretation_generation=None, originals=()).is_live

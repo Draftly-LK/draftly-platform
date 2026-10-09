@@ -51,6 +51,13 @@ class EvidenceReferenceRow(Base):
     text_span: Mapped[str | None] = mapped_column(Text, nullable=True)
     region_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     extraction_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    page_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    precision: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="page", server_default="page"
+    )
+    candidate_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    candidate_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    interpretation_generation: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -78,6 +85,21 @@ class ExtractedFactRow(Base):
     matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
     fact_type_id: Mapped[str] = mapped_column(String(128), nullable=False)
     subject_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    transaction_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scope_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy-unassigned", server_default="legacy-unassigned"
+    )
+    evidence_stale: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    original_value: Mapped[Any] = mapped_column(JSON, nullable=True)
+    origin: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="legacy", server_default="legacy"
+    )
+    source_candidate_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    source_candidate_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    lineage_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    manual_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     value: Mapped[Any] = mapped_column(JSON, nullable=True)
     normalized_value: Mapped[Any] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -121,6 +143,9 @@ class ReviewDecisionRow(Base):
     # True when the decision was made by a human. There is no code path that
     # sets this false and also confirms a critical fact.
     human_decision: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    resolved_fact_ids: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list, server_default="[]"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

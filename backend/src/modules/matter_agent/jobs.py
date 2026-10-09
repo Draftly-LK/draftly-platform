@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.matter_agent.domain.models import JobState
 from src.modules.matter_agent.infrastructure.orm import (
+    AgentJobRow,
     AgentMessageRow,
     AgentSessionRow,
     AgentStreamEventRow,
@@ -62,6 +63,30 @@ async def run_turn_job(session: AsyncSession, payload: Mapping[str, Any]) -> str
         # The transcript row is gone — destroyed or rolled back. Nothing to
         # answer, and inventing a reply would be worse than doing nothing.
         return "unknown-job"
+
+    job = (
+        await session.execute(
+            select(AgentJobRow)
+            .where(
+                AgentJobRow.id == job_id,
+                AgentJobRow.session_id == session_id,
+                AgentJobRow.user_id == chat_session.user_id,
+                AgentJobRow.matter_id == chat_session.matter_id,
+            )
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if (
+        job is None
+        or user_message.session_id != session_id
+        or user_message.user_id != chat_session.user_id
+        or user_message.matter_id != chat_session.matter_id
+        or (job.source_message_id and job.source_message_id != user_message.id)
+    ):
+        return "unknown-job"
+    if job.state in ("succeeded", "failed", "dead_letter"):
+        return "completed" if job.state == "succeeded" else "failed"
+    job.state = "running"
 
     # Imported lazily so this module stays out of the wiring graph.
     from src.bootstrap import run_agent_turn

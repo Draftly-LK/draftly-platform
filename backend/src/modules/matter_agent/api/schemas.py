@@ -7,7 +7,7 @@ enums, never free strings (``api-conventions.md`` §9).
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
@@ -47,6 +47,13 @@ class CitationRead(_CamelModel):
     label: str
     verification_status: str
     locator: str | None = None
+    source_file_id: str | None = None
+    page: int | None = None
+    version: int | None = None
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    passage: str | None = None
+    corpus_version: str | None = None
 
 
 class MessageRead(_CamelModel):
@@ -94,6 +101,13 @@ class JobRead(_CamelModel):
     failure_class: str | None = None
 
 
+class SendReceiptRead(_CamelModel):
+    send_key: str
+    matter_id: str
+    conversation_id: str
+    job_id: str
+
+
 class PendingActionRead(_CamelModel):
     """An inline card. ``targetVersion`` is what a stale confirm trips on."""
 
@@ -101,7 +115,12 @@ class PendingActionRead(_CamelModel):
     action_kind: str
     target_ref: str
     target_version: int
-    state: Literal["proposed", "confirmed", "rejected", "expired"]
+    state: Literal[
+        "proposed", "confirmed", "rejected", "expired", "executed", "declined", "stale", "failed"
+    ]
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    result: dict[str, Any] = Field(default_factory=dict)
+    reason_code: str | None = None
     expires_at: datetime
     created_at: datetime
 

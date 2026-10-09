@@ -1,5 +1,22 @@
 # Frontend contract migration — M2 mocks to M3 API
 
+## Optional scoped Form 8 (2026-10-09)
+
+`POST /matters/{id}/forms` and `POST /forms/{id}/field-decisions` now require
+`Idempotency-Key`. Field decisions retain their `If-Match` requirement. The
+client persists actor/matter-scoped opaque retry metadata and reuses the original
+version precondition after an ambiguous response. Intentional successful next
+requests receive a new key. Current authorization runs before stored replay.
+
+Form creation accepts `scope` and `predecessorFormId`; form reads expose both.
+The scope pins a transaction, its association revision, and explicit parcel,
+transferor and transferee selections. Null subject selections remain gaps.
+`FormFieldRead.missingCause` explains absent, unreviewed, conflicted, stale,
+unassigned and unsupported bindings. These are product diagnostics, not legal
+wording. Both locale dictionaries provide labels and links to facts and inputs.
+Existing nullable legacy scope remains readable. No prescribed text or template
+approval/registration capability changes.
+
 Companion to `backend/backend-implementation-plan-v0.md` §8,
 `api-conventions.md`, and the service docs under `docs/services/`.
 

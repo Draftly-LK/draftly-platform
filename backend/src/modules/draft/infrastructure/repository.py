@@ -10,12 +10,14 @@ version an approval pinned itself to to remain readable afterwards.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.content_governance.contracts import GeneratedFormState, UnresolvedReason
+from src.modules.draft.contracts import FormScope
 from src.modules.draft.domain.errors import GeneratedFormStaleError
 from src.modules.draft.domain.models import GeneratedForm, GeneratedFormField
 from src.modules.draft.infrastructure.orm import GeneratedFormFieldRow, GeneratedFormRow
@@ -51,6 +53,9 @@ def _to_form(row: GeneratedFormRow) -> GeneratedForm:
         approval_id=row.approval_id,
         stale_reason=row.stale_reason,
         version=row.version,
+        scope=FormScope(**row.scope) if row.scope else None,
+        missing_causes=row.missing_causes or {},
+        predecessor_form_id=row.predecessor_form_id,
     )
 
 
@@ -134,6 +139,9 @@ class SqlGeneratedFormRepository:
             created_at=form.created_at,
             updated_at=form.updated_at,
             version=form.version,
+            scope=asdict(form.scope) if form.scope else None,
+            missing_causes=form.missing_causes,
+            predecessor_form_id=form.predecessor_form_id,
         )
         self._session.add(row)
         await self._session.flush()
@@ -145,9 +153,9 @@ class SqlGeneratedFormRepository:
 
     async def _form_row(self, user_id: str, form_id: str) -> GeneratedFormRow | None:
         result = await self._session.execute(
-            select(GeneratedFormRow).where(
-                GeneratedFormRow.user_id == user_id, GeneratedFormRow.id == form_id
-            )
+            select(GeneratedFormRow)
+            .execution_options(populate_existing=True)
+            .where(GeneratedFormRow.user_id == user_id, GeneratedFormRow.id == form_id)
         )
         return result.scalar_one_or_none()
 

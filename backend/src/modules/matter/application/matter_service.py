@@ -15,7 +15,7 @@ checklist decision in place when the answer is "not much" (§2.3).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 
 import structlog
@@ -75,6 +75,7 @@ from src.modules.matter.ports import (
     MatterRepository,
 )
 from src.platform import ids
+from src.platform.idempotency import IdempotencyPort, fingerprint
 from src.platform.request_context import RequestContext
 
 log = structlog.get_logger(__name__)
@@ -118,12 +119,14 @@ class MatterService:
         facts: MatterFactPort,
         checklist: ChecklistCommandPort,
         audit: AuditPort,
+        replay: IdempotencyPort | None = None,
     ) -> None:
         self._matters = matters
         self._answers = answers
         self._facts = facts
         self._checklist = checklist
         self._audit = audit
+        self._replay = replay
 
     # ── Reads ────────────────────────────────────────────────────────────────
 
@@ -153,8 +156,17 @@ class MatterService:
 
     # ── Creation ─────────────────────────────────────────────────────────────
 
-    async def create_matter(self, ctx: RequestContext, data: CreateMatterInput) -> Matter:
+    async def create_matter(
+        self, ctx: RequestContext, data: CreateMatterInput, *, key: str | None = None
+    ) -> Matter:
         """Create an intake draft. Never defaults the exact subtype (§12.4)."""
+        request_hash = fingerprint(asdict(data))
+        if self._replay and key:
+            cached = await self._replay.find(
+                user_id=ctx.actor_id, route="matter.create", key=key, request_hash=request_hash
+            )
+            if cached is not None:
+                return await self.get_matter(ctx, str(cached["matter_id"]))
         now = datetime.now(tz=UTC)
         legacy_subtype_id: str | None = None
         legacy_modules: frozenset[str] = frozenset()
@@ -219,6 +231,15 @@ class MatterService:
                 before_ref=data.legacy_matter_type,
                 after_ref=legacy_subtype_id,
                 reason="Legacy M2 matter type migrated; exact subtype remains provisional.",
+            )
+        if self._replay and key:
+            await self._replay.store(
+                record_id=ids.new_id("replay"),
+                user_id=ctx.actor_id,
+                route="matter.create",
+                key=key,
+                request_hash=request_hash,
+                response={"matter_id": created.id},
             )
         return created
 

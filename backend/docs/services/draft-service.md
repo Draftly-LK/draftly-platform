@@ -1,5 +1,49 @@
 # draft-service — implementation design
 
+## Scoped Form 8 implementation (2026-10-09)
+
+Form 8 remains optional. `POST /matters/{id}/forms` accepts an optional
+`scope` containing `transactionId`, `associationVersion`, `parcelSubjectId`,
+`transferorSubjectId`, and `transfereeSubjectId`. The application validates
+tenant, matter, subject kind, transaction membership and role against the
+matter owner's current association revision. Missing subject selections leave
+explained gaps; the resolver never selects a first or latest subject.
+
+Scoped resolution uses verification's eligible `scoped_confirmed` values.
+Generic holder name (English), NIC and address observations may supply a
+role-specific field only through the selected explicit transaction role.
+The original mapping's critical/evidence/review/transformation requirements
+still apply. Conflicting role-specific and generic observations are withheld.
+Negative conclusions require eligible search evidence in the same scope.
+
+`generated_forms.scope` pins the association revision and selected subjects;
+the artifact hash includes these pins. Exact fact IDs, versions and evidence
+remain on field rows. Missing causes are persisted as snapshot metadata and
+the field API exposes `missingCause`: absent, unreviewed, conflict, stale,
+unassigned or unsupported. Reads also diagnose changed bindings without
+rewriting the recorded snapshot. Review refuses changed inputs; approval and
+export re-read current scope and exact fact eligibility through `FormSnapshot`.
+Required or critical populated fields need explicit field review before approval.
+Existing matter-wide checklist, issue and critical-fact gates remain conservative.
+
+Creating with `predecessorFormId` records a new version linked to a same-matter,
+same-template predecessor. It never inherits that predecessor's decisions or
+approval. Earlier snapshots remain readable. Legacy records with null scope
+retain the conservative compatibility projection and remain readable.
+
+Creation and field decisions require `Idempotency-Key`; field decisions also
+require `If-Match`. Authorization precedes replay. The existing transactional
+replay store serializes simultaneous first requests. The frontend retains only
+actor/matter-scoped opaque intent metadata across ambiguous retries and reloads.
+Migration `draft0002` adds nullable scope, missing-cause and predecessor columns;
+its downgrade refuses to remove populated scope history.
+
+No template wording, transcription status, lawyer approval flag or production
+layout capability changes. Internal review and existing internal approval policy
+do not establish registration readiness. Runtime, migration and browser tests
+were explicitly waived for this implementation; static checks are recorded in
+the Task 7 implementation report.
+
 Companion to `backend/backend-implementation-plan-v0.md`, `document-service.md`,
 `memory-service.md`, and `task-service.md`. One markdown per service under
 `backend/docs/services/`.
@@ -335,3 +379,13 @@ Recommended defaults in bold; confirm or override before coding.
 5. **Draft title source.** `title` is free text in the frontend. Recommend
    **defaulting from the template `nameKey` and form number** while allowing an
    override; confirm.
+
+### Canonical and association invalidation (2026-10-09)
+
+The existing FormInputInvalidationPort accepts an optional reason while continuing
+to match exact bound fact IDs. Canonical corrections/conflicts use
+FACT_NO_LONGER_CONFIRMED; transaction association changes use
+SCOPE_ASSOCIATION_CHANGED. The form owner preserves artifact hash, rendered field
+values and historical pins when marking an approved form STALE_AFTER_APPROVAL.
+Readiness is an operational projection and cannot substitute for form preflight or
+approval eligibility. Existing multi-scope compatibility withholding remains in force.

@@ -29,6 +29,7 @@ from src.modules.content_governance.contracts import (
     GeneratedFormState,
     UnresolvedReason,
 )
+from src.modules.draft.contracts import FormScope
 
 #: §9.4 — a missing value renders a named token, never blank space and never
 #: plausible filler. The exact shape is part of the contract: the lawyer must be
@@ -111,6 +112,9 @@ class GeneratedForm:
     approval_id: str | None = None
     stale_reason: str | None = None
     version: int = 1
+    scope: FormScope | None = None
+    missing_causes: dict[str, str] = field(default_factory=dict)
+    predecessor_form_id: str | None = None
 
     @property
     def is_approved(self) -> bool:

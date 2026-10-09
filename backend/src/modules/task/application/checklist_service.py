@@ -13,7 +13,7 @@ what the caller asked for.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
 import structlog
@@ -37,6 +37,8 @@ from src.modules.content_governance.contracts import (
     compile_checklist,
     get_requirement,
 )
+from src.modules.document.contracts import OriginalSourcePin, RequirementDocumentPort
+from src.modules.matter.contracts import MatterMutationLockPort
 from src.modules.task.domain.errors import (
     ChecklistItemNotFoundError,
     ChecklistSnapshotNotFoundError,
@@ -58,7 +60,9 @@ from src.modules.task.domain.policies import (
     is_blocking_unsatisfied,
 )
 from src.modules.task.infrastructure.repository import SqlChecklistRepository
+from src.modules.verification.contracts import RequirementEvidencePort
 from src.platform import ids
+from src.platform.errors import DomainRuleError, NotFoundError, PreconditionFailedError
 
 log = structlog.get_logger(__name__)
 
@@ -72,6 +76,7 @@ class ChecklistItemView:
     lifecycle: ChecklistItemLifecycle
     computed_resolution: ResolutionStatus
     live_link_count: int
+    has_invalid_support: bool
     blocks_approval: bool
 
 
@@ -90,9 +95,19 @@ class ChecklistView:
 class ChecklistService:
     """Owns compiled checklists and every decision recorded against an item."""
 
-    def __init__(self, *, repository: SqlChecklistRepository, audit: AuditPort) -> None:
+    def __init__(
+        self,
+        *,
+        repository: SqlChecklistRepository,
+        audit: AuditPort,
+        matter_lock: MatterMutationLockPort | None = None,
+        documents: RequirementDocumentPort | None = None,
+        evidence: RequirementEvidencePort | None = None,
+    ) -> None:
         self._repo = repository
         self._audit = audit
+        self._matter_lock = matter_lock
+        self._documents, self._evidence = documents, evidence
 
     # ── Compilation (implements matter's ChecklistCommandPort) ────────────────
 
@@ -106,6 +121,8 @@ class ChecklistService:
         correlation_id: str,
     ) -> tuple[str, CompiledChecklist]:
         """Compile, or return the existing snapshot with the same fingerprint."""
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         previous = await self._repo.latest_snapshot(user_id, matter_id)
         reviewed = await self._repo.reviewed_requirement_ids(user_id, matter_id)
         enriched = CompilerInput(
@@ -223,7 +240,21 @@ class ChecklistService:
                     item_id=item.id,
                 )
                 continue
-            live = sum(1 for link in links_by_item.get(item.id, []) if link.is_live)
+            links = links_by_item.get(item.id, [])
+            live, invalid = await self._link_currentness(links)
+            item = self._effective_original(item, links, invalid)
+            if (
+                invalid
+                or (
+                    not live
+                    and (
+                        requirement.accepted_document_class_ids
+                        or requirement.physical_original_policy
+                        is not PhysicalOriginalStatus.NOT_REQUIRED
+                    )
+                )
+            ) and item.digital_review is DigitalReviewStatus.LAWYER_CONFIRMED:
+                item = replace(item, digital_review=DigitalReviewStatus.UNREVIEWED)
             views.append(
                 ChecklistItemView(
                     item=item,
@@ -231,6 +262,7 @@ class ChecklistService:
                     lifecycle=derive_lifecycle(item, requirement, live_link_count=live),
                     computed_resolution=compute_resolution(item, requirement),
                     live_link_count=live,
+                    has_invalid_support=invalid,
                     blocks_approval=is_blocking_unsatisfied(item, requirement),
                 )
             )
@@ -273,6 +305,12 @@ class ChecklistService:
     ) -> ChecklistItemView:
         """Record one lawyer decision across any of the six settable dimensions."""
         item, requirement = await self._load(user_id, matter_id, item_id)
+        if digital_review is DigitalReviewStatus.LAWYER_CONFIRMED and (
+            requirement.accepted_document_class_ids
+            or requirement.physical_original_policy is not PhysicalOriginalStatus.NOT_REQUIRED
+            or any(link.is_live for link in await self._repo.list_links_for_item(user_id, item.id))
+        ):
+            await self._current_originals(item, require_review=True)
         before = (
             f"{item.applicability.value}/{item.collection.value}/"
             f"{item.digital_review.value}/{item.currency.value}/"
@@ -409,6 +447,11 @@ class ChecklistService:
         """
         item, requirement = await self._load(user_id, matter_id, item_id)
         inspected_at = datetime.now(tz=UTC)
+        if requirement.physical_original_policy is PhysicalOriginalStatus.NOT_REQUIRED:
+            raise DomainRuleError("This requirement does not define an original-inspection task.")
+        originals = await self._current_originals(item, require_review=True)
+        if item.original_inspection and item.original_inspection not in item.inspection_history:
+            item.inspection_history = (*item.inspection_history, item.original_inspection)
         apply_physical_original(
             item,
             target=PhysicalOriginalStatus.ORIGINAL_INSPECTED,
@@ -418,8 +461,11 @@ class ChecklistService:
                 method=method,
                 location=location,
                 note=note,
+                originals=originals,
             ),
         )
+        assert item.original_inspection is not None
+        item.inspection_history = (*item.inspection_history, item.original_inspection)
         item.resolution = compute_resolution(item, requirement)
         saved = await self._repo.update_item(item, expected_version)
         await self._record(
@@ -441,6 +487,9 @@ class ChecklistService:
         matter_id: str,
         item_id: str,
         detected_document_id: str,
+        expected_version: int,
+        document_version: int,
+        interpretation_generation: int,
         actor_id: str,
         correlation_id: str,
         evidence_reference_ids: tuple[str, ...] = (),
@@ -452,7 +501,35 @@ class ChecklistService:
         Called once per item for a combined certificate, which is how one file
         satisfies several requirements without being duplicated (§6.3).
         """
-        item, _ = await self._load(user_id, matter_id, item_id)
+        item, requirement = await self._load(user_id, matter_id, item_id)
+        if self._documents is None or self._evidence is None:
+            raise DomainRuleError("Requirement evidence validation is unavailable.")
+        document = await self._documents.requirement_document(
+            user_id, matter_id, detected_document_id
+        )
+        if (
+            document.version != document_version
+            or document.interpretation_generation != interpretation_generation
+        ):
+            raise PreconditionFailedError(currentVersion=document.version)
+        if (
+            requirement.accepted_document_class_ids
+            and document.class_id not in requirement.accepted_document_class_ids
+        ):
+            raise DomainRuleError("This document class is not accepted by the requirement.")
+        if lawyer_confirmed and not document.review_ready:
+            raise DomainRuleError("Review the document classification and grouping first.")
+        for locator in await self._evidence.requirement_locators(
+            user_id, matter_id, evidence_reference_ids
+        ):
+            if (
+                locator.detected_document_id != detected_document_id
+                or locator.interpretation_generation != interpretation_generation
+            ):
+                raise DomainRuleError("The evidence is not bound to this document interpretation.")
+            await self._documents.validate_evidence(user_id, matter_id, locator)
+        if item.version != expected_version:
+            raise PreconditionFailedError(currentVersion=item.version)
         now = datetime.now(tz=UTC)
         link = await self._repo.create_link(
             SatisfactionLink(
@@ -461,6 +538,9 @@ class ChecklistService:
                 matter_id=matter_id,
                 checklist_item_id=item.id,
                 detected_document_id=detected_document_id,
+                document_version=document.version,
+                interpretation_generation=document.interpretation_generation,
+                originals=document.originals,
                 digital_review=(
                     DigitalReviewStatus.LAWYER_CONFIRMED
                     if lawyer_confirmed
@@ -474,6 +554,28 @@ class ChecklistService:
                 created_at=now,
             )
         )
+        await self._repo.supersede_item_document_links(
+            user_id, item.id, detected_document_id, link.id
+        )
+        item.collection = CollectionStatus.RECEIVED
+        item.digital_review = DigitalReviewStatus.UNREVIEWED
+        originals = {
+            pin
+            for candidate in await self._repo.list_links_for_item(user_id, item.id)
+            if candidate.is_live
+            for pin in candidate.originals
+        }
+        if requirement.physical_original_policy is not PhysicalOriginalStatus.NOT_REQUIRED:
+            inspected = (
+                set(item.original_inspection.originals) if item.original_inspection else set()
+            )
+            item.physical_original = (
+                PhysicalOriginalStatus.ORIGINAL_INSPECTED
+                if originals and all(pin.precise for pin in originals) and originals <= inspected
+                else PhysicalOriginalStatus.UNKNOWN
+            )
+        item.resolution = compute_resolution(item, requirement)
+        await self._repo.update_item(item, expected_version)
         await self._record(
             user_id=user_id,
             matter_id=matter_id,
@@ -495,12 +597,83 @@ class ChecklistService:
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
-    async def _load(
-        self, user_id: str, matter_id: str, item_id: str
-    ) -> tuple[ChecklistItem, RequirementDefinition]:
+    async def _link_currentness(self, links: list[SatisfactionLink]) -> tuple[int, bool]:
+        """Keep partial invalidity: one current link cannot validate the reviewed set."""
+        live = 0
+        invalid = False
+        for link in links:
+            if not link.is_live:
+                continue
+            if self._documents is not None:
+                try:
+                    document = await self._documents.requirement_document(
+                        link.user_id, link.matter_id, link.detected_document_id
+                    )
+                except (DomainRuleError, NotFoundError):
+                    invalid = True
+                    continue
+                if (
+                    document.version != link.document_version
+                    or document.interpretation_generation != link.interpretation_generation
+                    or document.originals != link.originals
+                ):
+                    invalid = True
+                    continue
+            live += 1
+        return live, invalid
+
+    async def _current_originals(
+        self, item: ChecklistItem, *, require_review: bool
+    ) -> tuple[OriginalSourcePin, ...]:
+        if self._documents is None or self._evidence is None:
+            raise DomainRuleError("Requirement evidence validation is unavailable.")
+        links = [
+            link
+            for link in await self._repo.list_links_for_item(item.user_id, item.id)
+            if link.is_live
+        ]
+        if not links:
+            raise DomainRuleError("Link the supporting original before recording its review.")
+        originals: set[OriginalSourcePin] = set()
+        for link in links:
+            document = await self._documents.requirement_document(
+                item.user_id, item.matter_id, link.detected_document_id
+            )
+            if (
+                link.document_version != document.version
+                or link.interpretation_generation != document.interpretation_generation
+                or link.originals != document.originals
+                or (require_review and not document.review_ready)
+            ):
+                raise DomainRuleError("The linked evidence needs renewed review.")
+            for locator in await self._evidence.requirement_locators(
+                item.user_id, item.matter_id, link.evidence_reference_ids
+            ):
+                await self._documents.validate_evidence(item.user_id, item.matter_id, locator)
+            originals.update(document.originals)
+        return tuple(sorted(originals))
+
+    async def lock_item(self, user_id: str, matter_id: str, item_id: str) -> None:
+        """Resolve the owned resource before replay; eligibility is checked on new commands."""
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         item = await self._repo.get_item(user_id, item_id)
         if item is None or item.matter_id != matter_id:
             raise ChecklistItemNotFoundError()
+
+    async def _load(
+        self, user_id: str, matter_id: str, item_id: str
+    ) -> tuple[ChecklistItem, RequirementDefinition]:
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
+        item = await self._repo.get_item(user_id, item_id)
+        if item is None or item.matter_id != matter_id:
+            raise ChecklistItemNotFoundError()
+        latest = await self._repo.latest_snapshot(user_id, matter_id)
+        if latest is None or latest.id != item.snapshot_id:
+            raise DomainRuleError(
+                "This checklist snapshot is historical. Review the current requirements."
+            )
         requirement = get_requirement(item.requirement_definition_id)
         if requirement is None:
             raise ChecklistItemNotFoundError(
@@ -509,17 +682,46 @@ class ChecklistService:
             )
         return item, requirement
 
+    @staticmethod
+    def _effective_original(
+        item: ChecklistItem, links: list[SatisfactionLink], invalid: bool
+    ) -> ChecklistItem:
+        represented = {pin for link in links if link.is_live for pin in link.originals}
+        inspected = set(item.original_inspection.originals) if item.original_inspection else set()
+        if item.physical_original is PhysicalOriginalStatus.ORIGINAL_INSPECTED and (
+            invalid
+            or not represented
+            or not all(pin.precise for pin in represented)
+            or not represented <= inspected
+        ):
+            item = replace(item, physical_original=PhysicalOriginalStatus.UNKNOWN)
+        return item
+
     async def _view(
         self, user_id: str, item: ChecklistItem, requirement: RequirementDefinition
     ) -> ChecklistItemView:
         links = await self._repo.list_links_for_item(user_id, item.id)
-        live = sum(1 for link in links if link.is_live)
+        live, invalid = await self._link_currentness(links)
+        item = self._effective_original(item, links, invalid)
+        if (
+            invalid
+            or (
+                not live
+                and (
+                    requirement.accepted_document_class_ids
+                    or requirement.physical_original_policy
+                    is not PhysicalOriginalStatus.NOT_REQUIRED
+                )
+            )
+        ) and item.digital_review is DigitalReviewStatus.LAWYER_CONFIRMED:
+            item = replace(item, digital_review=DigitalReviewStatus.UNREVIEWED)
         return ChecklistItemView(
             item=item,
             requirement=requirement,
             lifecycle=derive_lifecycle(item, requirement, live_link_count=live),
             computed_resolution=compute_resolution(item, requirement),
             live_link_count=live,
+            has_invalid_support=invalid,
             blocks_approval=is_blocking_unsatisfied(item, requirement),
         )
 

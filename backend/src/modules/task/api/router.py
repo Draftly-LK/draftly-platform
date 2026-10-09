@@ -15,7 +15,9 @@ requirement set a decision was made under, not only the current one.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response
+from dataclasses import asdict
+
+from fastapi import APIRouter, Depends, Header, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_request_context, require_if_match
@@ -32,12 +34,15 @@ from src.modules.content_governance.contracts import (
 )
 from src.modules.matter.contracts import require_rta_capability
 from src.modules.matter.domain.errors import MatterNotFoundError
+from src.modules.task.api.replay import RequirementCommandReplay
 from src.modules.task.api.schemas import (
     ChecklistItemRead,
     ChecklistRead,
     LinkDocumentRequest,
+    MatterReadinessRead,
     OriginalInspectionRead,
     OriginalInspectionRequest,
+    OriginalSourceRead,
     SatisfactionDecisionRequest,
     SatisfactionLinkRead,
 )
@@ -109,6 +114,12 @@ def _to_item_read(view: ChecklistItemView) -> ChecklistItemRead:
         blocks_approval=view.blocks_approval,
         live_link_count=view.live_link_count,
         applicability_reason=item.applicability_reason,
+        inspection_history=[
+            OriginalInspectionRead(
+                **{**asdict(entry), "inspected_at": entry.inspected_at.isoformat()}
+            )
+            for entry in item.inspection_history
+        ],
         original_inspection=(
             OriginalInspectionRead(
                 reviewer_id=inspection.reviewer_id,
@@ -116,6 +127,7 @@ def _to_item_read(view: ChecklistItemView) -> ChecklistItemRead:
                 method=inspection.method,
                 location=inspection.location,
                 note=inspection.note,
+                originals=[OriginalSourceRead(**asdict(pin)) for pin in inspection.originals],
             )
             if inspection
             else None
@@ -147,6 +159,9 @@ def _to_checklist_read(view: ChecklistView) -> ChecklistRead:
 def _to_link_read(link: SatisfactionLink) -> SatisfactionLinkRead:
     return SatisfactionLinkRead(
         id=link.id,
+        document_version=link.document_version,
+        interpretation_generation=link.interpretation_generation,
+        originals=[OriginalSourceRead(**asdict(pin)) for pin in link.originals],
         checklist_item_id=link.checklist_item_id,
         detected_document_id=link.detected_document_id,
         digital_review=link.digital_review.value,
@@ -210,6 +225,7 @@ async def decide_satisfaction(
     session: AsyncSession = Depends(get_db),
     uow: UnitOfWork = Depends(get_uow),
     expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ChecklistItemRead:
     """Record a decision. Waiving requires the narrower waive capability."""
     _ = uow
@@ -223,6 +239,18 @@ async def decide_satisfaction(
         else CAP_CHECKLIST_DECIDE
     )
     await _authorized_matter(ctx, matter_id, session, capability)
+    await service.lock_item(ctx.actor_id, matter_id, item_id)
+    replay = RequirementCommandReplay(
+        session,
+        ctx.actor_id,
+        f"/matters/{matter_id}/checklist-items/{item_id}/decisions",
+        key,
+        {**body.model_dump(mode="json"), "expectedVersion": expected_version},
+    )
+    cached = await replay.find(ChecklistItemRead)
+    if cached:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
     view = await service.decide_satisfaction(
         user_id=ctx.actor_id,
         matter_id=matter_id,
@@ -240,7 +268,7 @@ async def decide_satisfaction(
         assigned_to=body.assigned_to,
     )
     response.headers["ETag"] = f'"{view.item.version}"'
-    return _to_item_read(view)
+    return await replay.save(_to_item_read(view))
 
 
 @router.post(
@@ -257,10 +285,23 @@ async def record_original_inspection(
     session: AsyncSession = Depends(get_db),
     uow: UnitOfWork = Depends(get_uow),
     expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ChecklistItemRead:
     """Human-only. The reviewer is the authenticated actor, never the body."""
     _ = uow
     await _authorized_matter(ctx, matter_id, session, CAP_ORIGINAL_INSPECT)
+    await service.lock_item(ctx.actor_id, matter_id, item_id)
+    replay = RequirementCommandReplay(
+        session,
+        ctx.actor_id,
+        f"/matters/{matter_id}/checklist-items/{item_id}/original-inspection",
+        key,
+        {**body.model_dump(mode="json"), "expectedVersion": expected_version},
+    )
+    cached = await replay.find(ChecklistItemRead)
+    if cached:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
     view = await service.record_original_inspection(
         user_id=ctx.actor_id,
         matter_id=matter_id,
@@ -273,7 +314,7 @@ async def record_original_inspection(
         note=body.note,
     )
     response.headers["ETag"] = f'"{view.item.version}"'
-    return _to_item_read(view)
+    return await replay.save(_to_item_read(view))
 
 
 @router.post(
@@ -289,22 +330,38 @@ async def link_document(
     service: ChecklistService = Depends(get_checklist_service),
     session: AsyncSession = Depends(get_db),
     uow: UnitOfWork = Depends(get_uow),
+    expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> SatisfactionLinkRead:
     """Link one document to one item; call once per item it satisfies."""
     _ = uow
     await _authorized_matter(ctx, matter_id, session, CAP_CHECKLIST_DECIDE)
+    await service.lock_item(ctx.actor_id, matter_id, item_id)
+    replay = RequirementCommandReplay(
+        session,
+        ctx.actor_id,
+        f"/matters/{matter_id}/checklist-items/{item_id}/links",
+        key,
+        {**body.model_dump(mode="json"), "expectedVersion": expected_version},
+    )
+    cached = await replay.find(SatisfactionLinkRead)
+    if cached:
+        return cached
     link = await service.link_document(
         user_id=ctx.actor_id,
         matter_id=matter_id,
         item_id=item_id,
         detected_document_id=body.detected_document_id,
+        expected_version=expected_version,
+        document_version=body.document_version,
+        interpretation_generation=body.interpretation_generation,
         actor_id=ctx.actor_id,
         correlation_id=ctx.correlation_id,
         evidence_reference_ids=tuple(body.evidence_reference_ids),
         lawyer_confirmed=body.lawyer_confirmed,
         note=body.note,
     )
-    return _to_link_read(link)
+    return await replay.save(_to_link_read(link))
 
 
 @router.get(
@@ -325,3 +382,17 @@ async def list_links(
         raise MatterNotFoundError()
     links = await service.list_links(user_id=ctx.actor_id, item_id=item_id)
     return [_to_link_read(link) for link in links]
+
+
+@router.get("/matters/{matter_id}/readiness", response_model=MatterReadinessRead)
+async def get_readiness(
+    matter_id: str,
+    ctx: RequestContext = Depends(get_request_context),
+    session: AsyncSession = Depends(get_db),
+) -> MatterReadinessRead:
+    from src.bootstrap import build_readiness_service
+
+    view = await build_readiness_service(session).evaluate(ctx, matter_id)
+    return MatterReadinessRead.model_validate(
+        {**asdict(view), "evaluated_at": view.evaluated_at.isoformat()}
+    )

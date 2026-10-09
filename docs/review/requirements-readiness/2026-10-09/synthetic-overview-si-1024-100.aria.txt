@@ -1,0 +1,39 @@
+- main:
+  - heading "දළ විශ්ලේෂණය" [level=1]
+  - paragraph: මෙම කාරණය පවතින තැන සහ ඊළඟට කළ යුතු දේ.
+  - region "අවශ්‍ය මානව සමාලෝචනය සටහන් කරන්න":
+    - text: Next action
+    - heading "අවශ්‍ය මානව සමාලෝචනය සටහන් කරන්න" [level=2]
+    - paragraph: අවශ්‍ය මුල් පිටපත් පරීක්ෂණ සහ නීතිඥ සමාලෝචන ඉතිරිව ඇත.
+    - link "සමාලෝචනය විවෘත කරන්න":
+      - /url: /matters/mat-synthetic/checks
+    - paragraph: ඇගයූ වේලාව 2026-10-09T00:00:00Z
+    - term: Instrument
+    - definition: Transfer by sale
+    - term: Matter state
+    - definition: Evidence collection
+    - term: Handling
+    - definition: Prepared by Draftly
+  - region "Checklist progress":
+    - heading "Checklist progress" [level=2]
+    - img "පිරික්සුම් ලැයිස්තුවෙන් 0% සපුරා ඇත"
+    - paragraph: 0 of 1 requirements satisfied
+    - paragraph: Nothing blocking
+    - paragraph: 1 still outstanding
+  - list:
+    - listitem:
+      - link "ලේඛන 0 ගොනු උඩුගත කර ඇත":
+        - /url: /matters/mat-synthetic/documents
+    - listitem:
+      - link "පරීක්ෂණ 0 විවෘත ගැටලු":
+        - /url: /matters/mat-synthetic/checks
+    - listitem:
+      - link "තහවුරු කළ කරුණු 0 0 න් නීතිඥ තහවුරු කළ":
+        - /url: /matters/mat-synthetic/facts
+    - listitem:
+      - link "කෙටුම්පත් 0 පෝරම සාදා ඇත":
+        - /url: /matters/mat-synthetic/drafts
+  - heading "කාරණ සහායකයාගෙන් අසන්න" [level=2]
+  - paragraph: This snapshot reports the matter's current records. It is not a legal conclusion and does not replace lawyer review.
+  - link "Open matter assistant":
+    - /url: /matters/mat-synthetic/assistant

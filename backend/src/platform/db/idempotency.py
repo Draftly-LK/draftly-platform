@@ -72,6 +72,13 @@ class SqlIdempotencyStore:
         Raises IdempotencyConflictError when the same key arrives with a
         different body.
         """
+        # First inserts need a lock too: SELECT FOR UPDATE cannot lock an absent row.
+        if self._session.get_bind().dialect.name == "postgresql":
+            scope = json.dumps([user_id, route, key], separators=(",", ":"))
+            lock_id = int.from_bytes(
+                hashlib.sha256(scope.encode()).digest()[:8], "big", signed=True
+            )
+            await self._session.execute(select(func.pg_advisory_xact_lock(lock_id)))
         stmt = (
             select(IdempotencyKeyRow)
             .where(
@@ -85,9 +92,31 @@ class SqlIdempotencyStore:
         if row is None:
             return None
         if row.created_at.tzinfo is not None and datetime.now(tz=UTC) - row.created_at > RETENTION:
+            await self._session.delete(row)
+            await self._session.flush()
             return None
         if row.request_hash != request_hash:
             raise IdempotencyConflictError()
+        return row.response
+
+    async def receipt(self, *, user_id: str, route: str, key: str) -> dict[str, Any] | None:
+        """Read acceptance only; the caller must authorize its resource and validate the stored target."""
+        row = (
+            await self._session.execute(
+                select(IdempotencyKeyRow).where(
+                    IdempotencyKeyRow.user_id == user_id,
+                    IdempotencyKeyRow.route == route,
+                    IdempotencyKeyRow.idempotency_key == key,
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        created = row.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        if datetime.now(tz=UTC) - created >= RETENTION:
+            return None
         return row.response
 
     async def store(

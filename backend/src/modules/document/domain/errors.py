@@ -55,6 +55,11 @@ class ExtractionProviderError(DomainRuleError):
     message = "The document extraction provider is unavailable."
 
 
+class ExtractionProviderTimeoutError(ExtractionProviderError):
+    code = "extraction_provider_timeout"
+    message = "The document provider exceeded its request deadline."
+
+
 class SourceFileNotFoundError(NotFoundError):
     """Absent, or owned by another account — deliberately indistinguishable."""
 

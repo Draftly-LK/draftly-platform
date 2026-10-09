@@ -18,10 +18,10 @@ describe("check accessors", () => {
   itSendsEach(recorder, [
     {
       name: "runChecks",
-      call: () => runChecks(token, "mat-1"),
+      call: () => runChecks(token, "mat-1", { transactionId: "tx", subjectId: "subject", associationVersion: 2 }),
       method: "POST",
       path: "/api/v1/matters/mat-1/checks/run",
-      body: {},
+      body: { transactionId: "tx", subjectId: "subject", associationVersion: 2 },
     },
     {
       name: "listCheckResults",
@@ -81,8 +81,8 @@ describe("list queries", () => {
   });
 
   it("runChecks passes the search currency window", async () => {
-    await runChecks(token, "mat-1", { searchCurrencyMaxAgeDays: 30 });
+    await runChecks(token, "mat-1", { transactionId: "tx", subjectId: null, associationVersion: 2, searchCurrencyMaxAgeDays: 30 });
 
-    expect(recorder.only().body).toEqual({ searchCurrencyMaxAgeDays: 30 });
+    expect(recorder.only().body).toEqual({ transactionId: "tx", subjectId: null, associationVersion: 2, searchCurrencyMaxAgeDays: 30 });
   });
 });

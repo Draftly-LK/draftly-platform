@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from src.modules.audit.domain.models import AuditAction, AuditTargetType
-from src.modules.auth.ports import AuditEventInput, AuditPort
+from dataclasses import replace
+
+from src.modules.auth.ports import AuditPort
 from src.modules.content_governance.contracts import (
     CAP_FACT_CONFIRM_CRITICAL,
     CAP_FACT_CONFIRM_NONCRITICAL,
@@ -33,11 +34,28 @@ class DocumentReviewService:
         self._audit = audit
         self._candidate_approval = candidate_approval
 
-    async def get_review(self, *, user_id: str, detected_document_id: str) -> DocumentReview:
-        review = await self._repo.get_document_review(user_id, detected_document_id)
+    async def get_review(
+        self, *, user_id: str, detected_document_id: str, generation: int | None = None
+    ) -> DocumentReview:
+        review = await self._repo.get_document_review(user_id, detected_document_id, generation)
         if review is None:
             raise DocumentReviewNotFoundError()
-        return review
+        candidates = []
+        for candidate in review.candidates:
+            projected = await self._candidate_approval.project(
+                user_id, review.matter_id, candidate.id
+            )
+            candidates.append(
+                replace(
+                    candidate,
+                    edited_value=projected.value,
+                    review_state=projected.review_state,
+                    version=projected.version,
+                )
+                if projected
+                else candidate
+            )
+        return replace(review, candidates=tuple(candidates))
 
     async def get_artifact(self, *, user_id: str, page_id: str, kind: str) -> bytes:
         reference = await self._repo.get_page_artifact_ref(user_id, page_id, kind)
@@ -77,25 +95,35 @@ class DocumentReviewService:
         value: str,
         expected_version: int,
         correlation_id: str,
+        reviewer_role: str,
     ) -> ReviewCandidate:
         matter_id = await self.candidate_matter_id(user_id=user_id, candidate_id=candidate_id)
-        candidate = await self._repo.update_candidate(
-            user_id, candidate_id, value, expected_version
+        if actor_id != user_id:
+            raise DocumentReviewNotFoundError()
+        original = await self._repo.get_candidate_approval_input(user_id, candidate_id)
+        if original is None:
+            raise DocumentReviewNotFoundError()
+        saved = await self._candidate_approval.edit(
+            user_id=user_id,
+            matter_id=matter_id,
+            candidate_id=candidate_id,
+            value=value,
+            expected_version=expected_version,
+            reviewer_role=reviewer_role,
+            correlation_id=correlation_id,
         )
-        await self._audit.record(
-            AuditEventInput(
-                user_id=user_id,
-                matter_id=matter_id,
-                actor=actor_id,
-                action=AuditAction.RTA_FACT_CORRECTED.value,
-                target_type=AuditTargetType.FACT.value,
-                target_id=candidate_id,
-                before_ref=f"candidate@{expected_version}",
-                after_ref=f"unverified@{candidate.version}",
-                correlation_id=correlation_id,
-            )
+        return ReviewCandidate(
+            id=candidate_id,
+            key=original.field_key,
+            candidate_value=original.original_value
+            if original.original_value is not None
+            else original.value,
+            edited_value=saved.value,
+            page_no=original.page_no,
+            model_reported_confidence=original.model_reported_confidence,
+            review_state=saved.review_state,
+            version=saved.version,
         )
-        return candidate
 
     async def approve_candidate(
         self,
@@ -113,23 +141,23 @@ class DocumentReviewService:
             raise DocumentReviewNotFoundError()
         if approval_input.review_state == "approved":
             raise CandidateAlreadyApprovedError()
-        fact_id = await self._candidate_approval.approve(
-            approval_input, reviewer_id=actor_id, reviewer_role=reviewer_role
+        await self._candidate_approval.approve(
+            replace(approval_input, version=expected_version, correlation_id=correlation_id),
+            reviewer_id=actor_id,
+            reviewer_role=reviewer_role,
         )
-        candidate = await self._repo.approve_candidate(
-            user_id, candidate_id, actor_id, fact_id, expected_version
+        saved = await self._candidate_approval.project(user_id, matter_id, candidate_id)
+        if saved is None:
+            raise DocumentReviewNotFoundError()
+        return ReviewCandidate(
+            id=candidate_id,
+            key=approval_input.field_key,
+            candidate_value=approval_input.original_value
+            if approval_input.original_value is not None
+            else approval_input.value,
+            edited_value=saved.value,
+            page_no=approval_input.page_no,
+            model_reported_confidence=approval_input.model_reported_confidence,
+            review_state=saved.review_state,
+            version=saved.version,
         )
-        await self._audit.record(
-            AuditEventInput(
-                user_id=user_id,
-                matter_id=matter_id,
-                actor=actor_id,
-                action=AuditAction.RTA_FACT_CONFIRMED.value,
-                target_type=AuditTargetType.FACT.value,
-                target_id=candidate_id,
-                before_ref=f"unverified@{expected_version}",
-                after_ref=f"approved@{candidate.version}",
-                correlation_id=correlation_id,
-            )
-        )
-        return candidate

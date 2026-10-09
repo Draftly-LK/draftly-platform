@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_request_context, require_if_match
@@ -39,6 +39,7 @@ from src.modules.matter.api.schemas import (
     RoutingRead,
     SaveAnswerRequest,
 )
+from src.modules.matter.api.scope_router import router as scope_router
 from src.modules.matter.application.matter_service import (
     ChecklistCompileResult,
     CreateMatterInput,
@@ -46,11 +47,13 @@ from src.modules.matter.application.matter_service import (
     RoutingResult,
 )
 from src.modules.matter.domain.models import InstrumentLanguage, IntakeAnswer, Matter
+from src.platform.db.idempotency import IdempotencyKeyRequiredError
 from src.platform.db.session import get_db, get_uow
 from src.platform.db.unit_of_work import UnitOfWork
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["matters"])
+router.include_router(scope_router)
 
 
 def get_matter_service(session: AsyncSession = Depends(get_db)) -> MatterService:
@@ -168,9 +171,12 @@ async def create_matter(
     ctx: RequestContext = Depends(get_request_context),
     service: MatterService = Depends(get_matter_service),
     uow: UnitOfWork = Depends(get_uow),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> MatterRead:
     """Create an intake draft. The exact instrument is chosen later, by a lawyer."""
     _ = uow
+    if not key or len(key) > 255:
+        raise IdempotencyKeyRequiredError()
     matter = await service.create_matter(
         ctx,
         CreateMatterInput(
@@ -180,6 +186,7 @@ async def create_matter(
             local_authority_id=body.local_authority_id,
             legacy_matter_type=body.legacy_matter_type,
         ),
+        key=key,
     )
     response.headers["ETag"] = f'"{matter.version}"'
     return _to_read(matter)

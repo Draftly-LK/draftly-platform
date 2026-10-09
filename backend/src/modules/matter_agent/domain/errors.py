@@ -13,6 +13,7 @@ from src.platform.errors import (
 __all__ = [
     "AgentDisabledError",
     "AgentSessionNotFoundError",
+    "AgentRetryUnavailableError",
     "LegalResearchUnavailableError",
     "MemoryScopeNotReadyError",
     "ModelProviderError",
@@ -38,6 +39,11 @@ class AgentSessionNotFoundError(NotFoundError):
 class AgentDisabledError(DomainRuleError):
     code = "matter_agent_disabled"
     message = "The matter agent is not enabled for this deployment."
+
+
+class AgentRetryUnavailableError(ConflictError):
+    code = "agent_retry_unavailable"
+    message = "This turn cannot be retried. Review the conversation and send a new message."
 
 
 class ToolNotAllowlistedError(CapabilityDeniedError):
@@ -99,11 +105,13 @@ class ModelProviderError(DraftlyError):
 
 
 class LegalResearchUnavailableError(DomainRuleError):
-    """The fixed abstention until a retrieval engine is connected.
+    """The fail-closed response when grounded retrieval cannot answer.
 
     `matter-agent-service.md` §Agent loop: a legal question is never answered
     from model knowledge.
     """
 
     code = "legal_research_unavailable"
-    message = "Legal research is not available yet, so this question cannot be answered here."
+    message = (
+        "Legal research is unavailable for this question. Review the sources or try again later."
+    )

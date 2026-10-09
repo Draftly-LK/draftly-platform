@@ -128,6 +128,11 @@ async def test_pipeline_retains_pages_rotates_groups_and_extracts_strings() -> N
         (3,),
     ]
     assert report.logical_documents[0].candidates[0].value == "0021"
+    assert [document.extraction_state for document in report.logical_documents] == [
+        "current",
+        "current",
+        "unsupported",
+    ]
     assert "<<<PAGE 1>>>" in extractor.texts[0]
 
 

@@ -130,6 +130,19 @@ class V1DocumentPipeline:
         self._classification_confidence_threshold = classification_confidence_threshold
         self._classification_text_limit = classification_text_limit
 
+    async def extract_document(
+        self,
+        *,
+        type_id: str,
+        text: str,
+        page_numbers: tuple[int, ...],
+        fields: tuple[ExtractionFieldSchema, ...],
+    ) -> tuple[ExtractedCandidate, ...]:
+        """Extract an explicitly confirmed interpretation without reclassifying pages."""
+        return await self._extractor.extract_document(
+            type_id=type_id, text=text, page_numbers=page_numbers, fields=fields
+        )
+
     async def process(
         self,
         data: bytes,
@@ -234,6 +247,7 @@ class V1DocumentPipeline:
         for logical_document in logical_documents:
             schema = extraction_schemas.get(logical_document.type_id, ())
             candidates: tuple[ExtractedCandidate, ...] = ()
+            extraction_state = "unsupported" if not schema else "unavailable"
             if schema and logical_document.text.strip():
                 extraction_calls += 1
                 try:
@@ -243,10 +257,16 @@ class V1DocumentPipeline:
                         page_numbers=logical_document.page_numbers,
                         fields=schema,
                     )
+                    extraction_state = "current"
                 except ExtractionProviderError:
                     candidates = ()
+                    extraction_state = "failed"
             processed_documents.append(
-                ProcessedLogicalDocument(logical_document=logical_document, candidates=candidates)
+                ProcessedLogicalDocument(
+                    logical_document=logical_document,
+                    candidates=candidates,
+                    extraction_state=extraction_state,
+                )
             )
 
         return V1PipelineReport(

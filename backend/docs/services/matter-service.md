@@ -607,6 +607,33 @@ edit derived values.
 
 ## 14. Decisions to confirm before coding
 
+### Approved matter scope records (2026-10-09)
+
+`MatterSubjectReference` is a stable matter-local `party` or `parcel` reference
+with an ordinal, not a raw identity record. Protected party identity remains
+party-owned. `MatterTransactionReference` records parcel subject IDs and explicit
+party-role associations. V0 validates the owner and matter for every reference;
+organization support remains deferred. There is no automatic cross-matter merge
+or implied transferee assignment from a source identity card.
+
+`GET/POST /matters/{matterId}/subjects` and `/transactions` expose these records.
+List reads accept bounded `limit` (maximum 100) and signed `cursor`.
+`POST /transactions/{transactionId}/associations` replaces the association set
+with `If-Match`, appends a transaction revision, and returns an ETag. Creating
+and association commands require `Idempotency-Key`, authorize `CAP_MATTER_ROUTE`,
+and append reference-only audit in the request transaction. They store no names,
+NICs or addresses. `MatterScopePort.lock` serializes these writes with canonical
+verification review; `validate_scope` and `get_transaction` are the public ports
+for other owners. The database migration ships with these records.
+
+Matter creation also requires `Idempotency-Key` at the HTTP boundary. The owning
+service fingerprints the submitted intake metadata and serializes replay through
+the existing public idempotency port. Replaying an authorized create intent
+returns its existing owned matter; changing the body under that key conflicts.
+Document corrections and current-evidence consumers share `MatterMutationLockPort`
+so review, linking, checking and output eligibility cannot interleave with stale
+interpretation authority inside the same matter transaction.
+
 1. Use `inquiry | active | closed | archived` as the matter lifecycle.
 2. Keep the ten canonical workflow phases in `task_service`.
 3. Expose phase, blocking, and readiness through a rebuildable matter
@@ -617,3 +644,27 @@ edit derived values.
    candidate steps for conditional characteristic changes.
 7. Require current readiness evaluation for closure and a reason to reopen.
 8. Replace embedded party identity data with protected party references.
+
+### Association revision dependency synchronization (2026-10-09)
+
+Updating an existing transaction association revision notifies the owning check
+and form ports under the existing shared matter mutation lock. Checks in that
+transaction become inconclusive; forms bound to its reviewed facts become stale
+with SCOPE_ASSOCIATION_CHANGED. Fact values and association history are preserved.
+The public scope read contract exposes owned transaction/subject references; callers
+must retain the displayed associationVersion and deliberately renew after 412.
+
+### Scope command retry metadata (2026-10-09)
+
+Subject and transaction creation and association edits retain opaque pending keys,
+request digests and original expected versions through the shared browser mutation
+intent helper. Fact decisions use the same metadata-only mechanism. Actor identity
+and mutation share one captured token, held only in memory; persisted keys are
+actor/matter/operation scoped. Raw scopes, facts, reasons and tokens are not stored.
+Successful responses clear the pending intent so a deliberate repeated create is a
+new operation. Ambiguous responses retain the original request key and expected
+version even after a later 412. Only a newly issued, definitively refused intent
+is cleared automatically. The explicit scope/fact renewal controls discard the
+pending operation for the current actor before renewed review. Unavailable browser
+storage retains the existing visible RAM-fallback notice. Refresh/re-entry behavior is untested
+under the owner's explicit test waiver.

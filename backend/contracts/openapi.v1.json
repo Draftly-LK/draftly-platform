@@ -617,6 +617,13 @@
               }
             ],
             "title": "Note"
+          },
+          "retireDocuments": {
+            "items": {
+              "$ref": "#/components/schemas/RetireDocumentInput"
+            },
+            "title": "Retiredocuments",
+            "type": "array"
           }
         },
         "required": [
@@ -1249,6 +1256,17 @@
       },
       "CheckResultRead": {
         "properties": {
+          "associationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
           "checkDefinitionId": {
             "title": "Checkdefinitionid",
             "type": "string"
@@ -1353,6 +1371,28 @@
             },
             "title": "Sourcerecordids",
             "type": "array"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
           }
         },
         "required": [
@@ -1633,6 +1673,17 @@
       },
       "CitationRead": {
         "properties": {
+          "corpusVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corpusversion"
+          },
           "label": {
             "title": "Label",
             "type": "string"
@@ -1648,6 +1699,39 @@
             ],
             "title": "Locator"
           },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "passage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passage"
+          },
+          "sourceFileId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcefileid"
+          },
           "sourceId": {
             "title": "Sourceid",
             "type": "string"
@@ -1656,9 +1740,42 @@
             "title": "Sourcetype",
             "type": "string"
           },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          },
           "verificationStatus": {
             "title": "Verificationstatus",
             "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
           }
         },
         "required": [
@@ -1971,6 +2088,35 @@
           "scope"
         ],
         "title": "CreateConversationRequest",
+        "type": "object"
+      },
+      "CreateGroupRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "classId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classid"
+          },
+          "fragments": {
+            "items": {
+              "$ref": "#/components/schemas/FragmentRangeInput"
+            },
+            "minItems": 1,
+            "title": "Fragments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fragments"
+        ],
+        "title": "CreateGroupRequest",
         "type": "object"
       },
       "CreateMatterRequest": {
@@ -2318,6 +2464,11 @@
             ],
             "title": "Duplicateofdetecteddocumentid"
           },
+          "extractionState": {
+            "default": "current",
+            "title": "Extractionstate",
+            "type": "string"
+          },
           "fragments": {
             "items": {
               "$ref": "#/components/schemas/DocumentFragmentRead"
@@ -2328,6 +2479,11 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "interpretationGeneration": {
+            "default": 1,
+            "title": "Interpretationgeneration",
+            "type": "integer"
           },
           "issueOrExecutionDateFactId": {
             "anyOf": [
@@ -2358,9 +2514,31 @@
             "title": "Languagecodes",
             "type": "array"
           },
+          "latestRefreshRunId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latestrefreshrunid"
+          },
           "matterId": {
             "title": "Matterid",
             "type": "string"
+          },
+          "refreshFailureReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshfailurereason"
           },
           "sourceFileIds": {
             "items": {
@@ -2496,6 +2674,13 @@
           "page": {
             "$ref": "#/components/schemas/src__modules__document__api__schemas__PageInfo"
           },
+          "pageAccounting": {
+            "items": {
+              "$ref": "#/components/schemas/PageAccountingRead"
+            },
+            "title": "Pageaccounting",
+            "type": "array"
+          },
           "sourceFiles": {
             "items": {
               "$ref": "#/components/schemas/SourceFileRead"
@@ -2540,6 +2725,11 @@
             "title": "Candidates",
             "type": "array"
           },
+          "current": {
+            "default": false,
+            "title": "Current",
+            "type": "boolean"
+          },
           "detectedDocumentId": {
             "title": "Detecteddocumentid",
             "type": "string"
@@ -2547,6 +2737,11 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "interpretationGeneration": {
+            "default": 1,
+            "title": "Interpretationgeneration",
+            "type": "integer"
           },
           "matterId": {
             "title": "Matterid",
@@ -2655,6 +2850,105 @@
         "title": "DuplicateProbeResponse",
         "type": "object"
       },
+      "EvidenceInput": {
+        "additionalProperties": false,
+        "properties": {
+          "candidateId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidateid"
+          },
+          "candidateVersion": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidateversion"
+          },
+          "detectedDocumentId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detecteddocumentid"
+          },
+          "extractionRunId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extractionrunid"
+          },
+          "interpretationGeneration": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretationgeneration"
+          },
+          "pageNumber": {
+            "minimum": 1.0,
+            "title": "Pagenumber",
+            "type": "integer"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
+          },
+          "sourceFileId": {
+            "maxLength": 64,
+            "title": "Sourcefileid",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "pattern": "^[a-fA-F0-9]{64}$",
+            "title": "Sourcesha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceFileId",
+          "pageNumber",
+          "sourceSha256"
+        ],
+        "title": "EvidenceInput",
+        "type": "object"
+      },
       "ExportFormRequest": {
         "additionalProperties": false,
         "description": "``format`` selects a record, never a document. See the module docstring.",
@@ -2723,6 +3017,72 @@
         "title": "FactCandidateRead",
         "type": "object"
       },
+      "FactDecisionRead": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "newValue": {
+            "title": "Newvalue"
+          },
+          "previousValue": {
+            "title": "Previousvalue"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "resolvedFactIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Resolvedfactids",
+            "type": "array"
+          },
+          "reviewerId": {
+            "title": "Reviewerid",
+            "type": "string"
+          },
+          "reviewerRole": {
+            "title": "Reviewerrole",
+            "type": "string"
+          },
+          "targetId": {
+            "title": "Targetid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "targetId",
+          "decision",
+          "reviewerId",
+          "reviewerRole",
+          "createdAt",
+          "previousValue",
+          "newValue",
+          "reason",
+          "resolvedFactIds"
+        ],
+        "title": "FactDecisionRead",
+        "type": "object"
+      },
       "FactEvidenceRead": {
         "properties": {
           "boundingBox": {
@@ -2735,6 +3095,28 @@
               }
             ]
           },
+          "candidateId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidateid"
+          },
+          "candidateVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Candidateversion"
+          },
           "detectedDocumentId": {
             "anyOf": [
               {
@@ -2746,17 +3128,75 @@
             ],
             "title": "Detecteddocumentid"
           },
+          "extractionRunId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extractionrunid"
+          },
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "interpretationGeneration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretationgeneration"
           },
           "pageNumber": {
             "title": "Pagenumber",
             "type": "integer"
           },
+          "pageText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagetext"
+          },
+          "precision": {
+            "default": "page",
+            "enum": [
+              "page",
+              "text"
+            ],
+            "title": "Precision",
+            "type": "string"
+          },
           "sourceFileId": {
             "title": "Sourcefileid",
             "type": "string"
+          },
+          "sourceSha256": {
+            "default": "",
+            "title": "Sourcesha256",
+            "type": "string"
+          },
+          "supportingText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supportingtext"
           }
         },
         "required": [
@@ -2769,6 +3209,34 @@
         "title": "FactEvidenceRead",
         "type": "object"
       },
+      "FactHistoryRead": {
+        "properties": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/FactDecisionRead"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FactRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
+          }
+        },
+        "required": [
+          "items",
+          "decisions",
+          "page"
+        ],
+        "title": "FactHistoryRead",
+        "type": "object"
+      },
       "FactListRead": {
         "properties": {
           "items": {
@@ -2777,6 +3245,9 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
           }
         },
         "required": [
@@ -2787,6 +3258,13 @@
       },
       "FactRead": {
         "properties": {
+          "conflictFactIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflictfactids",
+            "type": "array"
+          },
           "createdAt": {
             "title": "Createdat",
             "type": "string"
@@ -2797,6 +3275,11 @@
             },
             "title": "Evidence",
             "type": "array"
+          },
+          "evidenceStale": {
+            "default": false,
+            "title": "Evidencestale",
+            "type": "boolean"
           },
           "factTypeId": {
             "title": "Facttypeid",
@@ -2821,6 +3304,28 @@
             "title": "Labelkey",
             "type": "string"
           },
+          "lineageId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineageid"
+          },
+          "manualReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manualreason"
+          },
           "matterId": {
             "title": "Matterid",
             "type": "string"
@@ -2835,6 +3340,19 @@
               }
             ],
             "title": "Modelreportedconfidence"
+          },
+          "origin": {
+            "default": "legacy",
+            "enum": [
+              "legacy",
+              "machine",
+              "lawyer"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "originalValue": {
+            "title": "Originalvalue"
           },
           "reviewedAt": {
             "anyOf": [
@@ -2858,9 +3376,84 @@
             ],
             "title": "Reviewedby"
           },
-          "status": {
-            "title": "Status",
+          "scopeStatus": {
+            "default": "legacy-unassigned",
+            "enum": [
+              "legacy-unassigned",
+              "unassigned",
+              "assigned"
+            ],
+            "title": "Scopestatus",
             "type": "string"
+          },
+          "scopeToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopetoken"
+          },
+          "sourceCandidateId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcecandidateid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FactStatus"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "supersededByFactId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersededbyfactid"
+          },
+          "supersedesFactId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedesfactid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
           },
           "value": {
             "title": "Value"
@@ -2887,6 +3480,21 @@
         ],
         "title": "FactRead",
         "type": "object"
+      },
+      "FactStatus": {
+        "description": "§10.5 — extracted-fact lifecycle.\n\nA critical fact reaches ``LAWYER_CONFIRMED`` only through a human decision,\nwhatever the model confidence (§6.4).",
+        "enum": [
+          "EXTRACTED_CANDIDATE",
+          "REJECTED",
+          "CORROBORATED",
+          "CONFLICTED",
+          "REVIEW_REQUIRED",
+          "LAWYER_CONFIRMED",
+          "LOCKED_FOR_FORM",
+          "SUPERSEDED"
+        ],
+        "title": "FactStatus",
+        "type": "string"
       },
       "FactVersionPinRead": {
         "properties": {
@@ -3147,6 +3755,17 @@
             "title": "Lawyerauthoredallowed",
             "type": "boolean"
           },
+          "missingCause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missingcause"
+          },
           "order": {
             "title": "Order",
             "type": "integer"
@@ -3269,14 +3888,78 @@
         "title": "FormFieldRead",
         "type": "object"
       },
+      "FormScopeRead": {
+        "additionalProperties": false,
+        "properties": {
+          "associationVersion": {
+            "minimum": 1.0,
+            "title": "Associationversion",
+            "type": "integer"
+          },
+          "parcelSubjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parcelsubjectid"
+          },
+          "transactionId": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Transactionid",
+            "type": "string"
+          },
+          "transfereeSubjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transfereesubjectid"
+          },
+          "transferorSubjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transferorsubjectid"
+          }
+        },
+        "required": [
+          "transactionId",
+          "associationVersion"
+        ],
+        "title": "FormScopeRead",
+        "type": "object"
+      },
       "FragmentRangeInput": {
         "additionalProperties": false,
         "properties": {
           "orderInDocument": {
-            "default": 0,
-            "minimum": 0.0,
-            "title": "Orderindocument",
-            "type": "integer"
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orderindocument"
           },
           "pageEnd": {
             "minimum": 1.0,
@@ -3352,6 +4035,28 @@
         "additionalProperties": false,
         "description": "Nothing legal is accepted from the client.\n\n``templateId`` selects between the templates the *confirmed subtype* already\npermits — the prescribed instrument and its operational companions. It can\nnever introduce one the subtype does not select (§9.1).",
         "properties": {
+          "predecessorFormId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessorformid"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormScopeRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "templateId": {
             "anyOf": [
               {
@@ -3460,12 +4165,33 @@
             "title": "Namespace",
             "type": "string"
           },
+          "predecessorFormId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessorformid"
+          },
           "preflight": {
             "$ref": "#/components/schemas/PreflightRead"
           },
           "rulePackVersion": {
             "title": "Rulepackversion",
             "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormScopeRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "staleReason": {
             "anyOf": [
@@ -3585,9 +4311,30 @@
             "title": "Matterid",
             "type": "string"
           },
+          "predecessorFormId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessorformid"
+          },
           "rulePackVersion": {
             "title": "Rulepackversion",
             "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormScopeRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "staleReason": {
             "anyOf": [
@@ -3913,6 +4660,146 @@
         "title": "IntakeAnswerRead",
         "type": "object"
       },
+      "InterpretationHistoryRead": {
+        "properties": {
+          "currentGeneration": {
+            "title": "Currentgeneration",
+            "type": "integer"
+          },
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "matterId": {
+            "title": "Matterid",
+            "type": "string"
+          },
+          "refreshRuns": {
+            "items": {
+              "$ref": "#/components/schemas/InterpretationRunRead"
+            },
+            "title": "Refreshruns",
+            "type": "array"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/InterpretationSnapshotRead"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          }
+        },
+        "required": [
+          "documentId",
+          "matterId",
+          "currentGeneration",
+          "snapshots",
+          "refreshRuns"
+        ],
+        "title": "InterpretationHistoryRead",
+        "type": "object"
+      },
+      "InterpretationRunRead": {
+        "properties": {
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "title": "Startedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "generation",
+          "outcome",
+          "reasons",
+          "startedAt",
+          "finishedAt"
+        ],
+        "title": "InterpretationRunRead",
+        "type": "object"
+      },
+      "InterpretationSnapshotRead": {
+        "properties": {
+          "actorId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actorid"
+          },
+          "classId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "fragments": {
+            "items": {
+              "$ref": "#/components/schemas/FragmentRangeInput"
+            },
+            "title": "Fragments",
+            "type": "array"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generation",
+          "classId",
+          "fragments",
+          "actorId",
+          "createdAt"
+        ],
+        "title": "InterpretationSnapshotRead",
+        "type": "object"
+      },
       "IssueDecisionRequest": {
         "additionalProperties": false,
         "description": "One recorded disposition. The deciding lawyer is the authenticated actor.",
@@ -3984,6 +4871,14 @@
             },
             "title": "Openstatutoryblockerids",
             "type": "array"
+          },
+          "staleCheckIds": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Stalecheckids",
+            "type": "array"
           }
         },
         "required": [
@@ -3994,6 +4889,110 @@
           "openBlockingIssueIds"
         ],
         "title": "IssueGatesRead",
+        "type": "object"
+      },
+      "LatestProcessingRunRead": {
+        "description": "Read-only running or terminal summary over persisted run/page records.",
+        "properties": {
+          "aiExtractionCalls": {
+            "title": "Aiextractioncalls",
+            "type": "integer"
+          },
+          "failureExplanationKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failureexplanationkey"
+          },
+          "failureReason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessingFailureReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "jobId": {
+            "title": "Jobid",
+            "type": "string"
+          },
+          "manualReviewRequired": {
+            "title": "Manualreviewrequired",
+            "type": "boolean"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/SourceFileState"
+          },
+          "pageOutcomes": {
+            "items": {
+              "$ref": "#/components/schemas/ProcessingPageOutcomeRead"
+            },
+            "title": "Pageoutcomes",
+            "type": "array"
+          },
+          "pagesProcessed": {
+            "title": "Pagesprocessed",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "startedAt": {
+            "title": "Startedat",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobId",
+          "state",
+          "outcome",
+          "provider",
+          "reasons",
+          "failureReason",
+          "failureExplanationKey",
+          "pagesProcessed",
+          "aiExtractionCalls",
+          "startedAt",
+          "finishedAt",
+          "pageOutcomes",
+          "manualReviewRequired"
+        ],
+        "title": "LatestProcessingRunRead",
         "type": "object"
       },
       "LawyerConfirmationRead": {
@@ -4092,6 +5091,17 @@
             ],
             "title": "Assignedto"
           },
+          "associationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
           "blockerKind": {
             "title": "Blockerkind",
             "type": "string"
@@ -4174,9 +5184,31 @@
             "title": "State",
             "type": "string"
           },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
           "summaryKey": {
             "title": "Summarykey",
             "type": "string"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
           },
           "updatedAt": {
             "title": "Updatedat",
@@ -4303,12 +5335,22 @@
             "title": "Detecteddocumentid",
             "type": "string"
           },
+          "documentVersion": {
+            "minimum": 1.0,
+            "title": "Documentversion",
+            "type": "integer"
+          },
           "evidenceReferenceIds": {
             "items": {
               "type": "string"
             },
             "title": "Evidencereferenceids",
             "type": "array"
+          },
+          "interpretationGeneration": {
+            "minimum": 1.0,
+            "title": "Interpretationgeneration",
+            "type": "integer"
           },
           "lawyerConfirmed": {
             "default": false,
@@ -4328,9 +5370,88 @@
           }
         },
         "required": [
-          "detectedDocumentId"
+          "detectedDocumentId",
+          "documentVersion",
+          "interpretationGeneration"
         ],
         "title": "LinkDocumentRequest",
+        "type": "object"
+      },
+      "ManualFactRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "factTypeId": {
+            "maxLength": 128,
+            "title": "Facttypeid",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "factTypeId",
+          "value",
+          "reason"
+        ],
+        "title": "ManualFactRequest",
         "type": "object"
       },
       "MarkStaleRequest": {
@@ -4585,6 +5706,61 @@
           "version"
         ],
         "title": "MatterRead",
+        "type": "object"
+      },
+      "MatterReadinessRead": {
+        "properties": {
+          "dependencies": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessDependencyRead"
+            },
+            "title": "Dependencies",
+            "type": "array"
+          },
+          "evaluatedAt": {
+            "title": "Evaluatedat",
+            "type": "string"
+          },
+          "nextAction": {
+            "title": "Nextaction",
+            "type": "string"
+          },
+          "requirementCompleted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirementcompleted"
+          },
+          "requirementTotal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requirementtotal"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "nextAction",
+          "evaluatedAt",
+          "dependencies",
+          "requirementTotal",
+          "requirementCompleted"
+        ],
+        "title": "MatterReadinessRead",
         "type": "object"
       },
       "MergePartiesRequest": {
@@ -5159,6 +6335,13 @@
             ],
             "title": "Note"
           },
+          "originals": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalSourceRead"
+            },
+            "title": "Originals",
+            "type": "array"
+          },
           "reviewerId": {
             "title": "Reviewerid",
             "type": "string"
@@ -5169,7 +6352,8 @@
           "inspectedAt",
           "method",
           "location",
-          "note"
+          "note",
+          "originals"
         ],
         "title": "OriginalInspectionRead",
         "type": "object"
@@ -5211,6 +6395,120 @@
           "method"
         ],
         "title": "OriginalInspectionRequest",
+        "type": "object"
+      },
+      "OriginalSourceRead": {
+        "properties": {
+          "detectedDocumentId": {
+            "default": "",
+            "title": "Detecteddocumentid",
+            "type": "string"
+          },
+          "interpretationGeneration": {
+            "default": 0,
+            "title": "Interpretationgeneration",
+            "type": "integer"
+          },
+          "pageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Pagenumbers",
+            "type": "array"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "sourceFileId": {
+            "title": "Sourcefileid",
+            "type": "string"
+          },
+          "storageVersion": {
+            "title": "Storageversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceFileId",
+          "sha256",
+          "storageVersion"
+        ],
+        "title": "OriginalSourceRead",
+        "type": "object"
+      },
+      "PageAccountingRead": {
+        "properties": {
+          "blankPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Blankpagenumbers",
+            "type": "array"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "manualReviewRequired": {
+            "title": "Manualreviewrequired",
+            "type": "boolean"
+          },
+          "outOfBoundsPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Outofboundspagenumbers",
+            "type": "array"
+          },
+          "overlappingPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Overlappingpagenumbers",
+            "type": "array"
+          },
+          "pageCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagecount"
+          },
+          "sourceFileId": {
+            "title": "Sourcefileid",
+            "type": "string"
+          },
+          "unclaimedPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unclaimedpagenumbers",
+            "type": "array"
+          },
+          "unsupportedPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unsupportedpagenumbers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sourceFileId",
+          "pageCount",
+          "unclaimedPageNumbers",
+          "overlappingPageNumbers",
+          "blankPageNumbers",
+          "unsupportedPageNumbers",
+          "complete",
+          "manualReviewRequired"
+        ],
+        "title": "PageAccountingRead",
         "type": "object"
       },
       "PageCandidateRead": {
@@ -5281,6 +6579,45 @@
           "formatValid"
         ],
         "title": "PageCandidateRead",
+        "type": "object"
+      },
+      "PageDispositionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "enum": [
+              "blank",
+              "unsupported",
+              "review_required"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "pageNumber": {
+            "minimum": 1.0,
+            "title": "Pagenumber",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "retireDocuments": {
+            "items": {
+              "$ref": "#/components/schemas/RetireDocumentInput"
+            },
+            "title": "Retiredocuments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pageNumber",
+          "disposition",
+          "reason"
+        ],
+        "title": "PageDispositionRequest",
         "type": "object"
       },
       "PageMeta": {
@@ -5389,6 +6726,46 @@
           "page"
         ],
         "title": "Page[PlanRead]",
+        "type": "object"
+      },
+      "Page_SubjectRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "Page[SubjectRead]",
+        "type": "object"
+      },
+      "Page_TransactionRead_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/src__platform__api__pagination__PageInfo"
+          }
+        },
+        "required": [
+          "items",
+          "page"
+        ],
+        "title": "Page[TransactionRead]",
         "type": "object"
       },
       "Page_UsageReadSchema_": {
@@ -5717,6 +7094,38 @@
         "title": "PartyRefSchema",
         "type": "object"
       },
+      "PartyRoleRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "enum": [
+              "transferor",
+              "transferee",
+              "owner",
+              "donor",
+              "donee",
+              "lessor",
+              "lessee",
+              "mortgagor",
+              "mortgagee",
+              "other"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "subjectId": {
+            "maxLength": 64,
+            "title": "Subjectid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subjectId",
+          "role"
+        ],
+        "title": "PartyRoleRequest",
+        "type": "object"
+      },
       "PatchPartyRequest": {
         "properties": {
           "displayName": {
@@ -5741,6 +7150,11 @@
             "title": "Actionkind",
             "type": "string"
           },
+          "arguments": {
+            "additionalProperties": true,
+            "title": "Arguments",
+            "type": "object"
+          },
           "createdAt": {
             "format": "date-time",
             "title": "Createdat",
@@ -5755,12 +7169,32 @@
             "title": "Id",
             "type": "string"
           },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          },
           "state": {
             "enum": [
               "proposed",
               "confirmed",
               "rejected",
-              "expired"
+              "expired",
+              "executed",
+              "declined",
+              "stale",
+              "failed"
             ],
             "title": "State",
             "type": "string"
@@ -6063,6 +7497,54 @@
         "title": "PresentationDeadlineRead",
         "type": "object"
       },
+      "ProcessingFailureReason": {
+        "description": "Why processing did not produce a result — always recoverable-explained.\n\n``NOT_CONFIGURED`` is the honest answer when no OCR/classification provider\nis wired: the document is stored and readable, nothing was processed, and\nnothing pretends otherwise.",
+        "enum": [
+          "NOT_CONFIGURED",
+          "PROVIDER_ERROR",
+          "UNSUPPORTED_MEDIA",
+          "PASSWORD_PROTECTED",
+          "PAGE_LIMIT_EXCEEDED",
+          "DATA_PROTECTION_GATE",
+          "TIMEOUT"
+        ],
+        "title": "ProcessingFailureReason",
+        "type": "string"
+      },
+      "ProcessingPageOutcomeRead": {
+        "properties": {
+          "pageNo": {
+            "title": "Pageno",
+            "type": "integer"
+          },
+          "qualityStatus": {
+            "enum": [
+              "normal",
+              "likely_blank",
+              "ocr_sparse",
+              "ocr_failed"
+            ],
+            "title": "Qualitystatus",
+            "type": "string"
+          },
+          "rotationStatus": {
+            "enum": [
+              "not_required",
+              "applied",
+              "rotation_uncertain"
+            ],
+            "title": "Rotationstatus",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pageNo",
+          "qualityStatus",
+          "rotationStatus"
+        ],
+        "title": "ProcessingPageOutcomeRead",
+        "type": "object"
+      },
       "ProcessingReportRead": {
         "properties": {
           "aiExtractionCalls": {
@@ -6296,6 +7778,105 @@
           "retention_class"
         ],
         "title": "ProtocolRead",
+        "type": "object"
+      },
+      "ReadinessDependencyRead": {
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/ReadinessReferenceRead"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "state",
+          "references"
+        ],
+        "title": "ReadinessDependencyRead",
+        "type": "object"
+      },
+      "ReadinessReferenceRead": {
+        "properties": {
+          "associationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generation"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "ReadinessReferenceRead",
         "type": "object"
       },
       "RecordBeneficialOwnerRequest": {
@@ -6947,6 +8528,26 @@
         "title": "RenameConversationRequest",
         "type": "object"
       },
+      "RetireDocumentInput": {
+        "additionalProperties": false,
+        "properties": {
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documentId",
+          "version"
+        ],
+        "title": "RetireDocumentInput",
+        "type": "object"
+      },
       "ReviewCandidateRead": {
         "properties": {
           "candidateValue": {
@@ -7002,6 +8603,102 @@
         "title": "ReviewCandidateRead",
         "type": "object"
       },
+      "ReviewFactRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedScopeToken": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedscopetoken"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "resolveFactIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Resolvefactids",
+            "type": "array"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only associate accepts this field. Omit it for accept, correct, or reject, including null.",
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only associate accepts this field. Omit it for accept, correct, or reject, including null.",
+            "title": "Transactionid"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "title": "ReviewFactRequest",
+        "type": "object"
+      },
       "ReviewPageRead": {
         "properties": {
           "classificationConfidence": {
@@ -7043,6 +8740,17 @@
           "rotationStatus": {
             "title": "Rotationstatus",
             "type": "string"
+          },
+          "sourceFileId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcefileid"
           }
         },
         "required": [
@@ -7119,8 +8827,13 @@
       },
       "RunChecksRequest": {
         "additionalProperties": false,
-        "description": "Nothing legal is accepted from the client.\n\nThe only field is an office policy value; the facts, the rule pack, and the\nmatter's routing are all read server-side.",
+        "description": "Nothing legal is accepted from the client.\n\nThe caller pins the reviewed association and may supply an office currency\npolicy. Facts, rule definitions and matter routing are read server-side.",
         "properties": {
+          "associationVersion": {
+            "minimum": 1.0,
+            "title": "Associationversion",
+            "type": "integer"
+          },
           "searchCurrencyMaxAgeDays": {
             "anyOf": [
               {
@@ -7133,8 +8846,27 @@
               }
             ],
             "title": "Searchcurrencymaxagedays"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "title": "Transactionid",
+            "type": "string"
           }
         },
+        "required": [
+          "transactionId",
+          "associationVersion"
+        ],
         "title": "RunChecksRequest",
         "type": "object"
       },
@@ -7252,6 +8984,17 @@
             "title": "Digitalreview",
             "type": "string"
           },
+          "documentVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentversion"
+          },
           "evidenceReferenceIds": {
             "items": {
               "type": "string"
@@ -7263,9 +9006,27 @@
             "title": "Id",
             "type": "string"
           },
+          "interpretationGeneration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretationgeneration"
+          },
           "isLive": {
             "title": "Islive",
             "type": "boolean"
+          },
+          "originals": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalSourceRead"
+            },
+            "title": "Originals",
+            "type": "array"
           },
           "reviewNote": {
             "anyOf": [
@@ -7323,7 +9084,10 @@
           "reviewNote",
           "supersededByLinkId",
           "isLive",
-          "createdAt"
+          "createdAt",
+          "documentVersion",
+          "interpretationGeneration",
+          "originals"
         ],
         "title": "SatisfactionLinkRead",
         "type": "object"
@@ -7644,6 +9408,34 @@
           "scope"
         ],
         "title": "SearchRequest",
+        "type": "object"
+      },
+      "SendReceiptRead": {
+        "properties": {
+          "conversationId": {
+            "title": "Conversationid",
+            "type": "string"
+          },
+          "jobId": {
+            "title": "Jobid",
+            "type": "string"
+          },
+          "matterId": {
+            "title": "Matterid",
+            "type": "string"
+          },
+          "sendKey": {
+            "title": "Sendkey",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sendKey",
+          "matterId",
+          "conversationId",
+          "jobId"
+        ],
+        "title": "SendReceiptRead",
         "type": "object"
       },
       "SessionRead": {
@@ -7992,6 +9784,101 @@
         "title": "SourceFileRead",
         "type": "object"
       },
+      "SourceFileState": {
+        "description": "§10.2 — ingestion state machine for immutable uploaded bytes.\n\nSource bytes never transition to \"edited\". A corrected file is a new source\nwith a ``DERIVED_FROM`` link.",
+        "enum": [
+          "UPLOAD_INITIATED",
+          "QUARANTINED",
+          "VALIDATED",
+          "STORED",
+          "PROCESSING",
+          "PROCESSED",
+          "PROCESSING_FAILED",
+          "REJECTED",
+          "SUPERSEDED"
+        ],
+        "title": "SourceFileState",
+        "type": "string"
+      },
+      "SourceProcessingStatusRead": {
+        "properties": {
+          "latestRun": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestProcessingRunRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceFile": {
+            "$ref": "#/components/schemas/SourceFileRead"
+          }
+        },
+        "required": [
+          "sourceFile",
+          "latestRun"
+        ],
+        "title": "SourceProcessingStatusRead",
+        "type": "object"
+      },
+      "SubjectRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "party",
+              "parcel"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "matterId": {
+            "title": "Matterid",
+            "type": "string"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "userId": {
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "userId",
+          "matterId",
+          "ordinal"
+        ],
+        "title": "SubjectRead",
+        "type": "object"
+      },
+      "SubjectRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "party",
+              "parcel"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SubjectRequest",
+        "type": "object"
+      },
       "SubscriptionRead": {
         "properties": {
           "cancelAtPeriodEnd": {
@@ -8100,6 +9987,79 @@
           "supersededBySourceFileId"
         ],
         "title": "SupersedeSourceFileRequest",
+        "type": "object"
+      },
+      "TransactionRead": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "matterId": {
+            "title": "Matterid",
+            "type": "string"
+          },
+          "ordinal": {
+            "title": "Ordinal",
+            "type": "integer"
+          },
+          "parcelSubjectIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Parcelsubjectids",
+            "type": "array"
+          },
+          "partyRoles": {
+            "items": {
+              "$ref": "#/components/schemas/PartyRoleRequest"
+            },
+            "maxItems": 100,
+            "title": "Partyroles",
+            "type": "array"
+          },
+          "userId": {
+            "title": "Userid",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "matterId",
+          "ordinal",
+          "version"
+        ],
+        "title": "TransactionRead",
+        "type": "object"
+      },
+      "TransactionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "parcelSubjectIds": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Parcelsubjectids",
+            "type": "array"
+          },
+          "partyRoles": {
+            "items": {
+              "$ref": "#/components/schemas/PartyRoleRequest"
+            },
+            "maxItems": 100,
+            "title": "Partyroles",
+            "type": "array"
+          }
+        },
+        "title": "TransactionRequest",
         "type": "object"
       },
       "UpdateProfileRequest": {
@@ -9219,6 +11179,13 @@
             ],
             "title": "Inclusiontriggerid"
           },
+          "inspectionHistory": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalInspectionRead"
+            },
+            "title": "Inspectionhistory",
+            "type": "array"
+          },
           "labelKey": {
             "title": "Labelkey",
             "type": "string"
@@ -9325,6 +11292,7 @@
           "liveLinkCount",
           "applicabilityReason",
           "originalInspection",
+          "inspectionHistory",
           "assignedTo",
           "dueAt",
           "version"
@@ -10412,6 +12380,54 @@
         ]
       }
     },
+    "/api/v1/detected-documents/{document_id}": {
+      "get": {
+        "operationId": "get_detected_document_api_v1_detected_documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectedDocumentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Detected Document",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/detected-documents/{document_id}/boundary-decisions": {
       "post": {
         "description": "Split, join, or reorder the pages a document claims. Sources are untouched.",
@@ -10424,6 +12440,22 @@
             "schema": {
               "title": "Document Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {
@@ -10503,6 +12535,22 @@
           },
           {
             "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
             "name": "If-Match",
             "required": false,
             "schema": {
@@ -10562,6 +12610,134 @@
         ]
       }
     },
+    "/api/v1/detected-documents/{document_id}/interpretations": {
+      "get": {
+        "operationId": "get_interpretation_history_api_v1_detected_documents__document_id__interpretations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterpretationHistoryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Interpretation History",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
+    "/api/v1/detected-documents/{document_id}/refresh-extraction": {
+      "post": {
+        "operationId": "refresh_extraction_api_v1_detected_documents__document_id__refresh_extraction_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectedDocumentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refresh Extraction",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/detected-documents/{document_id}/review": {
       "get": {
         "operationId": "get_document_review_api_v1_detected_documents__document_id__review_get",
@@ -10573,6 +12749,23 @@
             "schema": {
               "title": "Document Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "generation",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Generation"
             }
           }
         ],
@@ -10907,6 +13100,23 @@
             "schema": {
               "title": "Form Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {
@@ -11467,6 +13677,24 @@
       "post": {
         "description": "Create an intake draft. The exact instrument is chosen later, by a lawyer.",
         "operationId": "create_matter_api_v1_matters_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -11600,6 +13828,62 @@
           }
         ],
         "summary": "Read Session",
+        "tags": [
+          "matter-agent"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/agent/actions/{action_id}": {
+      "get": {
+        "operationId": "read_action_api_v1_matters__matter_id__agent_actions__action_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action_id",
+            "required": true,
+            "schema": {
+              "title": "Action Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Action",
         "tags": [
           "matter-agent"
         ]
@@ -11825,6 +14109,133 @@
         ]
       }
     },
+    "/api/v1/matters/{matter_id}/agent/jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_job_api_v1_matters__matter_id__agent_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__JobRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Retry Job",
+        "tags": [
+          "matter-agent"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/agent/latest-job": {
+      "get": {
+        "operationId": "latest_job_api_v1_matters__matter_id__agent_latest_job_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__JobRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Latest Job Api V1 Matters  Matter Id  Agent Latest Job Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Latest Job",
+        "tags": [
+          "matter-agent"
+        ]
+      }
+    },
     "/api/v1/matters/{matter_id}/agent/messages": {
       "get": {
         "description": "The authoritative transcript. Served from Neon, never from a provider.",
@@ -11974,6 +14385,93 @@
           }
         ],
         "summary": "Send Message",
+        "tags": [
+          "matter-agent"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/agent/send-receipt": {
+      "get": {
+        "operationId": "send_receipt_api_v1_matters__matter_id__agent_send_receipt_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "conversationId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Conversationid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SendReceiptRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Send Receipt Api V1 Matters  Matter Id  Agent Send Receipt Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Send Receipt",
         "tags": [
           "matter-agent"
         ]
@@ -12164,6 +14662,22 @@
           },
           {
             "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
             "name": "If-Match",
             "required": false,
             "schema": {
@@ -12303,6 +14817,38 @@
               "title": "Item Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
           }
         ],
         "requestBody": {
@@ -12369,6 +14915,22 @@
             "schema": {
               "title": "Item Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {
@@ -12685,6 +15247,80 @@
         ]
       }
     },
+    "/api/v1/matters/{matter_id}/detected-documents": {
+      "post": {
+        "operationId": "create_document_group_api_v1_matters__matter_id__detected_documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectedDocumentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Document Group",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/matters/{matter_id}/document-inbox": {
       "get": {
         "description": "The review queue: files, the documents found in them, and the pairs.",
@@ -12840,7 +15476,6 @@
     },
     "/api/v1/matters/{matter_id}/facts": {
       "get": {
-        "description": "Return every live fact in a matter, including unconfirmed states.",
         "operationId": "list_facts_api_v1_matters__matter_id__facts_get",
         "parameters": [
           {
@@ -12850,6 +15485,34 @@
             "schema": {
               "title": "Matter Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
             }
           }
         ],
@@ -12881,6 +15544,333 @@
           }
         ],
         "summary": "List Facts",
+        "tags": [
+          "facts"
+        ]
+      },
+      "post": {
+        "operationId": "add_manual_fact_api_v1_matters__matter_id__facts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualFactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add Manual Fact",
+        "tags": [
+          "facts"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/facts/{fact_id}": {
+      "get": {
+        "operationId": "get_fact_api_v1_matters__matter_id__facts__fact_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fact_id",
+            "required": true,
+            "schema": {
+              "title": "Fact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Fact",
+        "tags": [
+          "facts"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/facts/{fact_id}/history": {
+      "get": {
+        "operationId": "fact_history_api_v1_matters__matter_id__facts__fact_id__history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fact_id",
+            "required": true,
+            "schema": {
+              "title": "Fact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactHistoryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Fact History",
+        "tags": [
+          "facts"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/facts/{fact_id}/{action}": {
+      "post": {
+        "description": "Review an existing scope; only associate accepts transactionId/subjectId.\n\nAssociate first, then accept the returned successor with its ETag and\nscopeToken. Other actions reject scope fields, including explicit nulls.",
+        "operationId": "decide_fact_api_v1_matters__matter_id__facts__fact_id___action__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "fact_id",
+            "required": true,
+            "schema": {
+              "title": "Fact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action",
+            "required": true,
+            "schema": {
+              "enum": [
+                "accept",
+                "correct",
+                "reject",
+                "associate"
+              ],
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewFactRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decide Fact",
         "tags": [
           "facts"
         ]
@@ -12972,6 +15962,23 @@
             "schema": {
               "title": "Matter Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -13389,6 +16396,53 @@
         ]
       }
     },
+    "/api/v1/matters/{matter_id}/readiness": {
+      "get": {
+        "operationId": "get_readiness_api_v1_matters__matter_id__readiness_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatterReadinessRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Readiness",
+        "tags": [
+          "checklist"
+        ]
+      }
+    },
     "/api/v1/matters/{matter_id}/registration-events": {
       "get": {
         "description": "Every recorded registry act on the matter, newest first.",
@@ -13672,6 +16726,22 @@
               "title": "Matter Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
           }
         ],
         "requestBody": {
@@ -13715,6 +16785,155 @@
         "tags": [
           "documents",
           "source-files"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/subjects": {
+      "get": {
+        "operationId": "list_subjects_api_v1_matters__matter_id__subjects_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_SubjectRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Subjects",
+        "tags": [
+          "matters",
+          "matter scope"
+        ]
+      },
+      "post": {
+        "operationId": "create_subject_api_v1_matters__matter_id__subjects_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubjectRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Subject",
+        "tags": [
+          "matters",
+          "matter scope"
         ]
       }
     },
@@ -13789,6 +17008,255 @@
         "summary": "Confirm Subtype",
         "tags": [
           "matters"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/transactions": {
+      "get": {
+        "operationId": "list_transactions_api_v1_matters__matter_id__transactions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_TransactionRead_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Transactions",
+        "tags": [
+          "matters",
+          "matter scope"
+        ]
+      },
+      "post": {
+        "operationId": "create_transaction_api_v1_matters__matter_id__transactions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Transaction",
+        "tags": [
+          "matters",
+          "matter scope"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/transactions/{transaction_id}/associations": {
+      "post": {
+        "operationId": "associate_transaction_api_v1_matters__matter_id__transactions__transaction_id__associations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Associate Transaction",
+        "tags": [
+          "matters",
+          "matter scope"
         ]
       }
     },
@@ -16302,6 +19770,34 @@
         ]
       }
     },
+    "/api/v1/rta/fact-types": {
+      "get": {
+        "operationId": "get_fact_types_api_v1_rta_fact_types_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Fact Types Api V1 Rta Fact Types Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Fact Types",
+        "tags": [
+          "rta-rule-pack"
+        ]
+      }
+    },
     "/api/v1/rta/forms": {
       "get": {
         "operationId": "get_forms_api_v1_rta_forms_get",
@@ -16537,6 +20033,96 @@
         ]
       }
     },
+    "/api/v1/source-files/{source_file_id}/page-dispositions": {
+      "post": {
+        "operationId": "decide_page_disposition_api_v1_source_files__source_file_id__page_dispositions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_file_id",
+            "required": true,
+            "schema": {
+              "title": "Source File Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageDispositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceFileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decide Page Disposition",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/source-files/{source_file_id}/process": {
       "post": {
         "description": "Run the pipeline over one stored file and report what it did.\n\nThe response is a terminal run envelope, not a promise. With no provider\nconfigured, or with the data-protection gate closed, ``state`` is ``failed``\nwith ``failureReason`` ``NOT_CONFIGURED`` / ``DATA_PROTECTION_GATE`` — the\nfile stays readable and honestly unprocessed.",
@@ -16549,6 +20135,22 @@
             "schema": {
               "title": "Source File Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {
@@ -16602,6 +20204,54 @@
         ]
       }
     },
+    "/api/v1/source-files/{source_file_id}/processing": {
+      "get": {
+        "operationId": "get_source_processing_status_api_v1_source_files__source_file_id__processing_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_file_id",
+            "required": true,
+            "schema": {
+              "title": "Source File Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceProcessingStatusRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Source Processing Status",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/source-files/{source_file_id}/supersede": {
       "post": {
         "description": "Record that a newer upload replaces this one. The row and bytes stay.",
@@ -16614,6 +20264,22 @@
             "schema": {
               "title": "Source File Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {

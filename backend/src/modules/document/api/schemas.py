@@ -12,8 +12,13 @@ them would force the server to pick a lie.
 
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+from src.modules.content_governance.contracts import ProcessingFailureReason, SourceFileState
 
 
 class _CamelModel(BaseModel):
@@ -104,6 +109,35 @@ class SourceFileListRead(_CamelModel):
     page: PageInfo
 
 
+class ProcessingPageOutcomeRead(_CamelModel):
+    page_no: int
+    quality_status: Literal["normal", "likely_blank", "ocr_sparse", "ocr_failed"]
+    rotation_status: Literal["not_required", "applied", "rotation_uncertain"]
+
+
+class LatestProcessingRunRead(_CamelModel):
+    """Read-only running or terminal summary over persisted run/page records."""
+
+    job_id: str
+    state: Literal["running", "succeeded", "failed"]
+    outcome: SourceFileState
+    provider: str
+    reasons: list[str]
+    failure_reason: ProcessingFailureReason | None
+    failure_explanation_key: str | None
+    pages_processed: int
+    ai_extraction_calls: int
+    started_at: str
+    finished_at: str | None
+    page_outcomes: list[ProcessingPageOutcomeRead]
+    manual_review_required: bool
+
+
+class SourceProcessingStatusRead(_CamelModel):
+    source_file: SourceFileRead
+    latest_run: LatestProcessingRunRead | None
+
+
 class DocumentFragmentRead(_CamelModel):
     id: str
     source_file_id: str
@@ -134,6 +168,22 @@ class DetectedDocumentRead(_CamelModel):
     created_at: str
     updated_at: str
     version: int
+    interpretation_generation: int = 1
+    extraction_state: str = "current"
+    latest_refresh_run_id: str | None = None
+    refresh_failure_reason: str | None = None
+
+
+class PageAccountingRead(_CamelModel):
+    source_file_id: str
+    page_count: int | None
+    unclaimed_page_numbers: list[int]
+    overlapping_page_numbers: list[int]
+    blank_page_numbers: list[int]
+    unsupported_page_numbers: list[int]
+    out_of_bounds_page_numbers: list[int] = Field(default_factory=list)
+    complete: bool
+    manual_review_required: bool
 
 
 class DocumentInboxRead(_CamelModel):
@@ -148,6 +198,7 @@ class DocumentInboxRead(_CamelModel):
     #: Stored, processing, or failed — never quietly counted as done.
     unprocessed_source_file_ids: list[str]
     page: PageInfo
+    page_accounting: list[PageAccountingRead] = Field(default_factory=list)
 
 
 class PageCandidateRead(_CamelModel):
@@ -212,7 +263,24 @@ class FragmentRangeInput(_StrictCamel):
     source_file_id: str
     page_start: int = Field(ge=1)
     page_end: int = Field(ge=1)
-    order_in_document: int = Field(default=0, ge=0)
+    order_in_document: int | None = Field(default=None, ge=0)
+
+
+class RetireDocumentInput(_StrictCamel):
+    document_id: str
+    version: int = Field(ge=1)
+
+
+class CreateGroupRequest(_StrictCamel):
+    fragments: list[FragmentRangeInput] = Field(min_length=1)
+    class_id: str | None = None
+
+
+class PageDispositionRequest(_StrictCamel):
+    page_number: int = Field(ge=1)
+    disposition: Literal["blank", "unsupported", "review_required"]
+    reason: str = Field(min_length=1, max_length=2000)
+    retire_documents: list[RetireDocumentInput] = Field(default_factory=list)
 
 
 class BoundaryDecisionRequest(_StrictCamel):
@@ -224,6 +292,7 @@ class BoundaryDecisionRequest(_StrictCamel):
 
     fragments: list[FragmentRangeInput] = Field(min_length=1)
     note: str | None = None
+    retire_documents: list[RetireDocumentInput] = Field(default_factory=list)
 
 
 class ClassificationDecisionRequest(_StrictCamel):
@@ -244,6 +313,7 @@ class ReviewPageRead(_CamelModel):
     classification_confidence: float
     image_url: str
     ocr_url: str
+    source_file_id: str | None = None
 
 
 class ReviewCandidateRead(_CamelModel):
@@ -265,7 +335,34 @@ class DocumentReviewRead(_CamelModel):
     suggested_name: str | None
     pages: list[ReviewPageRead]
     candidates: list[ReviewCandidateRead]
+    interpretation_generation: int = 1
+    current: bool = False
 
 
 class CandidateEditRequest(_StrictCamel):
     value: str
+
+
+class InterpretationSnapshotRead(_CamelModel):
+    generation: int
+    class_id: str | None
+    fragments: list[FragmentRangeInput]
+    actor_id: str | None
+    created_at: datetime
+
+
+class InterpretationRunRead(_CamelModel):
+    id: str
+    generation: int
+    outcome: str
+    reasons: list[str]
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class InterpretationHistoryRead(_CamelModel):
+    document_id: str
+    matter_id: str
+    current_generation: int
+    snapshots: list[InterpretationSnapshotRead]
+    refresh_runs: list[InterpretationRunRead]

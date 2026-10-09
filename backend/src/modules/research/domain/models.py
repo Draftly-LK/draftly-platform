@@ -104,10 +104,17 @@ class ResearchJob:
     failure_class: str | None = None
 
 
+class RetrievalStatus(str, Enum):
+    COMPLETE = "complete"
+    UNAVAILABLE = "unavailable"
+
+
 @dataclass(frozen=True)
 class SearchResult:
     passages: list[RetrievalPassage] = field(default_factory=list)
     degraded_channels: list[str] = field(default_factory=list)
+    status: RetrievalStatus = RetrievalStatus.COMPLETE
+    corpus_version: str | None = None
 
 
 @dataclass(frozen=True)

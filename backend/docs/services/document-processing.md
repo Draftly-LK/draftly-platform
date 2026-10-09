@@ -89,6 +89,12 @@ Classify all pages of an upload in a single Gemini 2.5 Flash-Lite call, not one
 call per page. Supply the document types expected from the matter checklist and
 ask for one row per page.
 
+The October 2026 platform intake path offers the governed document catalogue
+independently of checklist routing. A new matter can therefore produce supported
+candidates before a subtype or form is selected. Recognition does not imply an
+extraction schema or evidence sufficiency; see the intake contract in
+[document-service.md](document-service.md#canonical-fact-register-contract-2026-10-09).
+
 For each page the model returns:
 
 - `type_id`, a checklist type or `other`
@@ -222,6 +228,16 @@ when there is evidence for one. Do not build the ladder before that evidence
 exists.
 
 ## Evidence and limits
+
+The October 2026 lawyer-led workflow records per-logical-document extraction
+outcomes separately from successful source processing. A group is current only
+after its extraction call completed; failed, unsupported and unavailable groups
+remain explicit. Reprocessing an original preserves organized groups and their
+history, invalidates their previous interpretation eligibility, and requires
+explicit refresh from the confirmed grouping. See
+[document-service.md](document-service.md#october-2026-interpretation-and-page-accounting-implementation)
+for correction, cached-OCR refresh, replay and rollback contracts. A source
+success or an old run ID alone never proves current interpretation success.
 
 The measurements above come from `ocr-benchmark/` in this repo, over one matter:
 7 uploaded files and 26 pages, of which 4 files carry gold labels totalling 37

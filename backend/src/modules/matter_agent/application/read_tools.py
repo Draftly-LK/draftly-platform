@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from src.modules.matter_agent.domain.allowlist import TOOL_ALLOWLIST
+from src.modules.matter_agent.domain.models import AgentCitation
 from src.modules.matter_agent.ports import ToolDeclaration, ToolInvocation, ToolResult
 from src.platform.errors import DraftlyError
 
@@ -39,7 +40,12 @@ def _declaration(name: str, properties: dict[str, Any], required: list[str]) -> 
     return ToolDeclaration(
         name=name,
         description=TOOL_ALLOWLIST[name].summary,
-        parameters={"type": "object", "properties": properties, "required": required},
+        parameters={
+            "type": "object",
+            "properties": properties,
+            "required": required,
+            "additionalProperties": False,
+        },
     )
 
 
@@ -95,10 +101,15 @@ class ReadChecklistStateTool(_BaseTool):
 
     name = "read_checklist_state"
 
-    def __init__(self, checklist: ChecklistReadPort) -> None:
+    def __init__(self, checklist: ChecklistReadPort, matters: Any = None) -> None:
         self._checklist = checklist
+        self._matters = matters
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
+        if self._matters is not None:
+            from src.modules.content_governance.contracts import CAP_CHECKLIST_DECIDE
+
+            await require_tool_rta(invocation, self._matters, CAP_CHECKLIST_DECIDE)
         data = await self._checklist.checklist_for_agent(
             user_id=invocation.actor_id, matter_id=invocation.matter_id
         )
@@ -115,14 +126,16 @@ class ReadChecklistStateTool(_BaseTool):
 
 
 class DocumentReadPort(Protocol):
-    async def documents_for_agent(self, *, user_id: str, matter_id: str) -> dict[str, Any]: ...
+    async def documents_for_agent(
+        self, *, user_id: str, matter_id: str, cursor: str | None = None
+    ) -> dict[str, Any]: ...
 
     async def extraction_for_agent(
-        self, *, user_id: str, detected_document_id: str
+        self, *, user_id: str, matter_id: str, detected_document_id: str
     ) -> dict[str, Any]: ...
 
     async def ocr_pages_for_agent(
-        self, *, user_id: str, detected_document_id: str, page_no: int | None
+        self, *, user_id: str, matter_id: str, detected_document_id: str, page_no: int | None
     ) -> dict[str, Any]: ...
 
 
@@ -130,17 +143,22 @@ class ReadDocumentStatusTool(_BaseTool):
     """Source files and their processing state."""
 
     name = "read_document_status"
+    properties = {
+        "cursor": {"type": "string", "description": "Next cursor from a previous source page."}
+    }
 
     def __init__(self, documents: DocumentReadPort) -> None:
         self._documents = documents
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         data = await self._documents.documents_for_agent(
-            user_id=invocation.actor_id, matter_id=invocation.matter_id
+            user_id=invocation.actor_id,
+            matter_id=invocation.matter_id,
+            cursor=invocation.arguments.get("cursor"),
         )
         sources = data.get("sourceFiles", [])
         return ToolResult(
-            summary=f"{len(sources)} source files on this matter.",
+            summary=f"Read a page of {len(sources)} source files; hasMore indicates incomplete inventory.",
             payload=data,
             resource_refs=tuple(
                 str(item.get("sourceFileId")) for item in sources if item.get("sourceFileId")
@@ -165,7 +183,9 @@ class ReadDocumentExtractionTool(_BaseTool):
         if not document_id:
             return ToolResult(summary="No document id was supplied.")
         data = await self._documents.extraction_for_agent(
-            user_id=invocation.actor_id, detected_document_id=document_id
+            user_id=invocation.actor_id,
+            matter_id=invocation.matter_id,
+            detected_document_id=document_id,
         )
         candidates = data.get("candidates", [])
         return ToolResult(
@@ -174,6 +194,17 @@ class ReadDocumentExtractionTool(_BaseTool):
                 "All unverified until a lawyer approves them."
             ),
             payload=data,
+            citations=tuple(
+                AgentCitation(
+                    source_id=f"{document_id}-page-{page['pageNo']}",
+                    source_type="document",
+                    label=f"Page {page['pageNo']}",
+                    verification_status="unverified",
+                    source_file_id=page.get("sourceFileId"),
+                    page=page["pageNo"],
+                )
+                for page in data.get("pages", [])
+            ),
             resource_refs=(
                 document_id,
                 *(str(item.get("candidateId")) for item in candidates if item.get("candidateId")),
@@ -210,6 +241,7 @@ class ReadDocumentOcrPagesTool(_BaseTool):
 
         data = await self._documents.ocr_pages_for_agent(
             user_id=invocation.actor_id,
+            matter_id=invocation.matter_id,
             detected_document_id=document_id,
             page_no=page_no,
         )
@@ -222,6 +254,7 @@ class ReadDocumentOcrPagesTool(_BaseTool):
                 {
                     "pageNo": page.get("pageNo"),
                     "truncated": truncated,
+                    "available": bool(page.get("available", False)),
                     "text": untrusted(text[:MAX_OCR_CHARS]),
                 }
             )
@@ -229,6 +262,18 @@ class ReadDocumentOcrPagesTool(_BaseTool):
             # Never quotes the OCR: the summary is what may enter memory.
             summary=f"Read OCR for {len(fenced)} page(s) of document {document_id}.",
             payload={"documentId": document_id, "pages": fenced},
+            citations=tuple(
+                AgentCitation(
+                    source_id=f"{document_id}-page-{page['pageNo']}",
+                    source_type="document",
+                    label=f"Page {page['pageNo']}",
+                    verification_status="unverified",
+                    source_file_id=page.get("sourceFileId"),
+                    page=page["pageNo"],
+                )
+                for page in pages
+                if page.get("available")
+            ),
             resource_refs=(document_id,),
         )
 
@@ -264,24 +309,31 @@ class ReadVerifiedFactsTool(_BaseTool):
 
 
 class DraftReadPort(Protocol):
-    async def drafts_for_agent(self, *, user_id: str, matter_id: str) -> dict[str, Any]: ...
+    async def drafts_for_agent(
+        self, *, user_id: str, matter_id: str, cursor: str | None = None
+    ) -> dict[str, Any]: ...
 
 
 class ReadDraftPreflightTool(_BaseTool):
     """Working forms and their preflight state."""
 
     name = "read_draft_preflight"
+    properties = {
+        "cursor": {"type": "string", "description": "Next cursor from a previous forms page."}
+    }
 
     def __init__(self, drafts: DraftReadPort) -> None:
         self._drafts = drafts
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         data = await self._drafts.drafts_for_agent(
-            user_id=invocation.actor_id, matter_id=invocation.matter_id
+            user_id=invocation.actor_id,
+            matter_id=invocation.matter_id,
+            cursor=invocation.arguments.get("cursor"),
         )
         forms = data.get("forms", [])
         return ToolResult(
-            summary=f"{len(forms)} working forms on this matter.",
+            summary=f"Read {len(forms)} existing working forms. Preflight is not evaluated by this tool.",
             payload=data,
             resource_refs=tuple(str(item.get("formId")) for item in forms if item.get("formId")),
         )
@@ -363,3 +415,19 @@ class ListMatterInventoryTool(_BaseTool):
                 if item.get("sourceFileId")
             ),
         )
+
+
+async def require_tool_rta(invocation: ToolInvocation, matters: Any, capability: str) -> Any:
+    from src.modules.matter.contracts import require_rta_capability
+    from src.platform.errors import NotFoundError
+
+    matter = await matters.get_access_summary(invocation.actor_id, invocation.matter_id)
+    if matter is None or invocation.context is None:
+        raise NotFoundError()
+    require_rta_capability(
+        account_role=invocation.context.account_role.value,
+        actor_id=invocation.actor_id,
+        matter=matter,
+        capability=capability,
+    )
+    return matter

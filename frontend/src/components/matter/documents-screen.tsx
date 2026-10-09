@@ -1,6 +1,14 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, ChevronRight, File, FileWarning, LoaderCircle, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  File,
+  FileWarning,
+  LoaderCircle,
+  Upload,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { humanizeMessageKey } from "@/lib/i18n/humanize";
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
@@ -9,8 +17,22 @@ import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button, buttonClass } from "@/components/ui/button";
-import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
-import { getDocumentInbox, uploadSourceFile } from "@/lib/api/documents";
+import {
+  isApiEnabled,
+  type TokenProvider,
+  apiErrorMessage,
+} from "@/lib/api/client";
+import {
+  getCompleteDocumentInbox,
+  uploadSourceFile,
+} from "@/lib/api/documents";
+import { getMe } from "@/lib/api/auth";
+import {
+  pendingUploadIntent,
+  clearManualIntent,
+} from "@/lib/api/mutation-intent";
+import { RequirementsPanel } from "./requirements-panel";
+import { PageRecovery } from "./page-recovery";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { ApiDocumentInbox } from "@/types/rta";
 
@@ -42,9 +64,11 @@ function DocumentsFlow({
 }) {
   const t = useTranslations("documents");
   const tProcessing = useTranslations("processing");
+  const tClassification = useTranslations("classificationReview");
   const fileStateLabel = useEnumLabel("enums.sourceFileState");
   const boundaryLabel = useEnumLabel("enums.boundaryStatus");
-  const classLabel = (id: string) => humanizeMessageKey(id.split(".").pop() ?? id);
+  const classLabel = (id: string) =>
+    humanizeMessageKey(id.split(".").pop() ?? id);
   const [inbox, setInbox] = useState<ApiDocumentInbox | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +81,7 @@ function DocumentsFlow({
     if (refresh === 0) setLoading(true);
     setError(null);
 
-    getDocumentInbox(getToken, matterId)
+    getCompleteDocumentInbox(getToken, matterId)
       .then((result) => {
         if (!cancelled) setInbox(result);
       })
@@ -93,7 +117,10 @@ function DocumentsFlow({
         <div className="p-6">
           <div className="border-red bg-red-bg text-red rounded border p-4">
             <div className="flex items-start gap-2">
-              <AlertCircle className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} />
+              <AlertCircle
+                className="mt-0.5 size-5 shrink-0"
+                strokeWidth={1.5}
+              />
               <p className="text-sm">{error}</p>
             </div>
           </div>
@@ -117,34 +144,60 @@ function DocumentsFlow({
 
   return (
     <AppShell matterId={matterId}>
-      <PageHeader title={t("title")} description={t("description")} action={upload} />
+      <PageHeader
+        title={t("title")}
+        description={t("description")}
+        action={upload}
+      />
       <div className="p-6">
         <p className="text-muted-ink -mt-2 mb-4 text-xs">{t("uploadHint")}</p>
         <div aria-live="polite">
           {uploadStatus ? (
             <p
               role={uploadStatus.tone === "error" ? "alert" : undefined}
-              className={`mb-4 flex items-start gap-2 rounded-card border p-3 text-sm ${uploadStatus.tone === "error" ? "border-red bg-red-bg text-red" : "border-border bg-surface"}`}
+              className={`rounded-card mb-4 flex items-start gap-2 border p-3 text-sm ${uploadStatus.tone === "error" ? "border-red bg-red-bg text-red" : "border-border bg-surface"}`}
             >
               {uploadStatus.tone === "busy" ? (
-                <LoaderCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 animate-spin" strokeWidth={1.5} />
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0 animate-spin"
+                  strokeWidth={1.5}
+                />
               ) : uploadStatus.tone === "error" ? (
-                <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+                <AlertCircle
+                  aria-hidden="true"
+                  className="mt-0.5 size-4 shrink-0"
+                  strokeWidth={1.5}
+                />
               ) : (
-                <CheckCircle2 aria-hidden="true" className="text-teal mt-0.5 size-4 shrink-0" strokeWidth={1.5} />
+                <CheckCircle2
+                  aria-hidden="true"
+                  className="text-teal mt-0.5 size-4 shrink-0"
+                  strokeWidth={1.5}
+                />
               )}
               <span>{uploadStatus.text}</span>
             </p>
           ) : null}
         </div>
         {inbox.sourceFiles.length === 0 ? (
-          <div className="border-border bg-surface mb-6 rounded-card border p-6 text-center">
-            <Upload aria-hidden="true" className="text-forest mx-auto size-6" strokeWidth={1.5} />
+          <div className="border-border bg-surface rounded-card mb-6 border p-6 text-center">
+            <Upload
+              aria-hidden="true"
+              className="text-forest mx-auto size-6"
+              strokeWidth={1.5}
+            />
             <p className="mt-2 font-medium">{t("emptyFiles")}</p>
           </div>
         ) : null}
+        <PageRecovery
+          getToken={getToken}
+          inbox={inbox}
+          onChange={() => setRefresh((value) => value + 1)}
+        />
+        <div className="my-6"><RequirementsPanel matterId={matterId} getToken={getToken} mode="documents" /></div>
         {/* Summary bar */}
-        <div className="border-border bg-surface mb-6 grid grid-cols-2 gap-4 rounded-card border p-4 text-center sm:grid-cols-3 lg:grid-cols-5">
+        <div className="border-border bg-surface rounded-card mb-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,12em),1fr))] gap-4 border p-4 text-center [&>div]:min-w-0 [&>div]:break-words">
           <div>
             <p className="text-muted-ink text-xs font-semibold">
               {t("totalDocuments", { count: inbox.documents.length })}
@@ -153,7 +206,9 @@ function DocumentsFlow({
           </div>
           <div>
             <p className="text-muted-ink text-xs font-semibold">
-              {t("boundaryReview", { count: inbox.boundaryReviewDocumentIds.length })}
+              {t("boundaryReview", {
+                count: inbox.boundaryReviewDocumentIds.length,
+              })}
             </p>
             <p className="text-2xl font-semibold">
               {inbox.boundaryReviewDocumentIds.length}
@@ -171,7 +226,9 @@ function DocumentsFlow({
           </div>
           <div>
             <p className="text-muted-ink text-xs font-semibold">
-              {t("unidentified", { count: inbox.unidentifiedDocumentIds.length })}
+              {t("unidentified", {
+                count: inbox.unidentifiedDocumentIds.length,
+              })}
             </p>
             <p className="text-2xl font-semibold">
               {inbox.unidentifiedDocumentIds.length}
@@ -179,7 +236,9 @@ function DocumentsFlow({
           </div>
           <div>
             <p className="text-muted-ink text-xs font-semibold">
-              {t("unprocessed", { count: inbox.unprocessedSourceFileIds.length })}
+              {t("unprocessed", {
+                count: inbox.unprocessedSourceFileIds.length,
+              })}
             </p>
             <p className="text-2xl font-semibold">
               {inbox.unprocessedSourceFileIds.length}
@@ -193,11 +252,18 @@ function DocumentsFlow({
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="font-medium">
-                  {t("waitingToProcess", { count: inbox.unprocessedSourceFileIds.length })}
+                  {t("waitingToProcess", {
+                    count: inbox.unprocessedSourceFileIds.length,
+                  })}
                 </p>
-                <p className="text-muted-ink text-sm">{t("waitingToProcessBody")}</p>
+                <p className="text-muted-ink text-sm">
+                  {t("waitingToProcessBody")}
+                </p>
               </div>
-              <Link href={`/matters/${matterId}/processing`} className={buttonClass("primary")}>
+              <Link
+                href={`/matters/${matterId}/processing`}
+                className={buttonClass("primary")}
+              >
                 {tProcessing("readyToProcess")}
                 <ChevronRight className="size-4" strokeWidth={1.5} />
               </Link>
@@ -211,10 +277,10 @@ function DocumentsFlow({
             <h2 className="text-muted-ink mb-3 text-xs font-semibold">
               {t("documentTable")}
             </h2>
-            <div className="border-border bg-surface overflow-hidden rounded-card border">
+            <div className="border-border bg-surface rounded-card overflow-hidden border">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px] border-collapse text-left">
-                  <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
+                <table className="block w-full border-collapse text-left xl:table xl:table-fixed [&_td]:break-words [&_th]:break-words">
+                  <thead className="bg-canvas text-muted-ink sticky top-0 z-10 hidden text-xs xl:table-header-group">
                     <tr className="border-border h-10 border-b">
                       <th className="px-3">{t("documentId")}</th>
                       <th className="px-3">{t("classification")}</th>
@@ -224,57 +290,98 @@ function DocumentsFlow({
                       <th className="px-3">{t("actions")}</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="block xl:table-row-group">
                     {inbox.documents.map((doc) => {
                       const needsClassification =
                         inbox.classificationReviewDocumentIds.includes(doc.id);
-                      const needsBoundary = inbox.boundaryReviewDocumentIds.includes(
-                        doc.id
-                      );
-                      const needsReview = needsClassification || needsBoundary;
+                      const needsBoundary =
+                        inbox.boundaryReviewDocumentIds.includes(doc.id);
+                      const needsReview =
+                        needsClassification ||
+                        needsBoundary ||
+                        doc.extractionState !== "current";
 
                       return (
                         <tr
                           key={doc.id}
-                          className={`border-border h-11 border-b last:border-b-0 ${needsReview ? "hover:bg-hover-bg" : ""}`}
+                          className={`border-border grid min-h-11 grid-cols-2 border-b last:border-b-0 xl:table-row ${needsReview ? "hover:bg-hover-bg" : ""}`}
                         >
-                          <td className="px-3">
+                          <td className="block p-3 xl:table-cell">
+                            <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                              {t("documentId")}
+                            </span>
                             <span className="flex items-center gap-2">
-                              <File className="size-4 shrink-0" strokeWidth={1.5} />
-                              <span className="text-sm">{doc.id.slice(0, 8)}</span>
+                              <File
+                                className="size-4 shrink-0"
+                                strokeWidth={1.5}
+                              />
+                              <span className="text-sm">
+                                {doc.id.slice(0, 8)}
+                              </span>
                             </span>
                           </td>
-                          <td className="px-3">
-                            <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
+                          <td className="block p-3 xl:table-cell">
+                            <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                              {t("classification")}
+                            </span>
+                            <span className="border-border-strong bg-surface inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
                               {doc.classId
                                 ? classLabel(doc.classId)
                                 : t("unidentifiedClass")}
                             </span>
                           </td>
-                          <td className="px-3">
-                            <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
+                          <td className="block p-3 xl:table-cell">
+                            <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                              {t("boundary")}
+                            </span>
+                            <span className="border-border-strong bg-surface inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
                               {boundaryLabel(doc.boundaryStatus)}
                             </span>
+                            {doc.extractionState !== "current" && (
+                              <p className="text-amber-text mt-2 flex items-start gap-1 text-xs">
+                                <AlertCircle
+                                  className="size-4 shrink-0"
+                                  aria-hidden="true"
+                                />
+                                {tClassification(
+                                  `extraction.${doc.extractionState ?? "unavailable"}`,
+                                )}
+                              </p>
+                            )}
                           </td>
-                          <td className="px-3 text-sm">
-                            {doc.fragments.length}
+                          <td className="block p-3 text-sm xl:table-cell">
+                            <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                              {t("pages")}
+                            </span>
+                            {doc.fragments.reduce(
+                              (total, range) =>
+                                total + range.pageEnd - range.pageStart + 1,
+                              0,
+                            )}
                           </td>
-                          <td className="px-3 text-sm">
+                          <td className="block p-3 text-sm xl:table-cell">
+                            <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                              {t("multipleSource")}
+                            </span>
                             {doc.spansMultipleSources ? t("yes") : t("no")}
                           </td>
-                          <td className="px-3">
-                            {needsReview ? (
-                              <Link
-                                href={`/matters/${matterId}/documents/${doc.id}/review`}
-                              >
-                                <Button>
-                                  {t("reviewAction")}
-                                  <ChevronRight className="size-4" strokeWidth={1.5} />
-                                </Button>
-                              </Link>
-                            ) : (
-                              <span className="text-muted-ink text-sm">—</span>
-                            )}
+                          <td className="block p-3 xl:table-cell">
+                            <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                              {t("actions")}
+                            </span>
+                            <Link
+                              className={
+                                buttonClass("secondary", "sm") +
+                                " max-w-full flex-wrap"
+                              }
+                              href={`/matters/${matterId}/documents/${doc.id}/review`}
+                            >
+                              {t("reviewAction")}
+                              <ChevronRight
+                                className="size-4 shrink-0"
+                                strokeWidth={1.5}
+                              />
+                            </Link>
                           </td>
                         </tr>
                       );
@@ -292,38 +399,53 @@ function DocumentsFlow({
             <h2 className="text-muted-ink mb-3 text-xs font-semibold">
               {t("sourceFilesSection")}
             </h2>
-            <div className="border-border bg-surface overflow-hidden rounded-card border">
+            <div className="border-border bg-surface rounded-card overflow-hidden border">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px] border-collapse text-left text-sm">
-                  <thead className="bg-canvas text-muted-ink sticky top-0 z-10 text-xs">
+                <table className="block w-full border-collapse text-left text-sm xl:table xl:table-fixed [&_td]:break-words [&_th]:break-words">
+                  <thead className="bg-canvas text-muted-ink sticky top-0 z-10 hidden text-xs xl:table-header-group">
                     <tr className="border-border h-10 border-b">
                       <th className="px-3">{t("sourceFileName")}</th>
                       <th className="px-3">{t("sourceFileState")}</th>
                       <th className="px-3">{t("pages")}</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="block xl:table-row-group">
                     {inbox.sourceFiles.map((file) => (
                       <tr
                         key={file.id}
-                        className="border-border h-11 border-b last:border-b-0"
+                        className="border-border grid min-h-11 grid-cols-2 border-b last:border-b-0 xl:table-row"
                       >
-                        <td className="px-3">
+                        <td className="block p-3 xl:table-cell">
+                          <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                            {t("sourceFileName")}
+                          </span>
                           <span className="flex items-center gap-2">
                             {file.state === "PROCESSING_FAILED" ? (
-                              <FileWarning className="size-4 shrink-0" strokeWidth={1.5} />
+                              <FileWarning
+                                className="size-4 shrink-0"
+                                strokeWidth={1.5}
+                              />
                             ) : (
-                              <File className="size-4 shrink-0" strokeWidth={1.5} />
+                              <File
+                                className="size-4 shrink-0"
+                                strokeWidth={1.5}
+                              />
                             )}
                             <span>{file.originalFilename}</span>
                           </span>
                         </td>
-                        <td className="px-3">
-                          <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-border-strong bg-surface px-2 py-1 text-xs font-semibold">
+                        <td className="block p-3 xl:table-cell">
+                          <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                            {t("sourceFileState")}
+                          </span>
+                          <span className="border-border-strong bg-surface inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
                             {fileStateLabel(file.state)}
                           </span>
                         </td>
-                        <td className="px-3">
+                        <td className="block p-3 xl:table-cell">
+                          <span className="text-muted-ink block text-xs font-semibold xl:hidden">
+                            {t("pages")}
+                          </span>
                           {file.pageCount || "—"}
                         </td>
                       </tr>
@@ -363,6 +485,8 @@ function UploadDocuments({
   onUploaded: () => void;
 }) {
   const t = useTranslations("documents");
+  const retryText = useTranslations("documentOperations");
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -374,7 +498,11 @@ function UploadDocuments({
     let reason: string | null = null;
     for (const file of files) {
       try {
-        await uploadSourceFile(getToken, matterId, file);
+        const actor = await getMe(getToken);
+        const intent = await pendingUploadIntent(actor.id, matterId, file);
+        setStorageUnavailable(!intent.persistent);
+        await uploadSourceFile(getToken, matterId, file, intent.key);
+        clearManualIntent(intent);
       } catch (cause: unknown) {
         failed += 1;
         reason = apiErrorMessage(cause, t("uploadFailed"));
@@ -385,13 +513,21 @@ function UploadDocuments({
     onStatus(
       failed === 0
         ? { tone: "done", text: t("uploadDone", { count: added }) }
-        : { tone: "error", text: `${t("uploadSomeFailed", { count: failed })} ${reason ?? ""}`.trim() },
+        : {
+            tone: "error",
+            text: `${t("uploadSomeFailed", { count: failed })} ${reason ?? ""}`.trim(),
+          },
     );
     if (added > 0) onUploaded();
   }
 
   return (
     <>
+      {storageUnavailable && (
+        <p role="status" className="text-amber-text max-w-sm text-sm">
+          {retryText("storageUnavailable")}
+        </p>
+      )}
       <input
         ref={input}
         type="file"
@@ -415,7 +551,11 @@ function UploadDocuments({
         onClick={() => input.current?.click()}
       >
         {busy ? (
-          <LoaderCircle aria-hidden="true" className="size-4 animate-spin" strokeWidth={1.5} />
+          <LoaderCircle
+            aria-hidden="true"
+            className="size-4 animate-spin"
+            strokeWidth={1.5}
+          />
         ) : (
           <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
         )}
@@ -432,7 +572,7 @@ function DocumentsUnavailable({ matterId }: { matterId: string }) {
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
         <div className="border-border bg-surface rounded-card border p-6">
-          <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
+          <AlertCircle className="text-amber-text size-5" strokeWidth={1.5} />
           <p className="mt-2 text-sm">{t("backendNotConfigured")}</p>
         </div>
       </div>

@@ -53,6 +53,9 @@ class CheckResult:
     #: §7.1 — a PASS on all but the mechanical completeness check still needs a
     #: lawyer's conclusion before it carries weight.
     requires_human_conclusion: bool = True
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    association_version: int | None = None
 
 
 @dataclass
@@ -77,6 +80,9 @@ class LegalIssue:
     resolution_decision_id: str | None = None
     resolution_reason: str | None = None
     version: int = 1
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    association_version: int | None = None
 
     @property
     def is_closed(self) -> bool:

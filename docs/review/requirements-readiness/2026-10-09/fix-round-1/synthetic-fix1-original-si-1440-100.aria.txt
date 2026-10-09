@@ -1,0 +1,74 @@
+- main:
+  - heading "Checks and missing evidence" [level=1]
+  - paragraph: Turn extraction conflicts and legal rules into lawyer-owned resolutions.
+  - region "අවශ්‍යතා සහ මානව සමාලෝචනය":
+    - heading "අවශ්‍යතා සහ මානව සමාලෝචනය" [level=2]
+    - paragraph: ලැබීම, සාක්ෂි සමාලෝචනය සහ මුල් පිටපත් පරීක්ෂාව වෙන වෙනම සටහන් වේ. සම්පූර්ණ වීම පවතින අවශ්‍යතා ප්‍රතිපත්තිය අනුව තීරණය වේ.
+    - list:
+      - listitem:
+        - button "Original title certificate inspected"
+        - paragraph: ලැබී ඇත · නීතිඥයා තහවුරු කර ඇත · තහවුරු නැත
+    - heading "Original title certificate inspected" [level=3]
+    - paragraph: සමාලෝචිත අනුවාදය 4
+    - term: ලැබීම
+    - definition: ලැබී ඇත
+    - term: සාක්ෂි සමාලෝචනය
+    - definition: නීතිඥයා තහවුරු කර ඇත
+    - term: භෞතික මුල් පිටපත
+    - definition: තහවුරු නැත
+    - term: කාලීන බව
+    - definition: කාලීනයි
+    - term: ගැළපීම
+    - definition: ගැළපේ
+    - button "නවතම අවශ්‍යතාව සමාලෝචනය කරන්න"
+    - text: පරීක්ෂා කළ ක්‍රමය
+    - textbox "පරීක්ෂා කළ ක්‍රමය": SYNTHETIC functional probe
+    - button "මුල් පිටපත් පරීක්ෂාව සටහන් කරන්න"
+    - text: සමාලෝචන අංශය
+    - combobox "සමාලෝචන අංශය":
+      - option "සාක්ෂි සමාලෝචනය" [selected]
+      - option "ගැළපීම"
+      - option "කාලීන බව"
+      - option "ලැබීම"
+    - text: තීරණය
+    - combobox "තීරණය":
+      - option "තීරණයක් තෝරන්න" [selected]
+      - option "නීතිඥයා තහවුරු කර ඇත"
+      - option "ප්‍රතික්ෂේප කර ඇත"
+    - text: හේතුව
+    - textbox "හේතුව"
+    - button "අවශ්‍යතා තීරණය සටහන් කරන්න" [disabled]
+    - group: පරීක්ෂණ සහ සාක්ෂි ඉතිහාසය
+  - region "ස්වයංක්‍රීය පරීක්ෂණ":
+    - heading "ස්වයංක්‍රීය පරීක්ෂණ" [level=2]
+    - paragraph: සමාලෝචිත ගනුදෙනුව සහ විෂය තෝරන්න. සෑම පරීක්ෂණයක්ම කරුණු අනුවාද සහ සම්බන්ධතා සංශෝධනය රඳවා ගනී. සමත් ප්‍රතිඵලයකටත් නීතිඥ නිගමනය අවශ්‍ය වේ.
+    - text: ගනුදෙනුව
+    - combobox "ගනුදෙනුව":
+      - option "ගනුදෙනුවක් තෝරන්න" [selected]
+      - option "ගනුදෙනුව 1"
+    - text: විෂය
+    - combobox "විෂය" [disabled]:
+      - option "ගනුදෙනු තොරතුරු පමණි" [selected]
+    - button "වත්මන් පරාසය සමාලෝචනය කරන්න"
+  - heading "Legal issues" [level=2]
+  - button "Run checks" [disabled]
+  - img
+  - paragraph: Issues could not be loaded. Try again.
+  - text: "Filter by severity:"
+  - combobox "Filter by severity:":
+    - option "All severities" [selected]
+    - option "Information"
+    - option "Warning"
+    - option "High risk"
+    - option "Blocking"
+  - text: "Filter by state:"
+  - combobox "Filter by state:":
+    - option "All states" [selected]
+    - option "Open"
+    - option "Triaged"
+    - option "Action required"
+    - option "Resolved"
+    - option "Accepted risk"
+    - option "False positive"
+    - option "Outside scope"
+  - paragraph: No issues found.

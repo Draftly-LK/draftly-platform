@@ -42,6 +42,7 @@ from src.modules.document.application.processing_service import (
 from src.modules.document.application.v1_pipeline import V1DocumentPipeline
 from src.modules.document.domain.errors import (
     ExtractionProviderError,
+    ExtractionProviderTimeoutError,
     SourceFileNotProcessableError,
     SourceObjectIntegrityError,
     UnsupportedDocumentError,
@@ -148,6 +149,10 @@ class SynchronousProcessingJob:
         except UnsupportedDocumentError:
             return self._failed(
                 source_file, started_at, ProcessingFailureReason.UNSUPPORTED_MEDIA, correlation_id
+            )
+        except ExtractionProviderTimeoutError:
+            return self._failed(
+                source_file, started_at, ProcessingFailureReason.TIMEOUT, correlation_id
             )
         except ExtractionProviderError:
             return self._failed(

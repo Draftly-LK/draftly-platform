@@ -11,26 +11,27 @@ import type { ApiDetectedDocument } from "@/types/rta";
 import { DocumentDecisions, isDocumentDecided } from "./document-decisions";
 import { ReviewNextStep } from "./review-next-step";
 import { SourceFilePreview } from "./source-file-preview";
+import { FactRegister } from "./fact-register";
 
 /**
- * Screen 7: Classification Review — NEW
- *
- * The fallback when processing produced no page review (the legacy pipeline):
- * the original file is shown beside the two decisions, what the document is
- * and which pages it spans, and the next document is offered once it is done.
- *
- * Note: There is no single "get one document" endpoint, so the decisions fetch
- * the entire inbox and find the document by ID.
+ * Review when no logical extraction exists. The original fragments, document
+ * decisions and canonical manual entries share the current interpretation.
  */
 export function ClassificationReviewScreen({
   matterId,
   documentId,
+  onChange,
 }: {
   matterId: string;
   documentId: string;
+  onChange?: (document: ApiDetectedDocument) => void;
 }) {
   return isApiEnabled() ? (
-    <ApiBoundClassificationReviewScreen matterId={matterId} documentId={documentId} />
+    <ApiBoundClassificationReviewScreen
+      matterId={matterId}
+      documentId={documentId}
+      onChange={onChange}
+    />
   ) : (
     <ClassificationReviewUnavailable matterId={matterId} />
   );
@@ -39,9 +40,11 @@ export function ClassificationReviewScreen({
 function ApiBoundClassificationReviewScreen({
   matterId,
   documentId,
+  onChange,
 }: {
   matterId: string;
   documentId: string;
+  onChange?: (document: ApiDetectedDocument) => void;
 }) {
   const getToken = useTokenProvider();
   return (
@@ -49,6 +52,7 @@ function ApiBoundClassificationReviewScreen({
       getToken={getToken}
       matterId={matterId}
       documentId={documentId}
+      onChange={onChange}
     />
   );
 }
@@ -57,10 +61,12 @@ function ClassificationReviewFlow({
   getToken,
   matterId,
   documentId,
+  onChange,
 }: {
   getToken: TokenProvider;
   matterId: string;
   documentId: string;
+  onChange?: (document: ApiDetectedDocument) => void;
 }) {
   const t = useTranslations("classificationReview");
   const [document, setDocument] = useState<ApiDetectedDocument | null>(null);
@@ -71,25 +77,49 @@ function ClassificationReviewFlow({
       <div className="p-4 sm:p-6">
         {/* The document beside the decisions about it: nothing is classified blind. */}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-          <section aria-label={t("previewSection")} className="min-w-0 space-y-4">
+          <section
+            aria-label={t("previewSection")}
+            className="min-w-0 space-y-4"
+          >
             {document ? (
               document.fragments.map((fragment) => (
                 <SourceFilePreview
                   key={fragment.id}
                   getToken={getToken}
+                  matterId={matterId}
                   sourceFileId={fragment.sourceFileId}
                   pageStart={fragment.pageStart}
                   pageEnd={fragment.pageEnd}
                 />
               ))
             ) : (
-              <div className="border-border-strong bg-canvas flex min-h-72 items-center justify-center rounded-card border">
-                <LoaderCircle aria-label={t("loadingPreview")} className="size-6 animate-spin" strokeWidth={1.5} />
+              <div className="border-border-strong bg-canvas rounded-card flex min-h-72 items-center justify-center border">
+                <LoaderCircle
+                  aria-label={t("loadingPreview")}
+                  className="size-6 animate-spin"
+                  strokeWidth={1.5}
+                />
               </div>
             )}
           </section>
-          <div className="min-w-0">
-            <DocumentDecisions getToken={getToken} matterId={matterId} documentId={documentId} onChange={setDocument} />
+          <div className="min-w-0 space-y-6">
+            <DocumentDecisions
+              getToken={getToken}
+              matterId={matterId}
+              documentId={documentId}
+              onChange={(value) => {
+                setDocument(value);
+                onChange?.(value);
+              }}
+            />
+            {document && (
+              <FactRegister
+                matterId={matterId}
+                documentId={documentId}
+                documentContext={document}
+                sourceRevision={document.version}
+              />
+            )}
           </div>
         </div>
         <ReviewNextStep
@@ -110,7 +140,7 @@ function ClassificationReviewUnavailable({ matterId }: { matterId: string }) {
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
         <div className="border-border bg-surface rounded-card border p-6">
-          <AlertCircle className="size-5 text-amber-text" strokeWidth={1.5} />
+          <AlertCircle className="text-amber-text size-5" strokeWidth={1.5} />
           <p className="mt-2 text-sm">{t("backendNotConfigured")}</p>
         </div>
       </div>

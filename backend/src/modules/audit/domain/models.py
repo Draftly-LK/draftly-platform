@@ -55,6 +55,7 @@ class AuditAction(str, enum.Enum):
 
     # Matter
     MATTER_CREATED = "matter.created"
+    MATTER_SCOPE_ASSOCIATED = "matter.scope-associated"
     MATTER_CLOSED = "matter.closed"
     MATTER_REOPENED = "matter.reopened"
     MATTER_RECLASSIFIED = "matter.reclassified"
@@ -113,6 +114,9 @@ class AuditAction(str, enum.Enum):
     RTA_DOCUMENT_BOUNDARY_DECIDED = "rta.document.boundary-decided"
     RTA_DOCUMENT_CLASSIFIED = "rta.document.classified"
     RTA_FACT_CONFIRMED = "rta.fact.confirmed"
+    RTA_FACT_ADDED = "rta.fact.added"
+    RTA_FACT_REJECTED = "rta.fact.rejected"
+    RTA_FACT_ASSOCIATED = "rta.fact.associated"
     RTA_FACT_CORRECTED = "rta.fact.corrected"
     RTA_CHECK_RUN = "rta.check.run"
     RTA_ISSUE_CREATED = "rta.issue.created"

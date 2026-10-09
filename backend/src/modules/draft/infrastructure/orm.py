@@ -16,6 +16,7 @@ reason a lawyer will act on.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -50,6 +51,9 @@ class GeneratedFormRow(Base):
     """One drafted instrument, pinned to the versions that produced it."""
 
     __tablename__ = "generated_forms"
+    scope: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    missing_causes: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    predecessor_form_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     __table_args__ = (
         UniqueConstraint(
             "matter_id",

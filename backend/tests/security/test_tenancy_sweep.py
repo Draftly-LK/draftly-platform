@@ -131,3 +131,27 @@ async def test_another_tenant_cannot_tell_the_matter_exists(
     assert SMOKE_MATTER_REFERENCE not in real.text
     if method == "GET" and path.count("{") == 1:
         assert real.status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("conversation", "key"),
+    [
+        ("synthetic", ""),
+        ("synthetic", "x" * 256),
+        ("not/a/current/conversation", "synthetic-key"),
+    ],
+)
+async def test_receipt_metadata_does_not_precede_tenancy(
+    harness: Harness, tenancy: Tenancy, conversation: str, key: str
+) -> None:
+    responses = []
+    for matter_id in [tenancy.matter_id, MISSING_MATTER]:
+        response = await harness.client.get(
+            f"/api/v1/matters/{matter_id}/agent/send-receipt",
+            params={"conversationId": conversation},
+            headers={**harness.signed_in(SUBJECT_B), "Idempotency-Key": key},
+        )
+        assert response.status_code == 404
+        assert tenancy.owner_id not in response.text
+        responses.append(_error_code(response))
+    assert responses[0] == responses[1]

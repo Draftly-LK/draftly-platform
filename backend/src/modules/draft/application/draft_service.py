@@ -20,7 +20,7 @@ path that lets it look ready anyway.
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 
 import structlog
@@ -39,7 +39,7 @@ from src.modules.content_governance.contracts import (
     get_subtype,
     require_template,
 )
-from src.modules.draft.contracts import BoundFact, FormSnapshot
+from src.modules.draft.contracts import BoundFact, FormScope, FormSnapshot
 from src.modules.draft.domain.errors import (
     GeneratedFormFieldNotFoundError,
     GeneratedFormNotFoundError,
@@ -69,14 +69,17 @@ from src.modules.draft.domain.policies import (
     stale_bindings,
     stale_state,
 )
+from src.modules.draft.domain.scoped import resolve_scoped_template, scoped_projection
 from src.modules.draft.ports import (
     CandidateFactReadPort,
     GeneratedFormRepository,
     MatterWorkflowCommandPort,
 )
+from src.modules.matter.contracts import MatterMutationLockPort, MatterScopeReadPort
 from src.modules.task.contracts import ChecklistBlockerPort
 from src.modules.verification.contracts import ConfirmedFactReadPort, FactTierSummary
 from src.platform import ids
+from src.platform.errors import DomainRuleError, NotFoundError, PreconditionFailedError
 
 log = structlog.get_logger(__name__)
 
@@ -130,9 +133,13 @@ class DraftService:
         candidates: CandidateFactReadPort | None = None,
         clock: Callable[[], datetime] = _utc_now,
         matter_workflow: MatterWorkflowCommandPort | None = None,
+        matter_lock: MatterMutationLockPort | None = None,
+        scopes: MatterScopeReadPort | None = None,
     ) -> None:
         self._repo = repository
+        self._scopes = scopes
         self._matter_workflow = matter_workflow
+        self._matter_lock = matter_lock
         self._facts = facts
         self._issues = issues
         self._checklist = checklist
@@ -155,6 +162,8 @@ class DraftService:
         subtype_id: str | None,
         subtype_decision_status: SubtypeDecisionStatus,
         template_id: str | None = None,
+        scope: FormScope | None = None,
+        predecessor_form_id: str | None = None,
     ) -> FormView:
         """Draft one working form from the confirmed subtype and the fact tier.
 
@@ -162,6 +171,8 @@ class DraftService:
         executed: every template in this repository is a transcription, so the
         returned preflight always reports ``registration_ready`` false (§9.5).
         """
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         gates = await self._issues.gates(user_id, matter_id)
         confirmed_subtype_id = guard_generation(
             subtype_id=subtype_id,
@@ -175,7 +186,20 @@ class DraftService:
 
         facts = await self._facts.summarise(user_id, matter_id)
         candidates = await self._read_candidates(user_id, matter_id)
-        resolutions = resolve_template(template, facts=facts, candidates=candidates)
+        missing_causes: dict[str, str] = {}
+        if scope is not None:
+            if template.id != "reg_2022_form_08":
+                raise DomainRuleError("Explicit form scope is supported for Form 8 only.")
+            await self._validate_scope(user_id, matter_id, scope)
+            resolutions, missing_causes = resolve_scoped_template(template, scope, facts)
+        else:
+            resolutions = resolve_template(template, facts=facts, candidates=candidates)
+        if predecessor_form_id:
+            previous = await self._repo.get_form(user_id, predecessor_form_id)
+            if previous is None or previous.matter_id != matter_id:
+                raise GeneratedFormNotFoundError()
+            if previous.template_id != template.id:
+                raise DomainRuleError("A successor must use the same form template.")
 
         now = self._clock()
         form_id = ids.new_id(ids.GENERATED_FORM)
@@ -199,7 +223,10 @@ class DraftService:
             created_by=actor_id,
             created_at=now,
             updated_at=now,
-            draft_artifact_hash=self._hash(template, subtype.id, fields),
+            draft_artifact_hash=self._hash(template, subtype.id, fields, scope),
+            scope=scope,
+            missing_causes=missing_causes,
+            predecessor_form_id=predecessor_form_id,
         )
         result = await self._preflight(form, fields, template, facts=facts, gates=gates)
         form.state = derive_state(result)
@@ -269,8 +296,20 @@ class DraftService:
         if form is None:
             return None
         fields = await self._repo.list_fields(user_id, form.id)
+        scope_current = await self._scope_current(form)
+        if form.scope:
+            current = await self._facts.summarise(user_id, form.matter_id)
+            projected = scoped_projection(require_template(form.template_id), form.scope, current)
+            scope_current = scope_current and not stale_bindings(
+                fields, require_template(form.template_id), projected, strict_confirmed=True
+            )
         return FormSnapshot(
             form_id=form.id,
+            scope=form.scope,
+            scope_current=scope_current,
+            unreviewed_field_ids=tuple(
+                f.field_id for f in fields if (f.required or f.critical) and f.awaiting_confirmation
+            ),
             user_id=form.user_id,
             matter_id=form.matter_id,
             state=form.state,
@@ -329,6 +368,14 @@ class DraftService:
         if form_field is None or mapping is None:
             raise GeneratedFormFieldNotFoundError(fieldId=field_id, formId=form_id)
 
+        current_facts = await self._facts.summarise(user_id, form.matter_id)
+        projected = (
+            scoped_projection(template, form.scope, current_facts) if form.scope else current_facts
+        )
+        if not await self._scope_current(form) or stale_bindings(
+            fields, template, projected, strict_confirmed=form.scope is not None
+        ):
+            raise DomainRuleError("The draft inputs have changed. Create a successor draft.")
         guard_field_decision(
             form=form,
             form_field=form_field,
@@ -338,7 +385,7 @@ class DraftService:
             reason=reason,
         )
 
-        before = form_field.rendered_value or form_field.display_value()
+        before = f"{form_field.fact_id or 'unbound'}@{form_field.fact_version or 0}"
         decision_id = ids.new_id(ids.REVIEW_DECISION)
         now = self._clock()
         self._apply_decision(form_field, action, value=value, actor_id=actor_id, now=now)
@@ -349,7 +396,7 @@ class DraftService:
         saved_field = await self._repo.update_field(form_field)
         fields = [saved_field if f.id == saved_field.id else f for f in fields]
 
-        form.draft_artifact_hash = self._hash(template, form.subtype_id, fields)
+        form.draft_artifact_hash = self._hash(template, form.subtype_id, fields, form.scope)
         facts = await self._facts.summarise(user_id, form.matter_id)
         gates = await self._issues.gates(user_id, form.matter_id)
         result = await self._preflight(form, fields, template, facts=facts, gates=gates)
@@ -458,6 +505,9 @@ class DraftService:
         form, template, fields = await self._load(user_id, form_id)
         facts = await self._facts.summarise(user_id, form.matter_id)
         gates = await self._issues.gates(user_id, form.matter_id)
+        facts = scoped_projection(template, form.scope, facts) if form.scope else facts
+        if not await self._scope_current(form):
+            declared = StaleReason.FACT_SUPERSEDED
         reason = detect_staleness(
             form=form,
             fields=fields,
@@ -472,10 +522,12 @@ class DraftService:
             return self._view(form, fields, template, result, candidates, facts)
 
         if not form.is_approved:
-            for form_field, field_reason in stale_bindings(fields, template, facts):
+            for form_field, field_reason in stale_bindings(
+                fields, template, facts, strict_confirmed=form.scope is not None
+            ):
                 invalidate_binding(form_field, field_reason)
                 await self._repo.update_field(form_field)
-            form.draft_artifact_hash = self._hash(template, form.subtype_id, fields)
+            form.draft_artifact_hash = self._hash(template, form.subtype_id, fields, form.scope)
 
         previous = form.state
         form.stale_reason = reason.value
@@ -510,6 +562,9 @@ class DraftService:
         self, user_id: str, form_id: str
     ) -> tuple[GeneratedForm, FormTemplateDefinition, list[GeneratedFormField]]:
         form = await self._repo.get_form(user_id, form_id)
+        if form is not None and self._matter_lock:
+            await self._matter_lock.lock(user_id, form.matter_id)
+            form = await self._repo.get_form(user_id, form_id)
         if form is None:
             raise GeneratedFormNotFoundError()
         return (
@@ -532,6 +587,24 @@ class DraftService:
         facts: FactTierSummary,
         gates: IssueGateSummary,
     ) -> PreflightResult:
+        projected = scoped_projection(template, form.scope, facts) if form.scope else facts
+        reason = detect_staleness(
+            form=form,
+            fields=fields,
+            template=template,
+            facts=projected,
+            rule_pack_version=RULE_PACK_VERSION,
+        )
+        if not await self._scope_current(form):
+            reason = StaleReason.FACT_SUPERSEDED
+        if reason is not None:
+            form = replace(
+                form,
+                state=GeneratedFormState.STALE_AFTER_APPROVAL
+                if form.is_approved
+                else GeneratedFormState.STALE_TEMPLATE,
+                stale_reason=reason.value,
+            )
         return preflight(
             form=form,
             fields=fields,
@@ -546,7 +619,10 @@ class DraftService:
 
     @staticmethod
     def _hash(
-        template: FormTemplateDefinition, subtype_id: str, fields: Sequence[GeneratedFormField]
+        template: FormTemplateDefinition,
+        subtype_id: str,
+        fields: Sequence[GeneratedFormField],
+        scope: FormScope | None = None,
     ) -> str:
         return draft_artifact_hash(
             template_id=template.id,
@@ -554,6 +630,7 @@ class DraftService:
             rule_pack_version=RULE_PACK_VERSION,
             subtype_id=subtype_id,
             fields=fields,
+            scope=asdict(scope) if scope else None,
         )
 
     @staticmethod
@@ -565,6 +642,9 @@ class DraftService:
         candidates: Sequence[FactCandidate],
         facts: FactTierSummary,
     ) -> FormView:
+        if form.scope:
+            facts = scoped_projection(template, form.scope, facts)
+            candidates = ()
         mappings = {mapping.field_id: mapping for mapping in template.field_mappings}
         by_type: dict[str, list[FactCandidate]] = {}
         for candidate in candidates:
@@ -581,6 +661,16 @@ class DraftService:
                     template_id=template.id,
                 )
                 continue
+            if form.scope and form_field.fact_id:
+                current = facts.confirmed.get(mapping.fact_type_id or "")
+                if (
+                    current is None
+                    or current.fact_id != form_field.fact_id
+                    or current.version != form_field.fact_version
+                ):
+                    form = replace(
+                        form, missing_causes={**form.missing_causes, form_field.field_id: "stale"}
+                    )
             views.append(
                 FormFieldView(
                     field=form_field,
@@ -594,7 +684,57 @@ class DraftService:
                     ),
                 )
             )
+        if form.scope and any(item.code.value == "FORM_STALE" for item in result.blocking):
+            form = replace(
+                form,
+                missing_causes={
+                    **form.missing_causes,
+                    **{f.field_id: "stale" for f in fields if f.is_populated},
+                },
+            )
         return FormView(form=form, template=template, fields=tuple(views), preflight=result)
+
+    async def _validate_scope(self, user_id: str, matter_id: str, scope: FormScope) -> None:
+        if self._scopes is None:
+            raise DomainRuleError("Scope validation is unavailable.")
+        transaction = await self._scopes.transaction(user_id, matter_id, scope.transaction_id)
+        if transaction is None:
+            raise NotFoundError()
+        if transaction.version != scope.association_version:
+            raise PreconditionFailedError(currentVersion=transaction.version)
+        for subject_id, kind, role in (
+            (scope.parcel_subject_id, "parcel", None),
+            (scope.transferor_subject_id, "party", "transferor"),
+            (scope.transferee_subject_id, "party", "transferee"),
+        ):
+            if subject_id is None:
+                continue
+            subject = await self._scopes.subject(user_id, matter_id, subject_id)
+            if subject is None:
+                raise NotFoundError()
+            if (
+                subject.kind != kind
+                or (role is None and subject_id not in transaction.parcel_subject_ids)
+                or (
+                    role is not None
+                    and not any(
+                        item.subject_id == subject_id and item.role == role
+                        for item in transaction.party_roles
+                    )
+                )
+            ):
+                raise DomainRuleError(
+                    "The selected subject is not associated in this transaction role."
+                )
+
+    async def _scope_current(self, form: GeneratedForm) -> bool:
+        if form.scope is None:
+            return True
+        try:
+            await self._validate_scope(form.user_id, form.matter_id, form.scope)
+        except (DomainRuleError, NotFoundError, PreconditionFailedError):
+            return False
+        return True
 
     async def _record(
         self,

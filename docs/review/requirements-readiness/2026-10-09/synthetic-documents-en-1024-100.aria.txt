@@ -1,0 +1,60 @@
+- main:
+  - heading "Documents" [level=1]
+  - paragraph: Receive, classify, and review synthetic matter evidence.
+  - button "Upload documents"
+  - paragraph: "Synthetic documents only: an NIC, a Bim Saviya title certificate, an RTA Form 8 transfer, or a survey plan. PDF or image files."
+  - paragraph: No documents yet. Upload the evidence this matter needs.
+  - region "Missing requirements":
+    - heading "Missing requirements" [level=2]
+    - paragraph: Receipt, evidence review and original inspection are recorded separately. Satisfaction follows the existing requirement policy.
+    - list:
+      - listitem:
+        - button "Nic"
+        - paragraph: Received · Unreviewed · Unknown
+    - heading "Nic" [level=3]
+    - paragraph: Reviewed version 4
+    - term: Collection
+    - definition: Received
+    - term: Evidence review
+    - definition: Unreviewed
+    - term: Physical original
+    - definition: Unknown
+    - term: Currency
+    - definition: Unknown
+    - term: Consistency
+    - definition: Not checked
+    - button "Review latest requirement"
+    - text: Supporting document
+    - combobox "Supporting document":
+      - option "Choose a document" [selected]
+      - option "Nic · doc-synthetic"
+    - button "Record receipt and link" [disabled]
+    - group: Inspection and evidence history
+  - paragraph: 1 total
+  - paragraph: "1"
+  - paragraph: 0 needing boundary review
+  - paragraph: "0"
+  - paragraph: 0 needing classification review
+  - paragraph: "0"
+  - paragraph: 0 unidentified
+  - paragraph: "0"
+  - paragraph: 0 unprocessed
+  - paragraph: "0"
+  - heading "Detected documents" [level=2]
+  - table:
+    - rowgroup:
+      - row "Document doc-synt Classification Nic Boundary Confirmed Pages 0 Spans multiple sources No Actions Review":
+        - cell "Document doc-synt":
+          - text: Document
+          - img
+          - text: doc-synt
+        - cell "Classification Nic"
+        - cell "Boundary Confirmed"
+        - cell "Pages 0"
+        - cell "Spans multiple sources No"
+        - cell "Actions Review":
+          - text: Actions
+          - link "Review":
+            - /url: /matters/mat-synthetic/documents/doc-synthetic/review
+            - text: Review
+            - img

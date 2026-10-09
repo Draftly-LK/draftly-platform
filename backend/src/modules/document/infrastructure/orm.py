@@ -26,6 +26,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -141,6 +142,70 @@ class DetectedDocumentRow(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    interpretation_generation: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
+    extraction_state: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="current", server_default="current"
+    )
+    latest_refresh_run_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    refresh_failure_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class DocumentInterpretationRow(Base):
+    """Append-only class and ordered source ranges for one interpretation."""
+
+    __tablename__ = "document_interpretations"
+    __table_args__ = (
+        UniqueConstraint(
+            "detected_document_id", "generation", name="uq_document_interpretation_generation"
+        ),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    detected_document_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("detected_documents.id"), nullable=False
+    )
+    generation: Mapped[int] = mapped_column(Integer, nullable=False)
+    class_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    fragments: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    actor_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class PageDispositionRow(Base):
+    __tablename__ = "document_page_dispositions"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_file_id",
+            "page_number",
+            "source_version",
+            name="uq_document_page_disposition_version",
+        ),
+        CheckConstraint("page_number >= 1", name="ck_page_disposition_page"),
+        CheckConstraint(
+            "disposition IN ('blank', 'unsupported', 'review_required')",
+            name="ck_page_disposition_status",
+        ),
+        Index("ix_document_page_dispositions_scope", "user_id", "matter_id", "source_file_id"),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_file_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("source_files.id"), nullable=False
+    )
+    page_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    disposition: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class DocumentFragmentRow(Base):
@@ -184,6 +249,8 @@ class DocumentFragmentRow(Base):
 
 
 class SourceFileProcessingRunRow(Base):
+    detected_document_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    interpretation_generation: Mapped[int | None] = mapped_column(Integer, nullable=True)
     """One attempt to process one source file — including the ones that did nothing.
 
     A run that failed because no provider is configured is recorded exactly like
@@ -215,6 +282,9 @@ class SourceFileProcessingRunRow(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    kind: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="source", server_default="source"
+    )
 
 
 class DocumentProcessingPageRow(Base):
@@ -274,6 +344,10 @@ class ProcessingLogicalDocumentRow(Base):
     type_id: Mapped[str] = mapped_column(String(128), nullable=False)
     suggested_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     page_numbers: Mapped[list[int]] = mapped_column(JSON, nullable=False)
+    interpretation_generation: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
+    page_sources: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)
 
 
 class ProcessingCandidateFieldRow(Base):
@@ -311,3 +385,4 @@ class ProcessingCandidateFieldRow(Base):
         String(64), ForeignKey("extracted_facts.id"), nullable=True
     )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    source_file_id: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -311,6 +311,21 @@ Add:
   message and return an agent job.
 
 - GET /api/v1/agent-jobs/{jobId} — normal job status.
+- POST /api/v1/matters/{matterId}/agent/jobs/{jobId}/retry — requires a new
+  Idempotency-Key for the recovery attempt. Creates a fresh job for the saved
+  user message without appending another transcript row or overwriting the
+  original failed job. The source must be the latest message in the active
+  conversation, belong to the caller and matter, have failed with
+  `model_unavailable`, and have no recorded tool
+  calls. Otherwise recovery returns 409 and the lawyer sends a new instruction.
+  Competing retries lock the original job and converge on one child attempt;
+  `agent_jobs.retry_of_job_id` has a unique constraint. `source_message_id`
+  identifies the immutable input across attempts. Older jobs resolve their
+  original user message by job ID. Retry creation records one
+  `agent.turn-retried` audit action and enqueues the existing `agent.run-turn`
+  job type with identifiers only.
+  Timeouts are not retried automatically: cancellation could have interrupted
+  a tool after it changed matter state but before it recorded its outcome.
 - GET /api/v1/agent-jobs/{jobId}/events — resumable SSE using Last-Event-ID.
 - POST /api/v1/matters/{matterId}/agent/actions/{actionId}/confirm — execute an inline
   protected action after reauthorization and version checks.
@@ -526,12 +541,12 @@ not just a set of rows.
 - Final responses distinguish verified facts, AI candidates, operational suggestions and
   abstentions.
 
-- Legal answers require citation-bearing output from the future legal-retrieval tool. Until
-  that tool exists, return a fixed legal_research_unavailable abstention rather than
-  answering from model knowledge.
-
-- The later retrieval engine plugs into a reserved LegalResearchToolPort; no retrieval
-  implementation is included in this release.
+- Legal answers use `research.contracts.MatterResearchPort`, implemented by the
+  existing research owner with matter authorization, entitlement and usage metering.
+  Only claims supported by returned, versioned passages are retained. The agent
+  stores the exact grounded answer and provenance without a second model rewrite.
+  Missing approved configuration or insufficient authority produces abstention.
+  The controlled corpus and existing provider choices remain unchanged.
 
 ## Failure Modes
 
@@ -545,7 +560,7 @@ a refusal.
 | Supermemory returns content that disagrees with Neon | Neon wins with no reconciliation. Provider content is never authoritative and never rendered as history. |
 | Neon unavailable | The message POST fails with a typed 503 and no turn starts. Nothing is sent to Gemini or Supermemory, because the outbox row never commits. |
 | Message commits, agent job later fails | The user message stays in the transcript and the job reports failure. A failed job never deletes or rewrites a message. |
-| Gemini unavailable or over budget | Typed 503, no partial tool execution, no assistant message appended. |
+| Gemini unavailable or over budget | The durable job fails with its attempted tool count. Before any tool work, no assistant answer is appended and an eligible model failure can be retried against the same user message. After completed work, an operational recovery entry retains result references/citations and no automatic retry is allowed. Committed effects and audit remain recorded. |
 | Tool call fails mid-turn | The tool call row records the failure, the turn ends with an honest partial answer, and no pending action is created. |
 | Duplicate POST with the same Idempotency-Key | The stored response replays. Exactly one message row and one outbox event exist. |
 | Scope rebuild interrupted | Rebuild is idempotent and resumable from the last synced sequence; a partial rebuild never surfaces as history. |
@@ -757,7 +772,7 @@ Cover:
 - Full OCR reaches Gemini transiently and never reaches Supermemory; the assertion runs
   against recorded provider request bodies for both providers.
 - Final approvals, overrides, exports and attestations remain unreachable to the agent.
-- Provider failures produce typed 503 responses without partially executing tools.
+- Provider failures retain completed work, references and audit; they never invent a rollback or replay an executed tool automatically.
 - Retry after an external-write/database failure does not duplicate messages.
 - Approved destruction removes the Neon chat records, destroys any Supermemory scope,
   records the receipt and retries failures, and writes the tombstone first.
@@ -777,3 +792,70 @@ with synthetic data. The default automated suite runs with Supermemory disabled,
 Neon-only path is the one continuously proven. Roll out behind MATTER_AGENT_ENABLED: fake/local, synthetic staging,
 provider-security approval, then a limited pilot. Real-client production remains blocked
 until the Supermemory and Gemini data-processing gates are approved.
+
+## October 2026 persistent Overview and confirmed tools
+
+Overview and the full matter Assistant render one shared conversation component,
+backed by the active actor/matter conversation. A logical message uses durable
+actor/matter/conversation intent metadata (hash and opaque key only, no raw text
+or token in browser storage). Reload reads the latest job for that conversation;
+SSE termination is checked against the durable terminal job state. Worker delivery
+locks and replays terminal jobs without repeating tools or usage charges. Model
+history applies the source-message sequence cutoff before its bounded SQL page,
+so later queued messages cannot displace the question being answered. A new
+conversation preserves history and does not reuse the preceding segment's job.
+
+`GET /matters/{matterId}/agent/latest-job` returns the latest active-segment
+attempt or null. `GET /matters/{matterId}/agent/actions/{actionId}` returns the
+owned proposal, reviewed values/pins, current state and recorded result. Expiry
+is persisted and audited on read. Original evidence citations carry the scoped
+source file/page, fact version and subject/transaction identifiers when present;
+retrieved legal citations retain passage, corpus version and verification state.
+A fact ID alone never establishes verification. Retrieved legal passages are
+matched source content, not human-verified or current/consolidated law; statute
+and case citations stay unverified in the matter conversation.
+
+Declarations are the installed handlers' closed JSON schemas, filtered by the
+capability allowlist, and arguments are validated before invoking owners. The
+installed GenAI SDK transport is tested with a local HTTP mock to ensure these
+schemas survive serialization. Read tools use authoritative document processing
+status, the scoped canonical register, subject/transaction inventory and readiness.
+Check execution requires explicit transaction and association revisions. The
+legacy `read_draft_preflight` name returns saved form states with
+`preflightAvailable=false`; it does not evaluate draft readiness. Draft generation
+and candidate mutation handlers are not installed pending the scoped draft contract.
+
+The selected proposal kinds are `fact-accept`, `requirement-link` and
+`checklist-decision`. Proposal and confirmation re-authorize the actor against
+owning commands. Confirmations serialize under the shared matter lock and recheck
+exact target version, register scope/conflicts and current document evidence pins,
+including interpretation generation. Fact acceptance calls the canonical human
+review command and creates its immutable successor. A proposed support link remains
+unconfirmed evidence; no proposal grants legal approval, waiver or export authority.
+
+Actions retain `proposed`, `executed`, `declined`, `stale`, `failed`, `expired`
+and historical `confirmed`/`rejected` states. The stored result replays only after
+current authorization. Failed owner commands roll back their nested transaction
+while failure state/audit commit. Audit/log records contain identifiers and reason
+codes, never raw arguments or legal questions. Proposal creation ends a turn with
+the persisted card, preventing a later model response failure from orphaning it.
+
+`matteragent0003` follows `check0002` and stores retry/source message references;
+`matteragent0004` adds action results. Both are additive. Their downgrades refuse
+when recorded retry or new action-state history would be lost. The model factory
+requires the existing enabled, key and `provider_data_approval` gates; closed gates
+return an unavailable adapter without provider transport. Tests inject synthetic
+models explicitly. This implementation does not enable or choose provider flags.
+
+### Accepted send reconciliation after refresh
+
+`GET /matters/{id}/agent/send-receipt?conversationId=...` reads acceptance for the
+opaque `Idempotency-Key` header without resending content. Current actor/matter and
+active-conversation authorization precede replay-store lookup; the stored job's
+source is then checked against that same actor, matter and segment. An absent,
+expired, foreign or previous-conversation receipt returns no acceptance proof.
+The client clears only a matching key/matter/conversation receipt. A later deliberate
+identical question receives a fresh key, while ambiguous acceptance retains the
+original retry key. Receipt reads never enqueue, compose or meter work.
+An absent session or active segment returns no acceptance proof. This read never
+provisions a session or conversation, or writes an audit event or outbox entry.

@@ -1,5 +1,51 @@
 # document_service — implementation design
 
+## Canonical fact register contract (2026-10-09)
+
+Intake recognition uses `content_governance.contracts.DOCUMENT_CLASSES` before
+any transaction subtype, form or checklist exists. The document adapter offers
+the governed catalogue and builds schemas only for definitions with an existing
+extraction template and governed fact keys: NIC, title certificate, survey plan
+and Form 8. Other classes remain recognizable without invented extraction
+fields. An unidentified page remains an explicit manual-review outcome. This
+read creates no checklist, chooses no subtype and accepts no requirement; the
+owning ingestion service still checks source/matter access and provider gates.
+
+`document.contracts.DocumentFactPort` exposes bounded candidate observations and
+validates source evidence for verification-owned decisions. Processing rows and
+source bytes remain document-owned and immutable through human review. Validation
+checks owner/matter, pinned SHA-256, source/candidate state, page bounds, current
+document class/group relationship and readable artifacts. It returns page OCR
+and an exact supporting text span only when that substring exists in actual OCR;
+page-level fallback never manufactures a bounding box.
+
+Extraction grouping validation compares every source/page pair with the
+processing logical document. Regrouping to include another source invalidates
+an old single-source extraction, even when its original pages still match.
+Existing facts citing distinct sources retain every evidence reference, and
+verification revalidates each before acceptance/correction. This does not create
+new extraction runs or propagate lifecycle invalidation.
+
+The pinned original and corrected page artifact must remain readable. Storage
+not-found, integrity and availability failures for those required artifacts
+become a blocked evidence result; the register retains that candidate as
+unavailable alongside healthy rows. OCR text is optional: if it cannot be read,
+the validator returns empty text, no supporting span and page precision while
+allowing human page review. No replacement bytes or OCR content are invented.
+
+The legacy document review edit/approval surface now delegates to canonical
+verification commands. Edits persist unverified successors; acceptance requires
+explicit matter scope, evidence review, capability and practising authorization.
+The document review read overlays canonical value/status/version while retaining
+the original machine candidate. A generic NIC identifies its holder, not a
+transferee. Legacy `transfereeNic` observations from NIC sources read as `holderNic`;
+the prescribed Form 8 key is unchanged. Holder name (English/Sinhala), birth date,
+address and surveyor registration observations are retained in the register.
+
+Interpretation generation/refresh and dependent invalidation remain Task 4.
+It must invoke verification's public `FactEvidenceInvalidationPort` in the same
+transaction and honor the matter scope lock used by review commands.
+
 Companion to `backend/backend-implementation-plan-v0.md`. One markdown per
 service under `backend/docs/services/`. This is the first.
 
@@ -139,6 +185,29 @@ reached only through a short-lived signed URL, never a raw storage path.
 Returns the current ProcessingRun state, the recorded provider metadata
 (processor, version, region, purpose, timing, quality, outcome), and which
 derivatives exist. Matter-scoped.
+
+The V0 source-file contract is `GET /api/v1/source-files/{id}/processing`.
+It requires `rta.document.classify` after resolving the source under `user_id`
+and checking its matter. The response has `sourceFile` (the current source
+version, also exposed as an ETag) and nullable `latestRun`. No recorded run is
+unknown, never success. The latest attempt is ordered by `started_at`, then id.
+Its summary includes terminal state, provider, recorded reasons and failure
+explanation, meters, timing, and retained page quality/rotation diagnostics. It
+excludes OCR text, candidate values, and object-storage paths.
+
+Failure enums already persisted in run reasons restore the recovery details on
+read; legacy runs with no recognised reason retain an unknown reason. A
+successful V1 run can still contain `ocr_failed`, `ocr_sparse`, likely blank,
+or uncertain-rotation pages. `manualReviewRequired` also covers unresolved
+document classification/grouping and recorded review reasons. These diagnostics
+do not introduce a partial-success lifecycle state or mark evidence accepted.
+
+The current synchronous retry command remains
+`POST /api/v1/source-files/{id}/process`, requiring `rta.source.upload` and
+`If-Match` against the refreshed source version. A stale replay returns 412
+without starting another attempt. Retries preserve original bytes and previous
+runs. Existing organised documents are retained by the current processing
+contract; extraction-generation correction is a separate workflow slice.
 
 ### get_viewer_manifest(ctx, document_version_id) -> ViewerManifestRead
 
@@ -527,6 +596,66 @@ Recommended defaults in bold; confirm or override before coding.
 
 ## 14. References
 
+### October 2026 interpretation and page-accounting implementation
+
+The lawyer-led workflow stores immutable interpretation snapshots. A semantic
+type or ordered source/page change increments the detected document generation;
+an unchanged confirmation does not. Evidence and machine observations pin that
+generation. Exact downstream facts, links, checks and form eligibility become
+stale in the same matter transaction through their owning public contracts.
+Approved field bindings and artifact hashes remain historical and unchanged.
+
+`POST /detected-documents/{id}/refresh-extraction` uses the current confirmed
+type and ordered fragments, validated immutable originals and cached page OCR.
+It appends an interpretation run and new candidates, including exact original
+IDs when multiple originals each contain page 1. Failed or unsupported refresh
+never restores an old candidate. `GET /detected-documents/{id}/interpretations`
+returns snapshots and associated refresh attempts; `GET /review?generation=N`
+opens an exact historical extraction. Legacy rows without matching current
+extraction metadata project unavailable rather than claiming current success.
+Current manual page evidence can pin a supported or unsupported interpretation
+without citing a machine run; accepted-source and critical-fact policy still
+apply in verification.
+
+`POST /matters/{id}/detected-documents` creates a group from unclaimed pages.
+Boundary decisions can retire explicitly version-pinned groups during a merge.
+Inbox page accounting reports unknown bounds, unclaimed, overlapping,
+out-of-bounds, blank and unsupported pages. Unknown or unsupported pages do not
+establish completed review. `POST /source-files/{id}/page-dispositions` appends
+a reasoned blank, unsupported or return-to-review decision. Its optional
+`retireDocuments` only retires active groups consisting entirely of the selected
+original/page; a larger group needs a separate range correction first.
+
+Upload, process, supersede, classification, boundary, refresh, group creation
+and page-disposition commands require `Idempotency-Key`. Versioned commands also
+require `If-Match`. Replay authorizes the owned resource first, serializes a
+first insert with the existing PostgreSQL replay store, and compares the body
+including preconditions. Upload identity hashes the actual bytes and upload
+metadata. A deliberate identical-byte upload with a new key remains a distinct
+record. Terminal process failure followed by a new intent uses the current
+source version and creates a new run. A cached response is historical; clients
+read the current resource before presenting completion or eligibility.
+
+Browser retry storage contains only actor/matter/operation identity, opaque key,
+request digest, creation time and an optional original version. No input values,
+filenames, files or tokens are retained. Manual evidence selected in a document
+view pins source, page and interpretation together. Refreshing props cannot
+renew that pin without an explicit selection or renewal.
+
+Migrations `document0003` and `document0004` are additive. Downgrade refuses to
+discard recorded corrections, mixed-source extraction pins, page dispositions
+or associated interpretation runs. Empty migrated schemas can downgrade to base
+and upgrade again. Running older application readers after corrections is
+unsupported even if the new columns remain: a schema guard cannot stop older
+code from ignoring generation pins. Legacy attempts lacking an association
+cannot be reconstructed as exact document history.
+
+Provider calls currently persist typed failures only when the call returns or
+raises. Bounded OCR/classification/extraction deadlines and cancellation-safe
+outcomes are a required Task 8 integration dependency, not a completed recovery
+guarantee. Fresh intake matters still need checklist context before governed
+extraction schemas are available; Task 5 owns that workflow dependency.
+
 - [OpenContracts repository][opencontracts]
 - [OpenContracts PDF data layer][opencontracts-pdf]
 - [OpenContracts structured-extractor model][opencontracts-extractors]
@@ -552,3 +681,36 @@ Recommended defaults in bold; confirm or override before coding.
 [aws-a2i]: https://docs.aws.amazon.com/sagemaker/latest/dg/a2i-use-augmented-ai-a2i-human-review-loops.html
 [nanonets]: https://nanonets.com/products/document-intelligence
 [apryse]: https://docs.apryse.com/web/guides
+
+## Bounded request processing and evidence reads (2026-10-09)
+
+The synchronous process command now commits its owned PROCESSING source, running
+attempt, invalidations and audit before calling providers. The same request awaits
+completion; this does not introduce a queue or claim worker deployment. Terminal
+source/run writes and replay response commit together through the existing UoW.
+After the checkpoint, the service reacquires the matter lock and verifies the exact
+source version and current running attempt before publishing any result. Competing
+commands cannot start a second attempt while that source is processing.
+
+The source operation has a 900-second application budget. Deadline or cancellation
+records a typed failed attempt; SDK response threads never write database records.
+Unexpected storage faults retain their error response after failure persistence.
+If the process itself dies, a later authorized process command with current If-Match
+can close a running attempt older than 930 seconds as TIMEOUT. That command only
+closes the interrupted attempt; another fresh command starts the retry. Status
+reads remain read-only. Missing legacy attempt metadata requires operator review.
+Database unavailability can still prevent finalization; no autonomous reaper exists.
+
+Gemini transport requests use 120,000 ms and one SDK attempt; existing bounded
+application rate-limit retries remain. Vision calls use a 120-second RPC deadline
+with SDK retries disabled. Each provider await is bounded to 125 seconds. Provider
+selection, models, regions and data-approval gates are unchanged. These bounds have
+not been exercised against hanging providers under the owner's test waiver.
+
+Each request-scoped document reader retains at most 2,048 successful immutable
+artifact-validation keys and 8 MiB of encoded OCR text across at most 2,048 text
+entries. Keys include user, matter, object and immutable version; source validation
+also pins its SHA-256. Original/image bytes and failures are never retained. Every
+call still validates current SQL authorization, source state, candidate version,
+interpretation generation and page membership. Optional missing OCR retains its
+existing page-only fallback. Performance after this repair remains unmeasured.

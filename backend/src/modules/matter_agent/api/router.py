@@ -38,6 +38,7 @@ from src.modules.matter_agent.api.schemas import (
     PendingActionRead,
     RejectActionRequest,
     SendMessageRequest,
+    SendReceiptRead,
     SessionRead,
 )
 from src.modules.matter_agent.application.agent_service import AgentService
@@ -55,12 +56,14 @@ from src.platform.db.idempotency import (
 )
 from src.platform.db.session import get_db, get_uow
 from src.platform.db.unit_of_work import UnitOfWork
+from src.platform.errors import DraftlyError
 from src.platform.pagination import Cursor, decode_cursor, encode_cursor, normalise_limit
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["matter-agent"])
 
 _SEND_MESSAGE_ROUTE = "POST /matters/{matterId}/agent/messages"
+_RETRY_ROUTE = "POST /matters/{matterId}/agent/jobs/{jobId}/retry"
 
 
 def _parse_last_event_id(value: str | None) -> int:
@@ -120,6 +123,13 @@ def _to_message_read(message: AgentMessage) -> MessageRead:
                 label=item.label,
                 verification_status=item.verification_status,
                 locator=item.locator,
+                source_file_id=item.source_file_id,
+                page=item.page,
+                version=item.version,
+                transaction_id=item.transaction_id,
+                subject_id=item.subject_id,
+                passage=item.passage,
+                corpus_version=item.corpus_version,
             )
             for item in message.citations
         ],
@@ -139,6 +149,9 @@ def _to_action_read(action: PendingAction) -> PendingActionRead:
     return PendingActionRead(
         id=action.id,
         action_kind=action.action_kind,
+        arguments={k: v for k, v in action.arguments.items() if not k.startswith("_")},
+        result=action.result,
+        reason_code=action.reason_code,
         target_ref=action.target_ref,
         target_version=action.target_version,
         state=action.state.value,
@@ -245,17 +258,18 @@ async def send_message(
         raise IdempotencyKeyRequiredError()
 
     store = SqlIdempotencyStore(session)
-    fingerprint = request_fingerprint(body.model_dump(by_alias=True))
-    replayed = await store.find(
-        user_id=ctx.actor_id,
-        route=_SEND_MESSAGE_ROUTE,
-        key=idempotency_key,
-        request_hash=fingerprint,
-    )
-    if replayed is not None:
-        return JobRead.model_validate(replayed)
-
+    fingerprint = request_fingerprint({"matterId": matter_id, **body.model_dump(by_alias=True)})
     async with UnitOfWork(session):
+        await service.lock(ctx, matter_id)
+        await service.get_or_create_session(ctx, matter_id)
+        replayed = await store.find(
+            user_id=ctx.actor_id,
+            route=_SEND_MESSAGE_ROUTE,
+            key=idempotency_key,
+            request_hash=fingerprint,
+        )
+        if replayed is not None:
+            return JobRead.model_validate(replayed)
         job = await service.start_turn(ctx, matter_id, content=body.content)
         read = JobRead(job_id=job.job_id, state=job.state.value, tool_call_count=0)
         await store.store(
@@ -267,6 +281,65 @@ async def send_message(
             response=read.model_dump(by_alias=True),
         )
     return read
+
+
+@router.get("/matters/{matter_id}/agent/send-receipt", response_model=SendReceiptRead | None)
+async def send_receipt(
+    matter_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[AgentService, Depends(get_agent_service)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    conversation_id: Annotated[str | None, Query(alias="conversationId")] = None,
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> SendReceiptRead | None:
+    async with UnitOfWork(session):
+        await service.lock(ctx, matter_id)
+        current = await service.find_current_session(ctx, matter_id)
+        if not idempotency_key or len(idempotency_key) > 255:
+            raise IdempotencyKeyRequiredError()
+        if (
+            current is None
+            or not conversation_id
+            or current.active_conversation_id != conversation_id
+        ):
+            return None
+        stored = await SqlIdempotencyStore(session).receipt(
+            user_id=ctx.actor_id, route=_SEND_MESSAGE_ROUTE, key=idempotency_key
+        )
+        if stored is None:
+            return None
+        accepted = await service.accepted_send_job(
+            ctx, matter_id, JobRead.model_validate(stored).job_id
+        )
+        if accepted is None:
+            return None
+        return SendReceiptRead(
+            send_key=idempotency_key,
+            matter_id=matter_id,
+            conversation_id=conversation_id,
+            job_id=accepted.job_id,
+        )
+
+
+@router.get("/matters/{matter_id}/agent/latest-job", response_model=JobRead | None)
+async def latest_job(
+    matter_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[AgentService, Depends(get_agent_service)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+) -> JobRead | None:
+    async with uow:
+        job = await service.latest_job(ctx, matter_id)
+    return (
+        JobRead(
+            job_id=job.job_id,
+            state=job.state.value,
+            tool_call_count=job.tool_call_count,
+            failure_class=job.failure_class,
+        )
+        if job
+        else None
+    )
 
 
 @router.get("/agent-jobs/{job_id}", response_model=JobRead)
@@ -283,6 +356,57 @@ async def read_job(
         tool_call_count=job.tool_call_count,
         failure_class=job.failure_class,
     )
+
+
+@router.post(
+    "/matters/{matter_id}/agent/jobs/{job_id}/retry",
+    response_model=JobRead,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def retry_job(
+    matter_id: str,
+    job_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[AgentService, Depends(get_agent_service)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> JobRead:
+    if not idempotency_key:
+        raise IdempotencyKeyRequiredError()
+    # Authorize before reading an idempotency response for this destination.
+    await service.get_or_create_session(ctx, matter_id)
+    await service.read_job(ctx, job_id)
+    store = SqlIdempotencyStore(session)
+    fingerprint = request_fingerprint({"matterId": matter_id, "jobId": job_id})
+    replayed = await store.find(
+        user_id=ctx.actor_id, route=_RETRY_ROUTE, key=idempotency_key, request_hash=fingerprint
+    )
+    if replayed is not None:
+        return JobRead.model_validate(replayed)
+    async with UnitOfWork(session):
+        job = await service.retry_turn(ctx, matter_id, job_id)
+        # Another request with this same key can finish while we wait for the
+        # source job's row lock. Recheck under that lock before inserting.
+        replayed = await store.find(
+            user_id=ctx.actor_id, route=_RETRY_ROUTE, key=idempotency_key, request_hash=fingerprint
+        )
+        if replayed is not None:
+            return JobRead.model_validate(replayed)
+        read = JobRead(
+            job_id=job.job_id,
+            state=job.state.value,
+            tool_call_count=job.tool_call_count,
+            failure_class=job.failure_class,
+        )
+        await store.store(
+            record_id=f"idem_{uuid.uuid4().hex[:16]}",
+            user_id=ctx.actor_id,
+            route=_RETRY_ROUTE,
+            key=idempotency_key,
+            request_hash=fingerprint,
+            response=read.model_dump(by_alias=True),
+        )
+    return read
 
 
 @router.get("/agent-jobs/{job_id}/events")
@@ -331,6 +455,18 @@ async def stream_job_events(
     )
 
 
+@router.get("/matters/{matter_id}/agent/actions/{action_id}", response_model=PendingActionRead)
+async def read_action(
+    matter_id: str,
+    action_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[AgentService, Depends(get_agent_service)],
+    uow: Annotated[UnitOfWork, Depends(get_uow)],
+) -> PendingActionRead:
+    async with uow:
+        return _to_action_read(await service.read_action(ctx, matter_id, action_id))
+
+
 @router.post(
     "/matters/{matter_id}/agent/actions/{action_id}/confirm",
     response_model=PendingActionRead,
@@ -348,8 +484,14 @@ async def confirm_action(
     Capability, practising status, ownership and the target version are all
     re-read here. A stale proposal is 412 and must be regenerated.
     """
+    failure = None
     async with uow:
-        action = await service.confirm_action(ctx, matter_id, action_id=action_id)
+        try:
+            action = await service.confirm_action(ctx, matter_id, action_id=action_id)
+        except DraftlyError as exc:
+            failure = exc
+    if failure is not None:
+        raise failure
     response.headers["ETag"] = f'"{action.target_version}"'
     return _to_action_read(action)
 
@@ -367,8 +509,14 @@ async def reject_action(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
 ) -> PendingActionRead:
     """Refuse a card. The rejected proposal is preserved and audited."""
+    failure = None
     async with uow:
-        action = await service.reject_action(
-            ctx, matter_id, action_id=action_id, reason=body.reason
-        )
+        try:
+            action = await service.reject_action(
+                ctx, matter_id, action_id=action_id, reason=body.reason
+            )
+        except DraftlyError as exc:
+            failure = exc
+    if failure is not None:
+        raise failure
     return _to_action_read(action)

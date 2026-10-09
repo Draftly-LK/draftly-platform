@@ -40,6 +40,15 @@ if TYPE_CHECKING:
 DEFAULT_RETENTION_CLASS = "rta.client-evidence"
 
 
+@dataclass(frozen=True)
+class ProcessingPageOutcome:
+    """Retained page diagnostics; excludes OCR text and storage references."""
+
+    page_no: int
+    quality_status: str
+    rotation_status: str
+
+
 @dataclass
 class SourceFile:
     """Uploaded bytes plus the metadata that makes them attributable.
@@ -100,6 +109,10 @@ class DetectedDocument:
     issue_or_execution_date_fact_id: str | None = None
     version_relationship: DocumentVersionRelationship | None = None
     duplicate_of_detected_document_id: str | None = None
+    interpretation_generation: int = 1
+    extraction_state: str = "current"
+    latest_refresh_run_id: str | None = None
+    refresh_failure_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -197,9 +210,9 @@ class DocumentCandidate:
 class ProcessingRun:
     """One attempt to process one source file.
 
-    A run always terminates in a real outcome. There is no "in progress" that
-    quietly never finishes and no fabricated progress: if nothing processed the
-    file, the run says ``PROCESSING_FAILED`` with the reason why.
+    A persisted PROCESSING attempt is committed before provider work. Completion
+    records a real terminal outcome; expired interrupted attempts require an
+    authorized recovery command. No progress or successful extraction is invented.
     """
 
     id: str
@@ -223,6 +236,9 @@ class ProcessingRun:
     #: Full V1 page/group result. Repository adapters persist it into owned
     #: child tables; it is not placed in logs or event payloads.
     v1_report: V1PipelineReport | None = None
+    kind: str = "source"
+    detected_document_id: str | None = None
+    interpretation_generation: int | None = None
 
     @property
     def succeeded(self) -> bool:

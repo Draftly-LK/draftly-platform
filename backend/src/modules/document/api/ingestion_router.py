@@ -22,9 +22,10 @@ capability is named.
 
 from __future__ import annotations
 
+import hashlib
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, Query, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_request_context, require_if_match
@@ -32,22 +33,31 @@ from src.modules.content_governance.contracts import (
     CAP_DOCUMENT_CLASSIFY,
     CAP_SOURCE_UPLOAD,
     DocumentVersionRelationship,
+    SourceFileState,
 )
+from src.modules.document.api.replay import DocumentCommandReplay
 from src.modules.document.api.schemas import (
     BoundaryDecisionRequest,
     CandidateEditRequest,
     ClassificationDecisionRequest,
+    CreateGroupRequest,
     DetectedDocumentRead,
     DocumentFragmentRead,
     DocumentInboxRead,
     DocumentReviewRead,
+    InterpretationHistoryRead,
+    LatestProcessingRunRead,
+    PageAccountingRead,
     PageCandidateRead,
+    PageDispositionRequest,
     PageInfo,
+    ProcessingPageOutcomeRead,
     ProcessingRunRead,
     ReviewCandidateRead,
     ReviewPageRead,
     SourceFileListRead,
     SourceFileRead,
+    SourceProcessingStatusRead,
     SupersedeSourceFileRequest,
 )
 from src.modules.document.application.ingestion_service import (
@@ -175,6 +185,10 @@ def _to_document_read(view: DocumentView) -> DetectedDocumentRead:
         ],
         source_file_ids=list(view.source_file_ids),
         spans_multiple_sources=view.spans_multiple_sources,
+        interpretation_generation=document.interpretation_generation,
+        extraction_state=document.extraction_state,
+        latest_refresh_run_id=document.latest_refresh_run_id,
+        refresh_failure_reason=document.refresh_failure_reason,
         created_at=document.created_at.isoformat(),
         updated_at=document.updated_at.isoformat(),
         version=document.version,
@@ -190,6 +204,10 @@ def _to_inbox_read(view: DocumentInboxView, limit: int) -> DocumentInboxRead:
         classification_review_document_ids=list(view.classification_review_document_ids),
         unidentified_document_ids=list(view.unidentified_document_ids),
         unprocessed_source_file_ids=list(view.unprocessed_source_file_ids),
+        page_accounting=[
+            PageAccountingRead.model_validate(item, from_attributes=True)
+            for item in view.page_accounting
+        ],
         page=PageInfo(
             next_cursor=view.next_cursor, has_more=view.next_cursor is not None, limit=limit
         ),
@@ -259,6 +277,7 @@ async def upload_source_file(
     service: SourceFileIngestionService = Depends(get_ingestion_service),
     session: AsyncSession = Depends(get_db),
     uow: UnitOfWork = Depends(get_uow),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> SourceFileRead:
     """Upload one file into a matter.
 
@@ -271,6 +290,21 @@ async def upload_source_file(
     _ = uow
     await _authorized_matter(ctx, matter_id, session, CAP_SOURCE_UPLOAD)
     data = await _read_within_limit(file, service.max_upload_bytes)
+    replay = DocumentCommandReplay(
+        session,
+        ctx.actor_id,
+        f"matter:{matter_id}:upload",
+        key,
+        {
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "filename": original_filename or file.filename or "upload",
+            "mediaType": file.content_type,
+        },
+    )
+    cached = await replay.find(SourceFileRead)
+    if cached is not None:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
     result = await service.upload_source_file(
         user_id=ctx.actor_id,
         matter_id=matter_id,
@@ -281,7 +315,7 @@ async def upload_source_file(
         data=data,
     )
     response.headers["ETag"] = f'"{result.source_file.version}"'
-    return _to_source_read(result.view)
+    return await replay.save(_to_source_read(result.view))
 
 
 @router.get("/matters/{matter_id}/source-files", response_model=SourceFileListRead)
@@ -315,6 +349,51 @@ async def get_source_file(
     await _authorized_matter(ctx, view.source_file.matter_id, session, CAP_DOCUMENT_CLASSIFY)
     response.headers["ETag"] = f'"{view.source_file.version}"'
     return _to_source_read(view)
+
+
+@router.get("/source-files/{source_file_id}/processing", response_model=SourceProcessingStatusRead)
+async def get_source_processing_status(
+    source_file_id: str,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+) -> SourceProcessingStatusRead:
+    source = await service.get_source_file(user_id=ctx.actor_id, source_file_id=source_file_id)
+    await _authorized_matter(ctx, source.source_file.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    view = await service.get_processing_status(user_id=ctx.actor_id, source_file_id=source_file_id)
+    run = view.latest_run
+    response.headers["ETag"] = f'"{view.source.source_file.version}"'
+    response.headers["Cache-Control"] = "private, no-store"
+    return SourceProcessingStatusRead(
+        source_file=_to_source_read(view.source),
+        latest_run=LatestProcessingRunRead(
+            job_id=run.id,
+            state=(
+                "running"
+                if run.outcome is SourceFileState.PROCESSING
+                else "succeeded"
+                if run.succeeded
+                else "failed"
+            ),
+            outcome=run.outcome,
+            provider=run.provider,
+            reasons=list(run.reasons),
+            failure_reason=run.failure_reason,
+            failure_explanation_key=run.failure_explanation_key,
+            pages_processed=run.pages_processed,
+            ai_extraction_calls=run.ai_extraction_calls,
+            started_at=run.started_at.isoformat(),
+            finished_at=run.finished_at.isoformat() if run.finished_at else None,
+            page_outcomes=[
+                ProcessingPageOutcomeRead.model_validate(page, from_attributes=True)
+                for page in view.page_outcomes
+            ],
+            manual_review_required=view.manual_review_required,
+        )
+        if run
+        else None,
+    )
 
 
 #: Only these types are ever stored (upload validates them); anything else is served as a download.
@@ -364,6 +443,7 @@ async def process_source_file(
     session: AsyncSession = Depends(get_db),
     uow: UnitOfWork = Depends(get_uow),
     expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> ProcessingRunRead:
     """Run the pipeline over one stored file and report what it did.
 
@@ -375,12 +455,31 @@ async def process_source_file(
     _ = uow
     view = await service.get_source_file(user_id=ctx.actor_id, source_file_id=source_file_id)
     await _authorized_matter(ctx, view.source_file.matter_id, session, CAP_SOURCE_UPLOAD)
+    replay = DocumentCommandReplay(
+        session,
+        ctx.actor_id,
+        f"source:{source_file_id}:process",
+        key,
+        {"expectedVersion": expected_version},
+    )
+    cached = await replay.find(ProcessingRunRead)
+    if cached is not None:
+        response.headers["ETag"] = f'"{cached.source_file.version}"'
+        return cached
+
+    async def completed(view: ProcessingRunView) -> None:
+        await replay.save(_to_run_read(view))
+        await uow.commit()
+
     run_view = await service.process_source_file(
         user_id=ctx.actor_id,
         source_file_id=source_file_id,
         actor_id=ctx.actor_id,
         correlation_id=ctx.correlation_id,
         expected_version=expected_version,
+        checkpoint=uow.commit,
+        rollback=uow.rollback,
+        on_complete=completed,
     )
     response.headers["ETag"] = f'"{run_view.source_file.version}"'
     return _to_run_read(run_view)
@@ -396,6 +495,7 @@ async def supersede_source_file(
     session: AsyncSession = Depends(get_db),
     uow: UnitOfWork = Depends(get_uow),
     expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> SourceFileRead:
     """Record that a newer upload replaces this one. The row and bytes stay."""
     _ = uow
@@ -409,6 +509,17 @@ async def supersede_source_file(
             field="relationship",
             value=body.relationship,
         )
+    replay = DocumentCommandReplay(
+        session,
+        ctx.actor_id,
+        f"source:{source_file_id}:supersede",
+        key,
+        {"body": body.model_dump(mode="json"), "expectedVersion": expected_version},
+    )
+    cached = await replay.find(SourceFileRead)
+    if cached is not None:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
     saved = await service.supersede_source_file(
         user_id=ctx.actor_id,
         source_file_id=source_file_id,
@@ -420,7 +531,7 @@ async def supersede_source_file(
         reason=body.reason,
     )
     response.headers["ETag"] = f'"{saved.source_file.version}"'
-    return _to_source_read(saved)
+    return await replay.save(_to_source_read(saved))
 
 
 @router.get("/matters/{matter_id}/document-inbox", response_model=DocumentInboxRead)
@@ -452,11 +563,23 @@ async def decide_boundary(
     session: AsyncSession = Depends(get_db),
     uow: UnitOfWork = Depends(get_uow),
     expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> DetectedDocumentRead:
     """Split, join, or reorder the pages a document claims. Sources are untouched."""
     _ = uow
     document = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
     await _authorized_matter(ctx, document.document.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    replay = DocumentCommandReplay(
+        session,
+        ctx.actor_id,
+        f"document:{document_id}:boundary",
+        key,
+        {"body": body.model_dump(mode="json"), "expectedVersion": expected_version},
+    )
+    cached = await replay.find(DetectedDocumentRead)
+    if cached is not None:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
     view = await service.decide_boundary(
         user_id=ctx.actor_id,
         document_id=document_id,
@@ -465,7 +588,9 @@ async def decide_boundary(
                 source_file_id=fragment.source_file_id,
                 page_start=fragment.page_start,
                 page_end=fragment.page_end,
-                order_in_document=fragment.order_in_document or index,
+                order_in_document=index
+                if fragment.order_in_document is None
+                else fragment.order_in_document,
             )
             for index, fragment in enumerate(body.fragments)
         ],
@@ -473,9 +598,93 @@ async def decide_boundary(
         correlation_id=ctx.correlation_id,
         expected_version=expected_version,
         note=body.note,
+        retire_documents=tuple((item.document_id, item.version) for item in body.retire_documents),
     )
     response.headers["ETag"] = f'"{view.document.version}"'
-    return _to_document_read(view)
+    return await replay.save(_to_document_read(view))
+
+
+@router.post(
+    "/matters/{matter_id}/detected-documents", response_model=DetectedDocumentRead, status_code=201
+)
+async def create_document_group(
+    matter_id: str,
+    body: CreateGroupRequest,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+    uow: UnitOfWork = Depends(get_uow),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> DetectedDocumentRead:
+    _ = uow
+    await _authorized_matter(ctx, matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    replay = DocumentCommandReplay(
+        session, ctx.actor_id, f"matter:{matter_id}:group", key, body.model_dump(mode="json")
+    )
+    cached = await replay.find(DetectedDocumentRead)
+    if cached is not None:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
+    view = await service.create_group(
+        user_id=ctx.actor_id,
+        matter_id=matter_id,
+        actor_id=ctx.actor_id,
+        correlation_id=ctx.correlation_id,
+        class_id=body.class_id,
+        ranges=[
+            FragmentRange(
+                item.source_file_id,
+                item.page_start,
+                item.page_end,
+                index if item.order_in_document is None else item.order_in_document,
+            )
+            for index, item in enumerate(body.fragments)
+        ],
+    )
+    response.headers["ETag"] = f'"{view.document.version}"'
+    return await replay.save(_to_document_read(view))
+
+
+@router.post("/source-files/{source_file_id}/page-dispositions", response_model=SourceFileRead)
+async def decide_page_disposition(
+    source_file_id: str,
+    body: PageDispositionRequest,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+    uow: UnitOfWork = Depends(get_uow),
+    expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> SourceFileRead:
+    _ = uow
+    source = await service.get_source_file(user_id=ctx.actor_id, source_file_id=source_file_id)
+    await _authorized_matter(ctx, source.source_file.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    replay = DocumentCommandReplay(
+        session,
+        ctx.actor_id,
+        f"source:{source_file_id}:page-disposition",
+        key,
+        {"body": body.model_dump(mode="json"), "expectedVersion": expected_version},
+    )
+    cached = await replay.find(SourceFileRead)
+    if cached is not None:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
+    view = await service.decide_page_disposition(
+        user_id=ctx.actor_id,
+        source_file_id=source_file_id,
+        actor_id=ctx.actor_id,
+        correlation_id=ctx.correlation_id,
+        page_number=body.page_number,
+        disposition=body.disposition,
+        reason=body.reason,
+        retire_documents=tuple((item.document_id, item.version) for item in body.retire_documents),
+        expected_version=expected_version,
+    )
+    response.headers["ETag"] = f'"{view.source_file.version}"'
+    return await replay.save(_to_source_read(view))
 
 
 @router.post(
@@ -491,11 +700,23 @@ async def decide_classification(
     session: AsyncSession = Depends(get_db),
     uow: UnitOfWork = Depends(get_uow),
     expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
 ) -> DetectedDocumentRead:
     """Confirm or correct the class. Only controlled ids are accepted."""
     _ = uow
     document = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
     await _authorized_matter(ctx, document.document.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    replay = DocumentCommandReplay(
+        session,
+        ctx.actor_id,
+        f"document:{document_id}:classification",
+        key,
+        {"body": body.model_dump(mode="json"), "expectedVersion": expected_version},
+    )
+    cached = await replay.find(DetectedDocumentRead)
+    if cached is not None:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
     view = await service.decide_classification(
         user_id=ctx.actor_id,
         document_id=document_id,
@@ -506,7 +727,80 @@ async def decide_classification(
         note=body.note,
     )
     response.headers["ETag"] = f'"{view.document.version}"'
+    return await replay.save(_to_document_read(view))
+
+
+@router.get("/detected-documents/{document_id}", response_model=DetectedDocumentRead)
+async def get_detected_document(
+    document_id: str,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+) -> DetectedDocumentRead:
+    view = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
+    await _authorized_matter(ctx, view.document.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    response.headers["ETag"] = f'"{view.document.version}"'
+    response.headers["Cache-Control"] = "private, no-store"
     return _to_document_read(view)
+
+
+@router.get(
+    "/detected-documents/{document_id}/interpretations", response_model=InterpretationHistoryRead
+)
+async def get_interpretation_history(
+    document_id: str,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+) -> InterpretationHistoryRead:
+    view = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
+    await _authorized_matter(ctx, view.document.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    response.headers["Cache-Control"] = "private, no-store"
+    from dataclasses import asdict
+
+    return InterpretationHistoryRead.model_validate(
+        asdict(await service.interpretation_history(ctx.actor_id, document_id))
+    )
+
+
+@router.post(
+    "/detected-documents/{document_id}/refresh-extraction", response_model=DetectedDocumentRead
+)
+async def refresh_extraction(
+    document_id: str,
+    response: Response,
+    ctx: RequestContext = Depends(get_request_context),
+    service: SourceFileIngestionService = Depends(get_ingestion_service),
+    session: AsyncSession = Depends(get_db),
+    uow: UnitOfWork = Depends(get_uow),
+    expected_version: int = Depends(require_if_match),
+    key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> DetectedDocumentRead:
+    _ = uow
+    view = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
+    await _authorized_matter(ctx, view.document.matter_id, session, CAP_DOCUMENT_CLASSIFY)
+    replay = DocumentCommandReplay(
+        session,
+        ctx.actor_id,
+        f"document:{document_id}:refresh",
+        key,
+        {"expectedVersion": expected_version},
+    )
+    cached = await replay.find(DetectedDocumentRead)
+    if cached is not None:
+        response.headers["ETag"] = f'"{cached.version}"'
+        return cached
+    saved = await service.refresh_extraction(
+        user_id=ctx.actor_id,
+        document_id=document_id,
+        actor_id=ctx.actor_id,
+        correlation_id=ctx.correlation_id,
+        expected_version=expected_version,
+    )
+    response.headers["ETag"] = f'"{saved.document.version}"'
+    return await replay.save(_to_document_read(saved))
 
 
 def _to_candidate_read(candidate: object) -> ReviewCandidateRead:
@@ -516,11 +810,14 @@ def _to_candidate_read(candidate: object) -> ReviewCandidateRead:
 @router.get("/detected-documents/{document_id}/review", response_model=DocumentReviewRead)
 async def get_document_review(
     document_id: str,
+    generation: Annotated[int | None, Query(ge=1)] = None,
     ctx: RequestContext = Depends(get_request_context),
     service: DocumentReviewService = Depends(get_review_service),
     session: AsyncSession = Depends(get_db),
 ) -> DocumentReviewRead:
-    review = await service.get_review(user_id=ctx.actor_id, detected_document_id=document_id)
+    review = await service.get_review(
+        user_id=ctx.actor_id, detected_document_id=document_id, generation=generation
+    )
     await _authorized_matter(ctx, review.matter_id, session, CAP_DOCUMENT_CLASSIFY)
     return DocumentReviewRead(
         id=review.id,
@@ -528,10 +825,13 @@ async def get_document_review(
         detected_document_id=review.detected_document_id,
         type_id=review.type_id,
         suggested_name=review.suggested_name,
+        interpretation_generation=review.interpretation_generation,
+        current=review.current,
         pages=[
             ReviewPageRead(
                 id=page.id,
                 page_no=page.page_no,
+                source_file_id=page.source_file_id,
                 corrected_width=page.corrected_width,
                 corrected_height=page.corrected_height,
                 quality_status=page.quality_status,
@@ -590,6 +890,7 @@ async def edit_candidate_field(
         value=body.value,
         expected_version=expected_version,
         correlation_id=ctx.correlation_id,
+        reviewer_role=ctx.account_role.value,
     )
     return _to_candidate_read(saved)
 

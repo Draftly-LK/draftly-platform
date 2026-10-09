@@ -7,7 +7,6 @@ export const MATTER_SECTIONS = [
   "documents",
   "facts",
   "checks",
-  "missingDocuments",
   "drafts",
   "exports",
   "assistantTab",
@@ -20,7 +19,6 @@ const SECTION_PATH: Record<MatterSection, string> = {
   documents: "/documents",
   facts: "/facts",
   checks: "/checks",
-  missingDocuments: "/missing-documents",
   drafts: "/drafts",
   exports: "/exports",
   assistantTab: "/assistant",
@@ -32,6 +30,8 @@ export function matterSectionHref(section: MatterSection, matterId: string): str
 
 /** The section a path belongs to; sub-pages (a document's review) count as their section. */
 export function sectionForPath(pathname: string, matterId: string): MatterSection | null {
+  if (pathname === `/matters/${matterId}/missing-documents`) return "documents";
+  if (pathname.startsWith(`/matters/${matterId}/workflow`)) return "checks";
   for (const section of MATTER_SECTIONS) {
     const href = matterSectionHref(section, matterId);
     if (pathname === href || (section !== "overview" && pathname.startsWith(`${href}/`))) return section;

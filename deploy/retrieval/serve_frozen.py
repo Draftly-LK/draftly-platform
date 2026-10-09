@@ -26,6 +26,7 @@ mode is on its main branch; it patches nothing else.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 from pathlib import Path
 
@@ -44,11 +45,23 @@ statute_index.index_build_lock = contextlib.nullcontext
 case_index.index_build_lock = contextlib.nullcontext
 
 # Imported last on purpose: the app must load after the patches above.
-from draftly.retrieval.api import app
-
-from case_api import install_dense_gate, router
+from case_api import install_dense_gate, router  # noqa: E402
+from draftly.retrieval.api import app  # noqa: E402
 
 install_dense_gate()
 app.include_router(router)
+
+# Attest the same frozen artifact used by the engine to select its baked index.
+# The hash is an identity, not a claim of legal verification or completeness.
+_statute_version = "statutes-index-v1:" + hashlib.sha256(_statutes.encode()).hexdigest()
+
+
+@app.middleware("http")
+async def attest_statute_version(request, call_next):
+    response = await call_next(request)
+    if request.method == "GET" and request.url.path == "/search" and response.status_code == 200:
+        response.headers["X-Draftly-Corpus-Version"] = _statute_version
+    return response
+
 
 __all__ = ["app"]

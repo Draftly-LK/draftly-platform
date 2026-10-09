@@ -1,5 +1,10 @@
 # verification-service — implementation design
 
+The confirmed-fact read contract also exposes `scoped_gaps`, containing only
+transaction/subject/type references and an unreviewed, stale or unassigned cause.
+This diagnostic metadata supplies scoped form gaps; it does not promote a
+candidate or change the conservative legacy `confirmed` projection.
+
 Companion to `backend/backend-implementation-plan-v0.md`, `document-service.md`,
 `document-processing.md`, and `memory-service.md`. This service is the
 **authoritative fact tier** — the gate where a machine candidate becomes a
@@ -283,6 +288,116 @@ Naming that seam here keeps the enforcement point unambiguous.
 
 ## 12. Open decisions
 
+### Scoped read contract (2026-10-09)
+
+The approved lawyer-led workflow adds `transaction_id`, `scope_status`, and
+`evidence_stale` to fact versions. Existing rows are explicitly
+`legacy-unassigned`; migration does not invent subjects or transaction roles.
+`ConfirmedFactValue` carries transaction and subject references, and
+`FactTierSummary.scoped_confirmed` preserves eligible values in each scope.
+The compatibility `confirmed` map omits unresolved competing values, stale
+facts, and explicitly unassigned facts. It withholds the entire map when
+eligible values span transaction/subject scopes, including different fact types
+or a mixture of legacy and assigned scopes. Existing form consumers cannot
+select a coherent scope; this temporary withholding can produce missing
+bindings even for individually confirmed facts. `scoped_confirmed` stays
+lossless for the later explicit resolver.
+A later version alone never resolves conflicting live values. Version allocation
+is scoped by user, matter, transaction, subject, and fact type. Existing
+unambiguous legacy single-subject reads remain compatible.
+
+`evidence_stale` is an additive eligibility seam for document interpretation
+invalidation; interpretation refresh and downstream propagation are separate
+workflow work. V0 uses the approved user/matter boundary; organization support
+is deferred.
+
+### Canonical register commands (2026-10-09)
+
+The approved lawyer-led workflow supersedes the earlier proposed manual/reject
+defaults below. The canonical owner is verification. `GET /matters/{matterId}/facts`
+merges document-owned processing observations and persisted fact successors.
+Lists and `GET /facts/{factId}/history` use signed cursors, default 50/100 and
+maximum 100 rows. History is chronological and retains machine originals,
+corrections, rejection, reasons, reviewers, timestamps and resolved alternatives.
+The register exposes `origin`, `originalValue`, `sourceCandidateId`, `lineageId`,
+transaction/subject references, `scopeStatus`, `evidenceStale`, `scopeToken`,
+`conflictFactIds`, predecessor and successor IDs. Historical IDs stay addressable.
+Any canonical candidate materialization suppresses its processing observation
+from live lists, including a resolved loser with no live successor of its own.
+
+`POST /matters/{matterId}/facts` creates a lawyer-provided `REVIEW_REQUIRED` fact
+with a required reason; evidence is optional and author identity grants no
+approval. `POST /facts/{factId}/{accept|correct|reject|associate}` requires
+`Idempotency-Key` and `If-Match` (the integer version in quotes). Correction,
+rejection and association require reasons. Association creates an unverified
+successor and requires matter-owned references. Acceptance/correction requires
+assigned scope, current readable evidence, current `expectedScopeToken`, and
+the exact set of differing live alternatives in `resolveFactIds` with a reason.
+An arriving competing fact changes the token and refuses the stale decision.
+Negative conclusions retain the current-search-evidence guard; a search must
+be eligible in the exact same transaction and subject. Another scope's search
+or an ambiguous legacy relationship cannot satisfy it.
+
+Only `associate` accepts `transactionId` and `subjectId`. Other actions reject
+those fields with 422, including explicit nulls, matching IDs, mismatching IDs,
+and foreign IDs. To assign an observation, associate using its current ETag and
+a reason; then accept the returned successor ID with its ETag and `scopeToken`
+as `expectedScopeToken`. Acceptance omits scope fields. Association returns the
+destination scope's token, so no destination-token endpoint or client-generated
+hash is needed. Reload only when a later competing change makes that token stale.
+
+All mutations authorize the current RTA capability and practising status inside
+the application service, including replay. The matter lock serializes review
+and scope writes; shared `SqlIdempotencyStore` fingerprints the request. Retries
+return the same fact ID without another successor/decision. The returned row
+reflects later supersession if that result has since been reviewed again.
+Audit events contain reference IDs, with decision text confined to verification.
+Mutation, decision, audit and replay records share the request transaction.
+
+Document review delegates edit/approval to these same policies. Its stable
+candidate adapter prevents retries following a newer successor into a second
+decision. An edit remains unverified; editing a confirmed fact requires canonical
+correction. Document-owned machine rows and immutable source bytes are preserved.
+
+`DocumentFactPort` validates user/matter, immutable source hash, page bounds,
+candidate version/relationship, current source and document interpretation, and
+readable original/page artifacts. Evidence returns actual OCR text and page
+precision; text precision requires an exact supporting substring. No bounding
+box is synthesized. Every existing linked source is revalidated before acceptance.
+The complete source/page grouping must match the extraction. An old single-source
+extraction cannot justify a regrouped document that now includes another source.
+Optional unavailable OCR yields empty text and page precision when the original
+and page remain readable. Missing or corrupt original/page artifacts become
+unavailable candidate rows (`evidenceStale=true`, no evidence), keeping other
+register entries visible. Correction commands also invalidate already persisted
+fact evidence through the owning public port in the same matter transaction.
+
+NIC fields are holder observations: `holderNic`, `holderNameEn`, `holderNameSi`,
+`holderDateOfBirth`, `holderAddress`; survey plans retain `surveyorRegistration`.
+They introduce no global required-form facts. They remain subject to explicit
+human evidence review and practising authorization. Existing role-specific
+critical identity types/capabilities and prescribed form mappings are unchanged;
+a later explicit role binding must preserve their critical policy. Legacy NIC
+`transfereeNic` is an observational alias only when the source owner identifies
+the document as NIC. The reviewed migration preserves historical types, values
+and decisions, attaches original candidate metadata, and marks that narrow
+legacy NIC set unassigned. Register reads display the holder alias; the confirmed
+projection withholds it until explicit association/review. Downgrade removes
+additive columns/tables but keeps that conservative `scope_status` withholding.
+
+`FactEvidenceInvalidationPort` uses `FactEvidenceInvalidation` references and
+existing `evidence_stale` eligibility flags. It invalidates exact dependent
+document/source/run evidence, including transitive derived facts, while
+preserving reviewed values, versions and decision history. Evidence pins the
+interpretation generation as well as the original source/page/hash. Reusing the
+same bytes or returning to an earlier class never renews historical authority.
+New manual page evidence can reference a current unsupported interpretation;
+acceptance still applies the existing critical-fact source policies. See the
+[document correction contract](document-service.md#october-2026-interpretation-and-page-accounting-implementation).
+Richer check/readiness recomputation and role binding remain subsequent tasks.
+
+### Earlier decisions
+
 Recommended defaults in bold; confirm or override before coding.
 
 1. **ParticularVersion rows** — the frontend has no separate version entity;
@@ -306,3 +421,26 @@ Recommended defaults in bold; confirm or override before coding.
    `resolve-conflict` call or `verify`/`correct` cover it. Lean **reuse
    `verify`/`correct`**; the `conflict` state and `conflicts[]` array already
    carry what the UI needs.
+
+### Downstream freshness after canonical decisions (2026-10-09)
+
+Canonical successor decisions notify the existing public check/form invalidation
+ports inside the shared matter transaction. Superseded/resolved exact fact IDs and
+confirmed peers withheld by new competing observations invalidate dependent outputs.
+A newly competing manual fact is still review required; it does not replace a
+confirmed winner silently. Unrelated bound fact IDs remain unaffected. Approved
+artifacts, rendered values, bindings and decision history remain retained while
+the form owner marks the output stale. FactTierSummary also exposes lossless scoped
+conflict tuples so explicit scoped consumers do not borrow matter-wide conflicts.
+
+### Confirmed conversation proposals (2026-10-09)
+
+`ReviewFactInput` is published from `verification.contracts` and remains imported
+at the existing review-service path for compatibility. `authorize_decision` exposes
+the owning service's existing fact-specific capability and practising checks.
+The conversation uses these only for an explicit lawyer-confirmed acceptance card;
+it cannot directly mutate candidates or assert a reviewed value. Confirmation
+pins the exact candidate version, scope token and selected conflict IDs and uses
+an action-specific idempotency key. The canonical `decide` command remains the
+owner of evidence checks, immutable successor creation, audit and invalidation.
+Authorization is repeated before replaying an executed proposal result.

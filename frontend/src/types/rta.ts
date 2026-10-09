@@ -499,6 +499,152 @@ export interface ApiPageInfo {
   limit: number;
 }
 
+/** Canonical register wire contract; values and immutable lineage are form-free. */
+export type ApiFactValue = string | number | boolean | null;
+export interface ApiFactEvidenceInput {
+  interpretationGeneration?: number | null;
+  sourceFileId: string;
+  pageNumber: number;
+  sourceSha256: string;
+  extractionRunId?: string | null;
+  detectedDocumentId?: string | null;
+  candidateId?: string | null;
+  candidateVersion?: number | null;
+  snippet?: string;
+}
+export interface ApiFactEvidence {
+  interpretationGeneration?: number | null;
+  id: string;
+  sourceFileId: string;
+  detectedDocumentId: string | null;
+  pageNumber: number;
+  sourceSha256: string;
+  extractionRunId: string | null;
+  supportingText: string | null;
+  pageText: string | null;
+  precision: "page" | "text";
+  candidateId: string | null;
+  candidateVersion: number | null;
+  boundingBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    coordinateSpace: string;
+  } | null;
+}
+export interface ApiMatterFact {
+  id: string;
+  matterId: string;
+  factTypeId: string;
+  fieldKey: string | null;
+  labelKey: string;
+  value: ApiFactValue;
+  originalValue: ApiFactValue;
+  status:
+    | "EXTRACTED_CANDIDATE"
+    | "CORROBORATED"
+    | "CONFLICTED"
+    | "REVIEW_REQUIRED"
+    | "LAWYER_CONFIRMED"
+    | "LOCKED_FOR_FORM"
+    | "REJECTED"
+    | "SUPERSEDED";
+  origin: "legacy" | "machine" | "lawyer";
+  modelReportedConfidence: number | null;
+  evidence: ApiFactEvidence[];
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  version: number;
+  createdAt: string;
+  transactionId: string | null;
+  subjectId: string | null;
+  scopeStatus: "legacy-unassigned" | "unassigned" | "assigned";
+  evidenceStale: boolean;
+  sourceCandidateId: string | null;
+  manualReason: string | null;
+  lineageId: string | null;
+  supersedesFactId: string | null;
+  supersededByFactId: string | null;
+  scopeToken: string | null;
+  conflictFactIds: string[];
+}
+export interface ApiFactDecision {
+  id: string;
+  targetId: string;
+  decision: string;
+  reviewerId: string;
+  reviewerRole: string;
+  createdAt: string;
+  previousValue: ApiFactValue;
+  newValue: ApiFactValue;
+  reason: string | null;
+  resolvedFactIds: string[];
+}
+export interface ApiFactHistory {
+  items: ApiMatterFact[];
+  decisions: ApiFactDecision[];
+  page: ApiPageInfo;
+}
+export type TransactionRole =
+  | "transferor"
+  | "transferee"
+  | "owner"
+  | "donor"
+  | "donee"
+  | "lessor"
+  | "lessee"
+  | "mortgagor"
+  | "mortgagee"
+  | "other";
+export interface ApiMatterSubject {
+  id: string;
+  userId: string;
+  matterId: string;
+  kind: "party" | "parcel";
+  ordinal: number;
+}
+export interface ApiMatterTransaction {
+  id: string;
+  userId: string;
+  matterId: string;
+  ordinal: number;
+  version: number;
+  parcelSubjectIds: string[];
+  partyRoles: { subjectId: string; role: TransactionRole }[];
+}
+export interface ApiFactType {
+  id: string;
+  fieldKey: string | null;
+  labelKey: string;
+  subject:
+    | "MATTER"
+    | "REGIME"
+    | "TITLE"
+    | "PARCEL"
+    | "PARTY"
+    | "INSTRUMENT"
+    | "INTEREST"
+    | "ORGANIZATION"
+    | "PROCESS";
+  valueKind:
+    | "TEXT"
+    | "IDENTIFIER"
+    | "ENUM"
+    | "DATE"
+    | "MONEY"
+    | "AREA"
+    | "BOOLEAN"
+    | "COUNT";
+  critical: boolean;
+  negativeRequiresSearchEvidence: boolean;
+  options: { value: string; labelKey: string }[];
+}
+export interface ApiFactTypes {
+  versions: Record<string, string>;
+  factTypes: ApiFactType[];
+}
+
 /** Mirrors `MatterListRead`. */
 export interface ApiRtaMatterList {
   items: ApiRtaMatter[];
@@ -572,6 +718,12 @@ export interface ApiChecklistItem {
  * are never stored as truth, so nothing may write them back.
  */
 export interface ApiChecklistItemState {
+  version: number;
+  blocksApproval: boolean;
+  liveLinkCount: number;
+  originalInspection: ApiOriginalInspection | null;
+  inspectionHistory: ApiOriginalInspection[];
+
   id: string;
   requirementDefinitionId: string;
   moduleDefinitionId: string;
@@ -669,6 +821,32 @@ export interface ApiSourceFileList {
   page: ApiPageInfo;
 }
 
+/** Latest persisted attempt, without candidate values or storage paths. */
+export interface ApiLatestProcessingRun {
+  jobId: string;
+  state: "running" | "succeeded" | "failed";
+  outcome: SourceFileState;
+  provider: string;
+  reasons: string[];
+  failureReason: ProcessingFailureReason | null;
+  failureExplanationKey: string | null;
+  pagesProcessed: number;
+  aiExtractionCalls: number;
+  startedAt: string;
+  finishedAt: string | null;
+  pageOutcomes: Array<{
+    pageNo: number;
+    qualityStatus: "normal" | "likely_blank" | "ocr_sparse" | "ocr_failed";
+    rotationStatus: "not_required" | "applied" | "rotation_uncertain";
+  }>;
+  manualReviewRequired: boolean;
+}
+
+export interface ApiSourceProcessingStatus {
+  sourceFile: ApiSourceFile;
+  latestRun: ApiLatestProcessingRun | null;
+}
+
 /** Mirrors `DocumentFragmentRead`. */
 export interface ApiDocumentFragment {
   id: string;
@@ -683,6 +861,15 @@ export interface ApiDocumentFragment {
 
 /** Mirrors `DetectedDocumentRead`. */
 export interface ApiDetectedDocument {
+  interpretationGeneration?: number;
+  extractionState?:
+    | "current"
+    | "refresh_required"
+    | "failed"
+    | "unsupported"
+    | "unavailable";
+  latestRefreshRunId?: string | null;
+  refreshFailureReason?: string | null;
   id: string;
   matterId: string;
   classId: string | null;
@@ -713,6 +900,45 @@ export interface ApiDocumentInbox {
   /** Stored, processing, or failed — never quietly counted as done. */
   unprocessedSourceFileIds: string[];
   page: ApiPageInfo;
+  pageAccounting?: ApiPageAccounting[];
+}
+
+export interface ApiPageAccounting {
+  sourceFileId: string;
+  pageCount: number | null;
+  unclaimedPageNumbers: number[];
+  overlappingPageNumbers: number[];
+  outOfBoundsPageNumbers?: number[];
+  blankPageNumbers: number[];
+  unsupportedPageNumbers: number[];
+  complete: boolean;
+  manualReviewRequired: boolean;
+}
+
+export interface ApiInterpretationHistory {
+  documentId: string;
+  matterId: string;
+  currentGeneration: number;
+  snapshots: {
+    generation: number;
+    classId: string | null;
+    fragments: {
+      sourceFileId: string;
+      pageStart: number;
+      pageEnd: number;
+      orderInDocument?: number;
+    }[];
+    actorId: string | null;
+    createdAt: string;
+  }[];
+  refreshRuns: {
+    id: string;
+    generation: number;
+    outcome: string;
+    reasons: string[];
+    startedAt: string;
+    finishedAt: string | null;
+  }[];
 }
 
 /** Mirrors `PageCandidateRead`. Nothing here is verified. */
@@ -750,6 +976,7 @@ export interface ApiProcessingRun {
 }
 
 export interface ApiDocumentReviewPage {
+  sourceFileId?: string | null;
   id: string;
   pageNo: number;
   correctedWidth: number;
@@ -774,6 +1001,8 @@ export interface ApiReviewCandidate {
 }
 
 export interface ApiDocumentReview {
+  interpretationGeneration?: number;
+  current?: boolean;
   id: string;
   matterId: string;
   detectedDocumentId: string;
@@ -794,6 +1023,9 @@ export interface ApiFactVersionPin {
 
 /** Mirrors `CheckResultRead`. */
 export interface ApiCheckResult {
+  transactionId?: string | null;
+  subjectId?: string | null;
+  associationVersion?: number | null;
   id: string;
   checkDefinitionId: string;
   checkDefinitionVersion: string;
@@ -816,6 +1048,9 @@ export interface ApiCheckResult {
 
 /** Mirrors `LegalIssueRead`. */
 export interface ApiLegalIssue {
+  transactionId?: string | null;
+  subjectId?: string | null;
+  associationVersion?: number | null;
   id: string;
   matterId: string;
   checkId: string | null;
@@ -905,6 +1140,14 @@ export interface ApiFormField {
   displayValue: string;
   renderedValue: string | null;
   unresolvedReason: string | null;
+  missingCause?:
+    | "absent"
+    | "unreviewed"
+    | "conflict"
+    | "stale"
+    | "unassigned"
+    | "unsupported"
+    | null;
   factId: string | null;
   factVersion: number | null;
   evidenceReferenceIds: string[];
@@ -947,6 +1190,14 @@ export interface ApiPreflight {
 }
 
 /** Mirrors `GeneratedFormRead`. */
+export interface ApiFormScope {
+  transactionId: string;
+  associationVersion: number;
+  parcelSubjectId: string | null;
+  transferorSubjectId: string | null;
+  transfereeSubjectId: string | null;
+}
+
 export interface ApiGeneratedForm {
   id: string;
   matterId: string;
@@ -963,6 +1214,8 @@ export interface ApiGeneratedForm {
   approvedArtifactHash: string | null;
   approvalId: string | null;
   staleReason: string | null;
+  scope?: ApiFormScope | null;
+  predecessorFormId?: string | null;
   /** §9.5 — the recorded defects of the source text travel with the draft. */
   knownSourceDefectKeys: string[];
   fields: ApiFormField[];
@@ -986,6 +1239,8 @@ export interface ApiGeneratedFormSummary {
   approvedArtifactHash: string | null;
   approvalId: string | null;
   staleReason: string | null;
+  scope?: ApiFormScope | null;
+  predecessorFormId?: string | null;
   createdAt: string;
   updatedAt: string;
   version: number;
@@ -1135,4 +1390,51 @@ export interface ApiRegistrationEventCreated {
 export interface ApiRegistrationEventList {
   items: ApiRegistrationEvent[];
   page: ApiPageInfo;
+}
+
+export interface ApiOriginalSourcePin {
+  sourceFileId: string;
+  sha256: string;
+  storageVersion: string;
+  detectedDocumentId?: string;
+  interpretationGeneration?: number;
+  pageNumbers?: number[];
+}
+export interface ApiOriginalInspection {
+  reviewerId: string;
+  inspectedAt: string;
+  method: string;
+  location: string | null;
+  note: string | null;
+  originals: ApiOriginalSourcePin[];
+}
+export interface ApiRequirementLink {
+  id: string;
+  detectedDocumentId: string;
+  documentVersion: number | null;
+  interpretationGeneration: number | null;
+  originals: ApiOriginalSourcePin[];
+  isLive: boolean;
+  digitalReview: string;
+  createdAt: string;
+}
+export interface ApiReadiness {
+  state: "blocked" | "unknown" | "needs-review";
+  nextAction: string;
+  evaluatedAt: string;
+  requirementTotal: number | null;
+  requirementCompleted: number | null;
+  dependencies: {
+    category: string;
+    state: string;
+    references: {
+      kind: string;
+      id: string;
+      version: number | null;
+      generation: number | null;
+      transactionId: string | null;
+      subjectId: string | null;
+      associationVersion: number | null;
+    }[];
+  }[];
 }

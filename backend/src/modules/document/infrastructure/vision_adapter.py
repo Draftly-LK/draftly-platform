@@ -6,10 +6,13 @@ import asyncio
 from collections.abc import Iterable
 from typing import Any
 
-from google.api_core.exceptions import GoogleAPIError
+from google.api_core.exceptions import DeadlineExceeded, GoogleAPIError
 from google.cloud import vision
 
-from src.modules.document.domain.errors import ExtractionProviderError
+from src.modules.document.domain.errors import (
+    ExtractionProviderError,
+    ExtractionProviderTimeoutError,
+)
 from src.modules.document.domain.v1 import DetectedLanguage, OcrElement, OcrPage, Point
 from src.modules.document.ports import PageRaster
 
@@ -59,11 +62,18 @@ class GoogleVisionOcrAdapter:
         image = vision.Image(content=page.png_bytes)
         context = vision.ImageContext(language_hints=list(LANGUAGE_HINTS))
         try:
-            response = await asyncio.to_thread(
-                self._client.document_text_detection,
-                image=image,
-                image_context=context,
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self._client.document_text_detection,
+                    image=image,
+                    image_context=context,
+                    timeout=120.0,
+                    retry=None,
+                ),
+                timeout=125.0,
             )
+        except (TimeoutError, DeadlineExceeded) as exc:
+            raise ExtractionProviderTimeoutError() from exc
         except GoogleAPIError as exc:
             raise ExtractionProviderError("Vision OCR request failed.") from exc
 

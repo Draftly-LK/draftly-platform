@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { buttonClass } from "@/components/ui/button";
 import type { TokenProvider } from "@/lib/api/client";
-import { getDocumentInbox } from "@/lib/api/documents";
+import { getCompleteDocumentInbox } from "@/lib/api/documents";
 import { cn } from "@/lib/utils";
 import { isDocumentDecided } from "./document-decisions";
 
@@ -30,16 +30,18 @@ export function ReviewNextStep({
   const [nextId, setNextId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
+    setNextId(undefined);
     if (!done) return;
     let active = true;
-    getDocumentInbox(getToken, matterId)
+    getCompleteDocumentInbox(getToken, matterId)
       .then((inbox) => {
         if (!active) return;
         const waiting = inbox.documents.filter((item) => item.id !== documentId && !isDocumentDecided(item));
-        setNextId(waiting[0]?.id ?? null);
+        const unaccounted = !inbox.pageAccounting || inbox.pageAccounting.some((source) => source.manualReviewRequired) || inbox.unprocessedSourceFileIds.length > 0;
+        setNextId(waiting[0]?.id ?? (unaccounted ? undefined : null));
       })
       .catch(() => {
-        if (active) setNextId(null);
+        if (active) setNextId(undefined);
       });
     return () => {
       active = false;

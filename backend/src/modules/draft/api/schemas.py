@@ -32,6 +32,14 @@ class PageInfo(_Camel):
     limit: int = 50
 
 
+class FormScopeRead(_StrictCamel):
+    transaction_id: str = Field(min_length=1, max_length=64)
+    association_version: int = Field(ge=1)
+    parcel_subject_id: str | None = Field(default=None, max_length=64)
+    transferor_subject_id: str | None = Field(default=None, max_length=64)
+    transferee_subject_id: str | None = Field(default=None, max_length=64)
+
+
 class GenerateFormRequest(_StrictCamel):
     """Nothing legal is accepted from the client.
 
@@ -41,6 +49,8 @@ class GenerateFormRequest(_StrictCamel):
     """
 
     template_id: str | None = None
+    scope: FormScopeRead | None = None
+    predecessor_form_id: str | None = Field(default=None, max_length=64)
 
 
 class FieldDecisionRequest(_StrictCamel):
@@ -93,6 +103,7 @@ class FormFieldRead(_Camel):
     display_value: str
     rendered_value: str | None
     unresolved_reason: str | None
+    missing_cause: str | None = None
     fact_id: str | None
     fact_version: int | None
     evidence_reference_ids: list[str]
@@ -157,6 +168,8 @@ class GeneratedFormRead(_Camel):
     approved_artifact_hash: str | None
     approval_id: str | None
     stale_reason: str | None
+    scope: FormScopeRead | None = None
+    predecessor_form_id: str | None = None
     known_source_defect_keys: list[str]
     fields: list[FormFieldRead]
     preflight: PreflightRead
@@ -180,6 +193,8 @@ class GeneratedFormSummaryRead(_Camel):
     approved_artifact_hash: str | None
     approval_id: str | None
     stale_reason: str | None
+    scope: FormScopeRead | None = None
+    predecessor_form_id: str | None = None
     created_at: str
     updated_at: str
     version: int

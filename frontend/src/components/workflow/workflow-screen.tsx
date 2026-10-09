@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { isApiEnabled } from "@/lib/api/client";
+import { LiveMatterRedirect } from "@/components/matter/live-matter-redirect";
 import { useDemoStore } from "@/lib/store";
 import { AppShell } from "@/components/shell/app-shell";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,9 @@ type StepObjectiveKey =
 type RuleKey = "identityRule" | "titleRule" | "encumbranceRule";
 
 export function WorkflowScreen({ matterId }: { matterId: string }) {
+  return isApiEnabled() ? <LiveMatterRedirect matterId={matterId} section="checks" /> : <DemoWorkflowScreen matterId={matterId} />;
+}
+function DemoWorkflowScreen({ matterId }: { matterId: string }) {
   const t = useTranslations("workflow");
   const workflows = useDemoStore((state) => state.workflows);
   const completeStep = useDemoStore((state) => state.completeStep);

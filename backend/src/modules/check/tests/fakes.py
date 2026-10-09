@@ -102,6 +102,20 @@ class FakeCheckRepository:
         self.results.extend(results)
         return results
 
+    async def stale_input_results(self, user_id: str, matter_id: str) -> tuple[CheckResult, ...]:
+        seen = set()
+        stale = []
+        for result in reversed(self.results):
+            if result.user_id != user_id or result.matter_id != matter_id:
+                continue
+            key = (result.check_definition_id, result.transaction_id, result.subject_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            if result.explanation_key == "rta.check.input_changed":
+                stale.append(result)
+        return tuple(stale)
+
     async def list_results(
         self, user_id: str, matter_id: str, *, limit: int, cursor: str | None
     ) -> tuple[list[CheckResult], str | None]:

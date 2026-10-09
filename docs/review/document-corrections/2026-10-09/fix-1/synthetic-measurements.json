@@ -1,0 +1,1677 @@
+{
+  "synthetic": true,
+  "probes": [
+    {
+      "locale": "en",
+      "state": "historical-attribution",
+      "width": 1440,
+      "scale": 100,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "SUMMARY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "state": "historical-attribution",
+      "width": 1024,
+      "scale": 200,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "SUMMARY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Source Serif 4",
+        "Source Serif 4"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "state": "no-logical-manual-entry",
+      "width": 1440,
+      "scale": 100,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "TEXTAREA",
+        "visible": true,
+        "outline": "2px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "state": "manual-original-fallback",
+      "width": 1024,
+      "scale": 200,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "BODY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Source Serif 4",
+        "Source Serif 4"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "state": "first-refresh-current",
+      "width": 1024,
+      "scale": 100,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "BODY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "state": "grouping-renewal-required",
+      "width": 1024,
+      "scale": 200,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "BODY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "state": "historical-attribution",
+      "width": 1440,
+      "scale": 100,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "SUMMARY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala Fallback"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "state": "historical-attribution",
+      "width": 1024,
+      "scale": 200,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "SUMMARY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "state": "no-logical-manual-entry",
+      "width": 1440,
+      "scale": 100,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "TEXTAREA",
+        "visible": true,
+        "outline": "2px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala Fallback"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "state": "manual-original-fallback",
+      "width": 1024,
+      "scale": 200,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "BODY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "state": "first-refresh-current",
+      "width": 1024,
+      "scale": 100,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "BODY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala Fallback"
+      ],
+      "storageSafe": true,
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "state": "grouping-renewal-required",
+      "width": 1024,
+      "scale": 200,
+      "overflow": false,
+      "paneOverflows": [],
+      "focus": {
+        "tag": "BODY",
+        "visible": false,
+        "outline": "0px"
+      },
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala",
+        "Noto Serif Sinhala Fallback"
+      ],
+      "storageSafe": true,
+      "serious": []
+    }
+  ],
+  "errors": [
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 412 (Precondition Failed)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/boundary-decisions"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 412 (Precondition Failed)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/boundary-decisions"
+    }
+  ],
+  "expectedHttp": [
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review",
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "status": 404
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review",
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "status": 404
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review",
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "status": 404
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review",
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "status": 404
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/boundary-decisions",
+      "path": "/api/v1/detected-documents/doc-synthetic/boundary-decisions",
+      "status": 412
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review",
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "status": 404
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review",
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "status": 404
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review",
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "status": 404
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review",
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "status": 404
+    },
+    {
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/boundary-decisions",
+      "path": "/api/v1/detected-documents/doc-synthetic/boundary-decisions",
+      "status": 412
+    }
+  ],
+  "expectedDiagnostics": [
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 412 (Precondition Failed)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/boundary-decisions"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/review"
+    },
+    {
+      "kind": "error",
+      "text": "Failed to load resource: the server responded with a status of 412 (Precondition Failed)",
+      "url": "http://synthetic.local/api/v1/detected-documents/doc-synthetic/boundary-decisions"
+    }
+  ],
+  "unexpectedErrors": [],
+  "commands": [
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "version": null,
+      "keyPresent": true
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/refresh-extraction",
+      "version": "\"2\"",
+      "keyPresent": true
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/boundary-decisions",
+      "version": "\"2\"",
+      "keyPresent": true
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "version": null,
+      "keyPresent": true
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/refresh-extraction",
+      "version": "\"2\"",
+      "keyPresent": true
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/boundary-decisions",
+      "version": "\"2\"",
+      "keyPresent": true
+    }
+  ],
+  "requests": [
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-b/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-b/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts/manual-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts/manual-synthetic/history",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/refresh-extraction",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/boundary-decisions",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-b/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-b/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts/manual-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts/manual-synthetic/history",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/refresh-extraction",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/document-classes",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/interpretations",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/source-files/source-second/content",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/boundary-decisions",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/source-files",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/rta/fact-types",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic/review",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/image",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/processing-pages/page-a/ocr",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/detected-documents/doc-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat-synthetic/document-inbox",
+      "method": "GET"
+    }
+  ]
+}

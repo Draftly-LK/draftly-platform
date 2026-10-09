@@ -43,6 +43,10 @@ class ToolCallOutcome(StrEnum):
 class PendingActionState(StrEnum):
     PROPOSED = "proposed"
     CONFIRMED = "confirmed"
+    EXECUTED = "executed"
+    DECLINED = "declined"
+    STALE = "stale"
+    FAILED = "failed"
     REJECTED = "rejected"
     EXPIRED = "expired"
 
@@ -67,6 +71,13 @@ class AgentCitation:
     label: str
     verification_status: str
     locator: str | None = None
+    source_file_id: str | None = None
+    page: int | None = None
+    version: int | None = None
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    passage: str | None = None
+    corpus_version: str | None = None
 
 
 def content_hash(content: str, citations: tuple[AgentCitation, ...] = ()) -> str:
@@ -81,6 +92,19 @@ def content_hash(content: str, citations: tuple[AgentCitation, ...] = ()) -> str
             "label": item.label,
             "verificationStatus": item.verification_status,
             "locator": item.locator,
+            **{
+                k: v
+                for k, v in {
+                    "sourceFileId": item.source_file_id,
+                    "page": item.page,
+                    "version": item.version,
+                    "transactionId": item.transaction_id,
+                    "subjectId": item.subject_id,
+                    "passage": item.passage,
+                    "corpusVersion": item.corpus_version,
+                }.items()
+                if v is not None
+            },
         }
         for item in citations
     ]
@@ -196,6 +220,8 @@ class PendingAction:
     confirmed_by: str | None = None
     confirmed_at: datetime | None = None
     reason_code: str | None = None
+
+    result: dict[str, object] = field(default_factory=dict)
 
     def is_open(self, *, now: datetime) -> bool:
         return self.state is PendingActionState.PROPOSED and self.expires_at > now

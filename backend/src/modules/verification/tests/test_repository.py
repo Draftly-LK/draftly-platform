@@ -433,13 +433,13 @@ async def test_confirmed_and_locked_facts_are_reported_with_their_version() -> N
     assert len(summary.unconfirmed_critical_fact_type_ids) == len(CRITICAL_FACT_TYPE_IDS) - 1
 
 
-async def test_the_later_confirmed_version_wins_regardless_of_row_order() -> None:
+async def test_unresolved_confirmed_alternatives_are_withheld_regardless_of_order() -> None:
     summary = await _summarise(
         _fact_row("fct_new", CRITICAL, FactStatus.LAWYER_CONFIRMED, value="new", version=3),
         _fact_row("fct_old", CRITICAL, FactStatus.LAWYER_CONFIRMED, value="old", version=1),
     )
-    assert summary.confirmed[CRITICAL].fact_id == "fct_new"
-    assert summary.confirmed[CRITICAL].value == "new"
+    assert CRITICAL not in summary.confirmed
+    assert summary.conflicted_fact_type_ids == (CRITICAL,)
 
 
 async def test_conflicts_are_reported_once_each_and_sorted() -> None:

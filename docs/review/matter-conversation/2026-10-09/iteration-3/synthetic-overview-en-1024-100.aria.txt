@@ -1,0 +1,94 @@
+- main:
+  - heading "Overview" [level=1]
+  - paragraph: Where this matter stands and what to do next.
+  - region "Record required human review":
+    - text: Next action
+    - heading "Record required human review" [level=2]
+    - paragraph: Required original inspections and lawyer reviews remain open.
+    - link "Open review":
+      - /url: /matters/mat_synthetic/checks
+    - paragraph: Evaluated at 2026-10-09T00:00:00+00:00
+    - term: Instrument
+    - definition: Transfer by sale
+    - term: Matter state
+    - definition: Evidence collection
+    - term: Handling
+    - definition: Prepared by Draftly
+  - region "Checklist progress":
+    - heading "Checklist progress" [level=2]
+    - img "0% of the checklist satisfied"
+    - paragraph: 0 of 1 requirements satisfied
+    - paragraph: 1 blocking requirement
+    - paragraph: 1 still outstanding
+  - list:
+    - listitem:
+      - link "Documents 0 files uploaded":
+        - /url: /matters/mat_synthetic/documents
+    - listitem:
+      - link "Checks 0 open issues":
+        - /url: /matters/mat_synthetic/checks
+    - listitem:
+      - link "Verified facts 0 of 0 lawyer verified":
+        - /url: /matters/mat_synthetic/facts
+    - listitem:
+      - link "Drafts 0 forms generated":
+        - /url: /matters/mat_synthetic/drafts
+  - 'link "Documents: 0 · 0 Pending"':
+    - /url: /matters/mat_synthetic/documents
+  - 'link "Verified facts: 0 / 0"':
+    - /url: /matters/mat_synthetic/facts
+  - 'link "Checks: 1 · 0 Issues"':
+    - /url: /matters/mat_synthetic/checks
+  - 'link "Drafts: 0"':
+    - /url: /matters/mat_synthetic/drafts
+  - button "Show matter context":
+    - img
+  - heading "Matter assistant" [level=2]
+  - paragraph: Ask questions, review evidence, and prepare the next step.
+  - link "Open full conversation":
+    - /url: /matters/mat_synthetic/assistant
+  - button "New conversation":
+    - img
+    - text: New conversation
+  - region "Conversation":
+    - article:
+      - img
+      - text: Assistant
+      - time: 05:30 AM
+      - paragraph: SYNTHETIC proposal awaiting your decision.
+      - paragraph: Unverified. Check anything before you rely on it.
+    - paragraph: The assistant suggests a change
+    - paragraph: Awaiting your decision
+    - paragraph: Accept a register value
+    - term: Target
+    - definition: fact:synthetic-candidate · Version 2
+    - term: Value to accept
+    - definition: SYNTHETIC reviewed value
+    - term: Transaction
+    - definition: transaction-synthetic
+    - term: Subject
+    - definition: parcel-synthetic
+    - paragraph:
+      - img
+      - text: Nothing has changed yet. Confirm to apply it.
+    - button "Confirm":
+      - img
+      - text: Confirm
+    - button "Reject":
+      - img
+      - text: Reject
+    - article:
+      - img
+      - text: Assistant
+      - time: 05:30 AM
+      - paragraph:
+        - text: SYNTHETIC grounded response
+        - button "SYNTHETIC case lead, unverified": "[1]"
+        - text: .
+      - button "[1] SYNTHETIC case lead"
+      - paragraph: Unverified. Check anything before you rely on it.
+  - text: Message the assistant
+  - textbox "Message the assistant"
+  - button "Send" [disabled]
+  - status
+  - paragraph: Draftly can make mistakes. Verify important details against the cited source.

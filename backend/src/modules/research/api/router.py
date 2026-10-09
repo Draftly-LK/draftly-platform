@@ -41,14 +41,6 @@ from src.modules.research.infrastructure.orm import (
     ResearchConversationRow,
     ResearchMessageRow,
 )
-from src.modules.research.infrastructure.retrieval import (
-    GroundedStatuteComposer,
-    HttpStatuteRetrievalAdapter,
-    StatuteRetrievalAdapter,
-)
-from src.modules.research.infrastructure.retrieval.case_http import HttpCaseSearchAdapter
-from src.modules.research.ports import LegalRetrievalPort
-from src.platform.config import get_settings
 from src.platform.db.idempotency import (
     IdempotencyKeyRequiredError,
     SqlIdempotencyStore,
@@ -78,22 +70,9 @@ MessageRoleWire = Literal["user", "assistant", "tool", "system"]
 
 
 def get_service(session: AsyncSession = Depends(get_db)) -> ResearchService:
-    settings = get_settings()
-    composer = None
-    if settings.gemini_api_key and settings.provider_data_approval:
-        composer = GroundedStatuteComposer(
-            api_key=settings.gemini_api_key,
-            model=settings.research_model,
-        )
-    retrieval: LegalRetrievalPort = (
-        HttpStatuteRetrievalAdapter(base_url=settings.retrieval_base_url)
-        if settings.retrieval_base_url
-        else StatuteRetrievalAdapter()
-    )
-    # The bounded similar-case port directly, not the metered CaseResearchService:
-    # one research question costs one research query.
-    cases = HttpCaseSearchAdapter(base_url=settings.retrieval_base_url)
-    return ResearchService(session, retrieval, composer, cases)
+    from src.bootstrap import build_research_service
+
+    return build_research_service(session)
 
 
 def _conversation(row: ResearchConversationRow) -> ConversationRead:

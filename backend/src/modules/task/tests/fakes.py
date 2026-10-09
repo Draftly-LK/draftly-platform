@@ -98,6 +98,19 @@ class InMemoryChecklistRepository:
         wanted = set(item_ids)
         return [l for l in self.links if l.user_id == user_id and l.checklist_item_id in wanted]  # noqa: E741
 
+    async def supersede_item_document_links(
+        self, user_id: str, item_id: str, document_id: str, replacement_id: str
+    ) -> None:
+        for link in self.links:
+            if (
+                link.user_id == user_id
+                and link.checklist_item_id == item_id
+                and link.detected_document_id == document_id
+                and link.id != replacement_id
+            ):
+                link.digital_review = DigitalReviewStatus.SUPERSEDED
+                link.superseded_by_link_id = replacement_id
+
     async def supersede_links_for_document(
         self, user_id: str, detected_document_id: str, *, replacement_link_id: str | None
     ) -> int:
@@ -121,3 +134,37 @@ class RecordingAudit:
 
     async def record(self, event: AuditEventInput) -> None:
         self.events.append(event)
+
+
+class SyntheticRequirementEvidence:
+    """Explicit synthetic document port; scope/eligibility use migrated DB tests."""
+
+    async def requirement_document(self, user_id, matter_id, document_id):
+        from src.modules.document.contracts import OriginalSourcePin, RequirementDocument
+
+        return RequirementDocument(
+            document_id,
+            1,
+            1,
+            "rta.doc.title_certificate",
+            True,
+            (OriginalSourcePin("src_synthetic", "a" * 64, "1"),),
+            (),
+        )
+
+    async def requirement_locators(self, user_id, matter_id, evidence_reference_ids):
+        from src.modules.document.contracts import FactEvidenceLocator
+
+        return tuple(
+            FactEvidenceLocator(
+                "src_synthetic",
+                1,
+                "a" * 64,
+                detected_document_id="doc_2",
+                interpretation_generation=1,
+            )
+            for _ in evidence_reference_ids
+        )
+
+    async def validate_evidence(self, user_id, matter_id, locator):
+        return None

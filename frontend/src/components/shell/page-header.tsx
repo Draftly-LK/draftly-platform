@@ -7,12 +7,15 @@ export function PageHeader({
   description,
   action,
   eyebrow,
+  headingLevel = "h1",
 }: {
   title: string;
   description?: string;
   action?: React.ReactNode;
   eyebrow?: string;
+  headingLevel?: "h1" | "h2";
 }) {
+  const Heading = headingLevel;
   return (
     <div data-page-header className="border-border bg-surface border-b">
       {/* pl-16 below lg keeps the title clear of the fixed mobile menu button. */}
@@ -24,12 +27,14 @@ export function PageHeader({
               {eyebrow}
             </p>
           )}
-          <h1 className="font-display text-3xl font-semibold leading-tight">{title}</h1>
-          {description && <p className="text-muted-ink mt-1.5 max-w-3xl">{description}</p>}
+          <Heading className="font-display text-3xl font-semibold leading-tight">
+            {title}
+          </Heading>
+          {description && (
+            <p className="text-muted-ink mt-1.5 max-w-3xl">{description}</p>
+          )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {action}
-        </div>
+        <div className="flex flex-wrap items-center gap-2">{action}</div>
       </div>
     </div>
   );

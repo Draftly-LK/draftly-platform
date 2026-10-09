@@ -130,7 +130,7 @@ IDENTITY_CARD = DocumentTemplate(
         "barcode or chip."
     ),
     fields=(
-        FieldDef("transfereeNic", "NIC number", is_valid_nic),
+        FieldDef("holderNic", "NIC number", is_valid_nic),
         FieldDef("holderNameEn", "Holder full name (English)"),
         FieldDef("holderNameSi", "Holder full name (Sinhala)"),
         FieldDef("holderDateOfBirth", "Date of birth", is_valid_iso_date),
@@ -271,6 +271,15 @@ def resolve_extraction_template(kind: str) -> DocumentTemplate | None:
     if kind == OTHER_KIND:
         return _GENERIC_DOCUMENT
     return _TEMPLATES.get(kind)
+
+
+def observational_field_key(document_type_id: str, field_key: str) -> str:
+    """Legacy NIC extraction observed its holder, never a transaction role."""
+    return (
+        "holderNic"
+        if document_type_id == "rta.doc.nic" and field_key == "transfereeNic"
+        else field_key
+    )
 
 
 def classification_prompt() -> str:

@@ -8,6 +8,7 @@ state a matter was worked under stays readable after the rules change.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -109,6 +110,12 @@ class ChecklistItemRow(Base):
     original_inspection_method: Mapped[str | None] = mapped_column(String(128), nullable=True)
     original_inspection_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     original_inspection_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    original_inspection_sources: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
+    inspection_history: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, default=list, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -140,6 +147,9 @@ class SatisfactionLinkRow(Base):
         String(64), ForeignKey("checklist_items.id", ondelete="CASCADE"), nullable=False
     )
     detected_document_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    document_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    interpretation_generation: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    originals: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     digital_review: Mapped[str] = mapped_column(String(32), nullable=False)
     evidence_reference_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     reviewed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)

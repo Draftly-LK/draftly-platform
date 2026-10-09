@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import asdict
 from datetime import UTC, datetime
 
 from sqlalchemy import select, update
@@ -17,6 +18,7 @@ from src.modules.content_governance.contracts import (
     PhysicalOriginalStatus,
     ResolutionStatus,
 )
+from src.modules.document.contracts import OriginalSourcePin
 from src.modules.task.domain.errors import ChecklistItemStaleError
 from src.modules.task.domain.models import (
     ChecklistItem,
@@ -57,6 +59,7 @@ def _to_item(row: ChecklistItemRow) -> ChecklistItem:
             method=row.original_inspection_method or "",
             location=row.original_inspection_location,
             note=row.original_inspection_note,
+            originals=tuple(OriginalSourcePin(**pin) for pin in row.original_inspection_sources),
         )
     return ChecklistItem(
         id=row.id,
@@ -70,7 +73,16 @@ def _to_item(row: ChecklistItemRow) -> ChecklistItem:
         applicability=ApplicabilityStatus(row.applicability),
         collection=CollectionStatus(row.collection),
         digital_review=DigitalReviewStatus(row.digital_review),
-        physical_original=PhysicalOriginalStatus(row.physical_original),
+        physical_original=(
+            PhysicalOriginalStatus.UNKNOWN
+            if row.physical_original == "ORIGINAL_INSPECTED"
+            and (
+                not inspection
+                or not inspection.originals
+                or not all(pin.precise for pin in inspection.originals)
+            )
+            else PhysicalOriginalStatus(row.physical_original)
+        ),
         currency=CurrencyStatus(row.currency),
         consistency=ConsistencyStatus(row.consistency),
         resolution=ResolutionStatus(row.resolution),
@@ -80,6 +92,17 @@ def _to_item(row: ChecklistItemRow) -> ChecklistItem:
         due_at=row.due_at,
         local_authority_id=row.local_authority_id,
         original_inspection=inspection,
+        inspection_history=tuple(
+            OriginalInspection(
+                reviewer_id=entry["reviewer_id"],
+                inspected_at=datetime.fromisoformat(entry["inspected_at"]),
+                method=entry["method"],
+                location=entry.get("location"),
+                note=entry.get("note"),
+                originals=tuple(OriginalSourcePin(**pin) for pin in entry.get("originals", [])),
+            )
+            for entry in row.inspection_history
+        ),
         created_at=row.created_at,
         updated_at=row.updated_at,
         version=row.version,
@@ -105,6 +128,13 @@ def _apply_item(row: ChecklistItemRow, item: ChecklistItem) -> None:
     row.original_inspection_method = inspection.method if inspection else None
     row.original_inspection_location = inspection.location if inspection else None
     row.original_inspection_note = inspection.note if inspection else None
+    row.original_inspection_sources = (
+        [asdict(pin) for pin in inspection.originals] if inspection else []
+    )
+    row.inspection_history = [
+        {**asdict(entry), "inspected_at": entry.inspected_at.isoformat()}
+        for entry in item.inspection_history
+    ]
 
 
 def _to_link(row: SatisfactionLinkRow) -> SatisfactionLink:
@@ -114,6 +144,9 @@ def _to_link(row: SatisfactionLinkRow) -> SatisfactionLink:
         matter_id=row.matter_id,
         checklist_item_id=row.checklist_item_id,
         detected_document_id=row.detected_document_id,
+        document_version=row.document_version,
+        interpretation_generation=row.interpretation_generation,
+        originals=tuple(OriginalSourcePin(**pin) for pin in row.originals),
         digital_review=DigitalReviewStatus(row.digital_review),
         evidence_reference_ids=tuple(row.evidence_reference_ids),
         reviewed_by=row.reviewed_by,
@@ -296,6 +329,9 @@ class SqlChecklistRepository:
             matter_id=link.matter_id,
             checklist_item_id=link.checklist_item_id,
             detected_document_id=link.detected_document_id,
+            document_version=link.document_version,
+            interpretation_generation=link.interpretation_generation,
+            originals=[asdict(pin) for pin in link.originals],
             digital_review=link.digital_review.value,
             evidence_reference_ids=list(link.evidence_reference_ids),
             reviewed_by=link.reviewed_by,
@@ -353,6 +389,22 @@ class SqlChecklistRepository:
             .order_by(SatisfactionLinkRow.created_at.asc())
         )
         return [_to_link(row) for row in result.scalars().all()]
+
+    async def supersede_item_document_links(
+        self, user_id: str, item_id: str, document_id: str, replacement_id: str
+    ) -> None:
+        await self._session.execute(
+            update(SatisfactionLinkRow)
+            .where(
+                SatisfactionLinkRow.user_id == user_id,
+                SatisfactionLinkRow.checklist_item_id == item_id,
+                SatisfactionLinkRow.detected_document_id == document_id,
+                SatisfactionLinkRow.id != replacement_id,
+                SatisfactionLinkRow.superseded_by_link_id.is_(None),
+            )
+            .values(superseded_by_link_id=replacement_id, digital_review="SUPERSEDED")
+        )
+        await self._session.flush()
 
     async def supersede_links_for_document(
         self, user_id: str, detected_document_id: str, *, replacement_link_id: str | None

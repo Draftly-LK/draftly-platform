@@ -10,12 +10,28 @@
  * for every form in this repository (§9.5).
  */
 
-import { apiFetch, ifMatch, type TokenProvider } from "@/lib/api/client";
-import type { ApiGeneratedForm, ApiGeneratedFormList } from "@/types/rta";
+import {
+  ApiError,
+  apiFetch,
+  ifMatch,
+  type TokenProvider,
+} from "@/lib/api/client";
+import { getMe } from "@/lib/api/auth";
+import {
+  pendingOperationIntent,
+  clearManualIntent,
+} from "@/lib/api/mutation-intent";
+import type {
+  ApiFormScope,
+  ApiGeneratedForm,
+  ApiGeneratedFormList,
+} from "@/types/rta";
 
 export interface GenerateFormBody {
   /** Selects between the templates the confirmed subtype already permits. */
   templateId?: string;
+  scope?: ApiFormScope;
+  predecessorFormId?: string;
 }
 
 /**
@@ -23,16 +39,46 @@ export interface GenerateFormBody {
  * subtype must already be lawyer-confirmed — it is read server-side, never
  * from this body.
  */
-export function generateForm(
+export async function generateForm(
   getToken: TokenProvider,
   matterId: string,
   body: GenerateFormBody = {},
 ): Promise<ApiGeneratedForm> {
-  return apiFetch<ApiGeneratedForm>(`/api/v1/matters/${encodeURIComponent(matterId)}/forms`, {
-    method: "POST",
+  // Resolve the actor and mutate with one credential, even if the session changes.
+  const token = await getToken();
+  const operationToken: TokenProvider = async () => token;
+  const actor = await getMe(operationToken);
+  const intent = await pendingOperationIntent(
+    actor.id,
+    matterId,
+    "form:create",
     body,
-    getToken,
-  });
+  );
+  let result: ApiGeneratedForm;
+  try {
+    result = await apiFetch<ApiGeneratedForm>(
+      `/api/v1/matters/${encodeURIComponent(matterId)}/forms`,
+      {
+        method: "POST",
+        body,
+        headers: { "Idempotency-Key": intent.key },
+        getToken: operationToken,
+      },
+    );
+  } catch (cause) {
+    if (
+      !intent.reused &&
+      cause instanceof ApiError &&
+      cause.status >= 400 &&
+      cause.status < 500 &&
+      cause.status !== 408 &&
+      cause.status !== 429
+    )
+      clearManualIntent(intent);
+    throw cause;
+  }
+  clearManualIntent(intent);
+  return result;
 }
 
 export interface ListFormsParams {
@@ -58,8 +104,14 @@ export function listForms(
 }
 
 /** The whole binding record, with a freshly evaluated preflight beside it. */
-export function getForm(getToken: TokenProvider, formId: string): Promise<ApiGeneratedForm> {
-  return apiFetch<ApiGeneratedForm>(`/api/v1/forms/${encodeURIComponent(formId)}`, { getToken });
+export function getForm(
+  getToken: TokenProvider,
+  formId: string,
+): Promise<ApiGeneratedForm> {
+  return apiFetch<ApiGeneratedForm>(
+    `/api/v1/forms/${encodeURIComponent(formId)}`,
+    { getToken },
+  );
 }
 
 export interface FieldDecisionBody {
@@ -72,18 +124,53 @@ export interface FieldDecisionBody {
 }
 
 /** Confirm, correct, or clear one field binding. */
-export function recordFieldDecision(
+export async function recordFieldDecision(
   getToken: TokenProvider,
   formId: string,
   body: FieldDecisionBody,
   version: number,
 ): Promise<ApiGeneratedForm> {
-  return apiFetch<ApiGeneratedForm>(`/api/v1/forms/${encodeURIComponent(formId)}/field-decisions`, {
-    method: "POST",
+  const token = await getToken();
+  const operationToken: TokenProvider = async () => token;
+  const [actor, form] = await Promise.all([
+    getMe(operationToken),
+    getForm(operationToken, formId),
+  ]);
+  const intent = await pendingOperationIntent(
+    actor.id,
+    form.matterId,
+    `form:decide:${formId}`,
     body,
-    headers: ifMatch(version),
-    getToken,
-  });
+    version,
+  );
+  let result: ApiGeneratedForm;
+  try {
+    result = await apiFetch<ApiGeneratedForm>(
+      `/api/v1/forms/${encodeURIComponent(formId)}/field-decisions`,
+      {
+        method: "POST",
+        body,
+        headers: {
+          ...ifMatch(intent.expectedVersion ?? version),
+          "Idempotency-Key": intent.key,
+        },
+        getToken: operationToken,
+      },
+    );
+  } catch (cause) {
+    if (
+      !intent.reused &&
+      cause instanceof ApiError &&
+      cause.status >= 400 &&
+      cause.status < 500 &&
+      cause.status !== 408 &&
+      cause.status !== 429
+    )
+      clearManualIntent(intent);
+    throw cause;
+  }
+  clearManualIntent(intent);
+  return result;
 }
 
 /**
@@ -91,11 +178,17 @@ export function recordFieldDecision(
  * A POST because the run is an audit event, not a state change: the report
  * never advances the form on its own.
  */
-export function runPreflight(getToken: TokenProvider, formId: string): Promise<ApiGeneratedForm> {
-  return apiFetch<ApiGeneratedForm>(`/api/v1/forms/${encodeURIComponent(formId)}/preflight`, {
-    method: "POST",
-    getToken,
-  });
+export function runPreflight(
+  getToken: TokenProvider,
+  formId: string,
+): Promise<ApiGeneratedForm> {
+  return apiFetch<ApiGeneratedForm>(
+    `/api/v1/forms/${encodeURIComponent(formId)}/preflight`,
+    {
+      method: "POST",
+      getToken,
+    },
+  );
 }
 
 export interface MarkStaleBody {
@@ -112,10 +205,13 @@ export function markFormStale(
   body: MarkStaleBody,
   version: number,
 ): Promise<ApiGeneratedForm> {
-  return apiFetch<ApiGeneratedForm>(`/api/v1/forms/${encodeURIComponent(formId)}/mark-stale`, {
-    method: "POST",
-    body,
-    headers: ifMatch(version),
-    getToken,
-  });
+  return apiFetch<ApiGeneratedForm>(
+    `/api/v1/forms/${encodeURIComponent(formId)}/mark-stale`,
+    {
+      method: "POST",
+      body,
+      headers: ifMatch(version),
+      getToken,
+    },
+  );
 }

@@ -27,9 +27,22 @@ class IssueGateSummary:
     #: caller can render "this cannot be waived" rather than "ask someone else".
     open_statutory_blocker_ids: tuple[str, ...] = field(default_factory=tuple)
     open_blocking_issue_ids: tuple[str, ...] = field(default_factory=tuple)
+    stale_check_ids: tuple[str, ...] = field(default_factory=tuple)
 
 
 class IssueGatePort(Protocol):
     """Read the current issue gates for one matter."""
 
     async def gates(self, user_id: str, matter_id: str) -> IssueGateSummary: ...
+
+
+class CheckInputInvalidationPort(Protocol):
+    async def invalidate_inputs(
+        self,
+        *,
+        user_id: str,
+        matter_id: str,
+        fact_ids: tuple[str, ...],
+        actor_id: str,
+        correlation_id: str,
+    ) -> None: ...

@@ -14,6 +14,7 @@ import asyncio
 import re
 from typing import TypeVar
 
+import httpx
 import structlog
 from google import genai
 from google.genai import types
@@ -21,7 +22,10 @@ from google.genai.errors import APIError, ClientError
 from pydantic import BaseModel, Field
 
 from src.modules.content_governance.contracts import get_document_class
-from src.modules.document.domain.errors import ExtractionProviderError
+from src.modules.document.domain.errors import (
+    ExtractionProviderError,
+    ExtractionProviderTimeoutError,
+)
 from src.modules.document.domain.registry import (
     OTHER_KIND,
     classification_prompt,
@@ -39,6 +43,7 @@ from src.modules.document.ports import (
 
 log = structlog.get_logger(__name__)
 
+PROVIDER_TIMEOUT_SECONDS = 120.0
 _MAX_ATTEMPTS = 3
 _BASE_DELAY_S = 5.0
 _MAX_DELAY_S = 25.0
@@ -270,11 +275,14 @@ class GeminiExtractionAdapter:
         last_error: Exception | None = None
         for attempt in range(1, _MAX_ATTEMPTS + 1):
             try:
-                response = await asyncio.to_thread(
-                    self._client.models.generate_content,
-                    model=model,
-                    contents=contents,
-                    config=config,
+                response = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self._client.models.generate_content,
+                        model=model,
+                        contents=contents,
+                        config=config,
+                    ),
+                    timeout=PROVIDER_TIMEOUT_SECONDS + 5,
                 )
                 parsed = response.parsed
                 if isinstance(parsed, schema):
@@ -282,10 +290,14 @@ class GeminiExtractionAdapter:
                 # Schema-enforced output should always parse; a miss means the
                 # provider returned something unusable.
                 raise ExtractionProviderError("Provider returned an unparseable response.")
+            except (TimeoutError, httpx.TimeoutException) as exc:
+                raise ExtractionProviderTimeoutError() from exc
             except ClientError as exc:
                 last_error = exc
                 message = str(exc)
                 status = getattr(exc, "status_code", None) or getattr(exc, "code", None)
+                if status in (408, 504):
+                    raise ExtractionProviderTimeoutError() from exc
                 if status != 429 and "RESOURCE_EXHAUSTED" not in message:
                     raise ExtractionProviderError() from exc
                 hinted = _RETRY_HINT_RE.search(message)
@@ -308,7 +320,9 @@ class GeminiExtractionAdapter:
                 )
                 await asyncio.sleep(wait)
                 delay = min(delay * 2, _MAX_DELAY_S)
-            except (APIError, ValueError) as exc:
+            except (APIError, ValueError, httpx.TransportError) as exc:
+                if isinstance(exc, APIError) and exc.code in (408, 504):
+                    raise ExtractionProviderTimeoutError() from exc
                 raise ExtractionProviderError() from exc
 
         raise ExtractionProviderError() from last_error
@@ -326,13 +340,20 @@ class GeminiExtractionAdapter:
             response_schema=schema,
         )
         try:
-            response = await asyncio.to_thread(
-                self._client.models.generate_content,
-                model=model,
-                contents=prompt,
-                config=config,
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    self._client.models.generate_content,
+                    model=model,
+                    contents=prompt,
+                    config=config,
+                ),
+                timeout=PROVIDER_TIMEOUT_SECONDS + 5,
             )
-        except (APIError, ValueError) as exc:
+        except (TimeoutError, httpx.TimeoutException) as exc:
+            raise ExtractionProviderTimeoutError() from exc
+        except (APIError, ValueError, httpx.TransportError) as exc:
+            if isinstance(exc, APIError) and exc.code in (408, 504):
+                raise ExtractionProviderTimeoutError() from exc
             raise ExtractionProviderError() from exc
         parsed = response.parsed
         if not isinstance(parsed, schema):

@@ -894,3 +894,70 @@ names `task.review-requested` and `matter.signing-scheduled`.
     conditional modules such as power of attorney, corporate party, minor
     party, reserved life interest, mortgage or encumbrance, divided or
     undivided share, subdivision, and missing original evidence.
+
+### Lawyer-led requirements and manual review (2026-10-09)
+
+The current runtime uses governed checklist requirements, not new StepRun or
+WorkflowDefinition content. Checks projects the existing human original-inspection
+and requirement-decision commands. Empty accepted-class lists do not establish
+administrative completion eligibility. Receipt and manual inspection never write
+SATISFIED directly or bypass existing evidence, currency, consistency or waiver policy.
+
+Requirement links now require item If-Match plus documentVersion and
+interpretationGeneration. The document owner validates user/matter, exact current
+pages and immutable source hash/storage version; the verification owner validates
+every supplied evidence ID. Linking records receipt and resets item evidence review.
+Legacy links without exact pins remain readable history and cannot establish a live
+supporting link. Current reads withhold stale link-derived authority too.
+
+Original inspections retain actor, time, method, optional note/location, and the
+exact immutable source pins plus represented document, page set and interpretation
+generation. Only an unchanged represented scope may retain its physical inspection;
+a different group or changed pages in the same PDF requires renewed inspection.
+Legacy pins without this precision remain history and project as unknown/stale. All inspections remain in inspectionHistory. No machine or
+administrative action can record the human-only inspection. Legal review actions
+retain their existing capability checks and policies, including non-document
+requirements with optional historical attachments.
+
+All three POST commands (decisions, original-inspection, links) require a stable
+Idempotency-Key and item If-Match. Current matter/capability/resource authorization
+and the shared matter mutation lock precede replay. Same logical payload and
+precondition replay the original response/ETag; changed requests conflict. Replay
+is historical, so clients reload current eligibility after recovery. The browser
+stores only opaque actor/matter/operation retry metadata for 24 hours; explicit
+renewal discards that operation's obsolete pin after refreshing current state.
+
+GET /api/v1/matters/{id}/readiness is an operational dependency projection, not
+legal approval. It returns state, nextAction, evaluatedAt, requirement counts and
+versioned blocker references. Document, verification and check owners contribute
+current dependency state; missing/unavailable dependencies are unknown. Reads are
+bounded (document/check pages: 10 x 100; canonical facts: 4 x 25); incomplete or
+repeated pagination cannot clear work. Fresh scoped checks alone cannot prove
+whole-matter coverage because no approved per-scope required-run definition exists.
+Such coverage stays unknown/check-review. Counts and next actions must not be
+replaced with client-side empty/null-as-zero heuristics.
+
+Known pending document/fact work remains the next action when a checklist is absent
+or unavailable; overall state stays unknown and requirement counts stay null.
+Unknown-only dependencies show recovery rather than an invented completion.
+
+Migration task0002 is additive after document0004: link document/generation/source
+pins and item original-inspection source/history JSON. Existing rows are not
+inventively backfilled. Legacy inspection metadata remains retained but an unbound
+inspection is projected as unknown. Downgrade refuses any pinned link or recorded
+inspection history. Older code is not a supported writer after these new records.
+
+### Partial supporting evidence and human-review routing (2026-10-09)
+
+Checklist and single-item projections retain whether any active bound supporting
+link failed currentness. One remaining current link cannot preserve effective
+lawyer review over a changed evidence set. Stored decisions, receipt, original
+inspection and audit history stay unchanged; deliberately superseded links remain
+history. The internal projection carries this invalid-support signal into readiness.
+
+Received, current support awaiting governed original/digital/currency/consistency
+review points to the existing Checks controls. Missing or invalid supporting evidence
+continues to point to Documents. Requirement blocker references remain present in
+both cases; this changes navigation, not completion or legal policy. Synthetic
+consumer packets are generated from the actual checklist/readiness services and
+checked for equality before frontend/browser destination tests consume them.

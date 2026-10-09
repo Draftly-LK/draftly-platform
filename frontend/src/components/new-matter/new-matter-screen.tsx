@@ -56,6 +56,8 @@ import {
   routeMatter,
   saveIntakeAnswer,
 } from "@/lib/api/matters";
+import { getMe } from "@/lib/api/auth";
+import { pendingOperationIntent, pendingUploadIntent, clearManualIntent } from "@/lib/api/mutation-intent";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { uploadSourceFile } from "@/lib/api/documents";
 import {
@@ -191,6 +193,8 @@ function ApiBoundNewMatterScreen() {
 
 function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
   const t = useTranslations("newMatter");
+  const retryText = useTranslations("documentOperations");
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
   /** Rule-pack label keys (`rta.family.*`, `rta.subtype.*`, gate reason keys)
    *  are authored in the rule pack, so they resolve from the message root. */
   const tRoot = useTranslations();
@@ -321,13 +325,18 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
     setBusy(true);
     try {
       if (step === 1) {
-        const created = await createMatterRequest(getToken, {
+        const body = {
           reference: reference.trim(),
           ...(clientReference.trim()
             ? { clientReference: clientReference.trim() }
             : {}),
           instrumentLanguage,
-        });
+        };
+        const actor = await getMe(getToken);
+        const intent = await pendingOperationIntent(actor.id, "new-matter", "create", body);
+        setStorageUnavailable(!intent.persistent);
+        const created = await createMatterRequest(getToken, body, intent.key);
+        clearManualIntent(intent);
         setMatterId(created.id);
         setMatterVersion(created.version);
       } else if (step === 2 && matterId !== null && q01Regime !== null) {
@@ -404,12 +413,17 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
       setBusy(true);
       setError(null);
       setFiles((current) =>
-        current.map((entry) => ({ ...entry, state: "uploading" })),
+        current.map((entry) => entry.state === "attached" ? entry : ({ ...entry, state: "uploading" })),
       );
       let failureCount = 0;
       for (const entry of files) {
+        if (entry.state === "attached") continue;
         try {
-          await uploadSourceFile(getToken, matterId, entry.file);
+          const actor = await getMe(getToken);
+          const intent = await pendingUploadIntent(actor.id, matterId, entry.file);
+          setStorageUnavailable(!intent.persistent);
+          await uploadSourceFile(getToken, matterId, entry.file, intent.key);
+          clearManualIntent(intent);
           setFiles((current) =>
             current.map((item) =>
               item.file === entry.file ? { ...item, state: "attached" } : item,
@@ -1038,6 +1052,7 @@ function NewMatterFlow({ getToken }: { getToken: TokenProvider | null }) {
           </section>
         )}
 
+        {storageUnavailable && <p role="status" className="text-amber-text mt-4 text-sm">{retryText("storageUnavailable")}</p>}
         {error !== null && (
           <p
             role="alert"

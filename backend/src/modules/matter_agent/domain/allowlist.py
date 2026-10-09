@@ -66,6 +66,16 @@ def _tool(
 # authenticated user can already reach through the ordinary screens.
 
 _READ_TOOLS: Final[tuple[AgentTool, ...]] = (
+    _tool(
+        "read_matter_readiness",
+        ToolKind.READ,
+        summary="Current operational dependencies, unknown states and next action.",
+    ),
+    _tool(
+        "research_legal_question",
+        ToolKind.READ,
+        summary="Grounded legal analysis over selected controlled statute/case sources; abstains without supported citations.",
+    ),
     _tool("read_matter_summary", ToolKind.READ, summary="Matter summary and routing state."),
     _tool("read_document_status", ToolKind.READ, summary="Source-file and processing status."),
     _tool(
@@ -81,19 +91,23 @@ _READ_TOOLS: Final[tuple[AgentTool, ...]] = (
     _tool(
         "read_verified_facts",
         ToolKind.READ,
-        summary="Verified facts, separated from unverified candidates.",
+        summary="Canonical fact register with exact scope, evidence, versions and review states; paginated.",
     ),
     _tool(
         "read_checklist_state",
         ToolKind.READ,
-        summary="Checklist, checks, issues and obligations.",
+        summary="Current requirement checklist states and blocking requirements.",
     ),
-    _tool("read_draft_preflight", ToolKind.READ, summary="Working drafts and preflight state."),
+    _tool(
+        "read_draft_preflight",
+        ToolKind.READ,
+        summary="Page through existing working forms and their saved state; does not evaluate preflight.",
+    ),
     _tool("search_matter_memory", ToolKind.READ, summary="Non-authoritative matter memory search."),
     _tool(
         "list_matter_inventory",
         ToolKind.READ,
-        summary="Parcels, parties and existing documents on the matter.",
+        summary="Explicit matter subjects and transactions with current association revisions.",
     ),
     _tool(
         "compare_parcel_identity",

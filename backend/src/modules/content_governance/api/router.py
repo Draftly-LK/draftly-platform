@@ -9,6 +9,7 @@ GET /api/v1/rta/checks           deterministic check definitions
 GET /api/v1/rta/forms            template registry and field mappings
 GET /api/v1/rta/document-classes controlled document classes
 GET /api/v1/rta/sources          source register with verification state
+GET /api/v1/rta/fact-types       existing governed fact metadata
 ```
 
 There is no write surface. Governed content changes through a reviewed code
@@ -29,6 +30,7 @@ from src.modules.content_governance.application.rule_pack_export import (
     checklist_contract,
     checks_contract,
     document_classes_contract,
+    fact_types_contract,
     forms_contract,
     full_rule_pack_contract,
     questions_contract,
@@ -38,6 +40,12 @@ from src.modules.content_governance.application.rule_pack_export import (
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["rta-rule-pack"])
+
+
+@router.get("/rta/fact-types")
+async def get_fact_types(ctx: RequestContext = Depends(get_request_context)) -> dict[str, Any]:
+    _ = ctx
+    return fact_types_contract()
 
 
 @router.get("/rta/rule-pack")

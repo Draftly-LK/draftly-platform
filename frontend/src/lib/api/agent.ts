@@ -7,7 +7,8 @@
  *
  * Every send carries an `Idempotency-Key`. A retried send therefore replays
  * the first job instead of asking the assistant the same question twice —
- * which is what makes the retry button in the composer safe.
+ * Transport retries reuse that key. A terminal failure instead uses the
+ * explicit retry endpoint to queue a new attempt for the saved message.
  */
 
 import {
@@ -44,10 +45,19 @@ export interface ApiAgentCitation {
     | "check"
     | "draft"
     | "party"
+    | "statute"
+    | "case"
     | "record";
   label: string;
   verificationStatus: "verified" | "unverified" | "operational";
   locator: string | null;
+  sourceFileId?: string | null;
+  page?: number | null;
+  version?: number | null;
+  transactionId?: string | null;
+  subjectId?: string | null;
+  passage?: string | null;
+  corpusVersion?: string | null;
 }
 
 export interface ApiAgentMessage {
@@ -80,13 +90,68 @@ export interface ApiPendingAction {
   actionKind: string;
   targetRef: string;
   targetVersion: number;
-  state: "proposed" | "confirmed" | "rejected" | "expired";
+  state:
+    | "proposed"
+    | "confirmed"
+    | "rejected"
+    | "expired"
+    | "executed"
+    | "declined"
+    | "stale"
+    | "failed";
+  arguments: Record<string, unknown>;
+  result: Record<string, unknown>;
+  reasonCode: string | null;
   expiresAt: string;
   createdAt: string;
 }
 
 const AGENT_BASE = (matterId: string) =>
   `${API_VERSION_PREFIX}/matters/${matterId}/agent`;
+
+export interface ApiAgentSendReceipt {
+  sendKey: string;
+  matterId: string;
+  conversationId: string;
+  jobId: string;
+}
+
+export function getAgentSendReceipt(
+  getToken: TokenProvider,
+  matterId: string,
+  conversationId: string,
+  sendKey: string,
+): Promise<ApiAgentSendReceipt | null> {
+  return apiFetch<ApiAgentSendReceipt | null>(
+    `${AGENT_BASE(matterId)}/send-receipt?${new URLSearchParams({ conversationId })}`,
+    {
+      method: "GET",
+      getToken,
+      headers: { "Idempotency-Key": sendKey },
+    },
+  );
+}
+
+export function getLatestAgentJob(
+  getToken: TokenProvider,
+  matterId: string,
+): Promise<ApiAgentJob | null> {
+  return apiFetch<ApiAgentJob | null>(`${AGENT_BASE(matterId)}/latest-job`, {
+    method: "GET",
+    getToken,
+  });
+}
+
+export function getAgentAction(
+  getToken: TokenProvider,
+  matterId: string,
+  actionId: string,
+): Promise<ApiPendingAction> {
+  return apiFetch<ApiPendingAction>(
+    `${AGENT_BASE(matterId)}/actions/${actionId}`,
+    { method: "GET", getToken },
+  );
+}
 
 export function getAgentSession(
   getToken: TokenProvider,
@@ -160,6 +225,20 @@ export function getAgentJob(
   return apiFetch<ApiAgentJob>(`${API_VERSION_PREFIX}/agent-jobs/${jobId}`, {
     method: "GET",
     getToken,
+  });
+}
+
+/** A fresh attempt for the saved message, with its own transport replay key. */
+export function retryAgentJob(
+  getToken: TokenProvider,
+  matterId: string,
+  jobId: string,
+  idempotencyKey: string,
+): Promise<ApiAgentJob> {
+  return apiFetch<ApiAgentJob>(`${AGENT_BASE(matterId)}/jobs/${jobId}/retry`, {
+    method: "POST",
+    getToken,
+    headers: { "Idempotency-Key": idempotencyKey },
   });
 }
 

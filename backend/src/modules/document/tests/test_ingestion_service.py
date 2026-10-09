@@ -52,6 +52,9 @@ TITLE_CLASS = "rta.doc.title_certificate"
 
 
 class FakeRepository:
+    async def list_page_dispositions(self, user_id: str, matter_id: str) -> list:
+        return []
+
     """In-memory stand-in that keeps the tenant filter the real one enforces."""
 
     def __init__(self) -> None:
@@ -188,6 +191,9 @@ class FakeRepository:
     async def create_run(self, run: ProcessingRun) -> ProcessingRun:
         self.runs.append(run)
         return run
+
+    async def snapshot_interpretation(self, document, fragments, actor_id):
+        return None
 
 
 class FakeStorage:
@@ -483,6 +489,8 @@ async def test_a_successful_run_creates_documents_in_the_band_it_earned() -> Non
     assert document.class_status is DocumentClassStatus.REVIEW_REQUIRED
     assert document.boundary_status is BoundaryStatus.CANDIDATE
     assert view.documents[0].fragments[0].boundary_confidence is None
+    # A classification-only legacy job is not proof of an extraction.
+    assert document.extraction_state == "unavailable"
 
 
 async def test_an_unplaceable_document_lands_unidentified_without_a_guess() -> None:
@@ -858,7 +866,8 @@ async def test_a_failed_run_moves_nothing() -> None:
 
 async def test_the_matter_reaches_legal_review_only_when_every_document_is_decided() -> None:
     workflow = FakeMatterWorkflow()
-    service = build_service(matter_workflow=workflow)
+    repo = FakeRepository()
+    service = build_service(repository=repo, matter_workflow=workflow)
     run = await _processed(service)
     document = run.documents[0].document
 
@@ -874,7 +883,7 @@ async def test_the_matter_reaches_legal_review_only_when_every_document_is_decid
     assert MatterState.LEGAL_REVIEW not in workflow.requested
 
     fragment = run.documents[0].fragments[0]
-    await service.decide_boundary(
+    confirmed = await service.decide_boundary(
         user_id=USER,
         document_id=document.id,
         ranges=[
@@ -890,6 +899,18 @@ async def test_the_matter_reaches_legal_review_only_when_every_document_is_decid
         expected_version=classified.document.version,
     )
 
+    assert MatterState.LEGAL_REVIEW not in workflow.requested
+    # This fake job only organized pages. Model an explicit completed extraction
+    # before asserting the positive transition; classification alone is insufficient.
+    repo.documents[document.id].extraction_state = "current"
+    await service.decide_boundary(
+        user_id=USER,
+        document_id=document.id,
+        ranges=[FragmentRange(fragment.source_file_id, fragment.page_start, fragment.page_end, 0)],
+        actor_id=USER,
+        correlation_id="corr_current",
+        expected_version=confirmed.document.version,
+    )
     assert workflow.requested[-2:] == [MatterState.REVIEW_REQUIRED, MatterState.LEGAL_REVIEW]
 
 

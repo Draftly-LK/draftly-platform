@@ -1,0 +1,527 @@
+{
+  "fixture": "Actual backend-generated requirement/readiness packet; synthetic owner ports, real components and route click",
+  "probes": [
+    {
+      "locale": "en",
+      "width": 1440,
+      "screen": "fix1-original",
+      "zoom": 100,
+      "overflow": false,
+      "panes": [],
+      "canvas": "rgb(243, 245, 248)",
+      "font": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "controls": [
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "30px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "30px"
+        }
+      ],
+      "language": "en",
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1440,
+      "screen": "fix1-original",
+      "zoom": 100,
+      "overflow": false,
+      "panes": [],
+      "canvas": "rgb(243, 245, 248)",
+      "font": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "controls": [
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "38.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "38.5625px"
+        }
+      ],
+      "language": "si",
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "screen": "fix1-review",
+      "zoom": 100,
+      "overflow": false,
+      "panes": [],
+      "canvas": "rgb(243, 245, 248)",
+      "font": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "controls": [
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "40px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "30px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "30px"
+        }
+      ],
+      "language": "en",
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1440,
+      "screen": "fix1-review",
+      "zoom": 100,
+      "overflow": false,
+      "panes": [],
+      "canvas": "rgb(243, 245, 248)",
+      "font": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "fonts": [
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans",
+        "IBM Plex Sans Fallback",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala",
+        "Noto Sans Sinhala Fallback",
+        "Source Serif 4",
+        "Source Serif 4",
+        "Source Serif 4 Fallback"
+      ],
+      "controls": [
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "46.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "38.5625px"
+        },
+        {
+          "border": "rgb(123, 136, 153)",
+          "height": "38.5625px"
+        }
+      ],
+      "language": "si",
+      "serious": []
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist-items/cli_synthetic_65/links",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist-items/cli_synthetic_65/links",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist-items/cli_synthetic_65/links",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/transactions",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/subjects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist-items/cli_synthetic_65/links",
+      "method": "GET"
+    }
+  ],
+  "commands": []
+}

@@ -21,6 +21,10 @@ class CheckRepository(Protocol):
     this deployment: no query reaches a row without it (plan §5.3 invariant 10).
     """
 
+    async def stale_input_results(
+        self, user_id: str, matter_id: str
+    ) -> tuple[CheckResult, ...]: ...
+
     async def create_results(self, results: list[CheckResult]) -> list[CheckResult]:
         """Append one run's results. Results are never updated in place (§7.1)."""
         ...
