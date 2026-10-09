@@ -1,0 +1,470 @@
+{
+  "synthetic": true,
+  "probes": [
+    {
+      "locale": "en",
+      "width": 1024,
+      "screen": "unsupported-manual",
+      "textScale": 100,
+      "overflow": false,
+      "paneOverflows": [],
+      "canvas": "rgb(243, 245, 248)",
+      "bodyFont": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "titleFont": "\"Source Serif 4\", \"Source Serif 4 Fallback\", \"Noto Serif Sinhala\", \"Noto Serif Sinhala Fallback\", Georgia, serif",
+      "bodySize": "14px",
+      "overflowingElements": [
+        {
+          "tag": "rect",
+          "class": {},
+          "text": "",
+          "right": 1126.400047302246
+        },
+        {
+          "tag": "path",
+          "class": {},
+          "text": "",
+          "right": 1126.400047302246
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "Export & registration",
+          "right": 1081.640625
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "Assistant",
+          "right": 1171.171875
+        },
+        {
+          "tag": "SPAN",
+          "class": "w-0.5 shrink-0",
+          "text": "",
+          "right": 1173.171875
+        }
+      ],
+      "statusIcons": 5,
+      "links": [
+        "/matters/mat-synthetic/documents/doc-synthetic/review"
+      ],
+      "fonts": {
+        "faces": [
+          {
+            "family": "IBM Plex Sans",
+            "weight": "400",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans",
+            "weight": "600",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Sans Sinhala",
+            "weight": "100 900",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Sans Sinhala Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4",
+            "weight": "600",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4 Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          }
+        ],
+        "plex": true,
+        "sinhalaSans": true,
+        "sourceSerif": true,
+        "sinhalaSerif": false
+      },
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "width": 1024,
+      "screen": "unsupported-manual",
+      "textScale": 200,
+      "overflow": false,
+      "paneOverflows": [],
+      "canvas": "rgb(243, 245, 248)",
+      "bodyFont": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "titleFont": "\"Source Serif 4\", \"Source Serif 4 Fallback\", \"Noto Serif Sinhala\", \"Noto Serif Sinhala Fallback\", Georgia, serif",
+      "bodySize": "14px",
+      "overflowingElements": [
+        {
+          "tag": "rect",
+          "class": {},
+          "text": "",
+          "right": 1126.400047302246
+        },
+        {
+          "tag": "path",
+          "class": {},
+          "text": "",
+          "right": 1126.400047302246
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "Missing documents",
+          "right": 1238
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "Drafts",
+          "right": 1346.546875
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "Export & registration",
+          "right": 1642.21875
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "Assistant",
+          "right": 1791.28125
+        },
+        {
+          "tag": "SPAN",
+          "class": "w-0.5 shrink-0",
+          "text": "",
+          "right": 1793.28125
+        }
+      ],
+      "statusIcons": 5,
+      "links": [
+        "/matters/mat-synthetic/documents/doc-synthetic/review"
+      ],
+      "fonts": {
+        "faces": [
+          {
+            "family": "IBM Plex Sans",
+            "weight": "400",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans",
+            "weight": "600",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Sans Sinhala",
+            "weight": "100 900",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4",
+            "weight": "600",
+            "status": "loaded"
+          }
+        ],
+        "plex": true,
+        "sinhalaSans": true,
+        "sourceSerif": true,
+        "sinhalaSerif": false
+      },
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1024,
+      "screen": "unsupported-manual",
+      "textScale": 100,
+      "overflow": false,
+      "paneOverflows": [],
+      "canvas": "rgb(243, 245, 248)",
+      "bodyFont": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "titleFont": "\"Source Serif 4\", \"Source Serif 4 Fallback\", \"Noto Serif Sinhala\", \"Noto Serif Sinhala Fallback\", Georgia, serif",
+      "bodySize": "15.9992px",
+      "overflowingElements": [
+        {
+          "tag": "rect",
+          "class": {},
+          "text": "",
+          "right": 1126.400047302246
+        },
+        {
+          "tag": "path",
+          "class": {},
+          "text": "",
+          "right": 1126.400047302246
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "කෙටුම්පත්",
+          "right": 1123.1875
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "අපනයනය සහ ලියාපදිංචිය",
+          "right": 1359.140625
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "සහායකයා",
+          "right": 1471.203125
+        },
+        {
+          "tag": "SPAN",
+          "class": "w-0.5 shrink-0",
+          "text": "",
+          "right": 1473.203125
+        }
+      ],
+      "statusIcons": 5,
+      "links": [
+        "/matters/mat-synthetic/documents/doc-synthetic/review"
+      ],
+      "fonts": {
+        "faces": [
+          {
+            "family": "IBM Plex Sans",
+            "weight": "400",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans",
+            "weight": "600",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Sans Sinhala",
+            "weight": "100 900",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Sans Sinhala",
+            "weight": "100 900",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Sans Sinhala Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4",
+            "weight": "600",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4 Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Serif Sinhala",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Serif Sinhala",
+            "weight": "600",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Serif Sinhala Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          }
+        ],
+        "plex": true,
+        "sinhalaSans": true,
+        "sourceSerif": true,
+        "sinhalaSerif": true
+      },
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1024,
+      "screen": "unsupported-manual",
+      "textScale": 200,
+      "overflow": false,
+      "paneOverflows": [],
+      "canvas": "rgb(243, 245, 248)",
+      "bodyFont": "\"IBM Plex Sans\", \"IBM Plex Sans Fallback\", \"Noto Sans Sinhala\", \"Noto Sans Sinhala Fallback\", sans-serif",
+      "titleFont": "\"Source Serif 4\", \"Source Serif 4 Fallback\", \"Noto Serif Sinhala\", \"Noto Serif Sinhala Fallback\", Georgia, serif",
+      "bodySize": "15.9992px",
+      "overflowingElements": [
+        {
+          "tag": "rect",
+          "class": {},
+          "text": "",
+          "right": 1126.400047302246
+        },
+        {
+          "tag": "path",
+          "class": {},
+          "text": "",
+          "right": 1126.400047302246
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "පරීක්ෂණ",
+          "right": 1028.4375
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "නොමැති ලේඛන",
+          "right": 1304.09375
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "කෙටුම්පත්",
+          "right": 1496.703125
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "අපනයනය සහ ලියාපදිංචිය",
+          "right": 1938.734375
+        },
+        {
+          "tag": "A",
+          "class": "rounded-control inline-flex flex-auto cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border px-2.5 text-xs leading-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none h-7 sm:h-8 sm:px-3.5 sm:text-sm text-muted-ink hover:text-ink border-transparent font-medium shrink-0",
+          "text": "සහායකයා",
+          "right": 2132.90625
+        },
+        {
+          "tag": "SPAN",
+          "class": "w-0.5 shrink-0",
+          "text": "",
+          "right": 2134.90625
+        }
+      ],
+      "statusIcons": 5,
+      "links": [
+        "/matters/mat-synthetic/documents/doc-synthetic/review"
+      ],
+      "fonts": {
+        "faces": [
+          {
+            "family": "IBM Plex Sans",
+            "weight": "400",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans",
+            "weight": "600",
+            "status": "loaded"
+          },
+          {
+            "family": "IBM Plex Sans Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Sans Sinhala",
+            "weight": "100 900",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Sans Sinhala",
+            "weight": "100 900",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4",
+            "weight": "600",
+            "status": "loaded"
+          },
+          {
+            "family": "Source Serif 4 Fallback",
+            "weight": "normal",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Serif Sinhala",
+            "weight": "500",
+            "status": "loaded"
+          },
+          {
+            "family": "Noto Serif Sinhala",
+            "weight": "600",
+            "status": "loaded"
+          }
+        ],
+        "plex": true,
+        "sinhalaSans": true,
+        "sourceSerif": true,
+        "sinhalaSerif": true
+      },
+      "serious": []
+    }
+  ],
+  "errors": []
+}
