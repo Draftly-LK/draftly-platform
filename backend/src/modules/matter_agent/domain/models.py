@@ -13,6 +13,13 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
+from src.modules.corpus_governance.contracts import AuthorityMetadata
+from src.modules.matter_agent.domain.legal_context import (
+    AgentLegalContext,
+    authority_payload,
+    legal_context_payload,
+)
+
 
 class MessageRole(StrEnum):
     USER = "user"
@@ -78,12 +85,17 @@ class AgentCitation:
     subject_id: str | None = None
     passage: str | None = None
     corpus_version: str | None = None
+    authority_metadata: AuthorityMetadata | None = None
 
 
-def content_hash(content: str, citations: tuple[AgentCitation, ...] = ()) -> str:
+def content_hash(
+    content: str,
+    citations: tuple[AgentCitation, ...] = (),
+    legal_context: AgentLegalContext | None = None,
+) -> str:
     """Hash visible answer text and its evidence pointers as one record."""
     # Preserve the hash of every pre-citation transcript row exactly.
-    if not citations:
+    if not citations and legal_context is None:
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
     evidence = [
         {
@@ -102,6 +114,9 @@ def content_hash(content: str, citations: tuple[AgentCitation, ...] = ()) -> str
                     "subjectId": item.subject_id,
                     "passage": item.passage,
                     "corpusVersion": item.corpus_version,
+                    "authorityMetadata": authority_payload(item.authority_metadata)
+                    if item.authority_metadata is not None
+                    else None,
                 }.items()
                 if v is not None
             },
@@ -109,7 +124,15 @@ def content_hash(content: str, citations: tuple[AgentCitation, ...] = ()) -> str
         for item in citations
     ]
     canonical = json.dumps(
-        {"content": content, "citations": evidence},
+        {
+            "content": content,
+            "citations": evidence,
+            **(
+                {"legalContext": legal_context_payload(legal_context)}
+                if legal_context is not None
+                else {}
+            ),
+        },
         ensure_ascii=False,
         separators=(",", ":"),
         sort_keys=True,
@@ -163,16 +186,19 @@ class AgentMessage:
     pending_action_id: str | None = None
     conversation_id: str | None = None
     citations: tuple[AgentCitation, ...] = ()
+    legal_context: AgentLegalContext | None = None
 
     def __post_init__(self) -> None:
         if self.sequence < 1:
             raise ValueError("sequence starts at 1")
         if not self.content_hash:
-            object.__setattr__(self, "content_hash", content_hash(self.content, self.citations))
+            object.__setattr__(
+                self, "content_hash", content_hash(self.content, self.citations, self.legal_context)
+            )
 
     def hash_matches(self) -> bool:
         """True when the stored hash still describes the stored content."""
-        return self.content_hash == content_hash(self.content, self.citations)
+        return self.content_hash == content_hash(self.content, self.citations, self.legal_context)
 
 
 @dataclass(frozen=True)

@@ -8,7 +8,7 @@ specific adapters (infrastructure.md §Principle: provider-neutral behind ports)
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,6 +32,7 @@ from src.modules.party.infrastructure.matter_access_stub import (
     StubMatterAccessAdapter,
     build_matter_access_adapter,
 )
+from src.modules.research.contracts import LegalSourceAvailabilityPort
 from src.platform.config import get_settings
 from src.platform.errors import ServiceMisconfiguredError
 from src.platform.messaging.dispatcher import MessageDispatcher
@@ -256,6 +257,9 @@ def build_agent_service(session: AsyncSession) -> AgentService:
             documents=SqlRequirementDocumentReader(session, build_source_file_storage()),
         ),
         scopes=build_matter_scope_service(session),
+        source_availability=cast(
+            LegalSourceAvailabilityPort, build_research_service(session).retrieval
+        ),
     )
 
 
@@ -362,8 +366,21 @@ async def run_agent_turn(
         is_practising_notary=bool(user.notary_registration),
     )
     tools = build_agent_tools(session, session_id=chat_session.id, memory=build_agent_memory())
+    from src.modules.matter_agent.domain.legal_context import legal_context_from_payload
+
+    selection = next(
+        (
+            legal_context_from_payload(item["value"])
+            for item in user_message.citations
+            if isinstance(item, dict) and item.get("recordType") == "legal-context-v1"
+        ),
+        None,
+    )
     runner = TurnRunner(
         model=build_agent_model(),
+        source_availability=cast(
+            LegalSourceAvailabilityPort, build_research_service(session).retrieval
+        ),
         conversation=NeonConversationAdapter(session),
         memory=build_agent_memory(),
         executor=ToolExecutor(
@@ -379,6 +396,12 @@ async def run_agent_turn(
             job_id=job_id,
             user_message=user_message.content,
             source_sequence=user_message.sequence,
+            transaction_id=selection.transaction_id
+            if selection is not None and selection.kind == "selection"
+            else None,
+            association_version=selection.association_version
+            if selection is not None and selection.kind == "selection"
+            else None,
             execution=execution,
             budget=TurnBudget(
                 max_tool_calls=settings.matter_agent_max_tool_calls,
@@ -1285,10 +1308,13 @@ def build_matter_research(session: AsyncSession) -> Any:
     from src.api.deps import build_billing_service
     from src.modules.audit.application.audit_service import AuditService
     from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.research.application.matter_dates import MatterDateResolver
     from src.modules.research.application.matter_research import MatterResearchService
+    from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
 
     return MatterResearchService(
         build_research_service(session),
         build_billing_service(session),
         AuditService(repository=SqlAuditRepository(session)),
+        MatterDateResolver(build_matter_scope_service(session), SqlConfirmedFactReader(session)),
     )

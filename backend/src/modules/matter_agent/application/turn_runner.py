@@ -24,8 +24,10 @@ from datetime import UTC, datetime
 
 import structlog
 
+from src.modules.matter_agent.application.legal_history import project_legal_history
 from src.modules.matter_agent.application.tool_executor import ExecutionContext, ToolExecutor
 from src.modules.matter_agent.domain.errors import LegalResearchUnavailableError, ModelProviderError
+from src.modules.matter_agent.domain.legal_context import AgentLegalContext
 from src.modules.matter_agent.domain.models import (
     AgentCitation,
     AgentSession,
@@ -45,6 +47,7 @@ from src.modules.matter_agent.ports import (
     ToolDeclaration,
     ToolResult,
 )
+from src.modules.research.contracts import LegalSourceAvailabilityPort
 from src.platform.errors import DraftlyError
 
 log = structlog.get_logger(__name__)
@@ -79,6 +82,8 @@ class TurnRequest:
     execution: ExecutionContext
     budget: TurnBudget = TurnBudget()
     source_sequence: int | None = None
+    transaction_id: str | None = None
+    association_version: int | None = None
 
 
 class TurnRunner:
@@ -91,11 +96,13 @@ class TurnRunner:
         conversation: ConversationPort,
         memory: MemoryPort,
         executor: ToolExecutor,
+        source_availability: LegalSourceAvailabilityPort | None = None,
     ) -> None:
         self._model = model
         self._conversation = conversation
         self._memory = memory
         self._executor = executor
+        self._source_availability = source_availability
 
     async def run(self, request: TurnRequest) -> TurnResult:
         attempted: list[str] = []
@@ -123,7 +130,11 @@ class TurnRunner:
             outcome = await self._executor.execute(
                 ProposedToolCall(
                     name="research_legal_question",
-                    arguments={"question": request.user_message, "sources": "all"},
+                    arguments={
+                        "question": request.user_message,
+                        "sources": "all",
+                        **_selected_scope(request),
+                    },
                 ),
                 request.execution,
             )
@@ -135,6 +146,7 @@ class TurnRunner:
             limit=request.budget.history_messages,
             through_sequence=request.source_sequence,
         )
+        history = await project_legal_history(history, self._source_availability)
         memory_context = await self._safe_memory(request)
         turn_context = list(memory_context)
         citation_catalog: dict[str, AgentCitation] = {}
@@ -158,6 +170,15 @@ class TurnRunner:
                 if executed >= request.budget.max_tool_calls:
                     break
                 attempted.append(proposal.name)
+                if proposal.name == "research_legal_question":
+                    arguments = {
+                        k: v
+                        for k, v in proposal.arguments.items()
+                        if k not in {"transactionId", "associationVersion"}
+                    }
+                    proposal = replace(
+                        proposal, arguments={**arguments, **_selected_scope(request)}
+                    )
                 outcome = await self._executor.execute(proposal, request.execution)
                 executed += 1
                 if outcome.result is not None:
@@ -271,13 +292,18 @@ class TurnRunner:
         self, request: TurnRequest, result: ToolResult | None, count: int = 1
     ) -> TurnResult:
         if result is None or not result.payload.get("groundedText") or not result.citations:
-            return await self._abstain(request, count=count)
+            return await self._abstain(
+                request,
+                count=count,
+                legal_context=result.legal_context if result is not None else None,
+            )
         message = await self._conversation.append(
             session=request.session,
             role=MessageRole.ASSISTANT,
             content=str(result.payload["groundedText"]),
             job_id=request.job_id,
             citations=result.citations,
+            legal_context=result.legal_context,
         )
         return TurnResult(
             job_id=request.job_id,
@@ -286,12 +312,19 @@ class TurnRunner:
             assistant_message_id=message.id,
         )
 
-    async def _abstain(self, request: TurnRequest, *, count: int = 0) -> TurnResult:
+    async def _abstain(
+        self,
+        request: TurnRequest,
+        *,
+        count: int = 0,
+        legal_context: AgentLegalContext | None = None,
+    ) -> TurnResult:
         message = await self._conversation.append(
             session=request.session,
             role=MessageRole.ASSISTANT,
             content=LegalResearchUnavailableError.message,
             job_id=request.job_id,
+            legal_context=legal_context,
         )
         return TurnResult(
             job_id=request.job_id,
@@ -346,6 +379,15 @@ class TurnRunner:
             tool_call_count=count,
             failure_class=failure_class,
         )
+
+
+def _selected_scope(request: TurnRequest) -> dict[str, object]:
+    if request.transaction_id is None or request.association_version is None:
+        return {}
+    return {
+        "transactionId": request.transaction_id,
+        "associationVersion": request.association_version,
+    }
 
 
 _EMPTY_TURN_TEXT = "I could not produce an answer for that. Try rephrasing the question."
@@ -409,6 +451,10 @@ _LEGAL_MARKERS: frozenset[str] = frozenset(
         "section",
         "ordinance",
         "statute",
+        "gazette",
+        "amendment",
+        "commencement",
+        "legal authorities",
         "statutory",
         "case law",
         "precedent",

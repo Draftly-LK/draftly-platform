@@ -20,6 +20,13 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.modules.matter_agent.domain.legal_context import (
+    AgentLegalContext,
+    authority_from_payload,
+    authority_payload,
+    legal_context_from_payload,
+    legal_context_payload,
+)
 from src.modules.matter_agent.domain.models import (
     AgentCitation,
     AgentConversation,
@@ -98,8 +105,20 @@ def _to_message(row: AgentMessageRow) -> AgentMessage:
                 subject_id=item.get("subjectId"),
                 passage=item.get("passage"),
                 corpus_version=item.get("corpusVersion"),
+                authority_metadata=authority_from_payload(item["authorityMetadata"])
+                if item.get("authorityMetadata") is not None
+                else None,
             )
             for item in row.citations
+            if item.get("recordType") != "legal-context-v1"
+        ),
+        legal_context=next(
+            (
+                legal_context_from_payload(item["value"])
+                for item in row.citations
+                if item.get("recordType") == "legal-context-v1"
+            ),
+            None,
         ),
         created_at=row.created_at,
     )
@@ -231,6 +250,7 @@ class NeonConversationAdapter:
         tool_call_id: str | None = None,
         pending_action_id: str | None = None,
         citations: tuple[AgentCitation, ...] = (),
+        legal_context: AgentLegalContext | None = None,
     ) -> AgentMessage:
         next_sequence = (
             await self._db.execute(
@@ -248,12 +268,13 @@ class NeonConversationAdapter:
             sequence=int(next_sequence),
             role=role,
             content=content,
-            content_hash=content_hash(content, citations),
+            content_hash=content_hash(content, citations, legal_context),
             job_id=job_id,
             tool_call_id=tool_call_id,
             pending_action_id=pending_action_id,
             conversation_id=session.active_conversation_id,
             citations=citations,
+            legal_context=legal_context,
             created_at=datetime.now(tz=UTC),
         )
         self._db.add(
@@ -287,12 +308,25 @@ class NeonConversationAdapter:
                                 "subjectId": item.subject_id,
                                 "passage": item.passage,
                                 "corpusVersion": item.corpus_version,
+                                "authorityMetadata": authority_payload(item.authority_metadata)
+                                if item.authority_metadata is not None
+                                else None,
                             }.items()
                             if v is not None
                         },
                     }
                     for item in message.citations
-                ],
+                ]
+                + (
+                    [
+                        {
+                            "recordType": "legal-context-v1",
+                            "value": legal_context_payload(message.legal_context),
+                        }
+                    ]
+                    if message.legal_context is not None
+                    else []
+                ),
                 created_at=message.created_at,
             )
         )

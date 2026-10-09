@@ -12,6 +12,7 @@ from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from src.modules.matter_agent.domain.legal_context import AgentLegalContext
 from src.modules.matter_agent.domain.models import (
     AgentCitation,
     AgentConversation,
@@ -97,6 +98,7 @@ class ConversationPort(Protocol):
         tool_call_id: str | None = None,
         pending_action_id: str | None = None,
         citations: tuple[AgentCitation, ...] = (),
+        legal_context: AgentLegalContext | None = None,
     ) -> AgentMessage:
         """Append at the next sequence. Commits with its outbox event."""
         ...
@@ -197,6 +199,7 @@ class ToolResult:
     resource_refs: tuple[str, ...] = ()
     pending_action_id: str | None = None
     citations: tuple[AgentCitation, ...] = ()
+    legal_context: AgentLegalContext | None = None
 
 
 class AgentToolPort(Protocol):

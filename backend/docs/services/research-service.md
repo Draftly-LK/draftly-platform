@@ -650,3 +650,15 @@ the reserved query. A completed empty search remains a chargeable abstention. If
 at least one requested source completes, supported claims from that source can be
 returned and charged once while failed-channel degradation remains explicit in the
 research result. Legal verification and source identity remain separate concepts.
+
+## Scoped dated matter research (2026-10-09)
+
+Matter research records a server-controlled Asia/Colombo current date and the
+selected transaction association revision. The existing matter lock protects
+revision and reviewed-fact reads. Only one assigned, transaction-scoped
+`rta.instrument.attestation_date` with no competing subject, conflict or gap
+establishes the date; the exact fact ID/version is retained. Missing or changed
+inputs lead to review rather than composition. No natural-language date becomes
+a canonical fact. Completed retrieval preserves source leads, coverage gaps and
+the signed source-release pin independently of retained claims, including on
+composition failure. Provider and metering policies remain unchanged.

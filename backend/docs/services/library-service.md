@@ -256,3 +256,10 @@ Recommended defaults in bold; confirm or override before coding.
 the research corpus holds (metadata only). It does not change the trust boundary
 in §6: the case-law collections it lists stay internal-research only, and the
 topic vocabulary it shows is a candidate for §10.2, not an adopted taxonomy.
+
+## Matter source inspection boundary (2026-10-09)
+
+The shared matter conversation displays research-owned source metadata and
+recorded official HTTPS links, with dates, relationships and unknown commencement.
+Metadata leads are distinct from supporting passages. This adds no Library
+source-text permission and does not join public catalogue reads to matter facts.

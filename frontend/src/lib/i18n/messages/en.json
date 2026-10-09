@@ -2808,7 +2808,68 @@
     "turnFailedAfterTools": "The response could not finish after using tools. Review the matter’s recorded work before sending another request.",
     "resultRecord": "Recorded result",
     "proposalUnavailable": "This proposal is unavailable. Reload to try again.",
-    "matchedSource": "Matched source passage"
+    "matchedSource": "Matched source passage",
+    "legalTransaction": "Transaction for legal research",
+    "chooseLegalTransaction": "Choose a transaction",
+    "legalTransactionNumber": "Transaction {number} · revision {version}",
+    "refreshLegalTransactions": "Refresh selection",
+    "legalTransactionsUnavailable": "Transaction selection is unavailable. Refresh to try again.",
+    "legalContext": "Legal sources and date context",
+    "legalCurrentDate": "Current date when requested: {date}",
+    "legalTransactionDate": "Reviewed transaction date: {date}",
+    "legalUnknown": "Unknown",
+    "legalScopePin": "Recorded transaction: {id} · revision {version}",
+    "legalFactPin": "Recorded date fact: {id} · version {version}",
+    "legalDateInputRequired": "Review the selected transaction and its attestation date before requesting a dated answer.",
+    "legalReviewFacts": "Review facts",
+    "legalCoverageUnavailable": "Some requested sources or supporting passages are unavailable. Review the available source leads.",
+    "legalHistoryUnavailable": "The saved legal answer and passages are unavailable under the current source policy. Source references and date context are retained.",
+    "legalSourceLeads": "Sources to inspect",
+    "legalMetadataLead": "Source metadata only; this is not a supporting passage.",
+    "legalSourceReview": "Source review: {state}",
+    "legalCurrency": "Recorded currency: {state}",
+    "legalPublicationDate": "Publication date: {date}",
+    "legalEffectiveFrom": "Recorded effective date: {date}",
+    "legalEffectiveTo": "Recorded end date: {date}",
+    "legalCommencementUnknown": "Commencement is unknown. Publication does not establish commencement.",
+    "legalCommencementSource": "Commencement source: {source} · page {page}",
+    "legalTemporalNotice": "Recorded dates describe the source. They do not decide whether it applies to this matter.",
+    "legalOfficialSource": "Open official source",
+    "legalRelationshipLocator": "Relationship source page: {page} · {state}",
+    "legalKinds": {
+      "statute": "Statute",
+      "amendment": "Amendment",
+      "gazette": "Gazette"
+    },
+    "legalReviewStates": {
+      "discovered": "Discovered",
+      "provenance-recorded": "Provenance recorded",
+      "rights-reviewed": "Rights reviewed",
+      "content-reviewed": "Content reviewed",
+      "approved": "Source release reviewed",
+      "quarantined": "Quarantined",
+      "retired": "Retired",
+      "unknown": "Unknown"
+    },
+    "legalCurrencyStates": {
+      "current": "Current",
+      "superseded": "Superseded",
+      "reverify": "Needs review",
+      "unknown": "Unknown"
+    },
+    "legalRelations": {
+      "amends": "Amends",
+      "supersedes": "Supersedes",
+      "made-under": "Made under",
+      "commences": "Commences"
+    },
+    "legalRelationshipReview": {
+      "unreviewed": "Relationship not reviewed",
+      "reviewed": "Relationship reviewed"
+    },
+    "legalPassagePage": "Source page: {page}",
+    "legalSourceRelease": "Source metadata release: {version}",
+    "legalSourceFingerprint": "Source fingerprint"
   },
   "gazette": {
     "modeLabel": "Drafting mode",

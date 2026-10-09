@@ -435,3 +435,11 @@ retains the minimum non-content audit record.
 - [Sri Lanka Intellectual Property Act, No. 36 of 2003 on WIPO Lex](https://www.wipo.int/wipolex/en/legislation/details/6705)
 - CommonLII copyright policy and source-specific notices, to be archived in the
   rights-review record before relying on CommonLII material.
+
+## Conversation replay consumer (2026-10-09)
+
+Matter history now checks the public research availability port against exact
+stored source IDs and index releases before displaying or replaying supporting
+legal text. Unavailable, withdrawn or unknown current policy withholds that text
+without deleting historical references or dated result context. Source review
+metadata never grants legal applicability or draft readiness.

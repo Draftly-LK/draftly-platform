@@ -21,6 +21,13 @@ import type { DigitalReviewStatus } from "@/types/rta";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  LegalResultContext,
+  LegalAuthorityPanel,
+  LegalTransactionSelector,
+  type LegalSourceSelection,
+} from "./legal-source-context";
+import type { ApiResearchSelection } from "@/lib/api/agent";
 import { ChatComposer } from "@/components/assistant/chat-composer";
 import { getMe } from "@/lib/api/auth";
 import {
@@ -68,6 +75,7 @@ const MAX_POLLS = 125;
 type Phase = "idle" | "sending" | "running" | "error";
 interface PendingSend {
   content: string;
+  selection?: ApiResearchSelection | null;
   idempotencyKey: string;
   retryJobId?: string;
   watchJobId?: string;
@@ -102,11 +110,13 @@ export function MatterConversation({
   const [phase, setPhase] = useState<Phase>("idle");
   const [job, setJob] = useState<ApiAgentJob | null>(null);
   const [draft, setDraft] = useState("");
+  const [legalSelection, setLegalSelection] =
+    useState<ApiResearchSelection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [context, setContext] = useState<MatterContext | null>(null);
   const [selectedCitation, setSelectedCitation] =
-    useState<ApiAgentCitation | null>(null);
+    useState<LegalSourceSelection | null>(null);
   const [contextOpen, setContextOpen] = useState(false);
   const [panelCollapsed, setPanelCollapsed] = usePanelCollapsed();
   const pendingSend = useRef<PendingSend | null>(null);
@@ -150,6 +160,8 @@ export function MatterConversation({
           cards.filter((card) => card !== null).map((card) => [card.id, card]),
         ),
       }));
+      // A fresh policy projection must replace any previously opened passage.
+      if (!cursor) setSelectedCitation(null);
       const chronological = [...page.items].reverse();
       setMessages((previous) =>
         cursor ? [...chronological, ...previous] : chronological,
@@ -301,6 +313,7 @@ export function MatterConversation({
                 matterId,
                 send.content,
                 send.idempotencyKey,
+                send.selection,
               );
         if (send.intent) clearManualIntent(send.intent);
         if (lifetime.current?.signal.aborted) return;
@@ -445,10 +458,19 @@ export function MatterConversation({
         owner.actorId,
         matterId,
         "agent-send",
-        { content, conversationId: owner.conversationId },
+        {
+          content,
+          conversationId: owner.conversationId,
+          ...(legalSelection ?? {}),
+        },
       );
       if (lifetime.current?.signal.aborted) return;
-      const send = { content, idempotencyKey: intent.key, intent };
+      const send = {
+        content,
+        idempotencyKey: intent.key,
+        intent,
+        selection: legalSelection,
+      };
       pendingSend.current = send;
       setDraft("");
       busyRef.current = false;
@@ -457,7 +479,7 @@ export function MatterConversation({
       setError(describe(cause, t));
       busyRef.current = false;
     }
-  }, [draft, loading, matterId, runSend, t]);
+  }, [draft, loading, matterId, runSend, t, legalSelection]);
 
   const startFresh = useCallback(async () => {
     if (busyRef.current || !window.confirm(t("newConversationConfirm"))) return;
@@ -506,7 +528,7 @@ export function MatterConversation({
     [getToken, loadContext, loadPage, matterId, t, onChanged],
   );
 
-  const selectCitation = (citation: ApiAgentCitation) => {
+  const selectCitation = (citation: LegalSourceSelection) => {
     setSelectedCitation(citation);
     setContextOpen(true);
     // On wide screens the evidence shows in the side panel, so open it if it was folded away.
@@ -518,6 +540,7 @@ export function MatterConversation({
       context={context}
       matterId={matterId}
       selectedCitation={selectedCitation}
+      onSelectCitation={selectCitation}
       onClearCitation={() => setSelectedCitation(null)}
       onCollapse={() => setPanelCollapsed(true)}
       t={t}
@@ -600,6 +623,7 @@ export function MatterConversation({
                   <div key={message.id}>
                     <MessageRow
                       message={message}
+                      matterId={matterId}
                       onCitation={selectCitation}
                       t={t}
                     />
@@ -650,6 +674,12 @@ export function MatterConversation({
                 )}
               </div>
             )}
+            <LegalTransactionSelector
+              matterId={matterId}
+              value={legalSelection}
+              onChange={setLegalSelection}
+              disabled={busy || loading}
+            />
             <Composer
               busy={busy || loading}
               draft={draft}
@@ -714,6 +744,7 @@ export function MatterConversation({
               context={context}
               matterId={matterId}
               selectedCitation={selectedCitation}
+              onSelectCitation={selectCitation}
               onClearCitation={() => setSelectedCitation(null)}
               onCollapse={() => setContextOpen(false)}
               t={t}
@@ -727,11 +758,13 @@ export function MatterConversation({
 
 function MessageRow({
   message,
+  matterId,
   onCitation,
   t,
 }: {
   message: ApiAgentMessage;
-  onCitation: (citation: ApiAgentCitation) => void;
+  matterId: string;
+  onCitation: (citation: LegalSourceSelection) => void;
   t: ReturnType<typeof useTranslations>;
 }) {
   const assistant = message.role === "assistant";
@@ -772,7 +805,18 @@ function MessageRow({
             </time>
           </div>
           <p className="mt-1 whitespace-pre-wrap leading-7">
-            {renderCitedText(message.content, message.citations, onCitation, t)}
+            {message.legalContext?.visibility === "current-policy-unavailable"
+              ? t("legalHistoryUnavailable")
+              : renderCitedText(
+                  message.content,
+                  message.citations,
+                  (citation) =>
+                    onCitation({
+                      ...citation,
+                      legalContext: message.legalContext,
+                    }),
+                  t,
+                )}
           </p>
           {assistant && message.citations.length > 0 && (
             <div
@@ -784,12 +828,24 @@ function MessageRow({
                   key={`${message.id}-${citation.sourceId}`}
                   type="button"
                   className="border-border-strong bg-surface text-forest focus-visible:outline-ring rounded-control border px-2 py-1 text-xs focus-visible:outline-2"
-                  onClick={() => onCitation(citation)}
+                  onClick={() =>
+                    onCitation({
+                      ...citation,
+                      legalContext: message.legalContext,
+                    })
+                  }
                 >
                   [{index + 1}] {citation.label}
                 </button>
               ))}
             </div>
+          )}
+          {assistant && message.legalContext?.kind === "result" && (
+            <LegalResultContext
+              context={message.legalContext}
+              matterId={matterId}
+              onSelect={onCitation}
+            />
           )}
           {assistant && (
             <p className="text-muted-ink mt-3 text-xs">
@@ -1023,13 +1079,15 @@ function ContextPanel({
   matterId,
   selectedCitation,
   onClearCitation,
+  onSelectCitation,
   onCollapse,
   t,
 }: {
   context: MatterContext | null;
   matterId: string;
-  selectedCitation: ApiAgentCitation | null;
+  selectedCitation: LegalSourceSelection | null;
   onClearCitation: () => void;
+  onSelectCitation: (citation: LegalSourceSelection) => void;
   /** Wide screens only: fold the panel back to its rail. */
   onCollapse?: () => void;
   t: ReturnType<typeof useTranslations>;
@@ -1092,9 +1150,19 @@ function ContextPanel({
             )}
             {t(`verification.${selectedCitation.verificationStatus}`)}
           </p>
+          <LegalAuthorityPanel
+            selection={selectedCitation}
+            matterId={matterId}
+            onSelect={onSelectCitation}
+          />
           {selectedCitation.passage && (
             <div className="mt-3">
               <p className="text-muted-ink text-xs">{t("matchedSource")}</p>
+              <p className="text-muted-ink text-xs">
+                {t("legalPassagePage", {
+                  page: selectedCitation.page ?? t("legalUnknown"),
+                })}
+              </p>
               <blockquote className="mt-1 whitespace-pre-wrap text-sm">
                 {selectedCitation.passage}
               </blockquote>
@@ -1105,7 +1173,9 @@ function ContextPanel({
               {t("sourceVersion", { version: selectedCitation.corpusVersion })}
             </p>
           )}
-          {["statute", "case"].includes(selectedCitation.sourceType) &&
+          {["statute", "amendment", "gazette", "case"].includes(
+            selectedCitation.sourceType,
+          ) &&
             !selectedCitation.passage && (
               <p className="mt-3 text-sm">{t("sourceUnavailable")}</p>
             )}
@@ -1125,7 +1195,9 @@ function ContextPanel({
             />
           )}
           {!selectedCitation.sourceFileId &&
-            !["statute", "case"].includes(selectedCitation.sourceType) && (
+            !["statute", "amendment", "gazette", "case"].includes(
+              selectedCitation.sourceType,
+            ) && (
               <Link
                 href={citationHref(matterId, selectedCitation)}
                 className="text-forest mt-4 inline-flex items-center gap-1 text-sm font-medium hover:underline"
@@ -1282,6 +1354,8 @@ function citationHref(matterId: string, citation: ApiAgentCitation): string {
     party: "",
     record: "",
     statute: "",
+    amendment: "",
+    gazette: "",
     case: "",
   }[citation.sourceType];
   const query = new URLSearchParams({ source: citation.sourceId });

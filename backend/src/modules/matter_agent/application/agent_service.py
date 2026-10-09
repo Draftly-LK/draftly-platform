@@ -21,6 +21,7 @@ from src.modules.matter_agent.application.actions import (
     build_pending_action,
     guard_target_version,
 )
+from src.modules.matter_agent.application.legal_history import project_legal_history
 from src.modules.matter_agent.domain.errors import (
     AgentDisabledError,
     AgentRetryUnavailableError,
@@ -29,6 +30,7 @@ from src.modules.matter_agent.domain.errors import (
     PendingActionNotFoundError,
     PendingActionStaleError,
 )
+from src.modules.matter_agent.domain.legal_context import AgentLegalContext
 from src.modules.matter_agent.domain.models import (
     AgentConversation,
     AgentMessage,
@@ -46,8 +48,9 @@ from src.modules.matter_agent.ports import (
     MessagePage,
     PendingActionRepository,
 )
+from src.modules.research.contracts import LegalSourceAvailabilityPort
 from src.platform import ids
-from src.platform.errors import DraftlyError, PreconditionFailedError
+from src.platform.errors import DomainRuleError, DraftlyError, PreconditionFailedError
 from src.platform.idempotency import fingerprint
 from src.platform.pagination import Cursor
 from src.platform.request_context import RequestContext
@@ -145,6 +148,7 @@ class AgentService:
         authorizer: AuthorizationPort | None = None,
         action_executor: ActionExecutor | None = None,
         scopes: MatterScopePort | None = None,
+        source_availability: LegalSourceAvailabilityPort | None = None,
     ) -> None:
         self._sessions = sessions
         self._conversation = conversation
@@ -158,6 +162,7 @@ class AgentService:
         self._authorizer = authorizer
         self._action_executor = action_executor
         self._scopes = scopes
+        self._source_availability = source_availability
 
     async def find_current_session(
         self, ctx: RequestContext, matter_id: str
@@ -225,11 +230,14 @@ class AgentService:
     ) -> MessagePage:
         """The authoritative transcript, read from Neon. Never from a provider."""
         session = await self.get_or_create_session(ctx, matter_id)
-        return await self._conversation.page(
+        page = await self._conversation.page(
             session_id=session.id,
             conversation_id=session.active_conversation_id,
             limit=limit,
             cursor=cursor,
+        )
+        return replace(
+            page, items=await project_legal_history(page.items, self._source_availability)
         )
 
     async def list_conversations(
@@ -354,6 +362,8 @@ class AgentService:
         matter_id: str,
         *,
         content: str,
+        transaction_id: str | None = None,
+        association_version: int | None = None,
     ) -> AgentJob:
         """Append the user's message and queue the turn.
 
@@ -362,6 +372,21 @@ class AgentService:
         neither. The request never waits on the model.
         """
         session = await self.get_or_create_session(ctx, matter_id)
+        selection = None
+        if transaction_id is not None:
+            if self._scopes is None or association_version is None:
+                raise DomainRuleError()
+            await self._scopes.lock(ctx, matter_id)
+            transaction = await self._scopes.get_transaction(ctx, matter_id, transaction_id)
+            if transaction.version != association_version:
+                raise PreconditionFailedError()
+            selection = AgentLegalContext(
+                kind="selection",
+                transaction_id=transaction_id,
+                association_version=association_version,
+            )
+        elif association_version is not None:
+            raise DomainRuleError()
         job = await self._jobs.create(
             session_id=session.id,
             user_id=ctx.actor_id,
@@ -373,6 +398,7 @@ class AgentService:
             role=MessageRole.USER,
             content=content,
             job_id=job.job_id,
+            legal_context=selection,
         )
         await self._jobs.enqueue(
             job_id=job.job_id,
