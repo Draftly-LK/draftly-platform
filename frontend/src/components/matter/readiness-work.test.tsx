@@ -6,8 +6,10 @@ import { renderWithIntl } from "@/test/render";
 import { MatterDashboard } from "./matter-dashboard";
 import { WorkflowScreen } from "@/components/workflow/workflow-screen";
 import { MissingDocumentsScreen } from "./missing-documents-screen";
+import { RequirementsPanel } from "./requirements-panel";
+import requirementPacket from "@/test/fixtures/requirement-readiness.json";
 import { CheckScopeSelector } from "@/components/checks/check-scope-selector";
-import type { ApiReadiness } from "@/types/rta";
+import type { ApiChecklist, ApiReadiness } from "@/types/rta";
 import type { RunChecksBody } from "@/lib/api/checks";
 const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -15,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   scope: null as RunChecksBody | null,
   issueStates: [] as string[],
   readiness: null as ApiReadiness | null,
+  checklist: null as ApiChecklist | null,
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
@@ -36,13 +39,14 @@ vi.mock("@/components/shell/app-shell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("@/lib/api/requirements", () => ({
+  listRequirementLinks: async () => [],
   getReadiness: async () => {
     if (mocks.readiness) return mocks.readiness;
     throw new Error("synthetic unavailable");
   },
 }));
 vi.mock("@/lib/api/matters", () => ({
-  getChecklist: async () => null,
+  getChecklist: async () => mocks.checklist,
   getMatter: async () => ({
     subtypeId: null,
     state: "EVIDENCE_COLLECTION",
@@ -53,6 +57,7 @@ vi.mock("@/lib/api/matters", () => ({
 }));
 vi.mock("@/lib/api/documents", () => ({
   getCompleteDocumentInbox: async () => ({
+    documents: [],
     sourceFiles: [],
     unprocessedSourceFileIds: [],
   }),
@@ -90,6 +95,7 @@ beforeEach(() => {
   mocks.scope = null;
   mocks.issueStates = [];
   mocks.readiness = null;
+  mocks.checklist = null;
   mocks.replace.mockClear();
 });
 it("keeps unavailable readiness unknown even when all visible counts are empty", async () => {
@@ -190,5 +196,40 @@ it.each([
     expect(
       screen.queryByRole("heading", { name: "Review draft preparation" }),
     ).toBeNull();
+  },
+);
+
+it.each(["original", "review"] as const)(
+  "routes real backend %s work to available human controls without relinking",
+  async (condition) => {
+    const packet = requirementPacket[condition];
+    mocks.readiness = packet.readiness as ApiReadiness;
+    mocks.checklist = packet.checklist as ApiChecklist;
+    const dashboard = renderWithIntl(
+      <MatterDashboard matterId="mat_synthetic" />,
+    );
+    const open = await screen.findByRole("link", { name: "Open review" });
+    expect(open.getAttribute("href")).toBe("/matters/mat_synthetic/checks");
+    dashboard.unmount();
+    const token = async () => "synthetic-token";
+    renderWithIntl(
+      <RequirementsPanel
+        matterId="mat_synthetic"
+        getToken={token}
+        mode="checks"
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Original title certificate/i,
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Record original inspection" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Record requirement decision" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Link document" })).toBeNull();
   },
 );

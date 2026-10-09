@@ -54,6 +54,7 @@ class ReadinessService:
         await self._lock.lock(ctx.actor_id, matter_id)
         dependencies: list[ReadinessDependency] = []
         total = completed = None
+        requirement_evidence_pending = False
         for category, source in self._sources.items():
             try:
                 dependencies.extend(await source.readiness_dependencies(ctx, matter_id))
@@ -72,11 +73,19 @@ class ReadinessService:
                 ref = ReadinessReference("requirement", item.id, item.version)
                 if row.computed_resolution.value != "SATISFIED":
                     dependencies.append(ReadinessDependency("requirements", "pending", (ref,)))
-                if (
-                    row.requirement.physical_original_policy.value != "NOT_REQUIRED"
-                    and item.physical_original.value != "ORIGINAL_INSPECTED"
-                ):
-                    dependencies.append(ReadinessDependency("manual", "pending", (ref,)))
+                    evidence_required = bool(row.requirement.accepted_document_class_ids) or (
+                        row.requirement.physical_original_policy.value != "NOT_REQUIRED"
+                    )
+                    can_review = (
+                        item.collection.value == "RECEIVED"
+                        and not row.has_invalid_support
+                        and (row.live_link_count > 0 or not evidence_required)
+                    )
+                    if can_review:
+                        # Existing original/digital/currency/consistency controls live in Checks.
+                        dependencies.append(ReadinessDependency("manual", "pending", (ref,)))
+                    else:
+                        requirement_evidence_pending = True
         except ChecklistSnapshotNotFoundError:
             dependencies.append(ReadinessDependency("requirements", "unknown"))
         except Exception:
@@ -98,7 +107,8 @@ class ReadinessService:
             (
                 category
                 for category in priority
-                if any(
+                if (category != "requirements" or requirement_evidence_pending)
+                and any(
                     row.category == category and (row.state != "unknown" or category == "checks")
                     for row in dependencies
                 )

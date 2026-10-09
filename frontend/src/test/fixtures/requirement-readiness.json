@@ -1,0 +1,490 @@
+{
+  "original": {
+    "checklist": {
+      "snapshotId": "cls_synthetic_1",
+      "matterId": "mat_synthetic",
+      "fingerprint": "3d2258f4e9077cd3c0dd4a41e5e8161323c806859020443c6cc23be3a26e2249",
+      "rulePackVersion": "1.0.0",
+      "compilerVersion": "1.0.0",
+      "taxonomyVersion": "1.0.0",
+      "checklistVersion": "1.0.0",
+      "moduleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C02_RTA_TITLE",
+        "C01_IDENTITY_CAPACITY",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "supersedesId": null,
+      "createdAt": "2026-10-09T00:00:00+00:00",
+      "items": [
+        {
+          "id": "cli_synthetic_65",
+          "requirementDefinitionId": "R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED",
+          "moduleDefinitionId": "C20_STAMP_REGISTRATION",
+          "inclusionReason": "EXACT_INSTRUMENT",
+          "inclusionTriggerId": "lk.rta.instrument.transfer_sale",
+          "labelKey": "rta.requirement.R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED.label",
+          "explanationKey": "rta.requirement.R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED.explanation_human_review_event_only",
+          "mandatoryBasis": "PRODUCT_SAFETY",
+          "group": "LEGAL_REGISTRY",
+          "sourceRecordIds": [
+            "src.product.draftly_safety",
+            "src.practice.examination_of_title"
+          ],
+          "acceptedDocumentClassIds": ["rta.doc.title_certificate"],
+          "mayBeSatisfiedByCombinedDocument": false,
+          "physicalOriginalPolicy": "ORIGINAL_INSPECTED",
+          "waivable": false,
+          "localAuthorityId": null,
+          "applicability": "CONDITIONAL",
+          "collection": "RECEIVED",
+          "digitalReview": "LAWYER_CONFIRMED",
+          "physicalOriginal": "UNKNOWN",
+          "currency": "CURRENT",
+          "consistency": "MATCHED",
+          "resolution": "ACTION_REQUESTED",
+          "lifecycle": "REVIEW_READY",
+          "computedResolution": "ACTION_REQUESTED",
+          "blocksApproval": true,
+          "liveLinkCount": 2,
+          "applicabilityReason": null,
+          "originalInspection": null,
+          "inspectionHistory": [],
+          "assignedTo": null,
+          "dueAt": null,
+          "version": 4
+        }
+      ],
+      "blockingRequirementIds": ["R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED"]
+    },
+    "readiness": {
+      "state": "blocked",
+      "nextAction": "manual",
+      "evaluatedAt": "2026-10-09T00:00:00+00:00",
+      "dependencies": [
+        {
+          "category": "requirements",
+          "state": "pending",
+          "references": [
+            {
+              "kind": "requirement",
+              "id": "cli_synthetic_65",
+              "version": 4,
+              "generation": null,
+              "transactionId": null,
+              "subjectId": null,
+              "associationVersion": null
+            }
+          ]
+        },
+        {
+          "category": "manual",
+          "state": "pending",
+          "references": [
+            {
+              "kind": "requirement",
+              "id": "cli_synthetic_65",
+              "version": 4,
+              "generation": null,
+              "transactionId": null,
+              "subjectId": null,
+              "associationVersion": null
+            }
+          ]
+        }
+      ],
+      "requirementTotal": 1,
+      "requirementCompleted": 0
+    }
+  },
+  "review": {
+    "checklist": {
+      "snapshotId": "cls_synthetic_1",
+      "matterId": "mat_synthetic",
+      "fingerprint": "3d2258f4e9077cd3c0dd4a41e5e8161323c806859020443c6cc23be3a26e2249",
+      "rulePackVersion": "1.0.0",
+      "compilerVersion": "1.0.0",
+      "taxonomyVersion": "1.0.0",
+      "checklistVersion": "1.0.0",
+      "moduleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C02_RTA_TITLE",
+        "C01_IDENTITY_CAPACITY",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "supersedesId": null,
+      "createdAt": "2026-10-09T00:00:00+00:00",
+      "items": [
+        {
+          "id": "cli_synthetic_65",
+          "requirementDefinitionId": "R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED",
+          "moduleDefinitionId": "C20_STAMP_REGISTRATION",
+          "inclusionReason": "EXACT_INSTRUMENT",
+          "inclusionTriggerId": "lk.rta.instrument.transfer_sale",
+          "labelKey": "rta.requirement.R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED.label",
+          "explanationKey": "rta.requirement.R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED.explanation_human_review_event_only",
+          "mandatoryBasis": "PRODUCT_SAFETY",
+          "group": "LEGAL_REGISTRY",
+          "sourceRecordIds": [
+            "src.product.draftly_safety",
+            "src.practice.examination_of_title"
+          ],
+          "acceptedDocumentClassIds": ["rta.doc.title_certificate"],
+          "mayBeSatisfiedByCombinedDocument": false,
+          "physicalOriginalPolicy": "ORIGINAL_INSPECTED",
+          "waivable": false,
+          "localAuthorityId": null,
+          "applicability": "CONDITIONAL",
+          "collection": "RECEIVED",
+          "digitalReview": "UNREVIEWED",
+          "physicalOriginal": "ORIGINAL_INSPECTED",
+          "currency": "CURRENT",
+          "consistency": "MATCHED",
+          "resolution": "OPEN",
+          "lifecycle": "PARTIALLY_SATISFIED",
+          "computedResolution": "OPEN",
+          "blocksApproval": true,
+          "liveLinkCount": 2,
+          "applicabilityReason": null,
+          "originalInspection": {
+            "reviewerId": "usr_synthetic",
+            "inspectedAt": "2026-10-09T00:00:00+00:00",
+            "method": "Synthetic packet inspection",
+            "location": null,
+            "note": null,
+            "originals": [
+              {
+                "sourceFileId": "src_doc_first",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "storageVersion": "1"
+              },
+              {
+                "sourceFileId": "src_doc_second",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "storageVersion": "1"
+              }
+            ]
+          },
+          "inspectionHistory": [
+            {
+              "reviewerId": "usr_synthetic",
+              "inspectedAt": "2026-10-09T00:00:00+00:00",
+              "method": "Synthetic packet inspection",
+              "location": null,
+              "note": null,
+              "originals": [
+                {
+                  "sourceFileId": "src_doc_first",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "storageVersion": "1"
+                },
+                {
+                  "sourceFileId": "src_doc_second",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "storageVersion": "1"
+                }
+              ]
+            }
+          ],
+          "assignedTo": null,
+          "dueAt": null,
+          "version": 5
+        }
+      ],
+      "blockingRequirementIds": ["R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED"]
+    },
+    "readiness": {
+      "state": "blocked",
+      "nextAction": "manual",
+      "evaluatedAt": "2026-10-09T00:00:00+00:00",
+      "dependencies": [
+        {
+          "category": "requirements",
+          "state": "pending",
+          "references": [
+            {
+              "kind": "requirement",
+              "id": "cli_synthetic_65",
+              "version": 5,
+              "generation": null,
+              "transactionId": null,
+              "subjectId": null,
+              "associationVersion": null
+            }
+          ]
+        },
+        {
+          "category": "manual",
+          "state": "pending",
+          "references": [
+            {
+              "kind": "requirement",
+              "id": "cli_synthetic_65",
+              "version": 5,
+              "generation": null,
+              "transactionId": null,
+              "subjectId": null,
+              "associationVersion": null
+            }
+          ]
+        }
+      ],
+      "requirementTotal": 1,
+      "requirementCompleted": 0
+    }
+  },
+  "stale": {
+    "checklist": {
+      "snapshotId": "cls_synthetic_1",
+      "matterId": "mat_synthetic",
+      "fingerprint": "3d2258f4e9077cd3c0dd4a41e5e8161323c806859020443c6cc23be3a26e2249",
+      "rulePackVersion": "1.0.0",
+      "compilerVersion": "1.0.0",
+      "taxonomyVersion": "1.0.0",
+      "checklistVersion": "1.0.0",
+      "moduleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C02_RTA_TITLE",
+        "C01_IDENTITY_CAPACITY",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "supersedesId": null,
+      "createdAt": "2026-10-09T00:00:00+00:00",
+      "items": [
+        {
+          "id": "cli_synthetic_65",
+          "requirementDefinitionId": "R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED",
+          "moduleDefinitionId": "C20_STAMP_REGISTRATION",
+          "inclusionReason": "EXACT_INSTRUMENT",
+          "inclusionTriggerId": "lk.rta.instrument.transfer_sale",
+          "labelKey": "rta.requirement.R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED.label",
+          "explanationKey": "rta.requirement.R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED.explanation_human_review_event_only",
+          "mandatoryBasis": "PRODUCT_SAFETY",
+          "group": "LEGAL_REGISTRY",
+          "sourceRecordIds": [
+            "src.product.draftly_safety",
+            "src.practice.examination_of_title"
+          ],
+          "acceptedDocumentClassIds": ["rta.doc.title_certificate"],
+          "mayBeSatisfiedByCombinedDocument": false,
+          "physicalOriginalPolicy": "ORIGINAL_INSPECTED",
+          "waivable": false,
+          "localAuthorityId": null,
+          "applicability": "CONDITIONAL",
+          "collection": "RECEIVED",
+          "digitalReview": "UNREVIEWED",
+          "physicalOriginal": "ORIGINAL_INSPECTED",
+          "currency": "CURRENT",
+          "consistency": "MATCHED",
+          "resolution": "SATISFIED",
+          "lifecycle": "PARTIALLY_SATISFIED",
+          "computedResolution": "OPEN",
+          "blocksApproval": true,
+          "liveLinkCount": 1,
+          "applicabilityReason": null,
+          "originalInspection": {
+            "reviewerId": "usr_synthetic",
+            "inspectedAt": "2026-10-09T00:00:00+00:00",
+            "method": "Synthetic packet inspection",
+            "location": null,
+            "note": null,
+            "originals": [
+              {
+                "sourceFileId": "src_doc_first",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "storageVersion": "1"
+              },
+              {
+                "sourceFileId": "src_doc_second",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "storageVersion": "1"
+              }
+            ]
+          },
+          "inspectionHistory": [
+            {
+              "reviewerId": "usr_synthetic",
+              "inspectedAt": "2026-10-09T00:00:00+00:00",
+              "method": "Synthetic packet inspection",
+              "location": null,
+              "note": null,
+              "originals": [
+                {
+                  "sourceFileId": "src_doc_first",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "storageVersion": "1"
+                },
+                {
+                  "sourceFileId": "src_doc_second",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "storageVersion": "1"
+                }
+              ]
+            }
+          ],
+          "assignedTo": null,
+          "dueAt": null,
+          "version": 5
+        }
+      ],
+      "blockingRequirementIds": ["R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED"]
+    },
+    "readiness": {
+      "state": "blocked",
+      "nextAction": "requirements",
+      "evaluatedAt": "2026-10-09T00:00:00+00:00",
+      "dependencies": [
+        {
+          "category": "requirements",
+          "state": "pending",
+          "references": [
+            {
+              "kind": "requirement",
+              "id": "cli_synthetic_65",
+              "version": 5,
+              "generation": null,
+              "transactionId": null,
+              "subjectId": null,
+              "associationVersion": null
+            }
+          ]
+        }
+      ],
+      "requirementTotal": 1,
+      "requirementCompleted": 0
+    }
+  },
+  "missing": {
+    "checklist": {
+      "snapshotId": "cls_synthetic_1",
+      "matterId": "mat_synthetic",
+      "fingerprint": "3d2258f4e9077cd3c0dd4a41e5e8161323c806859020443c6cc23be3a26e2249",
+      "rulePackVersion": "1.0.0",
+      "compilerVersion": "1.0.0",
+      "taxonomyVersion": "1.0.0",
+      "checklistVersion": "1.0.0",
+      "moduleDefinitionIds": [
+        "C00_MATTER_ADMIN",
+        "C02_RTA_TITLE",
+        "C01_IDENTITY_CAPACITY",
+        "C03_REGISTRY_SEARCH",
+        "C04_SURVEY_CADASTRAL",
+        "C06_ENCUMBRANCES",
+        "C20_STAMP_REGISTRATION"
+      ],
+      "supersedesId": null,
+      "createdAt": "2026-10-09T00:00:00+00:00",
+      "items": [
+        {
+          "id": "cli_synthetic_65",
+          "requirementDefinitionId": "R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED",
+          "moduleDefinitionId": "C20_STAMP_REGISTRATION",
+          "inclusionReason": "EXACT_INSTRUMENT",
+          "inclusionTriggerId": "lk.rta.instrument.transfer_sale",
+          "labelKey": "rta.requirement.R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED.label",
+          "explanationKey": "rta.requirement.R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED.explanation_human_review_event_only",
+          "mandatoryBasis": "PRODUCT_SAFETY",
+          "group": "LEGAL_REGISTRY",
+          "sourceRecordIds": [
+            "src.product.draftly_safety",
+            "src.practice.examination_of_title"
+          ],
+          "acceptedDocumentClassIds": ["rta.doc.title_certificate"],
+          "mayBeSatisfiedByCombinedDocument": false,
+          "physicalOriginalPolicy": "ORIGINAL_INSPECTED",
+          "waivable": false,
+          "localAuthorityId": null,
+          "applicability": "CONDITIONAL",
+          "collection": "MISSING",
+          "digitalReview": "LAWYER_CONFIRMED",
+          "physicalOriginal": "ORIGINAL_INSPECTED",
+          "currency": "CURRENT",
+          "consistency": "MATCHED",
+          "resolution": "ACTION_REQUESTED",
+          "lifecycle": "MISSING",
+          "computedResolution": "ACTION_REQUESTED",
+          "blocksApproval": true,
+          "liveLinkCount": 2,
+          "applicabilityReason": null,
+          "originalInspection": {
+            "reviewerId": "usr_synthetic",
+            "inspectedAt": "2026-10-09T00:00:00+00:00",
+            "method": "Synthetic packet inspection",
+            "location": null,
+            "note": null,
+            "originals": [
+              {
+                "sourceFileId": "src_doc_first",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "storageVersion": "1"
+              },
+              {
+                "sourceFileId": "src_doc_second",
+                "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "storageVersion": "1"
+              }
+            ]
+          },
+          "inspectionHistory": [
+            {
+              "reviewerId": "usr_synthetic",
+              "inspectedAt": "2026-10-09T00:00:00+00:00",
+              "method": "Synthetic packet inspection",
+              "location": null,
+              "note": null,
+              "originals": [
+                {
+                  "sourceFileId": "src_doc_first",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "storageVersion": "1"
+                },
+                {
+                  "sourceFileId": "src_doc_second",
+                  "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                  "storageVersion": "1"
+                }
+              ]
+            }
+          ],
+          "assignedTo": null,
+          "dueAt": null,
+          "version": 6
+        }
+      ],
+      "blockingRequirementIds": ["R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED"]
+    },
+    "readiness": {
+      "state": "blocked",
+      "nextAction": "requirements",
+      "evaluatedAt": "2026-10-09T00:00:00+00:00",
+      "dependencies": [
+        {
+          "category": "requirements",
+          "state": "pending",
+          "references": [
+            {
+              "kind": "requirement",
+              "id": "cli_synthetic_65",
+              "version": 6,
+              "generation": null,
+              "transactionId": null,
+              "subjectId": null,
+              "associationVersion": null
+            }
+          ]
+        }
+      ],
+      "requirementTotal": 1,
+      "requirementCompleted": 0
+    }
+  }
+}

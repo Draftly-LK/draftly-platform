@@ -76,6 +76,7 @@ class ChecklistItemView:
     lifecycle: ChecklistItemLifecycle
     computed_resolution: ResolutionStatus
     live_link_count: int
+    has_invalid_support: bool
     blocks_approval: bool
 
 
@@ -239,16 +240,18 @@ class ChecklistService:
                     item_id=item.id,
                 )
                 continue
-            live = await self._live_link_count(links_by_item.get(item.id, []))
+            live, invalid = await self._link_currentness(links_by_item.get(item.id, []))
             if (
-                (
-                    requirement.accepted_document_class_ids
-                    or requirement.physical_original_policy
-                    is not PhysicalOriginalStatus.NOT_REQUIRED
+                invalid
+                or (
+                    not live
+                    and (
+                        requirement.accepted_document_class_ids
+                        or requirement.physical_original_policy
+                        is not PhysicalOriginalStatus.NOT_REQUIRED
+                    )
                 )
-                and not live
-                and item.digital_review is DigitalReviewStatus.LAWYER_CONFIRMED
-            ):
+            ) and item.digital_review is DigitalReviewStatus.LAWYER_CONFIRMED:
                 item = replace(item, digital_review=DigitalReviewStatus.UNREVIEWED)
             views.append(
                 ChecklistItemView(
@@ -257,6 +260,7 @@ class ChecklistService:
                     lifecycle=derive_lifecycle(item, requirement, live_link_count=live),
                     computed_resolution=compute_resolution(item, requirement),
                     live_link_count=live,
+                    has_invalid_support=invalid,
                     blocks_approval=is_blocking_unsatisfied(item, requirement),
                 )
             )
@@ -591,8 +595,10 @@ class ChecklistService:
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
-    async def _live_link_count(self, links: list[SatisfactionLink]) -> int:
+    async def _link_currentness(self, links: list[SatisfactionLink]) -> tuple[int, bool]:
+        """Keep partial invalidity: one current link cannot validate the reviewed set."""
         live = 0
+        invalid = False
         for link in links:
             if not link.is_live:
                 continue
@@ -602,15 +608,17 @@ class ChecklistService:
                         link.user_id, link.matter_id, link.detected_document_id
                     )
                 except (DomainRuleError, NotFoundError):
+                    invalid = True
                     continue
                 if (
                     document.version != link.document_version
                     or document.interpretation_generation != link.interpretation_generation
                     or document.originals != link.originals
                 ):
+                    invalid = True
                     continue
             live += 1
-        return live
+        return live, invalid
 
     async def _current_originals(
         self, item: ChecklistItem, *, require_review: bool
@@ -676,15 +684,18 @@ class ChecklistService:
         self, user_id: str, item: ChecklistItem, requirement: RequirementDefinition
     ) -> ChecklistItemView:
         links = await self._repo.list_links_for_item(user_id, item.id)
-        live = await self._live_link_count(links)
+        live, invalid = await self._link_currentness(links)
         if (
-            (
-                requirement.accepted_document_class_ids
-                or requirement.physical_original_policy is not PhysicalOriginalStatus.NOT_REQUIRED
+            invalid
+            or (
+                not live
+                and (
+                    requirement.accepted_document_class_ids
+                    or requirement.physical_original_policy
+                    is not PhysicalOriginalStatus.NOT_REQUIRED
+                )
             )
-            and not live
-            and item.digital_review is DigitalReviewStatus.LAWYER_CONFIRMED
-        ):
+        ) and item.digital_review is DigitalReviewStatus.LAWYER_CONFIRMED:
             item = replace(item, digital_review=DigitalReviewStatus.UNREVIEWED)
         return ChecklistItemView(
             item=item,
@@ -692,6 +703,7 @@ class ChecklistService:
             lifecycle=derive_lifecycle(item, requirement, live_link_count=live),
             computed_resolution=compute_resolution(item, requirement),
             live_link_count=live,
+            has_invalid_support=invalid,
             blocks_approval=is_blocking_unsatisfied(item, requirement),
         )
 

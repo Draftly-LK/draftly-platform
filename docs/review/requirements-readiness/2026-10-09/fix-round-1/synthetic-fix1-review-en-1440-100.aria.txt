@@ -1,0 +1,74 @@
+- main:
+  - heading "Checks and missing evidence" [level=1]
+  - paragraph: Turn extraction conflicts and legal rules into lawyer-owned resolutions.
+  - region "Requirements and human review":
+    - heading "Requirements and human review" [level=2]
+    - paragraph: Receipt, evidence review and original inspection are recorded separately. Satisfaction follows the existing requirement policy.
+    - list:
+      - listitem:
+        - button "Original title certificate inspected"
+        - paragraph: Received · Unreviewed · Original inspected
+    - heading "Original title certificate inspected" [level=3]
+    - paragraph: Reviewed version 5
+    - term: Collection
+    - definition: Received
+    - term: Evidence review
+    - definition: Unreviewed
+    - term: Physical original
+    - definition: Original inspected
+    - term: Currency
+    - definition: Current
+    - term: Consistency
+    - definition: Matched
+    - button "Review latest requirement"
+    - text: Inspection method
+    - textbox "Inspection method"
+    - button "Record original inspection" [disabled]
+    - text: Review dimension
+    - combobox "Review dimension":
+      - option "Evidence review" [selected]
+      - option "Consistency"
+      - option "Currency"
+      - option "Collection"
+    - text: Decision
+    - combobox "Decision":
+      - option "Choose a decision"
+      - option "Lawyer confirmed" [selected]
+      - option "Rejected"
+    - text: Reason
+    - textbox "Reason"
+    - button "Record requirement decision"
+    - group: Inspection and evidence history
+  - region "Automated checks":
+    - heading "Automated checks" [level=2]
+    - paragraph: Choose the reviewed transaction and subject. Each run keeps its fact versions and association revision; a pass still needs the lawyer's conclusion.
+    - text: Transaction
+    - combobox "Transaction":
+      - option "Choose a transaction" [selected]
+      - option "Transaction 1"
+    - text: Subject
+    - combobox "Subject" [disabled]:
+      - option "Transaction information only" [selected]
+    - button "Review current scope"
+  - heading "Legal issues" [level=2]
+  - button "Run checks" [disabled]
+  - img
+  - paragraph: Issues could not be loaded. Try again.
+  - text: "Filter by severity:"
+  - combobox "Filter by severity:":
+    - option "All severities" [selected]
+    - option "Information"
+    - option "Warning"
+    - option "High risk"
+    - option "Blocking"
+  - text: "Filter by state:"
+  - combobox "Filter by state:":
+    - option "All states" [selected]
+    - option "Open"
+    - option "Triaged"
+    - option "Action required"
+    - option "Resolved"
+    - option "Accepted risk"
+    - option "False positive"
+    - option "Outside scope"
+  - paragraph: No issues found.

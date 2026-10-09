@@ -945,3 +945,18 @@ pins and item original-inspection source/history JSON. Existing rows are not
 inventively backfilled. Legacy inspection metadata remains retained but an unbound
 inspection is projected as unknown. Downgrade refuses any pinned link or recorded
 inspection history. Older code is not a supported writer after these new records.
+
+### Partial supporting evidence and human-review routing (2026-10-09)
+
+Checklist and single-item projections retain whether any active bound supporting
+link failed currentness. One remaining current link cannot preserve effective
+lawyer review over a changed evidence set. Stored decisions, receipt, original
+inspection and audit history stay unchanged; deliberately superseded links remain
+history. The internal projection carries this invalid-support signal into readiness.
+
+Received, current support awaiting governed original/digital/currency/consistency
+review points to the existing Checks controls. Missing or invalid supporting evidence
+continues to point to Documents. Requirement blocker references remain present in
+both cases; this changes navigation, not completion or legal policy. Synthetic
+consumer packets are generated from the actual checklist/readiness services and
+checked for equality before frontend/browser destination tests consume them.
