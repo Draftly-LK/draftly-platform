@@ -10,6 +10,20 @@ document class/group relationship and readable artifacts. It returns page OCR
 and an exact supporting text span only when that substring exists in actual OCR;
 page-level fallback never manufactures a bounding box.
 
+Extraction grouping validation compares every source/page pair with the
+processing logical document. Regrouping to include another source invalidates
+an old single-source extraction, even when its original pages still match.
+Existing facts citing distinct sources retain every evidence reference, and
+verification revalidates each before acceptance/correction. This does not create
+new extraction runs or propagate lifecycle invalidation.
+
+The pinned original and corrected page artifact must remain readable. Storage
+not-found, integrity and availability failures for those required artifacts
+become a blocked evidence result; the register retains that candidate as
+unavailable alongside healthy rows. OCR text is optional: if it cannot be read,
+the validator returns empty text, no supporting span and page precision while
+allowing human page review. No replacement bytes or OCR content are invented.
+
 The legacy document review edit/approval surface now delegates to canonical
 verification commands. Edits persist unverified successors; acceptance requires
 explicit matter scope, evidence review, capability and practising authorization.

@@ -33,6 +33,7 @@ from src.platform.api.pagination import PageInfo, decode_cursor, encode_cursor
 from src.platform.db.idempotency import IdempotencyKeyRequiredError
 from src.platform.db.session import get_db, get_uow
 from src.platform.db.unit_of_work import UnitOfWork
+from src.platform.errors import DomainRuleError
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["facts"])
@@ -209,7 +210,14 @@ async def decide_fact(
     key: str = Depends(require_review_key),
     uow: UnitOfWork = Depends(get_uow),
 ) -> FactRead:
+    """Review an existing scope; only associate accepts transactionId/subjectId.
+
+    Associate first, then accept the returned successor with its ETag and
+    scopeToken. Other actions reject scope fields, including explicit nulls.
+    """
     _ = uow
+    if action != "associate" and {"transaction_id", "subject_id"} & body.model_fields_set:
+        raise DomainRuleError("Scope fields are allowed only for associate decisions.")
     fact = await service.decide(
         ctx,
         matter_id,

@@ -254,7 +254,7 @@ class FactReviewService:
                 ctx.actor_id, matter_id, after=cursor, limit=100
             )
             for candidate in batch:
-                if candidate.approved_fact_id or await self._repo.by_candidate(
+                if candidate.approved_fact_id or await self._repo.has_candidate_history(
                     ctx.actor_id, matter_id, candidate.id
                 ):
                     continue
@@ -385,6 +385,10 @@ class FactReviewService:
         await self._scopes.lock(ctx, matter_id)
         if data.action not in ("accept", "correct", "reject", "associate", "edit") or not key:
             raise DomainRuleError()
+        if data.action != "associate" and (
+            data.transaction_id is not None or data.subject_id is not None
+        ):
+            raise DomainRuleError("Scope fields are allowed only for associate decisions.")
         route = f"/matters/{matter_id}/facts/{fact_id}/{data.action}"
         request_hash = fingerprint(asdict(data))
         replay = await self._replay.find(
@@ -433,7 +437,12 @@ class FactReviewService:
             guard_negative_conclusion(
                 fact.fact_type_id,
                 value,
-                has_current_search_evidence=summary.has_current_search_evidence,
+                has_current_search_evidence=any(
+                    search.fact_type_id == "rta.title.register_search_datetime"
+                    and search.transaction_id == transaction_id
+                    and search.subject_id == subject_id
+                    for search in summary.scoped_confirmed
+                ),
                 confirmed_by_human=True,
             )
             locator = data.evidence or (candidate.evidence if candidate else None)

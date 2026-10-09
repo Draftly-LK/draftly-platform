@@ -290,8 +290,13 @@ The approved lawyer-led workflow adds `transaction_id`, `scope_status`, and
 `legacy-unassigned`; migration does not invent subjects or transaction roles.
 `ConfirmedFactValue` carries transaction and subject references, and
 `FactTierSummary.scoped_confirmed` preserves eligible values in each scope.
-The compatibility `confirmed` map omits types spanning several scopes,
-unresolved competing values, stale facts, and explicitly unassigned facts.
+The compatibility `confirmed` map omits unresolved competing values, stale
+facts, and explicitly unassigned facts. It withholds the entire map when
+eligible values span transaction/subject scopes, including different fact types
+or a mixture of legacy and assigned scopes. Existing form consumers cannot
+select a coherent scope; this temporary withholding can produce missing
+bindings even for individually confirmed facts. `scoped_confirmed` stays
+lossless for the later explicit resolver.
 A later version alone never resolves conflicting live values. Version allocation
 is scoped by user, matter, transaction, subject, and fact type. Existing
 unambiguous legacy single-subject reads remain compatible.
@@ -312,6 +317,8 @@ corrections, rejection, reasons, reviewers, timestamps and resolved alternatives
 The register exposes `origin`, `originalValue`, `sourceCandidateId`, `lineageId`,
 transaction/subject references, `scopeStatus`, `evidenceStale`, `scopeToken`,
 `conflictFactIds`, predecessor and successor IDs. Historical IDs stay addressable.
+Any canonical candidate materialization suppresses its processing observation
+from live lists, including a resolved loser with no live successor of its own.
 
 `POST /matters/{matterId}/facts` creates a lawyer-provided `REVIEW_REQUIRED` fact
 with a required reason; evidence is optional and author identity grants no
@@ -322,7 +329,17 @@ successor and requires matter-owned references. Acceptance/correction requires
 assigned scope, current readable evidence, current `expectedScopeToken`, and
 the exact set of differing live alternatives in `resolveFactIds` with a reason.
 An arriving competing fact changes the token and refuses the stale decision.
-Negative conclusions retain the current-search-evidence guard.
+Negative conclusions retain the current-search-evidence guard; a search must
+be eligible in the exact same transaction and subject. Another scope's search
+or an ambiguous legacy relationship cannot satisfy it.
+
+Only `associate` accepts `transactionId` and `subjectId`. Other actions reject
+those fields with 422, including explicit nulls, matching IDs, mismatching IDs,
+and foreign IDs. To assign an observation, associate using its current ETag and
+a reason; then accept the returned successor ID with its ETag and `scopeToken`
+as `expectedScopeToken`. Acceptance omits scope fields. Association returns the
+destination scope's token, so no destination-token endpoint or client-generated
+hash is needed. Reload only when a later competing change makes that token stale.
 
 All mutations authorize the current RTA capability and practising status inside
 the application service, including replay. The matter lock serializes review
@@ -342,6 +359,13 @@ candidate version/relationship, current source and document interpretation, and
 readable original/page artifacts. Evidence returns actual OCR text and page
 precision; text precision requires an exact supporting substring. No bounding
 box is synthesized. Every existing linked source is revalidated before acceptance.
+The complete source/page grouping must match the extraction. An old single-source
+extraction cannot justify a regrouped document that now includes another source.
+Optional unavailable OCR yields empty text and page precision when the original
+and page remain readable. Missing or corrupt original/page artifacts become
+unavailable candidate rows (`evidenceStale=true`, no evidence), keeping other
+register entries visible. These reads do not replace Task 4 invalidation of
+already persisted fact evidence.
 
 NIC fields are holder observations: `holderNic`, `holderNameEn`, `holderNameSi`,
 `holderDateOfBirth`, `holderAddress`; survey plans retain `surveyorRegistration`.

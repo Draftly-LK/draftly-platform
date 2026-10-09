@@ -7748,6 +7748,7 @@
                 "type": "null"
               }
             ],
+            "description": "Only associate accepts this field. Omit it for accept, correct, or reject, including null.",
             "title": "Subjectid"
           },
           "transactionId": {
@@ -7760,6 +7761,7 @@
                 "type": "null"
               }
             ],
+            "description": "Only associate accepts this field. Omit it for accept, correct, or reject, including null.",
             "title": "Transactionid"
           },
           "value": {
@@ -14079,6 +14081,7 @@
     },
     "/api/v1/matters/{matter_id}/facts/{fact_id}/{action}": {
       "post": {
+        "description": "Review an existing scope; only associate accepts transactionId/subjectId.\n\nAssociate first, then accept the returned successor with its ETag and\nscopeToken. Other actions reject scope fields, including explicit nulls.",
         "operationId": "decide_fact_api_v1_matters__matter_id__facts__fact_id___action__post",
         "parameters": [
           {

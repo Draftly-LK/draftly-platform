@@ -50,4 +50,11 @@ class DocumentFactPort(Protocol):
     ) -> CandidateObservation | None: ...
     async def validate_evidence(
         self, user_id: str, matter_id: str, evidence: FactEvidenceLocator
-    ) -> FactEvidenceSource: ...
+    ) -> FactEvidenceSource:
+        """Validate original/page availability and the complete extraction grouping.
+
+        Unavailable originals/pages raise DomainRuleError. Missing optional OCR
+        yields empty page_text, no supporting_text and page precision. Ownership
+        misses remain NotFoundError; changed candidates retain their precondition.
+        """
+        ...

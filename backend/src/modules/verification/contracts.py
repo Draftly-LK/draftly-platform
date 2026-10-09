@@ -30,12 +30,13 @@ class ConfirmedFactValue:
 class FactTierSummary:
     """The state of a matter's fact tier, as the gates need to see it."""
 
+    #: Compatibility only: withheld when eligible values span scopes, even
+    #: across different types. Scoped consumers must select from scoped_confirmed.
     confirmed: dict[str, ConfirmedFactValue] = field(default_factory=dict)
     unconfirmed_critical_fact_type_ids: tuple[str, ...] = ()
     conflicted_fact_type_ids: tuple[str, ...] = ()
-    #: True when a dated Title Register / encumbrance search has been confirmed.
-    #: Without it, no negative conclusion about a registered interest is
-    #: recordable (§6.4, §7.2).
+    #: Compatibility search presence. Scoped negative-conclusion commands must
+    #: match eligible search transaction/subject in scoped_confirmed (§6.4, §7.2).
     has_current_search_evidence: bool = False
     #: Lossless eligible values. Consumers must select an explicit scope.
     scoped_confirmed: tuple[ConfirmedFactValue, ...] = ()

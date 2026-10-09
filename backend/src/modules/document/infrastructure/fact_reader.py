@@ -11,6 +11,11 @@ from src.modules.document.contracts import (
     FactEvidenceLocator,
     FactEvidenceSource,
 )
+from src.modules.document.domain.errors import (
+    SourceObjectIntegrityError,
+    SourceObjectNotFoundError,
+    SourceObjectUnavailableError,
+)
 from src.modules.document.domain.registry import observational_field_key
 from src.modules.document.infrastructure.orm import (
     DetectedDocumentRow,
@@ -22,6 +27,15 @@ from src.modules.document.infrastructure.orm import (
 )
 from src.modules.document.ports import SourceFileStoragePort
 from src.platform.errors import DomainRuleError, NotFoundError, PreconditionFailedError
+
+_ARTIFACT_ERRORS = (
+    SourceObjectNotFoundError,
+    SourceObjectIntegrityError,
+    SourceObjectUnavailableError,
+    OSError,
+    ValueError,
+    KeyError,
+)
 
 
 class SqlDocumentFactReader:
@@ -196,11 +210,10 @@ class SqlDocumentFactReader:
                 if (
                     logical is None
                     or logical.type_id != document.class_id
-                    or set(logical.page_numbers)
+                    or {(logical.source_file_id, page) for page in logical.page_numbers}
                     != {
-                        page
+                        (f.source_file_id, page)
                         for f in fragments
-                        if f.source_file_id == source.id
                         for page in range(f.page_start, f.page_end + 1)
                     }
                 ):
@@ -232,10 +245,17 @@ class SqlDocumentFactReader:
                 await self._storage.get(
                     page.corrected_webp_key, version=page.corrected_webp_version
                 )
-                page_text = (
-                    await self._storage.get(page.plain_text_key, version=page.plain_text_version)
-                ).decode("utf-8")
-        except (OSError, ValueError, KeyError) as exc:
+                try:
+                    page_text = (
+                        await self._storage.get(
+                            page.plain_text_key, version=page.plain_text_version
+                        )
+                    ).decode("utf-8")
+                except _ARTIFACT_ERRORS:
+                    # OCR is optional. The pinned original and page remain
+                    # readable; no text/span authority is invented on fallback.
+                    page_text = ""
+        except _ARTIFACT_ERRORS as exc:
             raise DomainRuleError("The evidence artifact is unavailable.") from exc
         snippet = evidence.snippet if evidence.snippet and evidence.snippet in page_text else None
         return FactEvidenceSource(

@@ -55,6 +55,9 @@ class FactReviewRepository(VerificationReadRepository, Protocol):
     async def by_candidate(
         self, user_id: str, matter_id: str, candidate_id: str
     ) -> ExtractedFact | None: ...
+    async def has_candidate_history(
+        self, user_id: str, matter_id: str, candidate_id: str
+    ) -> bool: ...
     async def history(
         self, user_id: str, matter_id: str, lineage_id: str, limit: int, *, after: str | None = None
     ) -> list[ExtractedFact]: ...

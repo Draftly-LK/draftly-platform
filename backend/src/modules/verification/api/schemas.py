@@ -98,8 +98,16 @@ class ReviewFactRequest(_CamelModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
     reason: str | None = Field(default=None, min_length=1, max_length=2000)
     value: str | int | float | bool | None = None
-    transaction_id: str | None = Field(default=None, max_length=64)
-    subject_id: str | None = Field(default=None, max_length=64)
+    transaction_id: str | None = Field(
+        default=None,
+        max_length=64,
+        description="Only associate accepts this field. Omit it for accept, correct, or reject, including null.",
+    )
+    subject_id: str | None = Field(
+        default=None,
+        max_length=64,
+        description="Only associate accepts this field. Omit it for accept, correct, or reject, including null.",
+    )
     expected_scope_token: str | None = Field(default=None, max_length=64)
     resolve_fact_ids: list[str] = Field(default_factory=list, max_length=100)
     evidence: EvidenceInput | None = None

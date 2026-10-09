@@ -175,6 +175,21 @@ class SqlVerificationRepository:
         ).scalar_one_or_none()
         return _to_fact(row) if row else None
 
+    async def has_candidate_history(self, user_id: str, matter_id: str, candidate_id: str) -> bool:
+        # A resolved loser may have no live successor in its own candidate
+        # lineage. Its immutable materialization still suppresses the bridge.
+        return (
+            await self._session.execute(
+                select(ExtractedFactRow.id)
+                .where(
+                    ExtractedFactRow.user_id == user_id,
+                    ExtractedFactRow.matter_id == matter_id,
+                    ExtractedFactRow.source_candidate_id == candidate_id,
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none() is not None
+
     async def history(
         self, user_id: str, matter_id: str, lineage_id: str, limit: int, *, after: str | None = None
     ) -> list[ExtractedFact]:
@@ -499,6 +514,12 @@ class SqlConfirmedFactReader:
             if value.fact_type_id not in conflicted
             and sum(1 for key in groups if key[2] == value.fact_type_id) == 1
         }
+        # Current consumers do not select a transaction/subject. Uniqueness
+        # within each type is insufficient: different types can still form an
+        # unreviewed composite. Preserve the lossless projection for explicit
+        # scoped consumers and withhold the whole compatibility map meanwhile.
+        if len({(value.transaction_id, value.subject_id) for value in scoped}) > 1:
+            confirmed = {}
         unconfirmed_critical = tuple(
             sorted(
                 fact_type_id

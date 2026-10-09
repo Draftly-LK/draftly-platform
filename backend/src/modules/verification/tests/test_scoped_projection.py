@@ -1,9 +1,56 @@
 """Regressions for subject collapse and silent conflict selection."""
 
-from src.modules.content_governance.contracts import FactStatus
+from src.modules.content_governance.contracts import FORM_TEMPLATES, FactStatus
+from src.modules.draft.domain.policies import resolve_template
 from src.modules.verification.tests.test_repository import _fact_row, _summarise
 
 TYPE = "rta.parcel.village"
+
+
+async def test_different_types_cannot_form_a_composite_from_different_scopes() -> None:
+    for transaction, subject in (("txn_b", "sub_a"), ("txn_a", "sub_b"), (None, None)):
+        result = await _summarise(
+            _fact_row(
+                "number_a",
+                "rta.parcel.parcel_number",
+                FactStatus.LAWYER_CONFIRMED,
+                transaction_id="txn_a",
+                subject_id="sub_a",
+                value="SYNTHETIC A",
+            ),
+            _fact_row(
+                "extent_b",
+                "rta.parcel.extent",
+                FactStatus.LAWYER_CONFIRMED,
+                transaction_id=transaction,
+                subject_id=subject,
+                value="1.23",
+            ),
+        )
+        assert {f.fact_id for f in result.scoped_confirmed} == {"number_a", "extent_b"}
+        assert result.confirmed == {}
+        form = next(t for t in FORM_TEMPLATES if t.id == "rta.reg.2022.form.08")
+        assert not any(f.fact_id for f in resolve_template(form, facts=result))
+
+
+async def test_coherent_single_scope_keeps_compatibility_bindings() -> None:
+    result = await _summarise(
+        *(
+            _fact_row(
+                identity,
+                kind,
+                FactStatus.LAWYER_CONFIRMED,
+                transaction_id="txn_a",
+                subject_id="sub_a",
+                value=value,
+            )
+            for identity, kind, value in (
+                ("number", "rta.parcel.parcel_number", "SYNTHETIC A"),
+                ("extent", "rta.parcel.extent", "1.23"),
+            )
+        )
+    )
+    assert len(result.confirmed) == 2
 
 
 async def test_two_subjects_keep_values_and_withhold_legacy_binding() -> None:
