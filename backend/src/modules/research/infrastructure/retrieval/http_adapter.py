@@ -70,8 +70,14 @@ class HttpStatuteRetrievalAdapter:
                 response.raise_for_status()
                 hits = response.json()
                 version = response.headers.get("X-Draftly-Corpus-Version", "")
-                if not isinstance(hits, list) or _VERSION.fullmatch(version) is None:
-                    raise ValueError("Unattested retrieval response")
+                if not isinstance(hits, list):
+                    raise ValueError("Invalid retrieval response")
+                if _VERSION.fullmatch(version) is None:
+                    return SearchResult(
+                        degraded_channels=["source-version"],
+                        coverage_gaps=["source-release-unavailable"],
+                        status=RetrievalStatus.UNAVAILABLE,
+                    )
                 authorities: tuple[AuthorityMetadata, ...] = ()
                 source_version = None
                 gaps = ["authority-metadata-unsupported"]
@@ -129,8 +135,15 @@ class HttpStatuteRetrievalAdapter:
                     ):
                         continue
                     source_id, section_id = hit.get("source_id"), hit.get("section_id")
-                    if not isinstance(source_id, str) or not isinstance(section_id, str):
-                        raise ValueError("Invalid passage identity")
+                    if (
+                        not isinstance(source_id, str)
+                        or not source_id.strip()
+                        or not isinstance(section_id, str)
+                        or not section_id.strip()
+                    ):
+                        if version.startswith("legal-index-v2:"):
+                            raise ValueError("Invalid passage identity")
+                        continue
                     metadata = by_id.get(source_id)
                     if version.startswith("legal-index-v2:") and metadata is None:
                         raise ValueError("Passage lacks signed metadata")
