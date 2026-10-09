@@ -147,6 +147,22 @@ export function LegalTransactionSelector({
     </div>
   );
 }
+function coverageMessageKey(reason: string) {
+  switch (reason) {
+    case "requested-authority-missing":
+      return "legalCoverageReasons.requestedAuthorityMissing";
+    case "authority-metadata-unsupported":
+      return "legalCoverageReasons.authorityMetadataUnsupported";
+    case "source-passages-withheld":
+      return "legalCoverageReasons.sourcePassagesWithheld";
+    case "source-release-unavailable":
+      return "legalCoverageReasons.sourceReleaseUnavailable";
+    case "quotation-boundary-unavailable":
+      return "legalCoverageReasons.quotationBoundaryUnavailable";
+    default:
+      return "legalCoverageUnavailable";
+  }
+}
 export function LegalResultContext({
   context,
   matterId,
@@ -158,6 +174,9 @@ export function LegalResultContext({
 }) {
   const t = useTranslations("matterAssistant");
   const dates = context.dateContext;
+  const coverageKeys = [
+    ...new Set(context.coverageGaps.map(coverageMessageKey)),
+  ];
   return (
     <section
       className="border-border mt-3 space-y-2 rounded border p-3 text-sm"
@@ -206,11 +225,15 @@ export function LegalResultContext({
           {t("legalSourceRelease", { version: context.sourceReleaseVersion })}
         </p>
       )}
-      {!!context.coverageGaps.length && (
-        <p className="text-amber-text flex items-start gap-2">
+      {!!coverageKeys.length && (
+        <div className="text-amber-text flex items-start gap-2">
           <AlertTriangle className="size-4 shrink-0" />
-          <span>{t("legalCoverageUnavailable")}</span>
-        </p>
+          <ul className="space-y-1">
+            {coverageKeys.map((key) => (
+              <li key={key}>{t(key)}</li>
+            ))}
+          </ul>
+        </div>
       )}
       {context.visibility === "current-policy-unavailable" && (
         <p>{t("legalHistoryUnavailable")}</p>

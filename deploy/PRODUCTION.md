@@ -372,12 +372,18 @@ not case data, and are still shown.
   design docs: the deployed index is BM25-lexical only
   (`RETRIEVAL_WITH_EMBEDDINGS=0`), the same technique the old bundled corpus
   used, so a question that missed a matching statute before can still miss it
-  now. Set `RETRIEVAL_WITH_EMBEDDINGS=1` and rebuild the retrieval image to
-  add the dense channel (spends Gemini credits at build time). If the
+  now. In legacy mode only, `RETRIEVAL_WITH_EMBEDDINGS=1` can add the dense
+  channel when rebuilding the retrieval image (spends Gemini credits at build
+  time). Governed releases require `RETRIEVAL_WITH_EMBEDDINGS=0`; their builder
+  supports lexical retrieval only and refuses dense builds. If the
   retrieval container is unreachable, matter research reports unavailable and
-  releases its reserved query. The frozen serving wrapper now attests successful
-  `/search` responses with `X-Draftly-Corpus-Version: statutes-index-v1:<sha256>`,
-  derived from its recorded index fingerprint. Deploy the wrapper before the
+  releases its reserved query. For legacy mode, the frozen serving wrapper attests
+  successful `/search` responses with
+  `X-Draftly-Corpus-Version: statutes-index-v1:<sha256>`. Governed releases use
+  `X-Draftly-Corpus-Version: legal-index-v2:<sha256>` and retain the separate signed
+  source release identity. Both index identities derive from the recorded index
+  fingerprint. Governed serving still requires the independent trust and current
+  release permission described above. Deploy the wrapper before the
   consuming backend: old engines without a valid header are unavailable for
   grounded statute answers. The header identifies an artifact; it does not
   establish legal currency, verification or corpus completeness.

@@ -2823,6 +2823,13 @@
     "legalDateInputRequired": "Review the selected transaction and its attestation date before requesting a dated answer.",
     "legalReviewFacts": "Review facts",
     "legalCoverageUnavailable": "Some requested sources or supporting passages are unavailable. Review the available source leads.",
+    "legalCoverageReasons": {
+      "requestedAuthorityMissing": "The requested legal source was not found in the available collection.",
+      "authorityMetadataUnsupported": "This source collection does not provide authority metadata.",
+      "sourcePassagesWithheld": "Supporting passages are withheld under the current source policy.",
+      "sourceReleaseUnavailable": "The source release is currently unavailable.",
+      "quotationBoundaryUnavailable": "Approved quotation limits are unavailable, so supporting passages cannot be shown."
+    },
     "legalHistoryUnavailable": "The saved legal answer and passages are unavailable under the current source policy. Source references and date context are retained.",
     "legalSourceLeads": "Sources to inspect",
     "legalMetadataLead": "Source metadata only; this is not a supporting passage.",

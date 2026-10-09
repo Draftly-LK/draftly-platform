@@ -293,6 +293,11 @@ export function FactScopeInput({
   const [error, setError] = useState<unknown>(null);
   const [stale, setStale] = useState(false);
   const scopeEpoch = useRef(0);
+  const pendingScopeFocus = useRef<{
+    epoch: number;
+    transactionId: string;
+    version: number;
+  } | null>(null);
   const [retryUnavailable, setRetryUnavailable] = useState(false);
   const selectedTransaction = transactions.find((tx) => tx.id === current);
   const scopeOutdated = Boolean(
@@ -303,6 +308,7 @@ export function FactScopeInput({
         reviewedTransaction.version !== selectedTransaction.version),
   );
   function reviewTransaction(tx?: ApiMatterTransaction) {
+    pendingScopeFocus.current = null;
     setReviewedTransaction(tx);
     setParcels(tx?.parcelSubjectIds ?? []);
     setRoles(
@@ -316,9 +322,25 @@ export function FactScopeInput({
     const epoch = scopeEpoch;
     return () => {
       epoch.current++;
+      pendingScopeFocus.current = null;
     };
   }, [getToken, matterId]);
+  useEffect(() => {
+    if (busy) return;
+    const pending = pendingScopeFocus.current;
+    pendingScopeFocus.current = null;
+    if (
+      pending &&
+      pending.epoch === scopeEpoch.current &&
+      pending.transactionId === current &&
+      pending.version === reviewedTransaction?.version &&
+      !scopeOutdated &&
+      !transactionSelect.current?.disabled
+    )
+      transactionSelect.current?.focus();
+  }, [busy, current, reviewedTransaction?.version, scopeOutdated]);
   async function renewScope() {
+    pendingScopeFocus.current = null;
     const run = scopeEpoch.current;
     const tx = selectedTransaction;
     if (!tx) return;
@@ -329,7 +351,11 @@ export function FactScopeInput({
       if (run !== scopeEpoch.current) return;
       clearPendingOperationIntent(actor.id, matterId, `transaction:${tx.id}`);
       reviewTransaction(tx);
-      transactionSelect.current?.focus();
+      pendingScopeFocus.current = {
+        epoch: run,
+        transactionId: tx.id,
+        version: tx.version,
+      };
     } catch (cause) {
       if (run === scopeEpoch.current) setError(cause);
     } finally {
@@ -337,6 +363,7 @@ export function FactScopeInput({
     }
   }
   async function addSubject(kind: "party" | "parcel") {
+    pendingScopeFocus.current = null;
     const run = scopeEpoch.current;
     setBusy(true);
     setError(null);
@@ -370,6 +397,7 @@ export function FactScopeInput({
     }
   }
   async function save() {
+    pendingScopeFocus.current = null;
     const run = scopeEpoch.current;
     let intent: ManualIntent | undefined;
     if (scopeOutdated || stale || (current && !reviewedTransaction)) return;
