@@ -264,8 +264,8 @@ describe("case law entry", () => {
     expect(screen.getByText(/Court of Appeal collection/)).toBeTruthy();
     expect(screen.queryByText(/unverified/i)).toBeNull();
     expect(
-      screen.getByText("Encoding errors may affect this extraction."),
-    ).toBeTruthy();
+      screen.queryByText("Encoding errors may affect this extraction."),
+    ).toBeNull();
     expect(
       screen
         .getByRole("link", { name: "Back to case law" })

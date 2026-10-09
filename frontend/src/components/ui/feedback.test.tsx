@@ -23,6 +23,11 @@ describe("Skeleton", () => {
 });
 
 describe("InlineAlert", () => {
+  it("does not render warning notices", () => {
+    const { container } = renderWithIntl(<InlineAlert tone="warning">Warning notice</InlineAlert>);
+    expect(container.childElementCount).toBe(0);
+    expect(screen.queryByText("Warning notice")).toBeNull();
+  });
   it("errors are announced as alerts and carry an icon", () => {
     const { container } = renderWithIntl(<InlineAlert tone="danger">It broke</InlineAlert>);
     expect(screen.getByRole("alert").textContent).toBe("It broke");

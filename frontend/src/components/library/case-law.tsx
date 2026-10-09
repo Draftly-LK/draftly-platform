@@ -32,7 +32,6 @@ import type {
 } from "@/types/case";
 import {
   caseCollectionLabels,
-  caseQualityLabels,
   caseSignalLabels,
 } from "@/lib/i18n/case-labels";
 import { buttonClass } from "@/components/ui/button";
@@ -573,7 +572,6 @@ export function CaseReaderFlow({
   caseId: string;
 }) {
   const t = useTranslations("caseLaw");
-  const locale = useLocale() === "si" ? "si" : "en";
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<"missing" | "unavailable" | null>(null);
@@ -647,23 +645,7 @@ export function CaseReaderFlow({
             </dl>
             <p className="text-muted-ink text-sm">{t("provenance")}</p>
             <SourceLink url={item.sourceUrl} />
-            {item.qualityWarnings.length > 0 && (
-              <ul className="space-y-2">
-                {item.qualityWarnings.map((warning) => (
-                  <li
-                    key={warning}
-                    className="text-amber-text flex items-start gap-2 text-sm"
-                  >
-                    <AlertTriangle
-                      aria-hidden="true"
-                      className={icon}
-                      strokeWidth={1.5}
-                    />
-                    {caseQualityLabels[warning][locale]}
-                  </li>
-                ))}
-              </ul>
-            )}
+
           </article>
           {display ? (
             <article className="border-border bg-surface rounded-card space-y-3 border p-5">

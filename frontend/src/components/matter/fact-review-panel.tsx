@@ -80,7 +80,6 @@ export function FactReviewPanel({
   const [error, setError] = useState<unknown>(null);
   const [historyError, setHistoryError] = useState<unknown>(null);
   const [alternativesError, setAlternativesError] = useState<unknown>(null);
-  const [notice, setNotice] = useState(false);
   const [reviewReady, setReviewReady] = useState(false);
   const [renewal, setRenewal] = useState<{
     operation: string;
@@ -112,7 +111,7 @@ export function FactReviewPanel({
     [getToken, matterId, verifyOwner],
   );
   const renew = useCallback(
-    async (id: string, stale = false) => {
+    async (id: string) => {
       const run = ++generation.current.value;
       setLoading(true);
       setBusy(false);
@@ -124,7 +123,6 @@ export function FactReviewPanel({
       setAlternativesError(null);
       setHistory(null);
       setHistoryError(null);
-      setNotice(stale);
       try {
         const item = verifyOwner(await getMatterFact(getToken, matterId, id));
         if (run !== generation.current.value) return;
@@ -216,7 +214,6 @@ export function FactReviewPanel({
     let intent: ManualIntent | undefined;
     setBusy(true);
     setError(null);
-    setNotice(false);
     const decision = {
       reason: reason.trim() || undefined,
       expectedScopeToken: fact.scopeToken ?? undefined,
@@ -281,7 +278,6 @@ export function FactReviewPanel({
             : fact.id;
         setRenewal({ operation: `fact:${fact.id}:${action}`, target: current });
         setReviewReady(false);
-        setNotice(true);
       } else if (
         cause instanceof ApiError &&
         cause.status === 409 &&
@@ -312,7 +308,7 @@ export function FactReviewPanel({
       if (run !== generation.current.value) return;
       clearPendingOperationIntent(actor.id, matterId, renewal.operation);
       setRenewal(null);
-      await renew(renewal.target, true);
+      await renew(renewal.target);
     } catch (cause) {
       if (run === generation.current.value) setError(cause);
     } finally {
@@ -367,15 +363,7 @@ export function FactReviewPanel({
           {t("loadingReview")}
         </p>
       )}
-      {notice && (
-        <p
-          role="status"
-          className="border-amber bg-amber-bg text-amber-text flex gap-2 rounded border p-3 text-sm"
-        >
-          <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
-          {t("staleReview")}
-        </p>
-      )}
+
       {renewal && (
         <Button disabled={busy || loading} onClick={() => void renewDecision()}>
           {t("refresh")}

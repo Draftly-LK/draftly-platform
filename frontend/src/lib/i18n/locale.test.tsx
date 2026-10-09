@@ -17,20 +17,21 @@ describe("persisted interface language", () => {
   });
   it("provides an accessible shell switch and persists a reload-readable preference", () => {
     renderWithIntl(<LocaleSwitch />);
-    fireEvent.click(screen.getByRole("button", { name: "සිංහල" }));
-    expect(document.cookie).toContain(`${LOCALE_COOKIE}=si`);
+    fireEvent.click(screen.getByRole("button", { name: "English" }));
+    expect(document.cookie).toContain(`${LOCALE_COOKIE}=en`);
     expect(refresh).toHaveBeenCalledOnce();
-    expect(parseLocaleCookie(document.cookie.split("=").at(-1))).toBe("si");
+    expect(parseLocaleCookie(document.cookie.split("=").at(-1))).toBe("en");
   });
-  it("renders the Sinhala control using the actual catalogue", () => {
+  it("offers only English even when a previous Sinhala preference is active", () => {
     renderWithIntl(<LocaleSwitch />, "si");
     expect(
       screen.getByRole("group", { name: "අතුරුමුහුණත් භාෂාව" }),
     ).toBeTruthy();
     expect(
       screen
-        .getByRole("button", { name: "සිංහල" })
+        .getByRole("button", { name: "English" })
         .getAttribute("aria-pressed"),
-    ).toBe("true");
+    ).toBe("false");
+    expect(screen.queryByRole("button", { name: "සිංහල" })).toBeNull();
   });
 });
