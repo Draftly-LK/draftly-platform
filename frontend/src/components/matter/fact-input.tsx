@@ -283,6 +283,18 @@ export function FactScopeInput({
 }) {
   const t = useTranslations("factRegister");
   const roleLabel = useEnumLabel("factRegister.roles");
+  const setupDetails = useRef<HTMLDetailsElement>(null);
+  const setupSummary = useRef<HTMLElement>(null);
+  useEffect(() => {
+    function openSetup() {
+      if (window.location.hash !== "#transaction-scope") return;
+      if (setupDetails.current) setupDetails.current.open = true;
+      setupSummary.current?.focus();
+    }
+    openSetup();
+    window.addEventListener("hashchange", openSetup);
+    return () => window.removeEventListener("hashchange", openSetup);
+  }, []);
   const [current, setCurrent] = useState("");
   const [reviewedTransaction, setReviewedTransaction] =
     useState<ApiMatterTransaction>();
@@ -456,8 +468,12 @@ export function FactScopeInput({
     }
   }
   return (
-    <details className="rounded-card border-border bg-surface space-y-4 border p-4">
-      <summary className="cursor-pointer font-semibold">
+    <details
+      ref={setupDetails}
+      id="transaction-scope"
+      className="rounded-card border-border bg-surface space-y-4 border p-4"
+    >
+      <summary ref={setupSummary} className="cursor-pointer font-semibold">
         {t("scopeTitle")}
       </summary>
       <div className="space-y-4 pt-4">

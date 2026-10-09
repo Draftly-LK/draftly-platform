@@ -308,6 +308,7 @@ beforeEach(() => {
   );
 });
 afterEach(() => {
+  window.history.replaceState(null, "", "/");
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
@@ -318,6 +319,25 @@ async function open() {
   await screen.findByRole("button", { name: "Accept fact" });
 }
 describe("canonical register", () => {
+  it.each(["initial", "hashchange"])(
+    "opens transaction setup from the %s hash and focuses its summary",
+    async (navigation) => {
+      if (navigation === "initial")
+        window.history.replaceState(null, "", "/#transaction-scope");
+      renderWithIntl(<FactsScreen matterId="mat-1" />);
+      await screen.findByText("SYNTHETIC CURRENT");
+      const summary = screen.getByText(en.factRegister.scopeTitle);
+      const details = summary.closest("details")!;
+      if (navigation === "hashchange") {
+        expect(details.open).toBe(false);
+        window.history.replaceState(null, "", "/#transaction-scope");
+        fireEvent(window, new HashChangeEvent("hashchange"));
+      }
+      expect(details.id).toBe("transaction-scope");
+      expect(details.open).toBe(true);
+      expect(document.activeElement).toBe(summary);
+    },
+  );
   it("does not save old displayed transaction scope with a refreshed version", async () => {
     renderWithIntl(<FactsScreen matterId="mat-1" />);
     await screen.findByText("SYNTHETIC CURRENT");

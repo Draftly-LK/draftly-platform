@@ -3391,6 +3391,10 @@
     "evaluated": "Evaluated at {time}"
   },
   "formScope": {
+    "loading": "Loading transaction associations…",
+    "empty": "No transaction associations have been saved for this matter. In Verified facts, open Subjects and transactions, add parties and parcels, choose their roles, then save a transaction.",
+    "incomplete": "This transaction has missing parcel or party role associations. Set them up in Verified facts, or continue with these fields unresolved in the draft.",
+    "setup": "Set up transaction",
     "title": "Optional Form 8 draft",
     "notice": "Choose the transaction, parcel and reviewed party roles for this draft. Missing selections stay unresolved. Drafting is optional and does not establish legal readiness.",
     "transaction": "Transaction",
