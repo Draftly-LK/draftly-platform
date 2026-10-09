@@ -31,6 +31,19 @@ class OriginalSourcePin:
     source_file_id: str
     sha256: str
     storage_version: str
+    detected_document_id: str = ""
+    interpretation_generation: int = 0
+    page_numbers: tuple[int, ...] = ()
+
+    def __post_init__(self) -> None:
+        # JSON histories restore arrays as lists; keep pins immutable/hashable.
+        object.__setattr__(self, "page_numbers", tuple(self.page_numbers))
+
+    @property
+    def precise(self) -> bool:
+        return bool(
+            self.detected_document_id and self.interpretation_generation > 0 and self.page_numbers
+        )
 
 
 @dataclass(frozen=True)

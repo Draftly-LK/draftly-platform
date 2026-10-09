@@ -210,9 +210,9 @@ class DocumentCandidate:
 class ProcessingRun:
     """One attempt to process one source file.
 
-    A run always terminates in a real outcome. There is no "in progress" that
-    quietly never finishes and no fabricated progress: if nothing processed the
-    file, the run says ``PROCESSING_FAILED`` with the reason why.
+    A persisted PROCESSING attempt is committed before provider work. Completion
+    records a real terminal outcome; expired interrupted attempts require an
+    authorized recovery command. No progress or successful extraction is invented.
     """
 
     id: str

@@ -4892,7 +4892,7 @@
         "type": "object"
       },
       "LatestProcessingRunRead": {
-        "description": "Read-only terminal summary over existing persisted run/page records.",
+        "description": "Read-only running or terminal summary over persisted run/page records.",
         "properties": {
           "aiExtractionCalls": {
             "title": "Aiextractioncalls",
@@ -4969,6 +4969,7 @@
           },
           "state": {
             "enum": [
+              "running",
               "succeeded",
               "failed"
             ],
@@ -6398,6 +6399,23 @@
       },
       "OriginalSourceRead": {
         "properties": {
+          "detectedDocumentId": {
+            "default": "",
+            "title": "Detecteddocumentid",
+            "type": "string"
+          },
+          "interpretationGeneration": {
+            "default": 0,
+            "title": "Interpretationgeneration",
+            "type": "integer"
+          },
+          "pageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Pagenumbers",
+            "type": "array"
+          },
           "sha256": {
             "title": "Sha256",
             "type": "string"

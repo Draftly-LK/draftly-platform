@@ -77,7 +77,21 @@ class SqlRequirementDocumentReader(SqlDocumentFactReader):
                 # A manually readable original does not require successful automated extraction.
                 await self.validate_evidence(user_id, matter_id, locator)
                 pages.append(locator)
-            pins.add(OriginalSourcePin(source.id, source.sha256, source.storage_object_version))
+            pins.add(
+                OriginalSourcePin(
+                    source.id,
+                    source.sha256,
+                    source.storage_object_version,
+                    document.id,
+                    document.interpretation_generation,
+                    tuple(
+                        page
+                        for f in fragments
+                        if f.source_file_id == source.id
+                        for page in range(f.page_start, f.page_end + 1)
+                    ),
+                )
+            )
         return RequirementDocument(
             document.id,
             document.version,

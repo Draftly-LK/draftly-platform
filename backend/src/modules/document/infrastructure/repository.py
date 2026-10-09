@@ -757,6 +757,32 @@ class SqlDocumentIngestionRepository:
         await self._session.flush()
         return run
 
+    async def finish_run(self, run: ProcessingRun) -> None:
+        result = await self._session.execute(
+            update(SourceFileProcessingRunRow)
+            .where(
+                SourceFileProcessingRunRow.id == run.id,
+                SourceFileProcessingRunRow.user_id == run.user_id,
+                SourceFileProcessingRunRow.matter_id == run.matter_id,
+                SourceFileProcessingRunRow.source_file_id == run.source_file_id,
+                SourceFileProcessingRunRow.outcome == SourceFileState.PROCESSING.value,
+            )
+            .values(
+                provider=run.provider,
+                outcome=run.outcome.value,
+                reasons=list(run.reasons),
+                pages_processed=run.pages_processed,
+                ai_extraction_calls=run.ai_extraction_calls,
+                finished_at=run.finished_at,
+            )
+            .returning(SourceFileProcessingRunRow.id)
+        )
+        if result.scalar_one_or_none() is None:
+            raise SourceFileStaleError()
+        if run.v1_report is not None:
+            await self._add_v1_details(run)
+        await self._session.flush()
+
     async def _add_v1_details(self, run: ProcessingRun) -> None:
         assert run.v1_report is not None
         for page in run.v1_report.pages:

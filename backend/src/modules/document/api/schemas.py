@@ -116,10 +116,10 @@ class ProcessingPageOutcomeRead(_CamelModel):
 
 
 class LatestProcessingRunRead(_CamelModel):
-    """Read-only terminal summary over existing persisted run/page records."""
+    """Read-only running or terminal summary over persisted run/page records."""
 
     job_id: str
-    state: Literal["succeeded", "failed"]
+    state: Literal["running", "succeeded", "failed"]
     outcome: SourceFileState
     provider: str
     reasons: list[str]

@@ -41,6 +41,38 @@ _ARTIFACT_ERRORS = (
 class SqlDocumentFactReader:
     def __init__(self, session: AsyncSession, storage: SourceFileStoragePort) -> None:
         self._session, self._storage = session, storage
+        # This reader is constructed for one request/session. Cache successful
+        # immutable artifact validation only; every call still checks current SQL
+        # ownership, source state, candidate version and interpretation membership.
+        self._validated: set[tuple[str, str, str, str, str]] = set()
+        self._texts: dict[tuple[str, str, str, str, str], str] = {}
+        self._text_bytes = 0
+
+    async def _validate_artifact(
+        self, user_id: str, matter_id: str, key: str, version: str, sha256: str = ""
+    ) -> None:
+        pin = (user_id, matter_id, key, version, sha256)
+        if pin in self._validated:
+            return
+        data = await self._storage.get(key, version=version)
+        if sha256 and hashlib.sha256(data).hexdigest() != sha256:
+            raise DomainRuleError("The evidence hash does not match its original.")
+        # Do not retain original/image bytes or failures. Bound metadata too.
+        if len(self._validated) < 2048:
+            self._validated.add(pin)
+
+    async def _read_text(
+        self, user_id: str, matter_id: str, key: str, version: str, source_hash: str
+    ) -> str:
+        pin = (user_id, matter_id, key, version, source_hash)
+        if pin in self._texts:
+            return self._texts[pin]
+        data = await self._storage.get(key, version=version)
+        text = data.decode("utf-8")
+        if self._text_bytes + len(data) <= 8 * 1024 * 1024 and len(self._texts) < 2048:
+            self._texts[pin] = text
+            self._text_bytes += len(data)
+        return text
 
     async def list_candidates(
         self, user_id: str, matter_id: str, *, after: str | None = None, limit: int = 100
@@ -293,11 +325,13 @@ class SqlDocumentFactReader:
                         "The evidence interpretation requires refreshed extraction."
                     )
         try:
-            original = await self._storage.get(
-                source.storage_object_key, version=source.storage_object_version
+            await self._validate_artifact(
+                user_id,
+                matter_id,
+                source.storage_object_key,
+                source.storage_object_version,
+                evidence.source_sha256,
             )
-            if hashlib.sha256(original).hexdigest() != evidence.source_sha256:
-                raise DomainRuleError("The evidence hash does not match its original.")
             page_text = ""
             if evidence.extraction_run_id:
                 page_id = None
@@ -327,15 +361,17 @@ class SqlDocumentFactReader:
                 page = (await self._session.execute(page_query)).scalar_one_or_none()
                 if page is None:
                     raise DomainRuleError("The evidence page artifact is unavailable.")
-                await self._storage.get(
-                    page.corrected_webp_key, version=page.corrected_webp_version
+                await self._validate_artifact(
+                    user_id, matter_id, page.corrected_webp_key, page.corrected_webp_version
                 )
                 try:
-                    page_text = (
-                        await self._storage.get(
-                            page.plain_text_key, version=page.plain_text_version
-                        )
-                    ).decode("utf-8")
+                    page_text = await self._read_text(
+                        user_id,
+                        matter_id,
+                        page.plain_text_key,
+                        page.plain_text_version,
+                        evidence.source_sha256,
+                    )
                 except _ARTIFACT_ERRORS:
                     # OCR is optional. The pinned original and page remain
                     # readable; no text/span authority is invented on fallback.

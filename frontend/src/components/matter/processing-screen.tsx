@@ -26,7 +26,11 @@ import {
   processSourceFile,
 } from "@/lib/api/documents";
 import { getMe } from "@/lib/api/auth";
-import { pendingOperationIntent, clearManualIntent, type ManualIntent } from "@/lib/api/mutation-intent";
+import {
+  pendingOperationIntent,
+  clearManualIntent,
+  type ManualIntent,
+} from "@/lib/api/mutation-intent";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import type { ApiSourceProcessingStatus } from "@/types/rta";
@@ -60,6 +64,7 @@ function ProcessingFlow({
 }) {
   const t = useTranslations("processing");
   const retryText = useTranslations("documentOperations");
+  const [evaluatedAt, setEvaluatedAt] = useState<number | null>(null);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const fileStateLabel = useEnumLabel("enums.sourceFileState");
   const [entries, setEntries] = useState<ProcessingEntry[]>([]);
@@ -122,6 +127,7 @@ function ProcessingFlow({
       } while (isCurrent());
       if (isCurrent()) {
         setEntries(all);
+        setEvaluatedAt(Date.now());
         setLoaded(true);
       }
     }
@@ -161,7 +167,11 @@ function ProcessingFlow({
       // Refresh the concurrency token immediately before every initial attempt or retry.
       const file = await getSourceFile(getToken, id);
       if (!isCurrent()) return;
-      if (file.state !== "STORED" && file.state !== "PROCESSING_FAILED") {
+      if (
+        file.state !== "STORED" &&
+        file.state !== "PROCESSING_FAILED" &&
+        file.state !== "PROCESSING"
+      ) {
         const status = await getSourceProcessingStatus(getToken, id);
         if (!isCurrent()) return;
         replace(status);
@@ -170,14 +180,26 @@ function ProcessingFlow({
       }
       const actor = await getMe(getToken);
       if (!isCurrent()) return;
-      intent = await pendingOperationIntent(actor.id, matterId, `source:${id}:process`, {}, file.version);
+      intent = await pendingOperationIntent(
+        actor.id,
+        matterId,
+        `source:${id}:process`,
+        {},
+        file.version,
+      );
       if (!isCurrent()) return;
       setStorageUnavailable(!intent.persistent);
-      await processSourceFile(getToken, id, intent.expectedVersion ?? file.version, intent.key);
+      await processSourceFile(
+        getToken,
+        id,
+        intent.expectedVersion ?? file.version,
+        intent.key,
+      );
       clearManualIntent(intent);
       replace(await getSourceProcessingStatus(getToken, id));
     } catch (cause: unknown) {
-      if (intent && cause instanceof ApiError && cause.status === 412) clearManualIntent(intent);
+      if (intent && cause instanceof ApiError && cause.status === 412)
+        clearManualIntent(intent);
       if (!isCurrent()) return;
       setError(
         cause instanceof ApiError && cause.status === 412
@@ -232,7 +254,11 @@ function ProcessingFlow({
             {t("refresh")}
           </Button>
         </div>
-        {storageUnavailable && <p role="status" className="text-amber-text mb-3 text-sm">{retryText("storageUnavailable")}</p>}
+        {storageUnavailable && (
+          <p role="status" className="text-amber-text mb-3 text-sm">
+            {retryText("storageUnavailable")}
+          </p>
+        )}
         {error && (
           <div
             role="alert"
@@ -275,8 +301,14 @@ function ProcessingFlow({
                 file.state === "REJECTED";
               const waiting =
                 file.state === "STORED" && !entry.statusUnavailable;
+              const expiredAttempt =
+                file.state === "PROCESSING" &&
+                run?.state === "running" &&
+                evaluatedAt !== null &&
+                evaluatedAt - Date.parse(run.startedAt) > 930_000;
               const processing =
-                entry.isProcessing || file.state === "PROCESSING";
+                entry.isProcessing ||
+                (file.state === "PROCESSING" && !expiredAttempt);
               const manual = success && run.manualReviewRequired;
               const StatusIcon =
                 success && !manual
@@ -347,6 +379,7 @@ function ProcessingFlow({
                     <div className="flex flex-wrap items-center gap-2">
                       {(waiting ||
                         file.state === "PROCESSING_FAILED" ||
+                        expiredAttempt ||
                         entry.isProcessing) && (
                         <Button
                           disabled={processing || entry.statusUnavailable}
@@ -355,7 +388,8 @@ function ProcessingFlow({
                         >
                           {processing
                             ? t("processing")
-                            : file.state === "PROCESSING_FAILED"
+                            : file.state === "PROCESSING_FAILED" ||
+                                expiredAttempt
                               ? t("retry")
                               : t("process")}
                         </Button>

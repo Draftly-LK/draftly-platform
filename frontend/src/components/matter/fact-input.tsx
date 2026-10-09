@@ -12,6 +12,7 @@ import { ApiError, type TokenProvider } from "@/lib/api/client";
 import { getMe } from "@/lib/api/auth";
 import {
   pendingManualIntent,
+  pendingOperationIntent,
   clearManualIntent,
   type ManualIntent,
 } from "@/lib/api/mutation-intent";
@@ -30,7 +31,6 @@ import {
   controlClass,
   inputValue,
   RegisterError,
-  useIntentKey,
   ValueInput,
 } from "./fact-register-common";
 import { EvidenceSelector } from "./fact-evidence";
@@ -291,8 +291,8 @@ export function FactScopeInput({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [stale, setStale] = useState(false);
-  const active = useRef(true);
-  const key = useIntentKey();
+  const scopeEpoch = useRef(0);
+  const [retryUnavailable, setRetryUnavailable] = useState(false);
   const selectedTransaction = transactions.find((tx) => tx.id === current);
   const scopeOutdated = Boolean(
     current &&
@@ -312,69 +312,100 @@ export function FactScopeInput({
     setStale(false);
   }
   useEffect(() => {
-    active.current = true;
+    const epoch = scopeEpoch;
     return () => {
-      active.current = false;
+      epoch.current++;
     };
-  }, []);
+  }, [getToken, matterId]);
   async function addSubject(kind: "party" | "parcel") {
+    const run = scopeEpoch.current;
     setBusy(true);
     setError(null);
     try {
+      const token = await getToken();
+      const actorToken = async () => token;
+      const actor = await getMe(actorToken);
+      if (run !== scopeEpoch.current) return;
+      const intent = await pendingOperationIntent(
+        actor.id,
+        matterId,
+        `subject:create:${kind}`,
+        { kind },
+      );
+      setRetryUnavailable(!intent.persistent);
+      if (run !== scopeEpoch.current) return;
       const result = await createSubject(
-        getToken,
+        actorToken,
         matterId,
         kind,
-        key(JSON.stringify({ matterId, kind })),
+        intent.key,
       );
-      if (!active.current) return;
       if (result.matterId !== matterId) throw new Error("Foreign subject");
-      key.reset();
+      clearManualIntent(intent);
+      if (run !== scopeEpoch.current) return;
       onChanged();
     } catch (cause) {
-      if (active.current) setError(cause);
+      if (run === scopeEpoch.current) setError(cause);
     } finally {
-      if (active.current) setBusy(false);
+      if (run === scopeEpoch.current) setBusy(false);
     }
   }
   async function save() {
+    const run = scopeEpoch.current;
+    let intent: ManualIntent | undefined;
     if (scopeOutdated || stale || (current && !reviewedTransaction)) return;
     // This version belongs to the scope the lawyer actually reviewed. An
     // unresolved nonempty selection must never fall through to creation.
     const tx = current ? reviewedTransaction : undefined;
     const body = {
-      parcelSubjectIds: parcels,
-      partyRoles: Object.entries(roles).flatMap(([subjectId, role]) =>
-        role ? [{ subjectId, role }] : [],
-      ),
+      parcelSubjectIds: [...parcels].sort(),
+      partyRoles: Object.entries(roles)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .flatMap(([subjectId, role]) => (role ? [{ subjectId, role }] : [])),
     };
     setBusy(true);
     setError(null);
     setStale(false);
     try {
+      const token = await getToken();
+      const actorToken = async () => token;
+      const actor = await getMe(actorToken);
+      if (run !== scopeEpoch.current) return;
+      intent = await pendingOperationIntent(
+        actor.id,
+        matterId,
+        `transaction:${tx?.id ?? "create"}`,
+        body,
+        tx?.version,
+      );
+      setRetryUnavailable(!intent.persistent);
+      if (run !== scopeEpoch.current) return;
       const result = await saveTransaction(
-        getToken,
+        actorToken,
         matterId,
         body,
-        key(JSON.stringify({ matterId, current, version: tx?.version, body })),
-        tx,
+        intent.key,
+        tx
+          ? { ...tx, version: intent.expectedVersion ?? tx.version }
+          : undefined,
       );
-      if (!active.current) return;
       if (result.matterId !== matterId) throw new Error("Foreign transaction");
-      key.reset();
+      clearManualIntent(intent);
+      if (run !== scopeEpoch.current) return;
       setCurrent("");
       setReviewedTransaction(undefined);
       setParcels([]);
       setRoles({});
       onChanged();
     } catch (cause) {
-      if (!active.current) return;
+      if (run !== scopeEpoch.current) return;
       if (cause instanceof ApiError && cause.status === 412) {
+        if (intent) clearManualIntent(intent);
         setStale(true);
         onChanged();
       } else setError(cause);
     } finally {
-      if (active.current) setBusy(false);
+      if (run === scopeEpoch.current) setBusy(false);
     }
   }
   return (
@@ -384,7 +415,12 @@ export function FactScopeInput({
       </summary>
       <div className="space-y-4 pt-4">
         <p className="text-muted-ink text-sm">{t("scopeNotice")}</p>
-        {error != null && <RegisterError cause={error} />}{" "}
+        {error != null && <RegisterError cause={error} />}
+        {retryUnavailable && (
+          <p role="status" className="text-amber-text text-sm">
+            {t("retryStorageUnavailable")}
+          </p>
+        )}
         {(stale || scopeOutdated) && (
           <p role="status" className="text-amber-text text-sm">
             {t("staleReview")}

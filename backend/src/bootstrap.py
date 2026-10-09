@@ -1015,7 +1015,12 @@ def build_v1_processing_pipeline() -> Any:
     from src.modules.document.infrastructure.vision_adapter import GoogleVisionOcrAdapter
 
     gemini = GeminiExtractionAdapter(
-        client=genai.Client(api_key=settings.gemini_api_key),
+        client=genai.Client(
+            api_key=settings.gemini_api_key,
+            http_options=genai.types.HttpOptions(
+                timeout=120_000, retry_options=genai.types.HttpRetryOptions(attempts=1)
+            ),
+        ),
         classify_model=settings.gemini_classify_model,
         extract_model=settings.gemini_extract_model,
     )
@@ -1080,7 +1085,12 @@ def build_processing_service() -> DocumentProcessingService:
     )
 
     adapter = GeminiExtractionAdapter(
-        client=genai.Client(api_key=settings.gemini_api_key),
+        client=genai.Client(
+            api_key=settings.gemini_api_key,
+            http_options=genai.types.HttpOptions(
+                timeout=120_000, retry_options=genai.types.HttpRetryOptions(attempts=1)
+            ),
+        ),
         classify_model=settings.gemini_classify_model,
         extract_model=settings.gemini_extract_model,
     )

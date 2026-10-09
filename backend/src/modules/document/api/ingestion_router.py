@@ -33,6 +33,7 @@ from src.modules.content_governance.contracts import (
     CAP_DOCUMENT_CLASSIFY,
     CAP_SOURCE_UPLOAD,
     DocumentVersionRelationship,
+    SourceFileState,
 )
 from src.modules.document.api.replay import DocumentCommandReplay
 from src.modules.document.api.schemas import (
@@ -368,7 +369,13 @@ async def get_source_processing_status(
         source_file=_to_source_read(view.source),
         latest_run=LatestProcessingRunRead(
             job_id=run.id,
-            state="succeeded" if run.succeeded else "failed",
+            state=(
+                "running"
+                if run.outcome is SourceFileState.PROCESSING
+                else "succeeded"
+                if run.succeeded
+                else "failed"
+            ),
             outcome=run.outcome,
             provider=run.provider,
             reasons=list(run.reasons),
@@ -459,15 +466,23 @@ async def process_source_file(
     if cached is not None:
         response.headers["ETag"] = f'"{cached.source_file.version}"'
         return cached
+
+    async def completed(view: ProcessingRunView) -> None:
+        await replay.save(_to_run_read(view))
+        await uow.commit()
+
     run_view = await service.process_source_file(
         user_id=ctx.actor_id,
         source_file_id=source_file_id,
         actor_id=ctx.actor_id,
         correlation_id=ctx.correlation_id,
         expected_version=expected_version,
+        checkpoint=uow.commit,
+        rollback=uow.rollback,
+        on_complete=completed,
     )
     response.headers["ETag"] = f'"{run_view.source_file.version}"'
-    return await replay.save(_to_run_read(run_view))
+    return _to_run_read(run_view)
 
 
 @router.post("/source-files/{source_file_id}/supersede", response_model=SourceFileRead)

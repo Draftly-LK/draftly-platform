@@ -9,6 +9,12 @@ import {
   getFactHistory,
   reviewMatterFact,
 } from "@/lib/api/facts";
+import { getMe } from "@/lib/api/auth";
+import {
+  pendingOperationIntent,
+  clearManualIntent,
+  type ManualIntent,
+} from "@/lib/api/mutation-intent";
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import type {
   ApiFactEvidenceInput,
@@ -26,7 +32,6 @@ import {
   inputValue,
   RegisterError,
   Status,
-  useIntentKey,
   useFactDisplayValue,
   ValueInput,
 } from "./fact-register-common";
@@ -77,7 +82,7 @@ export function FactReviewPanel({
   const [notice, setNotice] = useState(false);
   const [reviewReady, setReviewReady] = useState(false);
   const generation = useRef({ value: 0 });
-  const intentKey = useIntentKey();
+  const [retryUnavailable, setRetryUnavailable] = useState(false);
   const [historyBusy, setHistoryBusy] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -201,6 +206,7 @@ export function FactReviewPanel({
     transaction !== (fact.transactionId ?? "");
   async function decide(action: "accept" | "correct" | "reject" | "associate") {
     const run = generation.current.value;
+    let intent: ManualIntent | undefined;
     setBusy(true);
     setError(null);
     setNotice(false);
@@ -217,43 +223,51 @@ export function FactReviewPanel({
       transactionId: transaction || null,
     };
     const body = action === "associate" ? association : decision;
-    const key = intentKey(
-      JSON.stringify({
-        matterId,
-        id: fact.id,
-        version: fact.version,
-        action,
-        body,
-      }),
-    );
     try {
+      const token = await getToken();
+      const actorToken = async () => token;
+      const actor = await getMe(actorToken);
+      if (run !== generation.current.value) return;
+      intent = await pendingOperationIntent(
+        actor.id,
+        matterId,
+        `fact:${fact.id}:${action}`,
+        body,
+        fact.version,
+      );
+      setRetryUnavailable(!intent.persistent);
+      if (run !== generation.current.value) return;
+      const key = intent.key;
+      const expectedVersion = intent.expectedVersion ?? fact.version;
       const saved =
         action === "associate"
           ? await reviewMatterFact(
-              getToken,
+              actorToken,
               matterId,
               fact.id,
               action,
               association,
-              fact.version,
+              expectedVersion,
               key,
             )
           : await reviewMatterFact(
-              getToken,
+              actorToken,
               matterId,
               fact.id,
               action,
               decision,
-              fact.version,
+              expectedVersion,
               key,
             );
-      if (run !== generation.current.value) return;
       verifyOwner(saved);
+      clearManualIntent(intent);
+      if (run !== generation.current.value) return;
       onSaved(saved);
       if (saved.id === fact.id) await renew(saved.id);
     } catch (cause) {
       if (run !== generation.current.value) return;
       if (cause instanceof ApiError && cause.status === 412) {
+        if (intent) clearManualIntent(intent);
         const current =
           typeof cause.details.currentFactId === "string"
             ? cause.details.currentFactId
@@ -338,6 +352,11 @@ export function FactReviewPanel({
         </p>
       )}
       {error != null && <RegisterError cause={error} />}
+      {retryUnavailable && (
+        <p role="status" className="text-amber-text text-sm">
+          {t("retryStorageUnavailable")}
+        </p>
+      )}
       <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <div className="min-w-0 space-y-4">
           <dl className="grid min-w-0 grid-cols-2 gap-3 text-sm">

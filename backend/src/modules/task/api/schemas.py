@@ -74,6 +74,9 @@ class OriginalSourceRead(_Camel):
     source_file_id: str
     sha256: str
     storage_version: str
+    detected_document_id: str = ""
+    interpretation_generation: int = 0
+    page_numbers: list[int] = Field(default_factory=list)
 
 
 class OriginalInspectionRead(_Camel):

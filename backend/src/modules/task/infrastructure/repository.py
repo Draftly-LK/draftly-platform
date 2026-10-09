@@ -75,7 +75,12 @@ def _to_item(row: ChecklistItemRow) -> ChecklistItem:
         digital_review=DigitalReviewStatus(row.digital_review),
         physical_original=(
             PhysicalOriginalStatus.UNKNOWN
-            if row.physical_original == "ORIGINAL_INSPECTED" and not row.original_inspection_sources
+            if row.physical_original == "ORIGINAL_INSPECTED"
+            and (
+                not inspection
+                or not inspection.originals
+                or not all(pin.precise for pin in inspection.originals)
+            )
             else PhysicalOriginalStatus(row.physical_original)
         ),
         currency=CurrencyStatus(row.currency),

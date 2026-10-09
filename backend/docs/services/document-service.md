@@ -681,3 +681,36 @@ extraction schemas are available; Task 5 owns that workflow dependency.
 [aws-a2i]: https://docs.aws.amazon.com/sagemaker/latest/dg/a2i-use-augmented-ai-a2i-human-review-loops.html
 [nanonets]: https://nanonets.com/products/document-intelligence
 [apryse]: https://docs.apryse.com/web/guides
+
+## Bounded request processing and evidence reads (2026-10-09)
+
+The synchronous process command now commits its owned PROCESSING source, running
+attempt, invalidations and audit before calling providers. The same request awaits
+completion; this does not introduce a queue or claim worker deployment. Terminal
+source/run writes and replay response commit together through the existing UoW.
+After the checkpoint, the service reacquires the matter lock and verifies the exact
+source version and current running attempt before publishing any result. Competing
+commands cannot start a second attempt while that source is processing.
+
+The source operation has a 900-second application budget. Deadline or cancellation
+records a typed failed attempt; SDK response threads never write database records.
+Unexpected storage faults retain their error response after failure persistence.
+If the process itself dies, a later authorized process command with current If-Match
+can close a running attempt older than 930 seconds as TIMEOUT. That command only
+closes the interrupted attempt; another fresh command starts the retry. Status
+reads remain read-only. Missing legacy attempt metadata requires operator review.
+Database unavailability can still prevent finalization; no autonomous reaper exists.
+
+Gemini transport requests use 120,000 ms and one SDK attempt; existing bounded
+application rate-limit retries remain. Vision calls use a 120-second RPC deadline
+with SDK retries disabled. Each provider await is bounded to 125 seconds. Provider
+selection, models, regions and data-approval gates are unchanged. These bounds have
+not been exercised against hanging providers under the owner's test waiver.
+
+Each request-scoped document reader retains at most 2,048 successful immutable
+artifact-validation keys and 8 MiB of encoded OCR text across at most 2,048 text
+entries. Keys include user, matter, object and immutable version; source validation
+also pins its SHA-256. Original/image bytes and failures are never retained. Every
+call still validates current SQL authorization, source state, candidate version,
+interpretation generation and page membership. Optional missing OCR retains its
+existing page-only fallback. Performance after this repair remains unmeasured.

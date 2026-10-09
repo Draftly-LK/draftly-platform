@@ -911,9 +911,10 @@ Legacy links without exact pins remain readable history and cannot establish a l
 supporting link. Current reads withhold stale link-derived authority too.
 
 Original inspections retain actor, time, method, optional note/location, and the
-exact immutable original source pins. A new or replacement original requires new
-inspection; a renewed interpretation of the same immutable original may retain its
-physical inspection. All inspections remain in inspectionHistory. No machine or
+exact immutable source pins plus represented document, page set and interpretation
+generation. Only an unchanged represented scope may retain its physical inspection;
+a different group or changed pages in the same PDF requires renewed inspection.
+Legacy pins without this precision remain history and project as unknown/stale. All inspections remain in inspectionHistory. No machine or
 administrative action can record the human-only inspection. Legal review actions
 retain their existing capability checks and policies, including non-document
 requirements with optional historical attachments.

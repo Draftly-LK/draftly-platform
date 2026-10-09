@@ -240,7 +240,9 @@ class ChecklistService:
                     item_id=item.id,
                 )
                 continue
-            live, invalid = await self._link_currentness(links_by_item.get(item.id, []))
+            links = links_by_item.get(item.id, [])
+            live, invalid = await self._link_currentness(links)
+            item = self._effective_original(item, links, invalid)
             if (
                 invalid
                 or (
@@ -569,7 +571,7 @@ class ChecklistService:
             )
             item.physical_original = (
                 PhysicalOriginalStatus.ORIGINAL_INSPECTED
-                if originals and originals <= inspected
+                if originals and all(pin.precise for pin in originals) and originals <= inspected
                 else PhysicalOriginalStatus.UNKNOWN
             )
         item.resolution = compute_resolution(item, requirement)
@@ -680,11 +682,27 @@ class ChecklistService:
             )
         return item, requirement
 
+    @staticmethod
+    def _effective_original(
+        item: ChecklistItem, links: list[SatisfactionLink], invalid: bool
+    ) -> ChecklistItem:
+        represented = {pin for link in links if link.is_live for pin in link.originals}
+        inspected = set(item.original_inspection.originals) if item.original_inspection else set()
+        if item.physical_original is PhysicalOriginalStatus.ORIGINAL_INSPECTED and (
+            invalid
+            or not represented
+            or not all(pin.precise for pin in represented)
+            or not represented <= inspected
+        ):
+            item = replace(item, physical_original=PhysicalOriginalStatus.UNKNOWN)
+        return item
+
     async def _view(
         self, user_id: str, item: ChecklistItem, requirement: RequirementDefinition
     ) -> ChecklistItemView:
         links = await self._repo.list_links_for_item(user_id, item.id)
         live, invalid = await self._link_currentness(links)
+        item = self._effective_original(item, links, invalid)
         if (
             invalid
             or (

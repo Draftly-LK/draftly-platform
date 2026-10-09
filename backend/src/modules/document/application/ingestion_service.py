@@ -17,10 +17,12 @@ The rules this service exists to keep:
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import TypeVar
 
 import structlog
 
@@ -89,9 +91,13 @@ from src.modules.verification.contracts import (
     FactEvidenceInvalidationPort,
 )
 from src.platform import ids
-from src.platform.errors import DomainRuleError, DraftlyError
+from src.platform.errors import DomainRuleError, DraftlyError, PreconditionFailedError
 
 log = structlog.get_logger(__name__)
+
+_ResultT = TypeVar("_ResultT")
+PROCESSING_TIMEOUT_SECONDS = 900.0
+PROCESSING_RECOVERY_GRACE_SECONDS = 30.0
 
 
 @dataclass(frozen=True)
@@ -563,6 +569,9 @@ class SourceFileIngestionService:
         actor_id: str,
         correlation_id: str,
         expected_version: int,
+        checkpoint: Callable[[], Awaitable[None]] | None = None,
+        rollback: Callable[[], Awaitable[None]] | None = None,
+        on_complete: Callable[[ProcessingRunView], Awaitable[None]] | None = None,
     ) -> ProcessingRunView:
         """Run the pipeline once and record what it actually did.
 
@@ -571,8 +580,30 @@ class SourceFileIngestionService:
         set ``PROCESSED``, because §10.2 admits it only from ``PROCESSING``.
         """
         source = await self._source_for_update(user_id, source_file_id)
+        if source.version != expected_version:
+            raise PreconditionFailedError(currentVersion=source.version)
         before_state = source.state.value
+        if source.state is SourceFileState.PROCESSING:
+            prior = await self._repo.get_latest_run_for_source_file(
+                user_id, source.matter_id, source.id
+            )
+            started = (prior.started_at if prior else source.updated_at).replace(tzinfo=UTC)
+            if (datetime.now(tz=UTC) - started).total_seconds() > (
+                PROCESSING_TIMEOUT_SECONDS + PROCESSING_RECOVERY_GRACE_SECONDS
+            ):
+                if prior is None or prior.outcome is not SourceFileState.PROCESSING:
+                    raise DomainRuleError(
+                        "The interrupted processing attempt needs operator review."
+                    )
+                self._fail_attempt(prior, "interrupted_attempt")
+                return await self._settle_processing(
+                    self._complete_processing(
+                        source, prior, actor_id, correlation_id, before_state, on_complete
+                    )
+                )
         source.state = next_state(source.state, SourceFileEvent.PROCESSING_STARTED)
+        source.failure_reason = None
+        source.failure_explanation_key = None
         running = await self._repo.update_source_file(source, expected_version)
 
         # A new source run cannot leave an earlier interpretation authoritative,
@@ -586,7 +617,112 @@ class SourceFileIngestionService:
                 await self._repo.update_document(document, document.version)
                 await self._repo.snapshot_interpretation(document, fragments, actor_id)
 
-        run = await self._jobs.enqueue(source_file=running, correlation_id=correlation_id)
+        attempt = ProcessingRun(
+            id=ids.new_id(ids.PROCESSING_RUN),
+            user_id=user_id,
+            matter_id=running.matter_id,
+            source_file_id=running.id,
+            provider=self._refresh_provider,
+            outcome=SourceFileState.PROCESSING,
+            started_at=datetime.now(tz=UTC),
+            correlation_id=correlation_id,
+        )
+        await self._repo.create_run(attempt)
+        await self._record(
+            user_id=user_id,
+            matter_id=running.matter_id,
+            actor_id=actor_id,
+            correlation_id=correlation_id,
+            action=AuditAction.RTA_SOURCE_FILE_STATE_CHANGED,
+            target_type=AuditTargetType.SOURCE_FILE,
+            target_id=running.id,
+            before_ref=before_state,
+            after_ref=f"PROCESSING@{attempt.id}",
+        )
+        error: Exception | None = None
+        try:
+            if checkpoint:
+                await self._settle_processing(checkpoint(), propagate_cancellation=True)
+            async with asyncio.timeout(PROCESSING_TIMEOUT_SECONDS):
+                run = await self._jobs.enqueue(source_file=running, correlation_id=correlation_id)
+            run.id = attempt.id
+            run.started_at = attempt.started_at
+        except (TimeoutError, asyncio.CancelledError):
+            if rollback:
+                await self._settle_processing(rollback())
+            run = attempt
+            self._fail_attempt(run, "processing_deadline_or_cancellation")
+        except Exception as exc:
+            if rollback:
+                await self._settle_processing(rollback())
+            run = attempt
+            self._fail_attempt(run, "processing_failed", ProcessingFailureReason.PROVIDER_ERROR)
+            error = exc
+        result = await self._settle_processing(
+            self._complete_processing(
+                running, run, actor_id, correlation_id, before_state, on_complete
+            )
+        )
+        if error is not None:
+            raise error
+        return result
+
+    @staticmethod
+    async def _settle_processing(
+        operation: Awaitable[_ResultT], *, propagate_cancellation: bool = False
+    ) -> _ResultT:
+        # Keep the request/session alive until its checkpoint finishes. Provider
+        # threads only return SDK responses and never write the database.
+        task = asyncio.ensure_future(operation)
+        cancelled = False
+        while True:
+            try:
+                result = await asyncio.shield(task)
+                break
+            except asyncio.CancelledError:
+                cancelled = True
+                if task.done():
+                    result = task.result()
+                    break
+        if cancelled and propagate_cancellation:
+            raise asyncio.CancelledError
+        return result
+
+    @staticmethod
+    def _fail_attempt(
+        run: ProcessingRun,
+        detail: str,
+        reason: ProcessingFailureReason = ProcessingFailureReason.TIMEOUT,
+    ) -> None:
+        run.outcome = SourceFileState.PROCESSING_FAILED
+        run.finished_at = datetime.now(tz=UTC)
+        run.failure_reason = reason
+        run.failure_explanation_key = failure_explanation_key(reason)
+        run.reasons = (reason.value, detail)
+
+    async def _complete_processing(
+        self,
+        running: SourceFile,
+        run: ProcessingRun,
+        actor_id: str,
+        correlation_id: str,
+        before_state: str,
+        on_complete: Callable[[ProcessingRunView], Awaitable[None]] | None,
+    ) -> ProcessingRunView:
+        user_id = running.user_id
+        current = await self._source_for_update(user_id, running.id)
+        latest = await self._repo.get_latest_run_for_source_file(
+            user_id, running.matter_id, running.id
+        )
+        if (
+            current.version != running.version
+            or current.state is not SourceFileState.PROCESSING
+            or latest is None
+            or latest.id != run.id
+            or latest.outcome is not SourceFileState.PROCESSING
+        ):
+            raise SourceFileStaleError(expectedVersion=running.version)
+        running = current
         event = (
             SourceFileEvent.PROCESSING_COMPLETED
             if run.succeeded
@@ -598,7 +734,7 @@ class SourceFileIngestionService:
         if run.succeeded and run.pages_processed:
             running.page_count = run.pages_processed
         final = await self._repo.update_source_file(running, running.version)
-        await self._repo.create_run(run)
+        await self._repo.finish_run(run)
 
         existing = await self._repo.list_document_ids_for_source_file(user_id, final.id)
         # A re-run never overwrites documents a lawyer may already have decided
@@ -630,12 +766,15 @@ class SourceFileIngestionService:
                 (MatterState.REVIEW_REQUIRED,),
                 AuditAction.RTA_SOURCE_FILE_STATE_CHANGED,
             )
-        return ProcessingRunView(
+        result = ProcessingRunView(
             run=run,
             source_file=final,
             documents=documents,
             candidates_withheld=bool(existing) and bool(run.candidates),
         )
+        if on_complete:
+            await on_complete(result)
+        return result
 
     async def _materialise(
         self, run: ProcessingRun, source: SourceFile
@@ -949,7 +1088,7 @@ class SourceFileIngestionService:
             await self._matter_lock.lock(user_id, source.matter_id)
             source = await self._require_source(user_id, source_file_id)
         if source.version != expected_version:
-            raise SourceFileStaleError(expectedVersion=expected_version)
+            raise PreconditionFailedError(currentVersion=source.version)
         if (
             source.superseded_by_source_file_id
             or not source.has_stored_bytes

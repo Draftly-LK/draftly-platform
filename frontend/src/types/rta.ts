@@ -824,7 +824,7 @@ export interface ApiSourceFileList {
 /** Latest persisted attempt, without candidate values or storage paths. */
 export interface ApiLatestProcessingRun {
   jobId: string;
-  state: "succeeded" | "failed";
+  state: "running" | "succeeded" | "failed";
   outcome: SourceFileState;
   provider: string;
   reasons: string[];
@@ -1396,6 +1396,9 @@ export interface ApiOriginalSourcePin {
   sourceFileId: string;
   sha256: string;
   storageVersion: string;
+  detectedDocumentId?: string;
+  interpretationGeneration?: number;
+  pageNumbers?: number[];
 }
 export interface ApiOriginalInspection {
   reviewerId: string;

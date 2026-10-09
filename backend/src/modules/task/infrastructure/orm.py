@@ -110,7 +110,7 @@ class ChecklistItemRow(Base):
     original_inspection_method: Mapped[str | None] = mapped_column(String(128), nullable=True)
     original_inspection_location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     original_inspection_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    original_inspection_sources: Mapped[list[dict[str, str]]] = mapped_column(
+    original_inspection_sources: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, default=list, nullable=False
     )
     inspection_history: Mapped[list[dict[str, Any]]] = mapped_column(
@@ -149,7 +149,7 @@ class SatisfactionLinkRow(Base):
     detected_document_id: Mapped[str] = mapped_column(String(64), nullable=False)
     document_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     interpretation_generation: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    originals: Mapped[list[dict[str, str]]] = mapped_column(JSON, default=list, nullable=False)
+    originals: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
     digital_review: Mapped[str] = mapped_column(String(32), nullable=False)
     evidence_reference_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     reviewed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)

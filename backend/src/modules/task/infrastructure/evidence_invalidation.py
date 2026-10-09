@@ -52,8 +52,8 @@ class SqlDocumentLinkInvalidation:
             before = f"{item.digital_review.value}/{item.resolution.value}"
             item.digital_review = DigitalReviewStatus.UNREVIEWED
             if requirement.physical_original_policy is not PhysicalOriginalStatus.NOT_REQUIRED:
-                # Retain the inspection itself. Relinking the same immutable
-                # original may use it; a new original must never inherit it.
+                # Retain inspection history. Relinking can reuse it only when
+                # the represented document, pages and generation match exactly.
                 item.physical_original = PhysicalOriginalStatus.UNKNOWN
             item.resolution = compute_resolution(item, requirement)
             await self._repo.update_item(item, item.version)

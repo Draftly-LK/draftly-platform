@@ -132,6 +132,7 @@ class SatisfactionLink:
             and self.document_version is not None
             and self.interpretation_generation is not None
             and bool(self.originals)
+            and all(pin.precise for pin in self.originals)
             and self.digital_review is not DigitalReviewStatus.SUPERSEDED
             and self.digital_review is not DigitalReviewStatus.REJECTED
         )

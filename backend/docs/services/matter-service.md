@@ -653,3 +653,16 @@ transaction become inconclusive; forms bound to its reviewed facts become stale
 with SCOPE_ASSOCIATION_CHANGED. Fact values and association history are preserved.
 The public scope read contract exposes owned transaction/subject references; callers
 must retain the displayed associationVersion and deliberately renew after 412.
+
+### Scope command retry metadata (2026-10-09)
+
+Subject and transaction creation and association edits retain opaque pending keys,
+request digests and original expected versions through the shared browser mutation
+intent helper. Fact decisions use the same metadata-only mechanism. Actor identity
+and mutation share one captured token, held only in memory; persisted keys are
+actor/matter/operation scoped. Raw scopes, facts, reasons and tokens are not stored.
+Successful responses clear the pending intent so a deliberate repeated create is a
+new operation. Ambiguous responses retain the original request key; known 412
+refusals clear it and require renewed review. Unavailable browser storage retains
+the existing visible RAM-fallback notice. Refresh/re-entry behavior is untested
+under the owner's explicit test waiver.
