@@ -4,6 +4,7 @@
  */
 export const MATTER_SECTIONS = [
   "overview",
+  "checklist",
   "documents",
   "facts",
   "checks",
@@ -15,6 +16,7 @@ export type MatterSection = (typeof MATTER_SECTIONS)[number];
 
 const SECTION_PATH: Record<MatterSection, string> = {
   overview: "",
+  checklist: "/checklist",
   documents: "/documents",
   facts: "/facts",
   checks: "/checks",
@@ -22,17 +24,27 @@ const SECTION_PATH: Record<MatterSection, string> = {
   exports: "/exports",
 };
 
-export function matterSectionHref(section: MatterSection, matterId: string): string {
+export function matterSectionHref(
+  section: MatterSection,
+  matterId: string,
+): string {
   return `/matters/${matterId}${SECTION_PATH[section]}`;
 }
 
 /** The section a path belongs to; sub-pages (a document's review) count as their section. */
-export function sectionForPath(pathname: string, matterId: string): MatterSection | null {
+export function sectionForPath(
+  pathname: string,
+  matterId: string,
+): MatterSection | null {
   if (pathname === `/matters/${matterId}/missing-documents`) return "documents";
   if (pathname.startsWith(`/matters/${matterId}/workflow`)) return "checks";
   for (const section of MATTER_SECTIONS) {
     const href = matterSectionHref(section, matterId);
-    if (pathname === href || (section !== "overview" && pathname.startsWith(`${href}/`))) return section;
+    if (
+      pathname === href ||
+      (section !== "overview" && pathname.startsWith(`${href}/`))
+    )
+      return section;
   }
   return null;
 }
