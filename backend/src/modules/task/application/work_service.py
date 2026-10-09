@@ -464,6 +464,7 @@ class WorkTaskService:
             key=lambda row: (
                 GROUPS.index(row.group),
                 row.state in {"complete", "not-applicable", "cancelled"},
+                row.title_key == "matterChecklist.tasks.approval.title",
                 row.id,
             )
         )

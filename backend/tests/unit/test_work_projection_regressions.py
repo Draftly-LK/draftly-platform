@@ -1,5 +1,6 @@
 """Review regressions exercise the real composition seam with synthetic owner reads."""
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -155,3 +156,31 @@ async def test_nonapplicable_requirement_is_excluded_even_when_old_link_is_stale
     tasks, _, progress, next_id = await service.checklist(ctx, "mat_synthetic")
     assert next(row for row in tasks if row.id == item.id).state == "not-applicable"
     assert progress[0] == 3 and next_id != item.id
+
+
+async def test_draft_review_precedes_approval_in_rows_and_next_action(monkeypatch):
+    service, ctx, _ = owner_service(monkeypatch)
+    projected = await service._projection.projected_tasks(ctx, "mat_synthetic")
+    service._projection = SimpleNamespace(
+        projected_tasks=AsyncMock(
+            return_value=tuple(
+                row if row.group == "drafting" else replace(row, state="complete")
+                for row in projected
+            )
+        )
+    )
+    service._checklist = SimpleNamespace(
+        get_checklist=AsyncMock(
+            return_value=SimpleNamespace(
+                items=(), snapshot=SimpleNamespace(created_by=ctx.actor_id)
+            )
+        )
+    )
+    service._repo = SimpleNamespace(list_tasks=AsyncMock(return_value=[]))
+    tasks, _, _, next_id = await service.checklist(ctx, "mat_synthetic")
+    drafting = [row for row in tasks if row.group == "drafting"]
+    assert [row.title_key for row in drafting] == [
+        "matterChecklist.tasks.draft.title",
+        "matterChecklist.tasks.approval.title",
+    ]
+    assert next_id == drafting[0].id
