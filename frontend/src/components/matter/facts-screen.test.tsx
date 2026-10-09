@@ -362,7 +362,7 @@ describe("canonical register", () => {
     });
     renewScope.focus();
     fireEvent.click(renewScope);
-    expect(document.activeElement).toBe(select);
+    await waitFor(() => expect(document.activeElement).toBe(select));
     expect((editor.getByLabelText(/^Party 1/) as HTMLSelectElement).value).toBe(
       "",
     );
@@ -443,6 +443,12 @@ describe("canonical register", () => {
     fireEvent.click(
       editor.getByRole("button", { name: "Review current transaction scope" }),
     );
+    await waitFor(() =>
+      expect((select as HTMLSelectElement).disabled).toBe(false),
+    );
+    expect((editor.getByLabelText(/^Party 2/) as HTMLSelectElement).value).toBe(
+      "donor",
+    );
     fireEvent.click(
       editor.getByRole("button", { name: en.factRegister.saveTransaction }),
     );
@@ -501,8 +507,10 @@ describe("canonical register", () => {
     fireEvent.click(
       editor.getByRole("button", { name: "Review current transaction scope" }),
     );
-    expect((editor.getByLabelText(/^Party 2/) as HTMLSelectElement).value).toBe(
-      "donor",
+    await waitFor(() =>
+      expect(
+        (editor.getByLabelText(/^Party 2/) as HTMLSelectElement).value,
+      ).toBe("donor"),
     );
     fireEvent.click(
       editor.getByRole("button", { name: en.factRegister.saveTransaction }),
@@ -739,7 +747,7 @@ describe("canonical register", () => {
       (attempts[1]!.init.headers as Record<string, string>)["Idempotency-Key"],
     );
   });
-  it("renews review on 412 without retrying the mutation", async () => {
+  it("requires explicit review renewal after 412 before a new fact decision", async () => {
     renderWithIntl(<FactsScreen matterId="mat-1" />);
     await open();
     facts = [fact({ version: 9, scopeToken: "fresh-server-token" })];
@@ -749,9 +757,27 @@ describe("canonical register", () => {
       "The record changed. Review the refreshed value and alternatives before deciding again.",
     );
     expect(calls.filter((c) => c.path.endsWith("/accept")).length).toBe(1);
+    expect(calls.filter((c) => c.path.endsWith("/facts/fact-1"))).toHaveLength(
+      1,
+    );
+    const panel = within(
+      screen.getByRole("region", { name: en.factRegister.reviewPanel }),
+    );
     expect(
-      calls.filter((c) => c.path.endsWith("/facts/fact-1")).length,
-    ).toBeGreaterThan(1);
+      (panel.getByRole("button", { name: "Accept fact" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    fireEvent.click(panel.getByRole("button", { name: "Accept fact" }));
+    expect(calls.filter((c) => c.path.endsWith("/accept"))).toHaveLength(1);
+    fireEvent.click(
+      panel.getByRole("button", { name: en.factRegister.refresh }),
+    );
+    await waitFor(() =>
+      expect(
+        calls.filter((c) => c.path.endsWith("/facts/fact-1")),
+      ).toHaveLength(2),
+    );
+    expect(calls.filter((c) => c.path.endsWith("/accept"))).toHaveLength(1);
     await waitFor(() =>
       expect(
         (
@@ -770,6 +796,16 @@ describe("canonical register", () => {
       '"9"',
     );
     expect(renewed.body.expectedScopeToken).toBe("fresh-server-token");
+    expect(
+      (renewed.init.headers as Record<string, string>)["Idempotency-Key"],
+    ).not.toBe(
+      (
+        calls.find((c) => c.path.endsWith("/accept"))!.init.headers as Record<
+          string,
+          string
+        >
+      )["Idempotency-Key"],
+    );
   });
   it("exposes deliberate next-page loading", async () => {
     more = true;

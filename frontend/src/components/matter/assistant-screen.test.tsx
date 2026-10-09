@@ -17,6 +17,7 @@ const turns = vi.hoisted(() => ({
   reject: vi.fn(),
   fresh: vi.fn(),
   source: vi.fn(),
+  transactions: vi.fn(),
   token: async () => null,
 }));
 vi.mock("@/lib/api/use-token-provider", () => ({
@@ -56,6 +57,7 @@ vi.mock("@/lib/api/documents", () => ({
 }));
 vi.mock("@/lib/api/facts", () => ({
   listMatterFacts: async () => ({ items: [] }),
+  listTransactions: turns.transactions,
 }));
 vi.mock("@/lib/api/checks", () => ({
   listCompleteIssues: async () => ({ items: [] }),
@@ -99,6 +101,10 @@ beforeEach(() => {
   turns.reject.mockReset();
   turns.fresh.mockReset();
   turns.source.mockReset();
+  turns.transactions.mockReset().mockResolvedValue({
+    items: [],
+    page: { limit: 100, hasMore: false, nextCursor: null },
+  });
   turns.send.mockReset();
   turns.retry.mockReset();
   turns.read.mockReset();
@@ -106,6 +112,52 @@ beforeEach(() => {
 });
 
 describe("MatterAssistantScreen", () => {
+  it("reports unavailable transaction selection and refreshes without sending a turn", async () => {
+    turns.transactions.mockRejectedValueOnce(
+      new Error("Synthetic list unavailable"),
+    );
+    renderWithIntl(<MatterAssistantScreen matterId="m1" />);
+    const select = screen.getByLabelText(
+      messages.matterAssistant.legalTransaction,
+    );
+    expect(
+      await screen.findByText(
+        messages.matterAssistant.legalTransactionsUnavailable,
+      ),
+    ).toBeTruthy();
+    expect((select as HTMLSelectElement).disabled).toBe(true);
+    turns.transactions.mockResolvedValue({
+      items: [
+        {
+          id: "tx-synthetic",
+          userId: "synthetic-user",
+          matterId: "m1",
+          ordinal: 1,
+          version: 3,
+          partyRoles: [],
+          parcelSubjectIds: [],
+        },
+      ],
+      page: { limit: 100, hasMore: false, nextCursor: null },
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages.matterAssistant.refreshLegalTransactions,
+      }),
+    );
+    await within(select).findByRole("option", {
+      name: "Transaction 1 \u00b7 revision 3",
+    });
+    await waitFor(() =>
+      expect((select as HTMLSelectElement).disabled).toBe(false),
+    );
+    expect(
+      screen.queryByText(messages.matterAssistant.legalTransactionsUnavailable),
+    ).toBeNull();
+    expect((select as HTMLSelectElement).value).toBe("");
+    expect(turns.send).not.toHaveBeenCalled();
+  });
+
   it("keeps polling after an SSE snapshot reports a queued job", async () => {
     const queued = {
       jobId: "job-queued",
@@ -361,7 +413,8 @@ describe("persistent shared conversation", () => {
       screen.getAllByText("Synthetic retrieved passage").length,
     ).toBeGreaterThan(0);
     expect(
-      screen.getAllByText("Source version: statutes-index-v1:" + "b".repeat(64)).length,
+      screen.getAllByText("Source version: statutes-index-v1:" + "b".repeat(64))
+        .length,
     ).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: "Open source" })).toBeNull();
   });
