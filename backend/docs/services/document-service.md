@@ -2,6 +2,15 @@
 
 ## Canonical fact register contract (2026-10-09)
 
+Intake recognition uses `content_governance.contracts.DOCUMENT_CLASSES` before
+any transaction subtype, form or checklist exists. The document adapter offers
+the governed catalogue and builds schemas only for definitions with an existing
+extraction template and governed fact keys: NIC, title certificate, survey plan
+and Form 8. Other classes remain recognizable without invented extraction
+fields. An unidentified page remains an explicit manual-review outcome. This
+read creates no checklist, chooses no subtype and accepts no requirement; the
+owning ingestion service still checks source/matter access and provider gates.
+
 `document.contracts.DocumentFactPort` exposes bounded candidate observations and
 validates source evidence for verification-owned decisions. Processing rows and
 source bytes remain document-owned and immutable through human review. Validation

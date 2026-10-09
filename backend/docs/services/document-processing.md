@@ -89,6 +89,12 @@ Classify all pages of an upload in a single Gemini 2.5 Flash-Lite call, not one
 call per page. Supply the document types expected from the matter checklist and
 ask for one row per page.
 
+The October 2026 platform intake path offers the governed document catalogue
+independently of checklist routing. A new matter can therefore produce supported
+candidates before a subtype or form is selected. Recognition does not imply an
+extraction schema or evidence sufficiency; see the intake contract in
+[document-service.md](document-service.md#canonical-fact-register-contract-2026-10-09).
+
 For each page the model returns:
 
 - `type_id`, a checklist type or `other`

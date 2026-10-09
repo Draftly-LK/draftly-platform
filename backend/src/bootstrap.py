@@ -843,10 +843,10 @@ def build_ingestion_service(session: AsyncSession) -> SourceFileIngestionService
     matter_types = None
     if v1_pipeline is not None:
         from src.modules.document.infrastructure.matter_document_types import (
-            ChecklistMatterDocumentTypesAdapter,
+            GovernedMatterDocumentTypesAdapter,
         )
 
-        matter_types = ChecklistMatterDocumentTypesAdapter(build_checklist_service(session))
+        matter_types = GovernedMatterDocumentTypesAdapter()
 
     return SourceFileIngestionService(
         repository=SqlDocumentIngestionRepository(session),
