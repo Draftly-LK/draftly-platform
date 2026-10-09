@@ -1,0 +1,41 @@
+{
+  "synthetic": true,
+  "backend": "stateful API fixture; separate real PostgreSQL contract suite",
+  "oneClickAccept": true,
+  "confirmedAfterReload": true,
+  "correctionWithReason": true,
+  "mobileOverflow": false,
+  "audits": [
+    {
+      "state": "before-accept",
+      "seriousCritical": []
+    },
+    {
+      "state": "after-correction",
+      "seriousCritical": []
+    }
+  ],
+  "pageErrors": [],
+  "commands": [
+    {
+      "path": "/api/v1/matters/mat-1/facts/synthetic-fact/accept",
+      "body": {
+        "expectedScopeToken": "synthetic-token-1",
+        "resolveFactIds": []
+      },
+      "version": "\"1\"",
+      "key": "fc87da7e-767d-4fee-b706-e2daeb844c51"
+    },
+    {
+      "path": "/api/v1/matters/mat-1/facts/synthetic-fact-next/correct",
+      "body": {
+        "reason": "Synthetic source re-read",
+        "value": "SYNTHETIC CORRECTED HOLDER",
+        "expectedScopeToken": "synthetic-token-2",
+        "resolveFactIds": []
+      },
+      "version": "\"2\"",
+      "key": "d1d3398e-68d6-4e17-ab75-d8d340ac0807"
+    }
+  ]
+}

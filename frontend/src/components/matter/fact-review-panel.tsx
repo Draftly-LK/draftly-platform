@@ -177,7 +177,6 @@ export function FactReviewPanel({
     !loading &&
     !busy &&
     active &&
-    fact.scopeStatus === "assigned" &&
     fact.scopeToken !== null &&
     evidenceAvailable &&
     resolved &&
@@ -187,7 +186,6 @@ export function FactReviewPanel({
     !loading &&
     !busy &&
     active &&
-    fact.scopeStatus === "assigned" &&
     fact.scopeToken !== null &&
     evidenceAvailable &&
     resolved;

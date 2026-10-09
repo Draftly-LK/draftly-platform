@@ -28,6 +28,7 @@ import {
   subjectContext,
 } from "./fact-register-common";
 import { FactReviewPanel } from "./fact-review-panel";
+import { FactAcceptButton } from "./fact-accept-button";
 import { FactScopeInput, ManualFactInput } from "./fact-input";
 
 /** Resource menus are bounded. Partial data stays labelled and never implies all. */
@@ -227,13 +228,18 @@ function RegisterContent({
           number: transactions.find((tx) => tx.id === id)!.ordinal,
         })
       : t(id ? "scopeUnavailable" : "unassigned");
-  function saved(fact: ApiMatterFact) {
+  function saved(
+    fact: ApiMatterFact,
+    previousId = selected?.id,
+    showReview = true,
+  ) {
     onDecision?.();
-    setSelected(fact);
+    if (showReview) setSelected(fact);
+    else setSelected((old) => (old?.id === previousId ? null : old));
     setManual(false);
     setFacts((old) => [
       fact,
-      ...old.filter((f) => f.id !== fact.id && f.id !== selected?.id),
+      ...old.filter((f) => f.id !== fact.id && f.id !== previousId),
     ]);
     seenCursors.current.clear();
     void loadFacts();
@@ -409,6 +415,20 @@ function RegisterContent({
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <Status fact={fact} />
+                {[
+                  "EXTRACTED_CANDIDATE",
+                  "REVIEW_REQUIRED",
+                  "CONFLICTED",
+                ].includes(fact.status) && (
+                  <FactAcceptButton
+                    matterId={matterId}
+                    fact={fact}
+                    getToken={getToken}
+                    reviewing={selected?.id === fact.id}
+                    onSaved={(next) => saved(next, fact.id, false)}
+                    onReview={() => setSelected(fact)}
+                  />
+                )}
                 <Button
                   aria-expanded={selected?.id === fact.id}
                   onClick={() =>

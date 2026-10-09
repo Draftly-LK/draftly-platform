@@ -3220,7 +3220,7 @@
     "factTransaction": "Fact transaction",
     "chooseSubject": "Choose a subject",
     "chooseTransaction": "Choose a transaction",
-    "associationRequired": "Choose the transaction and subject, then save the association before accepting.",
+    "associationRequired": "Acceptance confirms the document observation. Assign its transaction and subject when preparing checks or drafts.",
     "correctedValue": "Corrected value",
     "reason": "Reason for this decision",
     "attachEvidence": "Attach supporting evidence",
@@ -3301,7 +3301,8 @@
     "decisionRefused": "The server refused this value, scope or evidence. Review the details before trying again.",
     "retryStorageUnavailable": "Retry protection is available only in this open tab. Keep this page open and retry here if the save result is uncertain.",
     "newManualIntent": "Start a new entry",
-    "partialFacts": "Only part of the fact register is loaded. Refresh to retrieve the remaining records."
+    "partialFacts": "Only part of the fact register is loaded. Refresh to retrieve the remaining records.",
+    "quickAccept": "Accept"
   },
   "requirementsWork": {
     "selectRequirement": "Select a requirement on the left to view its details and review actions.",
