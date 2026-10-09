@@ -21,7 +21,6 @@ import { BrandMark } from "@/components/ui/brand-mark";
 import { IconButton } from "@/components/ui/icon-button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { AccountMenu } from "./account-menu";
-import { LocaleSwitch } from "./locale-switch";
 import { CommandPalette } from "./command-palette";
 import { NavyBackdrop } from "./navy-backdrop";
 import { useOverInverseSurface } from "./use-surface-behind";
@@ -181,7 +180,6 @@ export function Sidebar() {
           {isApiEnabled() ? <ApiRecentMatters /> : <RecentMatters matters={matters} />}
         </div>
         <div className="shrink-0 border-t border-white/10 pt-3">
-          <LocaleSwitch />
           <AccountMenu />
         </div>
         </div>
