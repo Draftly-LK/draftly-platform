@@ -33,6 +33,7 @@ import {
   type ManualIntent,
 } from "@/lib/api/mutation-intent";
 import { DocumentPageEditor, validPageRanges } from "./document-page-editor";
+import { documentSnapshot, editSnapshot } from "./document-edit-snapshot";
 import type {
   ApiDetectedDocument,
   ApiDocumentInbox,
@@ -77,10 +78,23 @@ export function DocumentDecisions({
   >([]);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
   const [readFailed, setReadFailed] = useState(false);
+  const [reviewed, setReviewed] = useState<ApiDetectedDocument | null>(null);
+  const [reviewedInbox, setReviewedInbox] = useState<ApiDocumentInbox | null>(
+    null,
+  );
+  const [editStale, setEditStale] = useState(false);
+  const classControl = useRef<HTMLSelectElement>(null);
+  const focusRenewed = useRef(false);
+  const pendingEdit = useRef<ManualIntent | undefined>(undefined);
+  const [retryKind, setRetryKind] = useState<"class" | "boundary" | null>(null);
   const generation = useRef(0);
   const textFor = (key: string, fallbackId: string) =>
     tRoot.has(key)
-      ? tRoot(key)
+      ? typeof tRoot.raw(key) === "string"
+        ? tRoot(key)
+        : tRoot.has(`${key}.label`)
+          ? tRoot(`${key}.label`)
+          : humanizeMessageKey(fallbackId.split(".").pop() ?? fallbackId)
       : humanizeMessageKey(fallbackId.split(".").pop() ?? fallbackId);
   const [document, setDocument] = useState<ApiDetectedDocument | null>(null);
   const [classes, setClasses] = useState<ApiRtaDocumentClass[]>([]);
@@ -89,6 +103,12 @@ export function DocumentDecisions({
     null,
   );
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (focusRenewed.current && saving === null && !editStale) {
+      focusRenewed.current = false;
+      classControl.current?.focus();
+    }
+  }, [saving, editStale]);
 
   useEffect(() => {
     let active = true;
@@ -97,6 +117,11 @@ export function DocumentDecisions({
     setInbox(null);
     setHistory(null);
     setReadFailed(false);
+    setEditStale(false);
+    setReviewed(null);
+    setReviewedInbox(null);
+    pendingEdit.current = undefined;
+    setRetryKind(null);
     setRetire([]);
     Promise.all([
       getDetectedDocument(getToken, documentId),
@@ -111,6 +136,8 @@ export function DocumentDecisions({
           return;
         }
         setDocument(found);
+        setReviewed(found);
+        setReviewedInbox(queue);
         setInbox(queue);
         setHistory(versions);
         setRanges(
@@ -135,13 +162,23 @@ export function DocumentDecisions({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, getToken, matterId, t]);
 
-  async function decide(kind: "class" | "boundary" | "refresh") {
-    if (!document) return;
+  async function decide(
+    kind: "class" | "boundary" | "refresh",
+    replay = false,
+  ) {
+    if (
+      !document ||
+      !reviewed ||
+      (kind !== "refresh" && (editStale || retryKind !== null) && !replay)
+    )
+      return;
     setSaving(kind);
     setError(null);
     const readGeneration = generation.current;
     const isCurrent = () => generation.current === readGeneration;
     let intent: ManualIntent | undefined;
+    let submitted = false;
+    let responseReceived = false;
     try {
       const actor = await getMe(getToken);
       if (!isCurrent()) return;
@@ -162,11 +199,48 @@ export function DocumentDecisions({
         matterId,
         `document:${documentId}:${kind}`,
         body,
-        document.version,
+        kind === "refresh" ? document.version : reviewed.version,
       );
       if (!isCurrent()) return;
+      if (kind !== "refresh") {
+        pendingEdit.current = intent;
+        // A pending network replay retains its original key and precondition.
+        // A new edited command must still describe the snapshot reviewed here.
+        if (!intent.reused) {
+          const [fresh, queue] = await Promise.all([
+            getDetectedDocument(getToken, documentId),
+            getCompleteDocumentInbox(getToken, matterId),
+          ]);
+          if (!isCurrent()) return;
+          if (fresh.id !== documentId || fresh.matterId !== matterId)
+            throw new Error(operations("readUnavailable"));
+          const sources = [
+            ...reviewed.fragments,
+            ...ranges,
+            ...(reviewedInbox?.documents
+              .filter((item) =>
+                retire.some((target) => target.documentId === item.id),
+              )
+              .flatMap((item) => item.fragments) ?? []),
+          ].map((range) => range.sourceFileId);
+          if (
+            documentSnapshot(fresh) !== documentSnapshot(reviewed) ||
+            editSnapshot(queue, sources) !==
+              editSnapshot(reviewedInbox, sources)
+          ) {
+            clearManualIntent(intent);
+            pendingEdit.current = undefined;
+            setDocument(fresh);
+            setInbox(queue);
+            setEditStale(true);
+            onChange?.(fresh);
+            return;
+          }
+        }
+      }
       setStorageUnavailable(!intent.persistent);
       const version = intent.expectedVersion ?? document.version;
+      submitted = true;
       if (kind === "refresh")
         await refreshDocumentExtraction(
           getToken,
@@ -196,13 +270,18 @@ export function DocumentDecisions({
           version,
           intent.key,
         );
+      responseReceived = true;
       clearManualIntent(intent);
+      pendingEdit.current = undefined;
+      setRetryKind(null);
       // A replay returns its historical outcome. Only a new read can establish current authority.
       const updated = await getDetectedDocument(getToken, documentId);
       if (!isCurrent()) return;
       if (updated.id !== documentId || updated.matterId !== matterId)
         throw new Error(operations("readUnavailable"));
       setDocument(updated);
+      setReviewed(updated);
+      setEditStale(false);
       setSelected(updated.classId ?? "");
       setReadFailed(false);
       setRanges(
@@ -220,6 +299,7 @@ export function DocumentDecisions({
       ]);
       if (isCurrent()) {
         setInbox(queue);
+        setReviewedInbox(queue);
         setHistory(versions);
       }
     } catch (cause: unknown) {
@@ -228,8 +308,23 @@ export function DocumentDecisions({
         // The mutation may have committed. Withhold completion until the current read succeeds.
         setReadFailed(true);
         onChange?.({ ...document, extractionState: "unavailable" });
-        if (intent && cause instanceof ApiError && cause.status === 412)
+        if (intent && !submitted && !intent.reused) {
           clearManualIntent(intent);
+          pendingEdit.current = undefined;
+          setRetryKind(null);
+          if (kind !== "refresh") setEditStale(true);
+        } else if (
+          intent &&
+          cause instanceof ApiError &&
+          cause.status === 412
+        ) {
+          clearManualIntent(intent);
+          pendingEdit.current = undefined;
+          setRetryKind(null);
+          if (kind !== "refresh") setEditStale(true);
+        } else if (intent && kind !== "refresh" && !responseReceived) {
+          setRetryKind(kind);
+        }
         try {
           const fresh = await getDetectedDocument(getToken, documentId);
           if (
@@ -238,6 +333,8 @@ export function DocumentDecisions({
             fresh.matterId === matterId
           ) {
             setDocument(fresh);
+            if (documentSnapshot(fresh) !== documentSnapshot(reviewed))
+              setEditStale(true);
             setReadFailed(false);
             onChange?.(fresh);
           }
@@ -247,6 +344,48 @@ export function DocumentDecisions({
       }
     } finally {
       if (isCurrent()) setSaving(null);
+    }
+  }
+
+  async function renewEdits() {
+    setSaving("boundary");
+    const epoch = generation.current;
+    try {
+      const [fresh, queue] = await Promise.all([
+        getDetectedDocument(getToken, documentId),
+        getCompleteDocumentInbox(getToken, matterId),
+      ]);
+      if (epoch !== generation.current) return;
+      if (fresh.id !== documentId || fresh.matterId !== matterId)
+        throw new Error(operations("readUnavailable"));
+      if (pendingEdit.current) clearManualIntent(pendingEdit.current);
+      pendingEdit.current = undefined;
+      setRetryKind(null);
+      setDocument(fresh);
+      setReviewed(fresh);
+      setInbox(queue);
+      setReviewedInbox(queue);
+      setSelected(fresh.classId ?? "");
+      setRanges(
+        fresh.fragments.map(({ sourceFileId, pageStart, pageEnd }) => ({
+          sourceFileId,
+          pageStart,
+          pageEnd,
+        })),
+      );
+      setRetire([]);
+      setEditStale(false);
+      setError(null);
+      setReadFailed(false);
+      focusRenewed.current = true;
+      onChange?.(fresh);
+    } catch (cause) {
+      if (epoch === generation.current)
+        setError(apiErrorMessage(cause, t("error")));
+    } finally {
+      if (epoch === generation.current) {
+        setSaving(null);
+      }
     }
   }
 
@@ -294,6 +433,22 @@ export function DocumentDecisions({
         </div>
       )}
       <h2 className="font-semibold">{t("decisionsTitle")}</h2>
+      {(editStale || retryKind) && (
+        <div role="status" className="space-y-2 text-sm">
+          <p className="text-amber-text">{operations("editsChanged")}</p>
+          <Button disabled={saving !== null} onClick={() => void renewEdits()}>
+            {operations("renewEdits")}
+          </Button>
+          {retryKind && (
+            <Button
+              disabled={saving !== null || readFailed}
+              onClick={() => void decide(retryKind, true)}
+            >
+              {operations("retryPending")}
+            </Button>
+          )}
+        </div>
+      )}
       {error ? (
         <p role="alert" className="text-red text-sm">
           {error}
@@ -331,9 +486,12 @@ export function DocumentDecisions({
         <label className="block text-sm font-medium">
           {t("selectClass")}
           <select
+            ref={classControl}
             value={selected}
             onChange={(event) => setSelected(event.target.value)}
-            disabled={saving !== null || readFailed}
+            disabled={
+              saving !== null || readFailed || editStale || retryKind !== null
+            }
             className="border-border-control bg-surface rounded-control mt-1 min-h-10 w-full border px-3 py-2"
           >
             <option value="">{t("chooseClass")}</option>
@@ -356,7 +514,14 @@ export function DocumentDecisions({
         ) : (
           <Button
             size="sm"
-            disabled={!selected || saving !== null || readFailed}
+            disabled={
+              !selected ||
+              saving !== null ||
+              readFailed ||
+              editStale ||
+              retryKind !== null ||
+              document.versionRelationship === "SUPERSEDED"
+            }
             onClick={() => void decide("class")}
           >
             {saving === "class" ? (
@@ -377,10 +542,16 @@ export function DocumentDecisions({
         <p className="text-sm font-medium">{t("pagesLabel")}</p>
         <p className="text-muted-ink text-sm">{pages}</p>
         <DocumentPageEditor
-          sources={inbox?.sourceFiles ?? []}
+          sources={reviewedInbox?.sourceFiles ?? []}
           ranges={ranges}
           onChange={setRanges}
-          disabled={saving !== null || readFailed}
+          disabled={
+            saving !== null ||
+            readFailed ||
+            editStale ||
+            retryKind !== null ||
+            document.versionRelationship === "SUPERSEDED"
+          }
         />
         {(inbox?.documents ?? []).filter(
           (item) =>
@@ -388,7 +559,13 @@ export function DocumentDecisions({
         ).length > 0 && (
           <fieldset
             className="space-y-2"
-            disabled={saving !== null || readFailed}
+            disabled={
+              saving !== null ||
+              readFailed ||
+              editStale ||
+              retryKind !== null ||
+              document.versionRelationship === "SUPERSEDED"
+            }
           >
             <legend className="text-sm font-medium">
               {operations("mergeDocuments")}
@@ -440,6 +617,9 @@ export function DocumentDecisions({
           disabled={
             saving !== null ||
             readFailed ||
+            editStale ||
+            retryKind !== null ||
+            document.versionRelationship === "SUPERSEDED" ||
             !validPageRanges(ranges, inbox?.sourceFiles ?? [])
           }
           onClick={() => void decide("boundary")}

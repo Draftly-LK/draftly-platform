@@ -18,6 +18,8 @@ import type { ApiDetectedDocument, ApiDocumentReview } from "@/types/rta";
 import { FactRegister } from "./fact-register";
 import { DocumentDecisions, isDocumentDecided } from "./document-decisions";
 import { ReviewNextStep } from "./review-next-step";
+import { SourceFilePreview } from "./source-file-preview";
+import { useSourceLabels } from "./use-source-labels";
 
 interface OcrPoint {
   x: number;
@@ -53,6 +55,7 @@ function DocumentProcessingReviewFlow({
 }) {
   const t = useTranslations("documentProcessingReview");
   const evidenceT = useTranslations("factRegister");
+  const operations = useTranslations("documentOperations");
   const getToken = useTokenProvider();
   const [review, setReview] = useState<ApiDocumentReview | null>(null);
   const [legacy, setLegacy] = useState(false);
@@ -64,6 +67,11 @@ function DocumentProcessingReviewFlow({
   const [error, setError] = useState<string | null>(null);
   const [document, setDocument] = useState<ApiDetectedDocument | null>(null);
   const reviewGeneration = useRef({ value: 0 });
+  const sourceLabels = useSourceLabels(
+    getToken,
+    review?.pages.map((page) => page.sourceFileId) ?? [],
+    matterId,
+  );
 
   useEffect(() => {
     let active = true;
@@ -77,6 +85,9 @@ function DocumentProcessingReviewFlow({
         )
           throw new Error("Foreign document review");
         setReview(value);
+        setLegacy(false);
+        setPageIndex(0);
+        setError(null);
       })
       .catch((cause: unknown) => {
         if (!active) return;
@@ -134,7 +145,11 @@ function DocumentProcessingReviewFlow({
 
   if (legacy)
     return (
-      <ClassificationReviewScreen matterId={matterId} documentId={documentId} />
+      <ClassificationReviewScreen
+        matterId={matterId}
+        documentId={documentId}
+        onChange={setDocument}
+      />
     );
   if (!review)
     return (
@@ -162,6 +177,11 @@ function DocumentProcessingReviewFlow({
           : null,
       ].filter(Boolean)
     : [];
+  const viewerCurrent =
+    review.current === true &&
+    (!document ||
+      (document.versionRelationship !== "SUPERSEDED" &&
+        document.interpretationGeneration === review.interpretationGeneration));
 
   return (
     <AppShell matterId={matterId}>
@@ -173,14 +193,32 @@ function DocumentProcessingReviewFlow({
           </div>
         )}
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-          <section>
+          <section className="min-w-0">
+            <p role="status" className="text-amber-text mb-3 text-sm">
+              {review.interpretationGeneration
+                ? operations(viewerCurrent ? "currentView" : "historicalView", {
+                    generation: review.interpretationGeneration,
+                  })
+                : operations("unknownView")}
+            </p>
             <div className="mb-3 flex flex-wrap gap-2">
               {review.pages.map((item, index) => (
                 <Button
                   key={item.id}
                   variant={index === pageIndex ? "primary" : "secondary"}
+                  aria-pressed={index === pageIndex}
+                  className="max-w-full whitespace-normal break-words text-left"
                   onClick={() => setPageIndex(index)}
                 >
+                  {item.sourceFileId && (
+                    <>
+                      {sourceLabels[item.sourceFileId] ??
+                        operations("sourceReference", {
+                          reference: item.sourceFileId,
+                        })}{" "}
+                      ·{" "}
+                    </>
+                  )}
                   {t("page", { page: item.pageNo })}
                 </Button>
               ))}
@@ -240,6 +278,23 @@ function DocumentProcessingReviewFlow({
               <p role="status" className="text-muted-ink mt-2 text-xs">
                 {evidenceT("ocrUnavailable")}
               </p>
+            )}
+            {!viewerCurrent && document && (
+              <details className="border-border mt-4 space-y-3 border-t pt-3">
+                <summary className="cursor-pointer text-sm font-medium">
+                  {operations("currentOriginals")}
+                </summary>
+                {document.fragments.map((fragment, index) => (
+                  <SourceFilePreview
+                    key={`${fragment.sourceFileId}:${index}`}
+                    getToken={getToken}
+                    matterId={matterId}
+                    sourceFileId={fragment.sourceFileId}
+                    pageStart={fragment.pageStart}
+                    pageEnd={fragment.pageEnd}
+                  />
+                ))}
+              </details>
             )}
           </section>
           <div className="min-w-0 space-y-6">

@@ -2604,6 +2604,15 @@
     "approveAll": "{count, plural, one {Approve # field} other {Approve all # fields}}"
   },
   "documentOperations": {
+    "editsChanged": "The document or original pages changed. Review the current state before entering a new decision.",
+    "renewEdits": "Review current document state",
+    "retryPending": "Retry pending command",
+    "manualOriginal": "A processed page is unavailable for this manual reference. Open the original file to review the cited page.",
+    "currentView": "Viewing current interpretation {generation}",
+    "historicalView": "Viewing historical interpretation {generation}. Current document decisions apply to a different interpretation.",
+    "unknownView": "The interpretation of these processed pages is unavailable. Review the current originals before making a decision.",
+    "currentOriginals": "Originals in the current document",
+    "sourceReference": "Original {reference}",
     "evidenceGeneration": "Evidence selected from document interpretation {generation}.",
     "evidenceChanged": "The selected document page changed. Review its current grouping before using it.",
     "renewEvidence": "Use this current document page",

@@ -34,7 +34,8 @@ vi.mock("./document-decisions", async () => {
       onChange: (document: object) => void;
     }) => {
       useEffect(() => {
-        if (simulation.enabled) onChange({ id: "synthetic-document" });
+        if (simulation.enabled)
+          onChange({ id: "synthetic-document", fragments: [] });
       }, [onChange]);
       return null;
     },

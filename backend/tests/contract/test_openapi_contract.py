@@ -48,3 +48,29 @@ def test_the_transcript_list_is_paginated() -> None:
     get = schema["paths"]["/api/v1/matters/{matter_id}/agent/messages"]["get"]
     names = {param["name"] for param in get.get("parameters", [])}
     assert {"limit", "cursor"} <= names
+
+
+def test_document_correction_contract_publishes_pins_history_and_command_headers() -> None:
+    schema = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    paths = schema["paths"]
+    document = "/api/v1/detected-documents/{document_id}"
+    assert {f"{document}/interpretations", f"{document}/refresh-extraction"} <= paths.keys()
+    schemas = schema["components"]["schemas"]
+    assert {"interpretationGeneration", "extractionState"} <= schemas["DetectedDocumentRead"][
+        "properties"
+    ].keys()
+    assert {"interpretationGeneration", "current"} <= schemas["DocumentReviewRead"][
+        "properties"
+    ].keys()
+    assert "interpretationGeneration" in schemas["FactEvidenceRead"]["properties"]
+    for path in (
+        f"{document}/refresh-extraction",
+        f"{document}/classification-decisions",
+        f"{document}/boundary-decisions",
+        "/api/v1/source-files/{source_file_id}/page-dispositions",
+    ):
+        parameters = paths[path]["post"]["parameters"]
+        # Runtime dependencies preserve the documented 428/400 errors for
+        # absent headers instead of FastAPI's required-parameter 422.
+        headers = {item["name"].lower() for item in parameters if item["in"] == "header"}
+        assert {"if-match", "idempotency-key"} <= headers

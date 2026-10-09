@@ -10,6 +10,7 @@ type Metadata = {
 export type ManualIntent = Metadata & {
   storageKey: string;
   persistent: boolean;
+  reused: boolean;
 };
 const memory = new Map<string, Metadata>();
 function canonical(value: unknown): unknown {
@@ -147,7 +148,7 @@ function pending(
   }
   // Bound this tab's RAM fallback and discard expired actor/matter entries.
   for (const [key, item] of memory) if (!valid(item)) memory.delete(key);
-  return { ...metadata, storageKey, persistent };
+  return { ...metadata, storageKey, persistent, reused: metadata === previous };
 }
 export function clearManualIntent(intent: ManualIntent) {
   if (memory.get(intent.storageKey)?.key === intent.key)

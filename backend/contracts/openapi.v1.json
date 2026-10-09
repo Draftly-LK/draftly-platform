@@ -617,6 +617,13 @@
               }
             ],
             "title": "Note"
+          },
+          "retireDocuments": {
+            "items": {
+              "$ref": "#/components/schemas/RetireDocumentInput"
+            },
+            "title": "Retiredocuments",
+            "type": "array"
           }
         },
         "required": [
@@ -1973,6 +1980,35 @@
         "title": "CreateConversationRequest",
         "type": "object"
       },
+      "CreateGroupRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "classId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classid"
+          },
+          "fragments": {
+            "items": {
+              "$ref": "#/components/schemas/FragmentRangeInput"
+            },
+            "minItems": 1,
+            "title": "Fragments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fragments"
+        ],
+        "title": "CreateGroupRequest",
+        "type": "object"
+      },
       "CreateMatterRequest": {
         "additionalProperties": false,
         "description": "Creation never accepts a subtype: the exact instrument is a lawyer's\ndecision made after routing, not a field on the create form (§12.4).",
@@ -2318,6 +2354,11 @@
             ],
             "title": "Duplicateofdetecteddocumentid"
           },
+          "extractionState": {
+            "default": "current",
+            "title": "Extractionstate",
+            "type": "string"
+          },
           "fragments": {
             "items": {
               "$ref": "#/components/schemas/DocumentFragmentRead"
@@ -2328,6 +2369,11 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "interpretationGeneration": {
+            "default": 1,
+            "title": "Interpretationgeneration",
+            "type": "integer"
           },
           "issueOrExecutionDateFactId": {
             "anyOf": [
@@ -2358,9 +2404,31 @@
             "title": "Languagecodes",
             "type": "array"
           },
+          "latestRefreshRunId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latestrefreshrunid"
+          },
           "matterId": {
             "title": "Matterid",
             "type": "string"
+          },
+          "refreshFailureReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshfailurereason"
           },
           "sourceFileIds": {
             "items": {
@@ -2496,6 +2564,13 @@
           "page": {
             "$ref": "#/components/schemas/src__modules__document__api__schemas__PageInfo"
           },
+          "pageAccounting": {
+            "items": {
+              "$ref": "#/components/schemas/PageAccountingRead"
+            },
+            "title": "Pageaccounting",
+            "type": "array"
+          },
           "sourceFiles": {
             "items": {
               "$ref": "#/components/schemas/SourceFileRead"
@@ -2540,6 +2615,11 @@
             "title": "Candidates",
             "type": "array"
           },
+          "current": {
+            "default": false,
+            "title": "Current",
+            "type": "boolean"
+          },
           "detectedDocumentId": {
             "title": "Detecteddocumentid",
             "type": "string"
@@ -2547,6 +2627,11 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "interpretationGeneration": {
+            "default": 1,
+            "title": "Interpretationgeneration",
+            "type": "integer"
           },
           "matterId": {
             "title": "Matterid",
@@ -2705,6 +2790,18 @@
               }
             ],
             "title": "Extractionrunid"
+          },
+          "interpretationGeneration": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretationgeneration"
           },
           "pageNumber": {
             "minimum": 1.0,
@@ -2935,6 +3032,17 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "interpretationGeneration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretationgeneration"
           },
           "pageNumber": {
             "title": "Pagenumber",
@@ -3663,10 +3771,16 @@
         "additionalProperties": false,
         "properties": {
           "orderInDocument": {
-            "default": 0,
-            "minimum": 0.0,
-            "title": "Orderindocument",
-            "type": "integer"
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orderindocument"
           },
           "pageEnd": {
             "minimum": 1.0,
@@ -4303,6 +4417,146 @@
         "title": "IntakeAnswerRead",
         "type": "object"
       },
+      "InterpretationHistoryRead": {
+        "properties": {
+          "currentGeneration": {
+            "title": "Currentgeneration",
+            "type": "integer"
+          },
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "matterId": {
+            "title": "Matterid",
+            "type": "string"
+          },
+          "refreshRuns": {
+            "items": {
+              "$ref": "#/components/schemas/InterpretationRunRead"
+            },
+            "title": "Refreshruns",
+            "type": "array"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/InterpretationSnapshotRead"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          }
+        },
+        "required": [
+          "documentId",
+          "matterId",
+          "currentGeneration",
+          "snapshots",
+          "refreshRuns"
+        ],
+        "title": "InterpretationHistoryRead",
+        "type": "object"
+      },
+      "InterpretationRunRead": {
+        "properties": {
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "title": "Startedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "generation",
+          "outcome",
+          "reasons",
+          "startedAt",
+          "finishedAt"
+        ],
+        "title": "InterpretationRunRead",
+        "type": "object"
+      },
+      "InterpretationSnapshotRead": {
+        "properties": {
+          "actorId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actorid"
+          },
+          "classId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "fragments": {
+            "items": {
+              "$ref": "#/components/schemas/FragmentRangeInput"
+            },
+            "title": "Fragments",
+            "type": "array"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generation",
+          "classId",
+          "fragments",
+          "actorId",
+          "createdAt"
+        ],
+        "title": "InterpretationSnapshotRead",
+        "type": "object"
+      },
       "IssueDecisionRequest": {
         "additionalProperties": false,
         "description": "One recorded disposition. The deciding lawyer is the authenticated actor.",
@@ -4373,6 +4627,14 @@
               "type": "string"
             },
             "title": "Openstatutoryblockerids",
+            "type": "array"
+          },
+          "staleCheckIds": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Stalecheckids",
             "type": "array"
           }
         },
@@ -5783,6 +6045,80 @@
         "title": "OriginalInspectionRequest",
         "type": "object"
       },
+      "PageAccountingRead": {
+        "properties": {
+          "blankPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Blankpagenumbers",
+            "type": "array"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "manualReviewRequired": {
+            "title": "Manualreviewrequired",
+            "type": "boolean"
+          },
+          "outOfBoundsPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Outofboundspagenumbers",
+            "type": "array"
+          },
+          "overlappingPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Overlappingpagenumbers",
+            "type": "array"
+          },
+          "pageCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagecount"
+          },
+          "sourceFileId": {
+            "title": "Sourcefileid",
+            "type": "string"
+          },
+          "unclaimedPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unclaimedpagenumbers",
+            "type": "array"
+          },
+          "unsupportedPageNumbers": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Unsupportedpagenumbers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sourceFileId",
+          "pageCount",
+          "unclaimedPageNumbers",
+          "overlappingPageNumbers",
+          "blankPageNumbers",
+          "unsupportedPageNumbers",
+          "complete",
+          "manualReviewRequired"
+        ],
+        "title": "PageAccountingRead",
+        "type": "object"
+      },
       "PageCandidateRead": {
         "description": "One page-level candidate particular produced by a run.\n\nReturned rather than persisted here: the evidence table belongs to\nverification, which creates the ``EvidenceReference`` and candidate fact\nrows from these (§6.2 stage 8). Nothing in this payload is verified.",
         "properties": {
@@ -5851,6 +6187,45 @@
           "formatValid"
         ],
         "title": "PageCandidateRead",
+        "type": "object"
+      },
+      "PageDispositionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "enum": [
+              "blank",
+              "unsupported",
+              "review_required"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "pageNumber": {
+            "minimum": 1.0,
+            "title": "Pagenumber",
+            "type": "integer"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "retireDocuments": {
+            "items": {
+              "$ref": "#/components/schemas/RetireDocumentInput"
+            },
+            "title": "Retiredocuments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pageNumber",
+          "disposition",
+          "reason"
+        ],
+        "title": "PageDispositionRequest",
         "type": "object"
       },
       "PageMeta": {
@@ -7637,6 +8012,26 @@
         "title": "RenameConversationRequest",
         "type": "object"
       },
+      "RetireDocumentInput": {
+        "additionalProperties": false,
+        "properties": {
+          "documentId": {
+            "title": "Documentid",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documentId",
+          "version"
+        ],
+        "title": "RetireDocumentInput",
+        "type": "object"
+      },
       "ReviewCandidateRead": {
         "properties": {
           "candidateValue": {
@@ -7829,6 +8224,17 @@
           "rotationStatus": {
             "title": "Rotationstatus",
             "type": "string"
+          },
+          "sourceFileId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcefileid"
           }
         },
         "required": [
@@ -11366,6 +11772,54 @@
         ]
       }
     },
+    "/api/v1/detected-documents/{document_id}": {
+      "get": {
+        "operationId": "get_detected_document_api_v1_detected_documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectedDocumentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Detected Document",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/detected-documents/{document_id}/boundary-decisions": {
       "post": {
         "description": "Split, join, or reorder the pages a document claims. Sources are untouched.",
@@ -11378,6 +11832,22 @@
             "schema": {
               "title": "Document Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {
@@ -11457,6 +11927,22 @@
           },
           {
             "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
             "name": "If-Match",
             "required": false,
             "schema": {
@@ -11516,6 +12002,134 @@
         ]
       }
     },
+    "/api/v1/detected-documents/{document_id}/interpretations": {
+      "get": {
+        "operationId": "get_interpretation_history_api_v1_detected_documents__document_id__interpretations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterpretationHistoryRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Interpretation History",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
+    "/api/v1/detected-documents/{document_id}/refresh-extraction": {
+      "post": {
+        "operationId": "refresh_extraction_api_v1_detected_documents__document_id__refresh_extraction_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectedDocumentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Refresh Extraction",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/detected-documents/{document_id}/review": {
       "get": {
         "operationId": "get_document_review_api_v1_detected_documents__document_id__review_get",
@@ -11527,6 +12141,23 @@
             "schema": {
               "title": "Document Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "generation",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Generation"
             }
           }
         ],
@@ -12421,6 +13052,24 @@
       "post": {
         "description": "Create an intake draft. The exact instrument is chosen later, by a lawyer.",
         "operationId": "create_matter_api_v1_matters_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -13636,6 +14285,80 @@
         "summary": "Run Checks",
         "tags": [
           "checks"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/detected-documents": {
+      "post": {
+        "operationId": "create_document_group_api_v1_matters__matter_id__detected_documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DetectedDocumentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Document Group",
+        "tags": [
+          "documents",
+          "source-files"
         ]
       }
     },
@@ -14979,6 +15702,22 @@
             "schema": {
               "title": "Matter Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],
@@ -18271,6 +19010,96 @@
         ]
       }
     },
+    "/api/v1/source-files/{source_file_id}/page-dispositions": {
+      "post": {
+        "operationId": "decide_page_disposition_api_v1_source_files__source_file_id__page_dispositions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_file_id",
+            "required": true,
+            "schema": {
+              "title": "Source File Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageDispositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceFileRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Decide Page Disposition",
+        "tags": [
+          "documents",
+          "source-files"
+        ]
+      }
+    },
     "/api/v1/source-files/{source_file_id}/process": {
       "post": {
         "description": "Run the pipeline over one stored file and report what it did.\n\nThe response is a terminal run envelope, not a promise. With no provider\nconfigured, or with the data-protection gate closed, ``state`` is ``failed``\nwith ``failureReason`` ``NOT_CONFIGURED`` / ``DATA_PROTECTION_GATE`` — the\nfile stays readable and honestly unprocessed.",
@@ -18283,6 +19112,22 @@
             "schema": {
               "title": "Source File Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {
@@ -18396,6 +19241,22 @@
             "schema": {
               "title": "Source File Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {

@@ -181,12 +181,17 @@ export function FactEvidence({
   getToken: TokenProvider;
 }) {
   const t = useTranslations("factRegister");
+  const operations = useTranslations("documentOperations");
   const [artifact, setArtifact] = useState<{
     url: string;
     kind: "image" | "original";
   } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [pageUnavailable, setPageUnavailable] = useState(false);
+  const hasProcessedReference = Boolean(
+    evidence.detectedDocumentId && evidence.extractionRunId,
+  );
   const generation = useRef({ value: 0 });
   const source = sources.find((s) => s.id === evidence.sourceFileId);
   useEffect(() => {
@@ -234,7 +239,10 @@ export function FactEvidence({
       if (run === generation.current.value)
         setArtifact({ url: URL.createObjectURL(blob), kind });
     } catch (cause) {
-      if (run === generation.current.value) setError(cause);
+      if (run === generation.current.value) {
+        if (kind === "image") setPageUnavailable(true);
+        setError(cause);
+      }
     } finally {
       if (run === generation.current.value) setBusy(false);
     }
@@ -273,7 +281,7 @@ export function FactEvidence({
         <Button disabled={busy} onClick={() => void open("original")}>
           {t("openOriginal")}
         </Button>
-        {evidence.detectedDocumentId && (
+        {hasProcessedReference && !pageUnavailable && (
           <Button disabled={busy} onClick={() => void open("image")}>
             {t("openPage")}
           </Button>
@@ -287,6 +295,11 @@ export function FactEvidence({
           </Link>
         )}
       </div>
+      {(!hasProcessedReference || pageUnavailable) && (
+        <p role="status" className="text-muted-ink text-sm">
+          {operations("manualOriginal")}
+        </p>
+      )}
       {error != null && <RegisterError cause={error} />}
       {artifact?.kind === "original" && (
         <a

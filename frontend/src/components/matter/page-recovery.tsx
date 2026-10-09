@@ -24,6 +24,7 @@ import {
 } from "@/lib/api/mutation-intent";
 import type { ApiDocumentInbox } from "@/types/rta";
 import { DocumentPageEditor, validPageRanges } from "./document-page-editor";
+import { editSnapshot } from "./document-edit-snapshot";
 
 export function PageRecovery({
   getToken,
@@ -49,27 +50,116 @@ export function PageRecovery({
   const [error, setError] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [storageUnavailable, setStorageUnavailable] = useState(false);
+  const [reviewedInbox, setReviewedInbox] = useState<ApiDocumentInbox | null>(
+    null,
+  );
+  const [refused, setRefused] = useState(false);
+  const [retryKind, setRetryKind] = useState<"group" | "page" | null>(null);
+  const pendingEdit = useRef<ManualIntent | undefined>(undefined);
+  const latestInbox = useRef(inbox);
+  latestInbox.current = inbox;
+  const pageControl = useRef<HTMLInputElement>(null);
+  const groupControls = useRef<HTMLDivElement>(null);
+  const focusRenewed = useRef(false);
   const generation = useRef(0);
+  useEffect(() => {
+    if (focusRenewed.current) {
+      focusRenewed.current = false;
+      (sourceId
+        ? pageControl.current
+        : groupControls.current?.querySelector("select")
+      )?.focus();
+    }
+  });
   useEffect(() => {
     const scopeGeneration = ++generation.current;
     setRanges([]);
     setSourceId("");
     setCreatedId(null);
     setError(null);
+    setReviewedInbox(null);
+    setRefused(false);
+    pendingEdit.current = undefined;
+    setRetryKind(null);
     return () => {
       generation.current = scopeGeneration + 1;
     };
   }, [inbox.matterId]);
-  const source = inbox.sourceFiles.find((item) => item.id === sourceId);
-  async function save(kind: "group" | "page") {
-    if (busy) return;
+  const source = reviewedInbox?.sourceFiles.find(
+    (item) => item.id === sourceId,
+  );
+  const sourceIds = sourceId
+    ? [sourceId]
+    : ranges.map((range) => range.sourceFileId);
+  const changed = (latest: ApiDocumentInbox) =>
+    reviewedInbox !== null &&
+    editSnapshot(reviewedInbox, sourceIds) !== editSnapshot(latest, sourceIds);
+  const stale = refused || changed(inbox);
+  function beginReview() {
+    if (pendingEdit.current) clearManualIntent(pendingEdit.current);
+    pendingEdit.current = undefined;
+    setRetryKind(null);
+    setReviewedInbox(inbox);
+    setRefused(false);
+    setRetire([]);
+    setReason("");
+    setDisposition("blank");
+    setError(null);
+  }
+  function renew() {
+    focusRenewed.current = true;
+    beginReview();
+    const accounting = inbox.pageAccounting?.find(
+      (item) => item.sourceFileId === sourceIds[0],
+    );
+    if (sourceId) {
+      if (
+        !inbox.sourceFiles.some(
+          (item) =>
+            item.id === sourceId &&
+            !["SUPERSEDED", "REJECTED"].includes(item.state),
+        )
+      )
+        setSourceId("");
+      const currentPage =
+        pageNumber <= (accounting?.pageCount ?? 0)
+          ? pageNumber
+          : (accounting?.unclaimedPageNumbers[0] ?? 1);
+      setPageNumber(currentPage);
+      setDisposition(
+        accounting?.blankPageNumbers.includes(currentPage)
+          ? "blank"
+          : accounting?.unsupportedPageNumbers.includes(currentPage)
+            ? "unsupported"
+            : "review_required",
+      );
+    } else {
+      const start = accounting?.unclaimedPageNumbers[0];
+      if (start === undefined) setRanges([]);
+      else {
+        let end = start;
+        while (accounting?.unclaimedPageNumbers.includes(end + 1)) end++;
+        setRanges([
+          {
+            sourceFileId: accounting!.sourceFileId,
+            pageStart: start,
+            pageEnd: end,
+          },
+        ]);
+      }
+    }
+  }
+  async function save(kind: "group" | "page", replay = false) {
+    if (busy || ((stale || retryKind !== null) && !replay)) return;
     const current = generation.current;
     setBusy(true);
     setError(null);
     let intent: ManualIntent | undefined;
+    let responseReceived = false;
     try {
       const actor = await getMe(getToken);
       if (current !== generation.current) return;
+      if (!replay && changed(latestInbox.current)) return;
       const body =
         kind === "group"
           ? {
@@ -92,6 +182,11 @@ export function PageRecovery({
         kind === "page" ? source?.version : undefined,
       );
       if (current !== generation.current) return;
+      pendingEdit.current = intent;
+      if (!replay && changed(latestInbox.current)) {
+        if (!intent.reused) clearManualIntent(intent);
+        return;
+      }
       setStorageUnavailable(!intent.persistent);
       if (kind === "group") {
         const created = await createDocumentGroup(
@@ -105,7 +200,10 @@ export function PageRecovery({
           },
           intent.key,
         );
+        responseReceived = true;
         clearManualIntent(intent);
+        pendingEdit.current = undefined;
+        setRetryKind(null);
         const fresh = await getDetectedDocument(getToken, created.id);
         if (current !== generation.current) return;
         if (fresh.matterId !== inbox.matterId) throw new Error(t("error"));
@@ -124,16 +222,32 @@ export function PageRecovery({
           intent.expectedVersion ?? source.version,
           intent.key,
         );
+        responseReceived = true;
         clearManualIntent(intent);
+        pendingEdit.current = undefined;
+        setRetryKind(null);
         if (current !== generation.current) return;
         setSourceId("");
         setReason("");
       }
       onChange();
     } catch (cause: unknown) {
-      if (intent && cause instanceof ApiError && cause.status === 412) {
+      if (responseReceived && current === generation.current) {
+        // The server already acknowledged the command; renew the read, never
+        // create a second command merely because its follow-up GET failed.
+        setRefused(true);
+        setRetryKind(null);
+        onChange();
+      } else if (intent && cause instanceof ApiError && cause.status === 412) {
         clearManualIntent(intent);
-        if (current === generation.current) onChange();
+        if (current === generation.current) {
+          setRefused(true);
+          pendingEdit.current = undefined;
+          setRetryKind(null);
+          onChange();
+        }
+      } else if (intent && current === generation.current) {
+        setRetryKind(kind);
       }
       if (current === generation.current)
         setError(apiErrorMessage(cause, t("error")));
@@ -145,6 +259,19 @@ export function PageRecovery({
   return (
     <section className="border-border bg-surface rounded-card mb-6 space-y-4 border p-4">
       <h2 className="font-semibold">{t("accountingTitle")}</h2>
+      {(stale || retryKind) && (
+        <div role="status" className="space-y-2 text-sm">
+          <p className="text-amber-text">{t("editsChanged")}</p>
+          <Button disabled={busy} onClick={renew}>
+            {t("renewEdits")}
+          </Button>
+          {retryKind && (
+            <Button disabled={busy} onClick={() => void save(retryKind, true)}>
+              {t("retryPending")}
+            </Button>
+          )}
+        </div>
+      )}
       {error && (
         <p role="alert" className="text-red text-sm">
           {error}
@@ -214,6 +341,8 @@ export function PageRecovery({
                   className="max-w-full whitespace-normal text-center"
                   disabled={busy}
                   onClick={() => {
+                    beginReview();
+                    setSourceId("");
                     const start = accounting.unclaimedPageNumbers[0];
                     if (start === undefined) return;
                     let end = start;
@@ -237,6 +366,8 @@ export function PageRecovery({
                   className="max-w-full whitespace-normal text-center"
                   disabled={busy}
                   onClick={() => {
+                    beginReview();
+                    setRanges([]);
                     setRetire([]);
                     setSourceId(accounting.sourceFileId);
                     setPageNumber(accounting.unclaimedPageNumbers[0] ?? 1);
@@ -250,15 +381,20 @@ export function PageRecovery({
         ))}
       </ul>
       {ranges.length > 0 && (
-        <div className="space-y-3">
+        <div ref={groupControls} className="space-y-3">
           <DocumentPageEditor
-            sources={inbox.sourceFiles}
+            sources={reviewedInbox?.sourceFiles ?? []}
             ranges={ranges}
             onChange={setRanges}
-            disabled={busy}
+            disabled={busy || stale || retryKind !== null}
           />
           <Button
-            disabled={busy || !validPageRanges(ranges, inbox.sourceFiles)}
+            disabled={
+              busy ||
+              stale ||
+              retryKind !== null ||
+              !validPageRanges(ranges, reviewedInbox?.sourceFiles ?? [])
+            }
             onClick={() => void save("group")}
           >
             {t("createGroup")}
@@ -266,13 +402,17 @@ export function PageRecovery({
         </div>
       )}
       {source && (
-        <fieldset disabled={busy} className="space-y-3">
+        <fieldset
+          disabled={busy || stale || retryKind !== null}
+          className="space-y-3"
+        >
           <legend className="text-sm font-medium">
             {t("disposition")} · {source.originalFilename}
           </legend>
           <label className="block text-sm">
             {t("pageNumber")}
             <input
+              ref={pageControl}
               className="border-border-control bg-surface rounded-control ml-3 min-h-10 w-24 border px-3"
               type="number"
               min={1}
@@ -304,10 +444,11 @@ export function PageRecovery({
             </select>
           </label>
           {disposition !== "review_required" &&
-            inbox.documents
+            reviewedInbox?.documents
               .filter(
                 (document) =>
                   document.fragments.length > 0 &&
+                  document.versionRelationship !== "SUPERSEDED" &&
                   document.fragments.every(
                     (fragment) =>
                       fragment.sourceFileId === sourceId &&
@@ -356,6 +497,8 @@ export function PageRecovery({
           <Button
             disabled={
               busy ||
+              stale ||
+              retryKind !== null ||
               !reason.trim() ||
               !Number.isSafeInteger(pageNumber) ||
               pageNumber < 1 ||
