@@ -31,6 +31,7 @@ import {
   pendingUploadIntent,
   clearManualIntent,
 } from "@/lib/api/mutation-intent";
+import { RequirementsPanel } from "./requirements-panel";
 import { PageRecovery } from "./page-recovery";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import type { ApiDocumentInbox } from "@/types/rta";
@@ -194,6 +195,7 @@ function DocumentsFlow({
           inbox={inbox}
           onChange={() => setRefresh((value) => value + 1)}
         />
+        <div className="my-6"><RequirementsPanel matterId={matterId} getToken={getToken} mode="documents" /></div>
         {/* Summary bar */}
         <div className="border-border bg-surface rounded-card mb-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,12em),1fr))] gap-4 border p-4 text-center [&>div]:min-w-0 [&>div]:break-words">
           <div>

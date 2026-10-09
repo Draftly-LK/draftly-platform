@@ -718,6 +718,12 @@ export interface ApiChecklistItem {
  * are never stored as truth, so nothing may write them back.
  */
 export interface ApiChecklistItemState {
+  version: number;
+  blocksApproval: boolean;
+  liveLinkCount: number;
+  originalInspection: ApiOriginalInspection | null;
+  inspectionHistory: ApiOriginalInspection[];
+
   id: string;
   requirementDefinitionId: string;
   moduleDefinitionId: string;
@@ -913,8 +919,26 @@ export interface ApiInterpretationHistory {
   documentId: string;
   matterId: string;
   currentGeneration: number;
-  snapshots: { generation: number; classId: string | null; fragments: { sourceFileId: string; pageStart: number; pageEnd: number; orderInDocument?: number }[]; actorId: string | null; createdAt: string }[];
-  refreshRuns: { id: string; generation: number; outcome: string; reasons: string[]; startedAt: string; finishedAt: string | null }[];
+  snapshots: {
+    generation: number;
+    classId: string | null;
+    fragments: {
+      sourceFileId: string;
+      pageStart: number;
+      pageEnd: number;
+      orderInDocument?: number;
+    }[];
+    actorId: string | null;
+    createdAt: string;
+  }[];
+  refreshRuns: {
+    id: string;
+    generation: number;
+    outcome: string;
+    reasons: string[];
+    startedAt: string;
+    finishedAt: string | null;
+  }[];
 }
 
 /** Mirrors `PageCandidateRead`. Nothing here is verified. */
@@ -999,6 +1023,9 @@ export interface ApiFactVersionPin {
 
 /** Mirrors `CheckResultRead`. */
 export interface ApiCheckResult {
+  transactionId?: string | null;
+  subjectId?: string | null;
+  associationVersion?: number | null;
   id: string;
   checkDefinitionId: string;
   checkDefinitionVersion: string;
@@ -1021,6 +1048,9 @@ export interface ApiCheckResult {
 
 /** Mirrors `LegalIssueRead`. */
 export interface ApiLegalIssue {
+  transactionId?: string | null;
+  subjectId?: string | null;
+  associationVersion?: number | null;
   id: string;
   matterId: string;
   checkId: string | null;
@@ -1340,4 +1370,48 @@ export interface ApiRegistrationEventCreated {
 export interface ApiRegistrationEventList {
   items: ApiRegistrationEvent[];
   page: ApiPageInfo;
+}
+
+export interface ApiOriginalSourcePin {
+  sourceFileId: string;
+  sha256: string;
+  storageVersion: string;
+}
+export interface ApiOriginalInspection {
+  reviewerId: string;
+  inspectedAt: string;
+  method: string;
+  location: string | null;
+  note: string | null;
+  originals: ApiOriginalSourcePin[];
+}
+export interface ApiRequirementLink {
+  id: string;
+  detectedDocumentId: string;
+  documentVersion: number | null;
+  interpretationGeneration: number | null;
+  originals: ApiOriginalSourcePin[];
+  isLive: boolean;
+  digitalReview: string;
+  createdAt: string;
+}
+export interface ApiReadiness {
+  state: "blocked" | "unknown" | "needs-review";
+  nextAction: string;
+  evaluatedAt: string;
+  requirementTotal: number | null;
+  requirementCompleted: number | null;
+  dependencies: {
+    category: string;
+    state: string;
+    references: {
+      kind: string;
+      id: string;
+      version: number | null;
+      generation: number | null;
+      transactionId: string | null;
+      subjectId: string | null;
+      associationVersion: number | null;
+    }[];
+  }[];
 }

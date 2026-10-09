@@ -163,3 +163,18 @@ export function clearManualIntent(intent: ManualIntent) {
     /* Disabled storage already has a visible RAM-fallback notice. */
   }
 }
+
+/** Explicit lawyer renewal discards this operation's obsolete precondition, including after refresh. */
+export function clearPendingOperationIntent(
+  actorId: string,
+  matterId: string,
+  operation: string,
+) {
+  const storageKey = `draftly:operation-intent:v1:${encodeURIComponent(actorId)}:${encodeURIComponent(matterId)}:${encodeURIComponent(operation)}`;
+  memory.delete(storageKey);
+  try {
+    sessionStorage.removeItem(storageKey);
+  } catch {
+    /* RAM fallback is cleared too. */
+  }
+}

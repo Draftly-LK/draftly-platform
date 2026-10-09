@@ -169,10 +169,14 @@ def build_checklist_service(session: AsyncSession) -> ChecklistService:
     """Assemble the checklist service over one request's session."""
     from src.modules.audit.application.audit_service import AuditService
     from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.document.infrastructure.requirement_reader import SqlRequirementDocumentReader
     from src.modules.task.application.checklist_service import ChecklistService
     from src.modules.task.infrastructure.repository import SqlChecklistRepository
+    from src.modules.verification.infrastructure.repository import SqlEvidenceReader
 
     return ChecklistService(
+        documents=SqlRequirementDocumentReader(session, build_source_file_storage()),
+        evidence=SqlEvidenceReader(session),
         matter_lock=_build_document_matter_lock(session),
         repository=SqlChecklistRepository(session),
         audit=AuditService(repository=SqlAuditRepository(session)),

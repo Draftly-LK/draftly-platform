@@ -894,3 +894,41 @@ names `task.review-requested` and `matter.signing-scheduled`.
     conditional modules such as power of attorney, corporate party, minor
     party, reserved life interest, mortgage or encumbrance, divided or
     undivided share, subdivision, and missing original evidence.
+
+
+### Lawyer-led requirements and manual review (2026-10-09)
+
+The current runtime uses governed checklist requirements, not new StepRun or
+WorkflowDefinition content. Checks projects the existing human original-inspection
+and requirement-decision commands. Empty accepted-class lists do not establish
+administrative completion eligibility. Receipt and manual inspection never write
+SATISFIED directly or bypass existing evidence, currency, consistency or waiver policy.
+
+Requirement links now require item If-Match plus documentVersion and
+interpretationGeneration. The document owner validates user/matter, exact current
+pages and immutable source hash/storage version; the verification owner validates
+every supplied evidence ID. Linking records receipt and resets item evidence review.
+Legacy links without exact pins remain readable history and cannot establish a live
+supporting link. Current reads withhold stale link-derived authority too.
+
+Original inspections retain actor, time, method, optional note/location, and the
+exact immutable original source pins. A new or replacement original requires new
+inspection; a renewed interpretation of the same immutable original may retain its
+physical inspection. All inspections remain in inspectionHistory. No machine or
+administrative action can record the human-only inspection. Legal review actions
+retain their existing capability checks and policies, including non-document
+requirements with optional historical attachments.
+
+All three POST commands (decisions, original-inspection, links) require a stable
+Idempotency-Key and item If-Match. Current matter/capability/resource authorization
+and the shared matter mutation lock precede replay. Same logical payload and
+precondition replay the original response/ETag; changed requests conflict. Replay
+is historical, so clients reload current eligibility after recovery. The browser
+stores only opaque actor/matter/operation retry metadata for 24 hours; explicit
+renewal discards that operation's obsolete pin after refreshing current state.
+
+Migration task0002 is additive after document0004: link document/generation/source
+pins and item original-inspection source/history JSON. Existing rows are not
+inventively backfilled. Legacy inspection metadata remains retained but an unbound
+inspection is projected as unknown. Downgrade refuses any pinned link or recorded
+inspection history. Older code is not a supported writer after these new records.

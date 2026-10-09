@@ -26,6 +26,34 @@ class FactEvidenceSource:
     precision: str
 
 
+@dataclass(frozen=True, order=True)
+class OriginalSourcePin:
+    source_file_id: str
+    sha256: str
+    storage_version: str
+
+
+@dataclass(frozen=True)
+class RequirementDocument:
+    id: str
+    version: int
+    interpretation_generation: int
+    class_id: str | None
+    review_ready: bool
+    originals: tuple[OriginalSourcePin, ...]
+    pages: tuple[FactEvidenceLocator, ...]
+
+
+class RequirementDocumentPort(Protocol):
+    async def requirement_document(
+        self, user_id: str, matter_id: str, document_id: str
+    ) -> RequirementDocument: ...
+
+    async def validate_evidence(
+        self, user_id: str, matter_id: str, evidence: FactEvidenceLocator
+    ) -> FactEvidenceSource: ...
+
+
 @dataclass(frozen=True)
 class CandidateObservation:
     id: str

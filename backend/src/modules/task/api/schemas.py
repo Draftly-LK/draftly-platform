@@ -46,6 +46,8 @@ class OriginalInspectionRequest(_StrictCamel):
 
 class LinkDocumentRequest(_StrictCamel):
     detected_document_id: str
+    document_version: int = Field(ge=1)
+    interpretation_generation: int = Field(ge=1)
     evidence_reference_ids: list[str] = Field(default_factory=list)
     lawyer_confirmed: bool = False
     note: str | None = None
@@ -63,6 +65,15 @@ class SatisfactionLinkRead(_Camel):
     superseded_by_link_id: str | None
     is_live: bool
     created_at: str
+    document_version: int | None
+    interpretation_generation: int | None
+    originals: list[OriginalSourceRead]
+
+
+class OriginalSourceRead(_Camel):
+    source_file_id: str
+    sha256: str
+    storage_version: str
 
 
 class OriginalInspectionRead(_Camel):
@@ -71,6 +82,7 @@ class OriginalInspectionRead(_Camel):
     method: str
     location: str | None
     note: str | None
+    originals: list[OriginalSourceRead]
 
 
 class ChecklistItemRead(_Camel):
@@ -104,6 +116,7 @@ class ChecklistItemRead(_Camel):
     live_link_count: int
     applicability_reason: str | None
     original_inspection: OriginalInspectionRead | None
+    inspection_history: list[OriginalInspectionRead]
     assigned_to: str | None
     due_at: str | None
     version: int

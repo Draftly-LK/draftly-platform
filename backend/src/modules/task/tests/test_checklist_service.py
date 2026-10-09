@@ -35,6 +35,7 @@ from src.modules.task.tests.fakes import (
     USER_ID,
     InMemoryChecklistRepository,
     RecordingAudit,
+    SyntheticRequirementEvidence,
 )
 
 SIMPLE_ID = "R_C00_MATTER_AND_CLIENT_REFERENCE"
@@ -51,7 +52,12 @@ class Harness:
     def __init__(self) -> None:
         self.repo = InMemoryChecklistRepository()
         self.audit = RecordingAudit()
-        self.service = ChecklistService(repository=cast(Any, self.repo), audit=self.audit)
+        self.service = ChecklistService(
+            repository=cast(Any, self.repo),
+            audit=self.audit,
+            documents=SyntheticRequirementEvidence(),
+            evidence=SyntheticRequirementEvidence(),
+        )
 
     async def compile(self, **overrides: Any) -> str:
         compiler_input = CompilerInput(**{"subtype_id": TRANSFER_SALE_SUBTYPE_ID, **overrides})
@@ -295,11 +301,19 @@ async def test_items_of_another_matter_or_user_are_not_found(h: Harness) -> None
 
 
 async def test_inspection_is_attributed_to_the_authenticated_actor(h: Harness) -> None:
-    item = h.item_for(STATUTORY_ID)
+    item = h.item_for("R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED")
+    await h.service.link_document(
+        item_id=item.id,
+        detected_document_id="doc_1",
+        expected_version=1,
+        document_version=1,
+        interpretation_generation=1,
+        **WHO,
+    )
 
     view = await h.service.record_original_inspection(
         item_id=item.id,
-        expected_version=1,
+        expected_version=2,
         method="Sighted at the office",
         location="Colombo (synthetic)",
         **WHO,
@@ -317,10 +331,18 @@ async def test_inspection_is_attributed_to_the_authenticated_actor(h: Harness) -
 
 
 async def test_inspection_without_a_method_is_refused(h: Harness) -> None:
-    item = h.item_for(STATUTORY_ID)
+    item = h.item_for("R_C20_ORIGINAL_TITLE_CERTIFICATE_INSPECTED")
+    await h.service.link_document(
+        item_id=item.id,
+        detected_document_id="doc_1",
+        expected_version=1,
+        document_version=1,
+        interpretation_generation=1,
+        **WHO,
+    )
     with pytest.raises(OriginalInspectionRequiresHumanError):
         await h.service.record_original_inspection(
-            item_id=item.id, expected_version=1, method="  ", **WHO
+            item_id=item.id, expected_version=2, method="  ", **WHO
         )
     assert h.repo.items[item.id].original_inspection is None
 
@@ -333,10 +355,20 @@ async def test_a_pipeline_link_is_ai_organized_and_a_lawyers_link_is_confirmed(
 ) -> None:
     item = h.item_for(STATUTORY_ID)
 
-    machine = await h.service.link_document(item_id=item.id, detected_document_id="doc_1", **WHO)
+    machine = await h.service.link_document(
+        item_id=item.id,
+        detected_document_id="doc_1",
+        expected_version=1,
+        document_version=1,
+        interpretation_generation=1,
+        **WHO,
+    )
     human = await h.service.link_document(
         item_id=item.id,
         detected_document_id="doc_2",
+        expected_version=2,
+        document_version=1,
+        interpretation_generation=1,
         lawyer_confirmed=True,
         evidence_reference_ids=("evr_1",),
         note="Checked against the register.",
@@ -355,8 +387,22 @@ async def test_a_pipeline_link_is_ai_organized_and_a_lawyers_link_is_confirmed(
 
 async def test_one_document_can_be_offered_towards_several_items(h: Harness) -> None:
     first, second = h.item_for(STATUTORY_ID), h.item_for(SIMPLE_ID)
-    await h.service.link_document(item_id=first.id, detected_document_id="doc_combined", **WHO)
-    await h.service.link_document(item_id=second.id, detected_document_id="doc_combined", **WHO)
+    await h.service.link_document(
+        item_id=first.id,
+        detected_document_id="doc_combined",
+        expected_version=1,
+        document_version=1,
+        interpretation_generation=1,
+        **WHO,
+    )
+    await h.service.link_document(
+        item_id=second.id,
+        detected_document_id="doc_combined",
+        expected_version=1,
+        document_version=1,
+        interpretation_generation=1,
+        **WHO,
+    )
 
     view = await h.service.get_checklist(user_id=USER_ID, matter_id=MATTER_ID)
 
@@ -367,7 +413,14 @@ async def test_one_document_can_be_offered_towards_several_items(h: Harness) -> 
 
 async def test_replacing_a_document_supersedes_its_links_and_keeps_history(h: Harness) -> None:
     item = h.item_for(STATUTORY_ID)
-    await h.service.link_document(item_id=item.id, detected_document_id="doc_1", **WHO)
+    await h.service.link_document(
+        item_id=item.id,
+        detected_document_id="doc_1",
+        expected_version=1,
+        document_version=1,
+        interpretation_generation=1,
+        **WHO,
+    )
 
     count = await h.service.supersede_document_links(
         user_id=USER_ID, detected_document_id="doc_1", replacement_link_id="lnk_new"
@@ -389,6 +442,37 @@ async def test_linking_to_another_users_item_is_not_found(h: Harness) -> None:
     item = h.item_for(STATUTORY_ID)
     with pytest.raises(ChecklistItemNotFoundError):
         await h.service.link_document(
-            item_id=item.id, detected_document_id="doc_1", **{**WHO, "user_id": "usr_other"}
+            item_id=item.id,
+            detected_document_id="doc_1",
+            expected_version=1,
+            document_version=1,
+            interpretation_generation=1,
+            **{**WHO, "user_id": "usr_other"},
         )
     assert h.repo.links == []
+
+
+async def test_optional_superseded_attachment_does_not_invent_a_permanent_prerequisite(h):
+    item = h.item_for(STATUTORY_ID)
+    await h.service.link_document(
+        item_id=item.id,
+        detected_document_id="doc_1",
+        expected_version=1,
+        document_version=1,
+        interpretation_generation=1,
+        **WHO,
+    )
+    await h.service.supersede_document_links(user_id=USER_ID, detected_document_id="doc_1")
+    view = await h.service.decide_satisfaction(
+        item_id=item.id,
+        expected_version=2,
+        digital_review=DigitalReviewStatus.LAWYER_CONFIRMED,
+        consistency=ConsistencyStatus.MATCHED,
+        **WHO,
+    )
+    assert view.computed_resolution is ResolutionStatus.SATISFIED
+    checklist = await h.service.get_checklist(user_id=USER_ID, matter_id=MATTER_ID)
+    assert (
+        next(v for v in checklist.items if v.item.id == item.id).computed_resolution
+        is ResolutionStatus.SATISFIED
+    )

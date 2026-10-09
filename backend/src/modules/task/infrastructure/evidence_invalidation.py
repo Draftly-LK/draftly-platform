@@ -4,7 +4,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.auth.ports import AuditEventInput, AuditPort
-from src.modules.content_governance.contracts import DigitalReviewStatus, get_requirement
+from src.modules.content_governance.contracts import (
+    DigitalReviewStatus,
+    PhysicalOriginalStatus,
+    get_requirement,
+)
 from src.modules.task.domain.policies import compute_resolution
 from src.modules.task.infrastructure.orm import SatisfactionLinkRow
 from src.modules.task.infrastructure.repository import SqlChecklistRepository
@@ -47,6 +51,10 @@ class SqlDocumentLinkInvalidation:
                 continue
             before = f"{item.digital_review.value}/{item.resolution.value}"
             item.digital_review = DigitalReviewStatus.UNREVIEWED
+            if requirement.physical_original_policy is not PhysicalOriginalStatus.NOT_REQUIRED:
+                # Retain the inspection itself. Relinking the same immutable
+                # original may use it; a new original must never inherit it.
+                item.physical_original = PhysicalOriginalStatus.UNKNOWN
             item.resolution = compute_resolution(item, requirement)
             await self._repo.update_item(item, item.version)
             await self._audit.record(

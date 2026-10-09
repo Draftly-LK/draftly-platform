@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from src.modules.document.contracts import FactEvidenceLocator
+
 
 @dataclass(frozen=True)
 class ConfirmedFactValue:
@@ -56,6 +58,12 @@ class EvidenceReadPort(Protocol):
     ) -> tuple[tuple[str, int], ...]:
         """Return ``(source_file_id, page_number)`` for each reference, in order."""
         ...
+
+
+class RequirementEvidencePort(Protocol):
+    async def requirement_locators(
+        self, user_id: str, matter_id: str, evidence_reference_ids: tuple[str, ...]
+    ) -> tuple[FactEvidenceLocator, ...]: ...
 
 
 @dataclass(frozen=True)

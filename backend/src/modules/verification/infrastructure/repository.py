@@ -22,6 +22,7 @@ from src.modules.content_governance.contracts import (
     FactStatus,
     ReviewTargetType,
 )
+from src.modules.document.contracts import FactEvidenceLocator
 from src.modules.verification.contracts import (
     ConfirmedFactValue,
     FactTierSummary,
@@ -549,6 +550,31 @@ class SqlEvidenceReader:
     ) -> tuple[tuple[str, int], ...]:
         references = await self._repo.list_evidence(user_id, evidence_reference_ids)
         return tuple((ref.source_file_id, ref.page_number) for ref in references)
+
+    async def requirement_locators(
+        self, user_id: str, matter_id: str, evidence_reference_ids: tuple[str, ...]
+    ) -> tuple[FactEvidenceLocator, ...]:
+        from src.platform.errors import NotFoundError
+
+        references = await self._repo.list_evidence(user_id, evidence_reference_ids)
+        if {ref.id for ref in references} != set(evidence_reference_ids) or any(
+            ref.matter_id != matter_id for ref in references
+        ):
+            raise NotFoundError()
+        return tuple(
+            FactEvidenceLocator(
+                ref.source_file_id,
+                ref.page_number,
+                ref.source_sha256,
+                ref.extraction_run_id,
+                ref.detected_document_id,
+                ref.candidate_id,
+                ref.candidate_version,
+                ref.text_span,
+                ref.interpretation_generation,
+            )
+            for ref in references
+        )
 
 
 def utc_now() -> datetime:

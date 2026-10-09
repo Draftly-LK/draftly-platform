@@ -23,6 +23,7 @@ vi.mock("@/lib/api/use-token-provider", () => ({
 vi.mock("@/components/shell/app-shell", () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+vi.mock("@/lib/api/matters", () => ({ getChecklist: async () => ({ items: [] }) }));
 vi.mock("@/lib/api/documents", () => ({
   getCompleteDocumentInbox: async (): Promise<ApiDocumentInbox> =>
     ({

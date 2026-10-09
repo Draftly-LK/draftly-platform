@@ -187,3 +187,48 @@ describe("document operation retry metadata", () => {
       ).rejects.toThrow();
   });
 });
+
+it("deliberate renewal clears a reloaded operation pin without clearing another operation", async () => {
+  const intents = await import("./mutation-intent");
+  const old = await intents.pendingOperationIntent(
+    "renew-actor",
+    "renew-matter",
+    "inspection",
+    request,
+    4,
+  );
+  const other = await intents.pendingOperationIntent(
+    "renew-actor",
+    "renew-matter",
+    "decision",
+    request,
+    4,
+  );
+  vi.resetModules();
+  const renewed = await import("./mutation-intent");
+  renewed.clearPendingOperationIntent(
+    "renew-actor",
+    "renew-matter",
+    "inspection",
+  );
+  const next = await renewed.pendingOperationIntent(
+    "renew-actor",
+    "renew-matter",
+    "inspection",
+    request,
+    5,
+  );
+  expect(next.key).not.toBe(old.key);
+  expect(next.expectedVersion).toBe(5);
+  expect(
+    (
+      await renewed.pendingOperationIntent(
+        "renew-actor",
+        "renew-matter",
+        "decision",
+        request,
+        5,
+      )
+    ).key,
+  ).toBe(other.key);
+});

@@ -5058,12 +5058,22 @@
             "title": "Detecteddocumentid",
             "type": "string"
           },
+          "documentVersion": {
+            "minimum": 1.0,
+            "title": "Documentversion",
+            "type": "integer"
+          },
           "evidenceReferenceIds": {
             "items": {
               "type": "string"
             },
             "title": "Evidencereferenceids",
             "type": "array"
+          },
+          "interpretationGeneration": {
+            "minimum": 1.0,
+            "title": "Interpretationgeneration",
+            "type": "integer"
           },
           "lawyerConfirmed": {
             "default": false,
@@ -5083,7 +5093,9 @@
           }
         },
         "required": [
-          "detectedDocumentId"
+          "detectedDocumentId",
+          "documentVersion",
+          "interpretationGeneration"
         ],
         "title": "LinkDocumentRequest",
         "type": "object"
@@ -5991,6 +6003,13 @@
             ],
             "title": "Note"
           },
+          "originals": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalSourceRead"
+            },
+            "title": "Originals",
+            "type": "array"
+          },
           "reviewerId": {
             "title": "Reviewerid",
             "type": "string"
@@ -6001,7 +6020,8 @@
           "inspectedAt",
           "method",
           "location",
-          "note"
+          "note",
+          "originals"
         ],
         "title": "OriginalInspectionRead",
         "type": "object"
@@ -6043,6 +6063,29 @@
           "method"
         ],
         "title": "OriginalInspectionRequest",
+        "type": "object"
+      },
+      "OriginalSourceRead": {
+        "properties": {
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "sourceFileId": {
+            "title": "Sourcefileid",
+            "type": "string"
+          },
+          "storageVersion": {
+            "title": "Storageversion",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceFileId",
+          "sha256",
+          "storageVersion"
+        ],
+        "title": "OriginalSourceRead",
         "type": "object"
       },
       "PageAccountingRead": {
@@ -8444,6 +8487,17 @@
             "title": "Digitalreview",
             "type": "string"
           },
+          "documentVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Documentversion"
+          },
           "evidenceReferenceIds": {
             "items": {
               "type": "string"
@@ -8455,9 +8509,27 @@
             "title": "Id",
             "type": "string"
           },
+          "interpretationGeneration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interpretationgeneration"
+          },
           "isLive": {
             "title": "Islive",
             "type": "boolean"
+          },
+          "originals": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalSourceRead"
+            },
+            "title": "Originals",
+            "type": "array"
           },
           "reviewNote": {
             "anyOf": [
@@ -8515,7 +8587,10 @@
           "reviewNote",
           "supersededByLinkId",
           "isLive",
-          "createdAt"
+          "createdAt",
+          "documentVersion",
+          "interpretationGeneration",
+          "originals"
         ],
         "title": "SatisfactionLinkRead",
         "type": "object"
@@ -10579,6 +10654,13 @@
             ],
             "title": "Inclusiontriggerid"
           },
+          "inspectionHistory": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalInspectionRead"
+            },
+            "title": "Inspectionhistory",
+            "type": "array"
+          },
           "labelKey": {
             "title": "Labelkey",
             "type": "string"
@@ -10685,6 +10767,7 @@
           "liveLinkCount",
           "applicabilityReason",
           "originalInspection",
+          "inspectionHistory",
           "assignedTo",
           "dueAt",
           "version"
@@ -13767,6 +13850,22 @@
           },
           {
             "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
             "name": "If-Match",
             "required": false,
             "schema": {
@@ -13906,6 +14005,38 @@
               "title": "Item Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
           }
         ],
         "requestBody": {
@@ -13972,6 +14103,22 @@
             "schema": {
               "title": "Item Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           },
           {

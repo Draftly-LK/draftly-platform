@@ -24,6 +24,7 @@ from src.modules.content_governance.contracts import (
     PhysicalOriginalStatus,
     ResolutionStatus,
 )
+from src.modules.document.contracts import OriginalSourcePin
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,7 @@ class ChecklistItem:
     local_authority_id: str | None = None
     #: Present only once an authorised human records it. Never model-derived.
     original_inspection: OriginalInspection | None = None
+    inspection_history: tuple[OriginalInspection, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,7 @@ class OriginalInspection:
     method: str
     location: str | None = None
     note: str | None = None
+    originals: tuple[OriginalSourcePin, ...] = ()
 
 
 @dataclass
@@ -118,11 +121,17 @@ class SatisfactionLink:
     review_note: str | None = None
     superseded_by_link_id: str | None = None
     evidence_reference_ids: tuple[str, ...] = field(default_factory=tuple)
+    document_version: int | None = None
+    interpretation_generation: int | None = None
+    originals: tuple[OriginalSourcePin, ...] = ()
 
     @property
     def is_live(self) -> bool:
         return (
             self.superseded_by_link_id is None
+            and self.document_version is not None
+            and self.interpretation_generation is not None
+            and bool(self.originals)
             and self.digital_review is not DigitalReviewStatus.SUPERSEDED
             and self.digital_review is not DigitalReviewStatus.REJECTED
         )
