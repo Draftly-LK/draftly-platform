@@ -356,3 +356,295 @@ it("keeps unsupported pages in manual review and records a reason for each dispo
     1,
   ]);
 });
+
+it("requires processing before offering page decisions for an original with unknown length", () => {
+  const unknown = {
+    ...inbox,
+    sourceFiles: [{ ...inbox.sourceFiles[0]!, pageCount: null }],
+    pageAccounting: [
+      {
+        ...inbox.pageAccounting![0]!,
+        pageCount: null,
+        unclaimedPageNumbers: [],
+      },
+    ],
+  };
+  renderWithIntl(
+    <PageRecovery getToken={token} inbox={unknown} onChange={vi.fn()} />,
+  );
+  expect(
+    screen.getByText(
+      "Page count is unknown. Process the original before grouping its pages.",
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Group unclaimed pages" }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Record page status" }),
+  ).toBeNull();
+  expect(mocks.create).not.toHaveBeenCalled();
+  expect(mocks.disposition).not.toHaveBeenCalled();
+});
+
+it("shows conflicting and out-of-bounds pages even when no pages remain unclaimed", () => {
+  const conflicted = {
+    ...inbox,
+    pageAccounting: [
+      {
+        ...inbox.pageAccounting![0]!,
+        unclaimedPageNumbers: [],
+        overlappingPageNumbers: [2],
+        outOfBoundsPageNumbers: [4],
+        blankPageNumbers: [1],
+      },
+    ],
+  };
+  renderWithIntl(
+    <PageRecovery getToken={token} inbox={conflicted} onChange={vi.fn()} />,
+  );
+  expect(screen.getByText("Pages in conflicting groups: 2")).toBeTruthy();
+  expect(
+    screen.getByText("Grouping refers to pages outside the original: 4"),
+  ).toBeTruthy();
+  expect(screen.getByText("Marked blank: 1")).toBeTruthy();
+  expect(screen.queryByText("Every page is accounted for")).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Group unclaimed pages" }),
+  ).toBeNull();
+  expect(
+    screen.getByRole("button", { name: "Record page status" }),
+  ).toBeTruthy();
+});
+
+it("marks reconciled pages as accounted while retaining the ability to correct their status", () => {
+  const complete = {
+    ...inbox,
+    pageAccounting: [
+      {
+        ...inbox.pageAccounting![0]!,
+        unclaimedPageNumbers: [],
+        complete: true,
+        manualReviewRequired: false,
+      },
+    ],
+  };
+  renderWithIntl(
+    <PageRecovery getToken={token} inbox={complete} onChange={vi.fn()} />,
+  );
+  expect(screen.getByText("Every page is accounted for")).toBeTruthy();
+  expect(
+    screen.queryByRole("button", { name: "Group unclaimed pages" }),
+  ).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Record page status" }));
+  expect((screen.getByLabelText("Page number") as HTMLInputElement).value).toBe(
+    "1",
+  );
+  expect(
+    screen
+      .getByRole("button", { name: "Save page status" })
+      .hasAttribute("disabled"),
+  ).toBe(true);
+});
+
+it("retires only the explicitly selected current one-page group with its reviewed version", async () => {
+  const member = {
+    id: "synthetic-single-page",
+    version: 7,
+    fragments: [{ sourceFileId: "synthetic-source", pageStart: 2, pageEnd: 2 }],
+  };
+  const grouped = {
+    ...inbox,
+    documents: [
+      member,
+      {
+        ...member,
+        id: "synthetic-superseded",
+        versionRelationship: "SUPERSEDED",
+      },
+      {
+        ...member,
+        id: "synthetic-multi-page",
+        fragments: [{ ...member.fragments[0], pageEnd: 3 }],
+      },
+      {
+        ...member,
+        id: "synthetic-other-source",
+        fragments: [
+          { ...member.fragments[0], sourceFileId: "synthetic-other" },
+        ],
+      },
+      { ...member, id: "synthetic-no-pages", fragments: [] },
+    ],
+  } as ApiDocumentInbox;
+  mocks.disposition.mockResolvedValue(inbox.sourceFiles[0]);
+  renderWithIntl(
+    <PageRecovery getToken={token} inbox={grouped} onChange={vi.fn()} />,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Record page status" }));
+  expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+  const selected = screen.getByRole("checkbox") as HTMLInputElement;
+  fireEvent.click(selected);
+  expect(selected.checked).toBe(true);
+  fireEvent.click(selected);
+  expect(selected.checked).toBe(false);
+  fireEvent.change(screen.getByRole("combobox"), {
+    target: { value: "review_required" },
+  });
+  expect(screen.queryByRole("checkbox")).toBeNull();
+  fireEvent.change(screen.getByRole("combobox"), {
+    target: { value: "blank" },
+  });
+  expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
+    false,
+  );
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.change(screen.getByLabelText("Reason"), {
+    target: { value: "  SYNTHETIC reviewed blank page  " },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save page status" }));
+  await waitFor(() => expect(mocks.disposition).toHaveBeenCalledOnce());
+  expect(mocks.disposition.mock.calls[0]!.slice(1, 4)).toEqual([
+    "synthetic-source",
+    {
+      pageNumber: 2,
+      disposition: "blank",
+      reason: "SYNTHETIC reviewed blank page",
+      retireDocuments: [{ documentId: "synthetic-single-page", version: 7 }],
+    },
+    1,
+  ]);
+});
+
+it.each(["0", "4", "1.5"])(
+  "refuses page %s outside the original's integer page range",
+  (page) => {
+    renderWithIntl(
+      <PageRecovery getToken={token} inbox={inbox} onChange={vi.fn()} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Record page status" }));
+    fireEvent.change(screen.getByLabelText("Reason"), {
+      target: { value: "SYNTHETIC page review" },
+    });
+    fireEvent.change(screen.getByLabelText("Page number"), {
+      target: { value: page },
+    });
+    const save = screen.getByRole("button", { name: "Save page status" });
+    expect(save.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(save);
+    expect(mocks.disposition).not.toHaveBeenCalled();
+  },
+);
+
+it("renews a removed page to the current unsupported page and current source version", async () => {
+  function Host() {
+    const [value, setValue] = useState(inbox);
+    return (
+      <>
+        <button
+          onClick={() =>
+            setValue({
+              ...inbox,
+              sourceFiles: [
+                { ...inbox.sourceFiles[0]!, pageCount: 1, version: 2 },
+              ],
+              pageAccounting: [
+                {
+                  ...inbox.pageAccounting![0]!,
+                  pageCount: 1,
+                  unclaimedPageNumbers: [],
+                  unsupportedPageNumbers: [1],
+                },
+              ],
+            })
+          }
+        >
+          Refresh corrected original
+        </button>
+        <PageRecovery getToken={token} inbox={value} onChange={vi.fn()} />
+      </>
+    );
+  }
+  renderWithIntl(<Host />);
+  fireEvent.click(screen.getByRole("button", { name: "Record page status" }));
+  fireEvent.change(screen.getByLabelText("Page number"), {
+    target: { value: "3" },
+  });
+  fireEvent.change(screen.getByLabelText("Reason"), {
+    target: { value: "SYNTHETIC obsolete review" },
+  });
+  fireEvent.click(
+    screen.getByRole("button", { name: "Refresh corrected original" }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Review current document state" }),
+  );
+  expect((screen.getByLabelText("Page number") as HTMLInputElement).value).toBe(
+    "1",
+  );
+  expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
+    "unsupported",
+  );
+  expect((screen.getByLabelText("Reason") as HTMLInputElement).value).toBe("");
+  fireEvent.change(screen.getByLabelText("Reason"), {
+    target: { value: "SYNTHETIC renewed unsupported page" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Save page status" }));
+  await waitFor(() => expect(mocks.disposition).toHaveBeenCalledOnce());
+  expect(mocks.disposition.mock.calls[0]!.slice(1, 4)).toEqual([
+    "synthetic-source",
+    {
+      pageNumber: 1,
+      disposition: "unsupported",
+      reason: "SYNTHETIC renewed unsupported page",
+    },
+    2,
+  ]);
+});
+
+it("removes a proposed group on renewal when its pages have already been accounted for", () => {
+  function Host() {
+    const [value, setValue] = useState(inbox);
+    return (
+      <>
+        <button
+          onClick={() =>
+            setValue({
+              ...inbox,
+              pageAccounting: [
+                {
+                  ...inbox.pageAccounting![0]!,
+                  unclaimedPageNumbers: [],
+                  blankPageNumbers: [2, 3],
+                },
+              ],
+            })
+          }
+        >
+          Refresh accounted pages
+        </button>
+        <PageRecovery getToken={token} inbox={value} onChange={vi.fn()} />
+      </>
+    );
+  }
+  renderWithIntl(<Host />);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Group unclaimed pages" }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Refresh accounted pages" }),
+  );
+  expect(
+    screen
+      .getByRole("button", { name: "Create document from these pages" })
+      .hasAttribute("disabled"),
+  ).toBe(true);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Review current document state" }),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Create document from these pages" }),
+  ).toBeNull();
+  expect(screen.getByText("Marked blank: 2, 3")).toBeTruthy();
+  expect(mocks.create).not.toHaveBeenCalled();
+});
