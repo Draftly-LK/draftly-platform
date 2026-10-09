@@ -52,7 +52,7 @@ class FakeExtractor:
     async def extract(self, page: PageRaster, kind: str) -> ExtractionResult:
         self.calls.append(page.page_no)
         if page.page_no == 1:
-            fields = {"district": "Colombo", "parcelNo": None, "extent": "0.0153 hectares"}
+            fields = {"district": "Colombo", "parcelNo": None, "extent": "0.0250 hectares"}
         else:
             fields = {"district": "Kandy", "parcelNo": "0020", "transfereeNic": "bad-nic"}
         return ExtractionResult(

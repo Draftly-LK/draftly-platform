@@ -31,7 +31,7 @@ EXPECTED = BUNDLE / "expected-fields.json"
 
 def _norm(value: str) -> str:
     """Comparison-normalise: unicode NFC, collapse whitespace, casefold,
-    strip common punctuation noise so 'Rs. 4,590,000/=' matches variants."""
+    strip common punctuation noise so 'Rs. 1,000,000/=' matches variants."""
     text = unicodedata.normalize("NFC", value)
     text = " ".join(text.split()).casefold()
     return text.replace(",", "").replace("/=", "").replace("/-", "").strip(" .")
