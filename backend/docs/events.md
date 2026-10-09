@@ -186,7 +186,7 @@ it is the trigger for the restricted 24-hour escalation only.
 | `document.uploaded` | `documentId`, `documentVersionId`, `checksum`, `mime` | `task_service`, `billing_service` |
 | `document.replaced` | `documentId`, `newVersionId`, `supersededVersionId` | `task_service`, `notification_service` |
 | `document.version-superseded` | `documentId`, `supersededVersionId`, `successorVersionId` | `verification_service`, `task_service`, `memory_service`, `draft_service` |
-| `document.processing-completed` | `documentVersionId`, `processingRunId`, `docClass`, `derivatives` | `task_service`, `document_processing` |
+| `document.processing-completed` | `documentVersionId`, `processingRunId`, `docClass`, `derivatives`, `sourceFileId`, `sourceVersion`, `documentReferences` | `task_service`, `document_processing` |
 | `document.processing-failed` | `documentVersionId`, `processingRunId`, `outcome`, `terminal` | `notification_service`, `billing_service` |
 | `document.extraction-completed` | `documentVersionId`, `processingRunId`, `candidateCount`, `conflictCount` | `verification_service` |
 
@@ -199,6 +199,14 @@ document requirement projection needs. The second says candidate particulars
 exist, which is what `verification_service.ingest_candidates` needs. Previously
 `verification-service.md` subscribed to "the extraction-completion event", which
 nothing published.
+
+The source-processing API also includes `sourceFileId`, `sourceVersion` and
+`documentReferences` containing exact document `id`, `version` and interpretation
+`generation`. Reruns that reuse grouping re-read current, eligible document pins.
+These identifiers support a durable operational document-review proposal. The
+task consumer rechecks live actor authorization, ownership and supporting versions;
+it suppresses stale or denied events. No extracted text enters this payload and
+no event accepts facts, completes lawyer decisions or changes legal satisfaction.
 
 `document.processing-failed` carries `terminal` so a consumer can distinguish a
 retryable attempt from a dead-lettered run; only the terminal case notifies.

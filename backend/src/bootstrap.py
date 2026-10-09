@@ -514,6 +514,9 @@ def build_agent_tools(session: AsyncSession, *, session_id: str, memory: Any) ->
             wt.RecordDocumentReceiptTool.name: wt.RecordDocumentReceiptTool(
                 checklist, matters, build_matter_scope_service(session)
             ),
+            wt.SuggestChecklistItemTool.name: wt.SuggestChecklistItemTool(
+                build_work_task_service(session), ingestion=ingestion, session_id=session_id
+            ),
             **wt.confirmed_proposal_tools(build_agent_service(session), session_id),
         }
     )
@@ -1256,6 +1259,18 @@ def build_dispatcher() -> MessageDispatcher:
 
     for event_name in NOTIFICATION_CONSUMED_EVENTS:
         dispatcher.register_event(event_name, make_event_handler(event_name))
+
+    async def document_task_handler(
+        session: AsyncSession, message: ClaimedMessage
+    ) -> MessageResult:
+        from src.modules.matter_agent.document_followthrough import consume_processed_document
+
+        if message.name in NOTIFICATION_CONSUMED_EVENTS:
+            await consume_registered_event(session, message.payload)
+        await consume_processed_document(session, message.payload)
+        return MessageResult.DONE
+
+    dispatcher.register_event("document.processing-completed", document_task_handler)
 
     return dispatcher
 
