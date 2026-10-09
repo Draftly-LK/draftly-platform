@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "mockedFactResponse": true,
+  "posts": 2,
+  "violations": [],
+  "errors": [],
+  "checks": [
+    "specific practising-status reason",
+    "profile recovery link",
+    "guidance retained when detail opens",
+    "single refusal after quick and detailed requests",
+    "no false confirmation"
+  ]
+}

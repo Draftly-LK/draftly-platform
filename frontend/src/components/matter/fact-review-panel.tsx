@@ -47,6 +47,7 @@ export function FactReviewPanel({
   subjectLabel,
   getToken,
   onSaved,
+  onErrorChange,
   sourceRevision,
 }: {
   matterId: string;
@@ -58,6 +59,7 @@ export function FactReviewPanel({
   subjectLabel: (subject: ApiMatterSubject) => string;
   getToken: TokenProvider;
   onSaved: (fact: ApiMatterFact) => void;
+  onErrorChange?: (factId: string, error: unknown) => void;
   sourceRevision?: number;
 }) {
   const t = useTranslations("factRegister");
@@ -78,6 +80,10 @@ export function FactReviewPanel({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  useEffect(() => {
+    onErrorChange?.(initial.id, error);
+    return () => onErrorChange?.(initial.id, null);
+  }, [error, initial.id, onErrorChange]);
   const [historyError, setHistoryError] = useState<unknown>(null);
   const [alternativesError, setAlternativesError] = useState<unknown>(null);
   const [reviewReady, setReviewReady] = useState(false);
