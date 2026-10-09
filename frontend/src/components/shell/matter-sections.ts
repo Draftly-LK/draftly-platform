@@ -9,7 +9,6 @@ export const MATTER_SECTIONS = [
   "checks",
   "drafts",
   "exports",
-  "assistantTab",
 ] as const;
 
 export type MatterSection = (typeof MATTER_SECTIONS)[number];
@@ -21,7 +20,6 @@ const SECTION_PATH: Record<MatterSection, string> = {
   checks: "/checks",
   drafts: "/drafts",
   exports: "/exports",
-  assistantTab: "/assistant",
 };
 
 export function matterSectionHref(section: MatterSection, matterId: string): string {
