@@ -42,6 +42,7 @@ class FactTierSummary:
     has_current_search_evidence: bool = False
     #: Lossless eligible values. Consumers must select an explicit scope.
     scoped_confirmed: tuple[ConfirmedFactValue, ...] = ()
+    scoped_conflicts: tuple[tuple[str | None, str | None, str], ...] = ()
 
 
 class ConfirmedFactReadPort(Protocol):
@@ -142,3 +143,9 @@ class CandidateReviewProjection:
     value: str
     review_state: str
     version: int
+
+
+class FactScopeDependenciesPort(Protocol):
+    async def fact_ids_for_transaction(
+        self, user_id: str, matter_id: str, transaction_id: str
+    ) -> tuple[str, ...]: ...

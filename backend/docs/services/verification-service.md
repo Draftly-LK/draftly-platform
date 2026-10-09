@@ -416,3 +416,14 @@ Recommended defaults in bold; confirm or override before coding.
    `resolve-conflict` call or `verify`/`correct` cover it. Lean **reuse
    `verify`/`correct`**; the `conflict` state and `conflicts[]` array already
    carry what the UI needs.
+
+### Downstream freshness after canonical decisions (2026-10-09)
+
+Canonical successor decisions notify the existing public check/form invalidation
+ports inside the shared matter transaction. Superseded/resolved exact fact IDs and
+confirmed peers withheld by new competing observations invalidate dependent outputs.
+A newly competing manual fact is still review required; it does not replace a
+confirmed winner silently. Unrelated bound fact IDs remain unaffected. Approved
+artifacts, rendered values, bindings and decision history remain retained while
+the form owner marks the output stale. FactTierSummary also exposes lossless scoped
+conflict tuples so explicit scoped consumers do not borrow matter-wide conflicts.

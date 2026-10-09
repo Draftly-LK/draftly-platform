@@ -18,6 +18,9 @@ async def test_consumers_wait_until_the_correction_transaction_finishes(
     monkeypatch.setenv("SOURCE_FILE_STORAGE_DIR", str(tmp_path / "sources"))
     async with db_committing() as session:
         matter = await seed(session)
+        transaction = await SqlMatterScopeRepository(session).save_transaction(
+            matter.lawyer_id, matter.matter_id, parcels=(), roles=()
+        )
         await session.commit()
 
     async def consume():
@@ -29,7 +32,9 @@ async def test_consumers_wait_until_the_correction_transaction_finishes(
                 "correlation_id": "synthetic-consumer",
             }
             if consumer == "checks":
-                await build_check_service(session).run_checks(**kwargs)
+                await build_check_service(session).run_checks(
+                    **kwargs, transaction_id=transaction.id, association_version=transaction.version
+                )
             else:
                 await build_draft_service(session).generate_form(
                     **kwargs,

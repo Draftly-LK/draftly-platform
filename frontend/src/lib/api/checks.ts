@@ -10,9 +10,17 @@
  */
 
 import { apiFetch, ifMatch, type TokenProvider } from "@/lib/api/client";
-import type { ApiCheckResultList, ApiCheckRun, ApiLegalIssue, ApiLegalIssueList } from "@/types/rta";
+import type {
+  ApiCheckResultList,
+  ApiCheckRun,
+  ApiLegalIssue,
+  ApiLegalIssueList,
+} from "@/types/rta";
 
 export interface RunChecksBody {
+  transactionId: string;
+  subjectId: string | null;
+  associationVersion: number;
   searchCurrencyMaxAgeDays?: number;
 }
 
@@ -20,13 +28,16 @@ export interface RunChecksBody {
 export function runChecks(
   getToken: TokenProvider,
   matterId: string,
-  body: RunChecksBody = {},
+  body: RunChecksBody,
 ): Promise<ApiCheckRun> {
-  return apiFetch<ApiCheckRun>(`/api/v1/matters/${encodeURIComponent(matterId)}/checks/run`, {
-    method: "POST",
-    body,
-    getToken,
-  });
+  return apiFetch<ApiCheckRun>(
+    `/api/v1/matters/${encodeURIComponent(matterId)}/checks/run`,
+    {
+      method: "POST",
+      body,
+      getToken,
+    },
+  );
 }
 
 export interface ListParams {
@@ -101,4 +112,27 @@ export function recordIssueDecision(
     `/api/v1/matters/${encodeURIComponent(matterId)}/issues/${encodeURIComponent(issueId)}/decisions`,
     { method: "POST", body, headers: ifMatch(version), getToken },
   );
+}
+
+export async function listCompleteIssues(
+  getToken: TokenProvider,
+  matterId: string,
+): Promise<ApiLegalIssueList> {
+  const first = await listIssues(getToken, matterId, { limit: 100 });
+  const items = [...first.items];
+  let cursor = first.page.nextCursor;
+  const seen = new Set<string>();
+  while (cursor) {
+    if (seen.has(cursor) || seen.size >= 100)
+      throw new Error("Incomplete issue history");
+    seen.add(cursor);
+    const page = await listIssues(getToken, matterId, { limit: 100, cursor });
+    items.push(...page.items);
+    cursor = page.page.nextCursor;
+  }
+  return {
+    ...first,
+    items,
+    page: { ...first.page, nextCursor: null, hasMore: false },
+  };
 }

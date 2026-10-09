@@ -335,3 +335,13 @@ Recommended defaults in bold; confirm or override before coding.
 5. **Draft title source.** `title` is free text in the frontend. Recommend
    **defaulting from the template `nameKey` and form number** while allowing an
    override; confirm.
+
+### Canonical and association invalidation (2026-10-09)
+
+The existing FormInputInvalidationPort accepts an optional reason while continuing
+to match exact bound fact IDs. Canonical corrections/conflicts use
+FACT_NO_LONGER_CONFIRMED; transaction association changes use
+SCOPE_ASSOCIATION_CHANGED. The form owner preserves artifact hash, rendered field
+values and historical pins when marking an approved form STALE_AFTER_APPROVAL.
+Readiness is an operational projection and cannot substitute for form preflight or
+approval eligibility. Existing multi-scope compatibility withholding remains in force.

@@ -474,6 +474,22 @@ class SqlConfirmedFactReader:
 
     def __init__(self, session: AsyncSession) -> None:
         self._repo = SqlVerificationRepository(session)
+        self._session = session
+
+    async def fact_ids_for_transaction(
+        self, user_id: str, matter_id: str, transaction_id: str
+    ) -> tuple[str, ...]:
+        return tuple(
+            (
+                await self._session.execute(
+                    select(ExtractedFactRow.id).where(
+                        ExtractedFactRow.user_id == user_id,
+                        ExtractedFactRow.matter_id == matter_id,
+                        ExtractedFactRow.transaction_id == transaction_id,
+                    )
+                )
+            ).scalars()
+        )
 
     async def summarise(self, user_id: str, matter_id: str) -> FactTierSummary:
         facts = await self._repo.list_live_facts(user_id, matter_id)
@@ -484,12 +500,14 @@ class SqlConfirmedFactReader:
             groups[(fact.transaction_id, fact.subject_id, fact.fact_type_id)].append(fact)
         scoped: list[ConfirmedFactValue] = []
         conflicted: set[str] = set()
-        for (_, _, fact_type_id), group in groups.items():
+        scoped_conflicts = []
+        for (transaction_id, subject_id, fact_type_id), group in groups.items():
             # A later version alone is never a conflict-resolution decision.
             if any(f.status is FactStatus.CONFLICTED for f in group) or any(
                 f.value != group[0].value for f in group[1:]
             ):
                 conflicted.add(fact_type_id)
+                scoped_conflicts.append((transaction_id, subject_id, fact_type_id))
                 continue
             eligible = [
                 f
@@ -536,6 +554,7 @@ class SqlConfirmedFactReader:
             conflicted_fact_type_ids=tuple(sorted(set(conflicted))),
             has_current_search_evidence=SEARCH_EVIDENCE_FACT_TYPE_ID in confirmed,
             scoped_confirmed=tuple(scoped),
+            scoped_conflicts=tuple(scoped_conflicts),
         )
 
 

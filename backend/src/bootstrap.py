@@ -514,10 +514,12 @@ def build_check_service(session: AsyncSession) -> CheckService:
     from src.modules.audit.infrastructure.repository import SqlAuditRepository
     from src.modules.check.application.check_service import CheckService
     from src.modules.check.infrastructure.repository import SqlCheckRepository
+    from src.modules.matter.infrastructure.scope_repository import SqlMatterScopeRepository
     from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
 
     return CheckService(
         matter_lock=_build_document_matter_lock(session),
+        scopes=SqlMatterScopeRepository(session),
         repository=SqlCheckRepository(session),
         facts=SqlConfirmedFactReader(session),
         audit=AuditService(repository=SqlAuditRepository(session)),
@@ -535,8 +537,14 @@ def build_fact_query_service(session: AsyncSession) -> FactQueryService:
 def build_matter_scope_service(session: AsyncSession) -> MatterScopeService:
     from src.modules.audit.application.audit_service import AuditService
     from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.check.infrastructure.evidence_invalidation import SqlCheckInputInvalidation
+    from src.modules.draft.infrastructure.evidence_invalidation import SqlFormInputInvalidation
+    from src.modules.matter.application.association_invalidation import (
+        MatterAssociationInvalidation,
+    )
     from src.modules.matter.application.scope_service import MatterScopeService
     from src.modules.matter.infrastructure.scope_repository import SqlMatterScopeRepository
+    from src.modules.verification.infrastructure.repository import SqlConfirmedFactReader
     from src.platform.db.idempotency import SqlIdempotencyStore
 
     return MatterScopeService(
@@ -544,13 +552,22 @@ def build_matter_scope_service(session: AsyncSession) -> MatterScopeService:
         build_matter_service(session),
         AuditService(repository=SqlAuditRepository(session)),
         SqlIdempotencyStore(session),
+        MatterAssociationInvalidation(
+            SqlCheckInputInvalidation(
+                session, AuditService(repository=SqlAuditRepository(session))
+            ),
+            SqlConfirmedFactReader(session),
+            SqlFormInputInvalidation(session, AuditService(repository=SqlAuditRepository(session))),
+        ),
     )
 
 
 def build_fact_review_service(session: AsyncSession) -> FactReviewService:
     from src.modules.audit.application.audit_service import AuditService
     from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.check.infrastructure.evidence_invalidation import SqlCheckInputInvalidation
     from src.modules.document.infrastructure.fact_reader import SqlDocumentFactReader
+    from src.modules.draft.infrastructure.evidence_invalidation import SqlFormInputInvalidation
     from src.modules.verification.application.review_service import FactReviewService
     from src.modules.verification.infrastructure.repository import (
         SqlConfirmedFactReader,
@@ -567,6 +584,8 @@ def build_fact_review_service(session: AsyncSession) -> FactReviewService:
         SqlIdempotencyStore(session),
         AuditService(repository=SqlAuditRepository(session)),
         SqlConfirmedFactReader(session),
+        SqlCheckInputInvalidation(session, AuditService(repository=SqlAuditRepository(session))),
+        SqlFormInputInvalidation(session, AuditService(repository=SqlAuditRepository(session))),
     )
 
 

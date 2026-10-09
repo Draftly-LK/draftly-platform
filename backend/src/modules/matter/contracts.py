@@ -95,6 +95,27 @@ class MatterTransactionReference:
     version: int = 1
 
 
+class MatterScopeReadPort(Protocol):
+    async def transaction(
+        self, user_id: str, matter_id: str, transaction_id: str
+    ) -> MatterTransactionReference | None: ...
+    async def subject(
+        self, user_id: str, matter_id: str, subject_id: str
+    ) -> MatterSubjectReference | None: ...
+
+
+class ScopeAssociationInvalidationPort(Protocol):
+    async def invalidate_scope(
+        self,
+        *,
+        user_id: str,
+        matter_id: str,
+        transaction_id: str,
+        actor_id: str,
+        correlation_id: str,
+    ) -> None: ...
+
+
 class MatterScopePort(Protocol):
     async def lock(self, ctx: RequestContext, matter_id: str) -> None:
         """Serialize scope/review mutations in this matter until transaction end."""

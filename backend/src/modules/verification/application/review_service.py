@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from src.modules.auth.ports import AuditEventInput, AuditPort
+from src.modules.check.contracts import CheckInputInvalidationPort
 from src.modules.content_governance.contracts import (
     CAP_AUDIT_READ,
     CAP_FACT_CONFIRM_CRITICAL,
@@ -20,6 +21,7 @@ from src.modules.document.contracts import (
     DocumentFactPort,
     FactEvidenceLocator,
 )
+from src.modules.draft.contracts import FormInputInvalidationPort
 from src.modules.matter.contracts import (
     MatterReadPort,
     MatterScopePort,
@@ -98,10 +100,13 @@ class FactReviewService:
         replay: IdempotencyPort,
         audit: AuditPort,
         confirmed: ConfirmedFactReadPort,
+        checks: CheckInputInvalidationPort | None = None,
+        forms: FormInputInvalidationPort | None = None,
     ) -> None:
         self._repo, self._matters, self._scopes = repository, matters, scopes
         self._documents, self._practising, self._replay = documents, practising, replay
         self._audit, self._confirmed = audit, confirmed
+        self._checks, self._forms = checks, forms
 
     async def _authorize(
         self, ctx: RequestContext, matter_id: str, fact_type_id: str | None = None
@@ -362,6 +367,7 @@ class FactReviewService:
             ),
         )
         fact = await self._record(ctx, fact, action="manual", before=None, reason=data.reason)
+        await self._invalidate(ctx, fact, ())
         await self._replay.store(
             record_id=new_id("idem"),
             user_id=ctx.actor_id,
@@ -371,6 +377,28 @@ class FactReviewService:
             response={"factId": fact.id},
         )
         return fact
+
+    async def _invalidate(
+        self, ctx: RequestContext, fact: ExtractedFact, superseded: tuple[str, ...]
+    ) -> None:
+        # A competing live observation withholds a previously confirmed peer too.
+        conflicting = tuple(
+            peer.id
+            for peer in await self._peers(fact)
+            if peer.id != fact.id and peer.value != fact.value
+        )
+        fact_ids = tuple(sorted({*superseded, *conflicting}))
+        if not fact_ids:
+            return
+        for owner in (self._checks, self._forms):
+            if owner is not None:
+                await owner.invalidate_inputs(
+                    user_id=ctx.actor_id,
+                    matter_id=fact.matter_id,
+                    fact_ids=fact_ids,
+                    actor_id=ctx.actor_id,
+                    correlation_id=ctx.correlation_id,
+                )
 
     async def _replayed(self, ctx: RequestContext, matter_id: str, fact_id: str) -> ExtractedFact:
         fact = await self._repo.get_fact(ctx.actor_id, fact_id)
@@ -527,6 +555,7 @@ class FactReviewService:
             await self._repo.mark_superseded(
                 ctx.actor_id, previous, superseded_by_fact_id=successor.id
             )
+        await self._invalidate(ctx, successor, (fact.id, *resolving))
         await self._replay.store(
             record_id=new_id("idem"),
             user_id=ctx.actor_id,

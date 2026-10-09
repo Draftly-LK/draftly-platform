@@ -24,6 +24,7 @@ class SqlCheckInputInvalidation:
         fact_ids: tuple[str, ...],
         actor_id: str,
         correlation_id: str,
+        transaction_id: str | None = None,
     ) -> None:
         rows = list(
             (
@@ -39,17 +40,23 @@ class SqlCheckInputInvalidation:
                 )
             ).scalars()
         )
-        seen: set[str] = set()
+        seen: set[tuple[str, str | None, str | None]] = set()
         changed: set[str] = set()
+        changed_scopes: set[tuple[str, str | None, str | None, int | None]] = set()
         for row in rows:
-            if row.check_definition_id in seen:
+            key = (row.check_definition_id, row.transaction_id, row.subject_id)
+            if key in seen:
                 continue
-            seen.add(row.check_definition_id)
-            if row.explanation_key == STALE_INPUT_KEY or not any(
-                p["factId"] in fact_ids for p in row.input_fact_versions
-            ):
+            seen.add(key)
+            affected = (
+                row.transaction_id == transaction_id
+                if transaction_id
+                else any(p["factId"] in fact_ids for p in row.input_fact_versions)
+            )
+            if row.explanation_key == STALE_INPUT_KEY or not affected:
                 continue
             changed.add(row.id)
+            changed_scopes.add((*key, row.association_version))
             successor = CrossDocumentCheckRow(
                 id=new_id("chk"),
                 user_id=user_id,
@@ -57,6 +64,9 @@ class SqlCheckInputInvalidation:
                 check_definition_id=row.check_definition_id,
                 check_definition_version=row.check_definition_version,
                 run_id=new_id("run"),
+                transaction_id=row.transaction_id,
+                subject_id=row.subject_id,
+                association_version=row.association_version,
                 outcome="INCONCLUSIVE",
                 default_severity=row.default_severity,
                 explanation_key=STALE_INPUT_KEY,
@@ -84,12 +94,20 @@ class SqlCheckInputInvalidation:
                 select(LegalIssueRow).where(
                     LegalIssueRow.user_id == user_id,
                     LegalIssueRow.matter_id == matter_id,
-                    LegalIssueRow.check_id.in_(changed),
                     LegalIssueRow.state.in_(("RESOLVED", "ACCEPTED_RISK", "FALSE_POSITIVE")),
                 )
             )
         ).scalars()
+        definitions = {row.id: row.check_definition_id for row in rows}
         for issue in issues:
+            issue_scope = (
+                definitions.get(issue.check_id or ""),
+                issue.transaction_id,
+                issue.subject_id,
+                issue.association_version,
+            )
+            if issue.check_id not in changed and issue_scope not in changed_scopes:
+                continue
             before = issue.state
             issue.state = "OPEN"
             issue.version += 1
@@ -107,3 +125,21 @@ class SqlCheckInputInvalidation:
                 )
             )
         await self._session.flush()
+
+    async def invalidate_scope(
+        self,
+        *,
+        user_id: str,
+        matter_id: str,
+        transaction_id: str,
+        actor_id: str,
+        correlation_id: str,
+    ) -> None:
+        await self.invalidate_inputs(
+            user_id=user_id,
+            matter_id=matter_id,
+            fact_ids=(),
+            actor_id=actor_id,
+            correlation_id=correlation_id,
+            transaction_id=transaction_id,
+        )

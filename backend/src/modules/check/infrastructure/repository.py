@@ -41,6 +41,9 @@ def _to_result(row: CrossDocumentCheckRow) -> CheckResult:
         id=row.id,
         user_id=row.user_id,
         matter_id=row.matter_id,
+        transaction_id=row.transaction_id,
+        subject_id=row.subject_id,
+        association_version=row.association_version,
         check_definition_id=row.check_definition_id,
         check_definition_version=row.check_definition_version,
         run_id=row.run_id,
@@ -62,6 +65,9 @@ def _to_issue(row: LegalIssueRow) -> LegalIssue:
         id=row.id,
         user_id=row.user_id,
         matter_id=row.matter_id,
+        transaction_id=row.transaction_id,
+        subject_id=row.subject_id,
+        association_version=row.association_version,
         issue_type_id=row.issue_type_id,
         severity=IssueSeverity(row.severity),
         blocker_kind=BlockerKind(row.blocker_kind),
@@ -103,7 +109,7 @@ class SqlCheckRepository:
 
     # ── Check results (append-only) ──────────────────────────────────────────
 
-    async def stale_input_result_ids(self, user_id: str, matter_id: str) -> tuple[str, ...]:
+    async def stale_input_results(self, user_id: str, matter_id: str) -> tuple[CheckResult, ...]:
         rows = (
             await self._session.execute(
                 select(CrossDocumentCheckRow)
@@ -114,14 +120,15 @@ class SqlCheckRepository:
                 .order_by(CrossDocumentCheckRow.created_at.desc(), CrossDocumentCheckRow.id.desc())
             )
         ).scalars()
-        seen: set[str] = set()
-        result: list[str] = []
+        seen: set[tuple[str, str | None, str | None]] = set()
+        result: list[CheckResult] = []
         for row in rows:
-            if row.check_definition_id in seen:
+            key = (row.check_definition_id, row.transaction_id, row.subject_id)
+            if key in seen:
                 continue
-            seen.add(row.check_definition_id)
+            seen.add(key)
             if row.explanation_key == "rta.check.input_changed":
-                result.append(row.id)
+                result.append(_to_result(row))
         return tuple(result)
 
     async def create_results(self, results: list[CheckResult]) -> list[CheckResult]:
@@ -131,6 +138,9 @@ class SqlCheckRepository:
                 id=result.id,
                 user_id=result.user_id,
                 matter_id=result.matter_id,
+                transaction_id=result.transaction_id,
+                subject_id=result.subject_id,
+                association_version=result.association_version,
                 check_definition_id=result.check_definition_id,
                 check_definition_version=result.check_definition_version,
                 run_id=result.run_id,
@@ -184,6 +194,9 @@ class SqlCheckRepository:
             id=issue.id,
             user_id=issue.user_id,
             matter_id=issue.matter_id,
+            transaction_id=issue.transaction_id,
+            subject_id=issue.subject_id,
+            association_version=issue.association_version,
             check_id=issue.check_id,
             issue_type_id=issue.issue_type_id,
             severity=issue.severity.value,

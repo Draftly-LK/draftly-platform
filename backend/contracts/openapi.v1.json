@@ -1256,6 +1256,17 @@
       },
       "CheckResultRead": {
         "properties": {
+          "associationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
           "checkDefinitionId": {
             "title": "Checkdefinitionid",
             "type": "string"
@@ -1360,6 +1371,28 @@
             },
             "title": "Sourcerecordids",
             "type": "array"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
           }
         },
         "required": [
@@ -4847,6 +4880,17 @@
             ],
             "title": "Assignedto"
           },
+          "associationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
           "blockerKind": {
             "title": "Blockerkind",
             "type": "string"
@@ -4929,9 +4973,31 @@
             "title": "State",
             "type": "string"
           },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
           "summaryKey": {
             "title": "Summarykey",
             "type": "string"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
           },
           "updatedAt": {
             "title": "Updatedat",
@@ -8354,8 +8420,13 @@
       },
       "RunChecksRequest": {
         "additionalProperties": false,
-        "description": "Nothing legal is accepted from the client.\n\nThe only field is an office policy value; the facts, the rule pack, and the\nmatter's routing are all read server-side.",
+        "description": "Nothing legal is accepted from the client.\n\nThe caller pins the reviewed association and may supply an office currency\npolicy. Facts, rule definitions and matter routing are read server-side.",
         "properties": {
+          "associationVersion": {
+            "minimum": 1.0,
+            "title": "Associationversion",
+            "type": "integer"
+          },
           "searchCurrencyMaxAgeDays": {
             "anyOf": [
               {
@@ -8368,8 +8439,27 @@
               }
             ],
             "title": "Searchcurrencymaxagedays"
+          },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "title": "Transactionid",
+            "type": "string"
           }
         },
+        "required": [
+          "transactionId",
+          "associationVersion"
+        ],
         "title": "RunChecksRequest",
         "type": "object"
       },

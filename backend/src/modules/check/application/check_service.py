@@ -24,6 +24,7 @@ import structlog
 
 from src.modules.audit.domain.models import AuditAction, AuditTargetType
 from src.modules.auth.ports import AuditEventInput, AuditPort
+from src.modules.check.application.currentness import read_current_transaction, subject_is_detached
 from src.modules.check.contracts import IssueGateSummary
 from src.modules.check.domain.errors import LegalIssueNotFoundError
 from src.modules.check.domain.models import CheckResult, LegalIssue
@@ -40,14 +41,16 @@ from src.modules.check.domain.policies import (
 from src.modules.check.domain.runners import CheckEvaluation, CheckInput, run_all
 from src.modules.check.ports import CheckRepository
 from src.modules.content_governance.contracts import (
+    CRITICAL_FACT_TYPE_IDS,
     IssueSeverity,
     IssueState,
     PartyContext,
     RtaWorkflowRole,
 )
-from src.modules.matter.contracts import MatterMutationLockPort
-from src.modules.verification.contracts import ConfirmedFactReadPort
+from src.modules.matter.contracts import MatterMutationLockPort, MatterScopeReadPort
+from src.modules.verification.contracts import ConfirmedFactReadPort, FactTierSummary
 from src.platform import ids
+from src.platform.errors import DomainRuleError, NotFoundError, PreconditionFailedError
 
 log = structlog.get_logger(__name__)
 
@@ -80,6 +83,7 @@ class CheckService:
         audit: AuditPort,
         clock: Callable[[], datetime] = _utc_now,
         matter_lock: MatterMutationLockPort | None = None,
+        scopes: MatterScopeReadPort | None = None,
     ) -> None:
         self._repo = repository
         self._facts = facts
@@ -89,6 +93,7 @@ class CheckService:
         # deadline test does not depend on the day it is run.
         self._clock = clock
         self._matter_lock = matter_lock
+        self._scopes = scopes
 
     # ── Running ──────────────────────────────────────────────────────────────
 
@@ -102,6 +107,9 @@ class CheckService:
         subtype_id: str | None = None,
         party_contexts: frozenset[PartyContext] = frozenset(),
         search_currency_max_age_days: int | None = None,
+        transaction_id: str | None = None,
+        subject_id: str | None = None,
+        association_version: int | None = None,
     ) -> CheckRunResult:
         """Run every implemented check against the current confirmed fact tier.
 
@@ -112,8 +120,56 @@ class CheckService:
         """
         if self._matter_lock:
             await self._matter_lock.lock(user_id, matter_id)
+        if self._scopes is not None:
+            if transaction_id is None or association_version is None:
+                raise DomainRuleError(
+                    "Select and review a transaction scope before running checks."
+                )
+            transaction = await self._scopes.transaction(user_id, matter_id, transaction_id)
+            if transaction is None:
+                raise NotFoundError()
+            if transaction.version != association_version:
+                raise PreconditionFailedError(currentVersion=transaction.version)
+            if subject_id is not None:
+                subject = await self._scopes.subject(user_id, matter_id, subject_id)
+                if subject is None:
+                    raise NotFoundError()
+                members = {
+                    *transaction.parcel_subject_ids,
+                    *(role.subject_id for role in transaction.party_roles),
+                }
+                if subject_id not in members:
+                    raise DomainRuleError("The subject is not associated with this transaction.")
+        elif transaction_id is not None:
+            raise DomainRuleError("Scope validation is unavailable.")
         now = self._clock()
         summary = await self._facts.summarise(user_id, matter_id)
+        if transaction_id is not None:
+            selected = tuple(
+                value
+                for value in summary.scoped_confirmed
+                if value.transaction_id == transaction_id and value.subject_id == subject_id
+            )
+            # Duplicate types are withheld, never selected by recency.
+            confirmed = {
+                value.fact_type_id: value
+                for value in selected
+                if sum(other.fact_type_id == value.fact_type_id for other in selected) == 1
+            }
+            conflicts = tuple(
+                kind
+                for transaction, subject, kind in summary.scoped_conflicts
+                if (transaction, subject) == (transaction_id, subject_id)
+            )
+            summary = FactTierSummary(
+                confirmed=confirmed,
+                scoped_confirmed=selected,
+                unconfirmed_critical_fact_type_ids=tuple(
+                    sorted(CRITICAL_FACT_TYPE_IDS - confirmed.keys())
+                ),
+                conflicted_fact_type_ids=conflicts,
+                has_current_search_evidence="rta.title.register_search_datetime" in confirmed,
+            )
         evaluations = run_all(
             CheckInput(
                 matter_id=matter_id,
@@ -135,6 +191,9 @@ class CheckService:
                     check_definition_id=evaluation.check_definition_id,
                     check_definition_version=evaluation.check_definition_version,
                     run_id=run_id,
+                    transaction_id=transaction_id,
+                    subject_id=subject_id,
+                    association_version=association_version,
                     outcome=evaluation.outcome,
                     default_severity=evaluation.default_severity,
                     explanation_key=evaluation.explanation_key,
@@ -167,6 +226,9 @@ class CheckService:
             now=now,
             evaluations=evaluations,
             result_ids={result.check_definition_id: result.id for result in results},
+            transaction_id=transaction_id,
+            subject_id=subject_id,
+            association_version=association_version,
         )
         return CheckRunResult(
             run_id=run_id,
@@ -186,9 +248,19 @@ class CheckService:
         now: datetime,
         evaluations: tuple[CheckEvaluation, ...],
         result_ids: dict[str, str],
+        transaction_id: str | None,
+        subject_id: str | None,
+        association_version: int | None,
     ) -> tuple[LegalIssue, ...]:
         """Create an issue for each failing check, or reopen one it contradicts."""
-        existing = _latest_by_type(await self._repo.list_all_issues(user_id, matter_id))
+        existing = _latest_by_type(
+            [
+                issue
+                for issue in await self._repo.list_all_issues(user_id, matter_id)
+                if (issue.transaction_id, issue.subject_id, issue.association_version)
+                == (transaction_id, subject_id, association_version)
+            ]
+        )
         raised: list[LegalIssue] = []
         for evaluation in evaluations:
             if not evaluation.raises_issue:
@@ -204,6 +276,9 @@ class CheckService:
                         now=now,
                         evaluation=evaluation,
                         check_id=result_ids.get(evaluation.check_definition_id),
+                        transaction_id=transaction_id,
+                        subject_id=subject_id,
+                        association_version=association_version,
                     )
                 )
                 continue
@@ -231,6 +306,9 @@ class CheckService:
         now: datetime,
         evaluation: CheckEvaluation,
         check_id: str | None,
+        transaction_id: str | None,
+        subject_id: str | None,
+        association_version: int | None,
     ) -> LegalIssue:
         issue = await self._repo.create_issue(
             LegalIssue(
@@ -247,6 +325,9 @@ class CheckService:
                 created_at=now,
                 updated_at=now,
                 check_id=check_id,
+                transaction_id=transaction_id,
+                subject_id=subject_id,
+                association_version=association_version,
                 source_record_ids=evaluation.source_record_ids,
                 evidence_reference_ids=evaluation.evidence_reference_ids,
             )
@@ -319,8 +400,21 @@ class CheckService:
 
     async def gates(self, user_id: str, matter_id: str) -> IssueGateSummary:
         """Implements `check.contracts.IssueGatePort` for draft and approval."""
+        if self._matter_lock:
+            await self._matter_lock.lock(user_id, matter_id)
         issues = await self._repo.list_all_issues(user_id, matter_id)
-        stale = await self._repo.stale_input_result_ids(user_id, matter_id)
+        stale_results = await self._repo.stale_input_results(user_id, matter_id)
+        transactions = {}
+        stale_ids = []
+        for result in stale_results:
+            if result.transaction_id is not None and result.transaction_id not in transactions:
+                transactions[result.transaction_id] = await read_current_transaction(
+                    self._scopes, user_id, matter_id, result.transaction_id
+                )
+            transaction = transactions.get(result.transaction_id) if result.transaction_id else None
+            if not subject_is_detached(result, transaction):
+                stale_ids.append(result.id)
+        stale = tuple(stale_ids)
         return IssueGateSummary(
             blocks_draft_generation=bool(stale) or blocks_draft_generation(issues),
             blocks_approval=bool(stale) or blocks_approval(issues),

@@ -23,10 +23,13 @@ class _StrictCamel(_Camel):
 class RunChecksRequest(_StrictCamel):
     """Nothing legal is accepted from the client.
 
-    The only field is an office policy value; the facts, the rule pack, and the
-    matter's routing are all read server-side.
+    The caller pins the reviewed association and may supply an office currency
+    policy. Facts, rule definitions and matter routing are read server-side.
     """
 
+    transaction_id: str
+    subject_id: str | None = None
+    association_version: int = Field(ge=1)
     search_currency_max_age_days: int | None = Field(default=None, ge=1, le=3650)
 
 
@@ -45,6 +48,9 @@ class FactVersionPinRead(_Camel):
 
 
 class CheckResultRead(_Camel):
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    association_version: int | None = None
     id: str
     check_definition_id: str
     check_definition_version: str
@@ -71,6 +77,9 @@ class CheckResultRead(_Camel):
 
 
 class LegalIssueRead(_Camel):
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    association_version: int | None = None
     id: str
     matter_id: str
     check_id: str | None

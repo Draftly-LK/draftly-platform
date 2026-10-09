@@ -298,3 +298,37 @@ Recommended defaults in bold; confirm or override before coding.
 5. **Recompute trigger** — recompute findings on every fact change, on demand, or
    both. Lean **recompute on the `particular.corrected` event and on explicit
    re-run**, so the record and its checks never silently diverge.
+
+### Explicit reviewed check scopes (2026-10-09)
+
+POST /api/v1/matters/{id}/checks/run requires transactionId and associationVersion,
+with optional subjectId. The server validates owned references, exact current
+association revision and subject membership while holding the shared matter
+mutation lock. Production bootstrap rejects unscoped runs. Only matching
+scoped_confirmed facts and scoped conflict types enter a run; the compatibility
+confirmed map never supplies a cross-subject or cross-transaction winner. A
+register search for another scope cannot justify a negative conclusion.
+
+Results and resulting issues persist transaction/subject/association pins alongside
+exact fact versions. Issue reconciliation partitions by the full scope and revision;
+same issue types for different subjects remain distinct. Historical unscoped rows
+remain readable, with nullable scope fields, and cannot prove current scope work.
+Changed fact dependencies append inconclusive evaluations and reopen only affected
+check/issue work; association revisions invalidate that transaction's dependent
+checks under the same lock. Neither a rerun nor a pass closes a legal issue.
+
+The governed check set is unchanged. Missing facts in the selected scope remain
+inconclusive. No per-scope applicability or required-run policy is invented; the
+readiness projection exposes missing, stale, partial or unassessable coverage and
+cannot infer all-subject completion from a fresh subset. Current stale-check gates
+and actionable readiness references exclude a subject-scoped result only when the
+owned public scope reader positively proves its subject is absent from every
+current role and parcel of that transaction. Historical results, stale markers,
+legal issues and decisions remain unchanged; legal issue gates still apply.
+Still-attached subjects, transaction-wide results, missing/unavailable scope data
+and old association revisions remain conservative. Reattachment makes the retained
+old revision stale again until a valid current run. This boundary defines current
+scope eligibility, not required-run coverage, retirement or waiver policy.
+
+Migration check0002 follows task0002 and adds nullable scope/revision columns to
+results and issues. Downgrade refuses persisted scoped result/issue history.

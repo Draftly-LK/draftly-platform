@@ -141,6 +141,9 @@ def _to_result_read(result: CheckResult) -> CheckResultRead:
     definition = get_check(result.check_definition_id)
     return CheckResultRead(
         id=result.id,
+        transaction_id=result.transaction_id,
+        subject_id=result.subject_id,
+        association_version=result.association_version,
         check_definition_id=result.check_definition_id,
         check_definition_version=result.check_definition_version,
         run_id=result.run_id,
@@ -170,6 +173,9 @@ def _to_result_read(result: CheckResult) -> CheckResultRead:
 def _to_issue_read(issue: LegalIssue) -> LegalIssueRead:
     return LegalIssueRead(
         id=issue.id,
+        transaction_id=issue.transaction_id,
+        subject_id=issue.subject_id,
+        association_version=issue.association_version,
         matter_id=issue.matter_id,
         check_id=issue.check_id,
         issue_type_id=issue.issue_type_id,
@@ -238,6 +244,9 @@ async def run_checks(
         correlation_id=ctx.correlation_id,
         subtype_id=matter.subtype_id,
         search_currency_max_age_days=body.search_currency_max_age_days,
+        transaction_id=body.transaction_id,
+        subject_id=body.subject_id,
+        association_version=body.association_version,
     )
     return _to_run_read(run)
 

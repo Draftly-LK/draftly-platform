@@ -70,4 +70,5 @@ class FormInputInvalidationPort(Protocol):
         fact_ids: tuple[str, ...],
         actor_id: str,
         correlation_id: str,
+        reason: str = "FACT_NO_LONGER_CONFIRMED",
     ) -> None: ...

@@ -8,6 +8,7 @@ from src.modules.matter.contracts import (
     MatterReadPort,
     MatterSubjectReference,
     MatterTransactionReference,
+    ScopeAssociationInvalidationPort,
     SubjectKind,
     TransactionPartyRole,
     require_rta_capability,
@@ -26,8 +27,10 @@ class MatterScopeService:
         matters: MatterReadPort,
         audit: AuditPort,
         replay: IdempotencyPort,
+        invalidation: ScopeAssociationInvalidationPort | None = None,
     ) -> None:
         self._repo, self._matters, self._audit, self._replay = repository, matters, audit, replay
+        self._invalidation = invalidation
 
     async def authorize(
         self, ctx: RequestContext, matter_id: str, capability: str = CAP_AUDIT_READ
@@ -184,6 +187,9 @@ class MatterScopeService:
                 party_roles=party_roles,
                 version=int(replay["version"]),
             )
+        previous = (
+            await self.get_transaction(ctx, matter_id, transaction_id) if transaction_id else None
+        )
         result = await self._repo.save_transaction(
             ctx.actor_id,
             matter_id,
@@ -192,6 +198,14 @@ class MatterScopeService:
             transaction_id,
             expected_version,
         )
+        if self._invalidation and previous and result.version != previous.version:
+            await self._invalidation.invalidate_scope(
+                user_id=ctx.actor_id,
+                matter_id=matter_id,
+                transaction_id=result.id,
+                actor_id=ctx.actor_id,
+                correlation_id=ctx.correlation_id,
+            )
         await self._record(ctx, matter_id, result.id, f"transaction@{result.version}")
         await self._replay.store(
             record_id=new_id("idem"),

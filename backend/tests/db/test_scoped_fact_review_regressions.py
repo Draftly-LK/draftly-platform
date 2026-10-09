@@ -134,7 +134,9 @@ async def test_old_extraction_refuses_complete_mixed_source_grouping(
         )
     )
     await db_session.flush()
-    with pytest.raises(DomainRuleError, match="refreshed extraction"):
+    current = await reader.get_candidate(ctx.actor_id, matter.matter_id, candidate_id)
+    assert current is not None and not current.current
+    with pytest.raises(DomainRuleError):
         await reader.validate_evidence(ctx.actor_id, matter.matter_id, candidate.evidence)
 
 

@@ -12,14 +12,22 @@ import {
   Triangle,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  ApiError,
+  isApiEnabled,
+  type TokenProvider,
+  apiErrorMessage,
+} from "@/lib/api/client";
 import {
   listCheckResults,
-  listIssues,
+  listCompleteIssues,
+  type RunChecksBody,
   recordIssueDecision,
   runChecks,
 } from "@/lib/api/checks";
+import { RequirementsPanel } from "@/components/matter/requirements-panel";
+import { CheckScopeSelector } from "./check-scope-selector";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -55,12 +63,18 @@ function ApiBoundChecksScreen({ matterId }: { matterId: string }) {
 }
 
 function DemoChecksScreen({ matterId }: { matterId: string }) {
-  return <ChecksScreenContent matterId={matterId} getToken={null} />;
+  const checks = useDemoStore((state) => state.checks);
+  return (
+    <DemoChecksContent
+      matterId={matterId}
+      checks={checks.filter((check) => check.matterId === matterId)}
+    />
+  );
 }
 
 interface ChecksScreenContentProps {
   matterId: string;
-  getToken: TokenProvider | null;
+  getToken: TokenProvider;
 }
 
 function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
@@ -71,6 +85,9 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
   const [issues, setIssues] = useState<ApiLegalIssue[]>([]);
   const [gates, setGates] = useState<ApiIssueGates | null>(null);
   const [checkResults, setCheckResults] = useState<ApiCheckResult[]>([]);
+  const [resultCursor, setResultCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const tScope = useTranslations("checkScope");
 
   // UI state
   const [loading, setLoading] = useState(true);
@@ -82,66 +99,81 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
   const [stateFilter, setStateFilter] = useState<IssueState | "">("");
 
   // Issue resolution modal
-  const [selectedIssue, setSelectedIssue] = useState<ApiLegalIssue | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<ApiLegalIssue | null>(
+    null,
+  );
   const [targetState, setTargetState] = useState<IssueState | "">("");
   const [reason, setReason] = useState("");
   const [submittingDecision, setSubmittingDecision] = useState(false);
   const reasonInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Demo fallback
-  const allChecks = useDemoStore((state) => state.checks);
-  const isDemoMode = getToken === null;
-  const demoChecks = allChecks.filter((check) => check.matterId === matterId);
-
-  // Fetch issues and check results
+  const [scope, setScope] = useState<RunChecksBody | null>(null);
   const fetchData = useCallback(async () => {
-    if (isDemoMode) {
-      setLoading(false);
-      return;
-    }
-    if (getToken === null) return;
-
     setLoading(true);
     setError(null);
     try {
       const [issuesResult, resultsResult] = await Promise.all([
-        listIssues(getToken, matterId, {}),
+        listCompleteIssues(getToken, matterId),
         listCheckResults(getToken, matterId, {}),
       ]);
       setIssues(issuesResult.items);
       setGates(issuesResult.gates);
       setCheckResults(resultsResult.items);
+      setResultCursor(resultsResult.page.nextCursor);
     } catch (cause) {
       setError(apiErrorMessage(cause, t("loadError")));
     } finally {
       setLoading(false);
     }
-  }, [getToken, matterId, isDemoMode, t]);
+  }, [getToken, matterId, t]);
 
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
 
+  const loadMore = async () => {
+    if (!resultCursor) return;
+    setLoadingMore(true);
+    try {
+      const page = await listCheckResults(getToken, matterId, {
+        cursor: resultCursor,
+      });
+      if (page.page.nextCursor === resultCursor)
+        throw new Error(t("loadError"));
+      setCheckResults((rows) => [
+        ...rows,
+        ...page.items.filter(
+          (row) => !rows.some((existing) => existing.id === row.id),
+        ),
+      ]);
+      setResultCursor(page.page.nextCursor);
+    } catch (cause) {
+      setError(apiErrorMessage(cause, t("loadError")));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   // Run checks
   const handleRunChecks = useCallback(async () => {
-    if (isDemoMode || getToken === null) return;
+    if (!scope) return;
     setRunningChecks(true);
     setError(null);
     try {
-      const result = await runChecks(getToken, matterId, {});
-      setIssues(result.raisedIssues);
-      setGates(result.gates);
-      setCheckResults(result.results);
+      await runChecks(getToken, matterId, scope);
+      await fetchData();
     } catch (cause) {
+      if (cause instanceof ApiError && [409, 412].includes(cause.status))
+        setScope(null);
       setError(apiErrorMessage(cause, t("runError")));
     } finally {
       setRunningChecks(false);
     }
-  }, [getToken, matterId, isDemoMode, t]);
+  }, [getToken, matterId, t, scope, fetchData]);
 
   // Record issue decision
   const handleRecordDecision = useCallback(async () => {
-    if (!selectedIssue || !targetState || isDemoMode || getToken === null) return;
+    if (!selectedIssue || !targetState) return;
     setSubmittingDecision(true);
     setError(null);
     try {
@@ -156,11 +188,14 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
         selectedIssue.version,
       );
       setIssues((current) =>
-        current.map((issue) => (issue.id === updatedIssue.id ? updatedIssue : issue)),
+        current.map((issue) =>
+          issue.id === updatedIssue.id ? updatedIssue : issue,
+        ),
       );
       setSelectedIssue(null);
       setTargetState("");
       setReason("");
+      await fetchData();
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 409) {
         setError(t("conflictError"));
@@ -170,7 +205,7 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
     } finally {
       setSubmittingDecision(false);
     }
-  }, [selectedIssue, targetState, reason, isDemoMode, getToken, matterId, t]);
+  }, [selectedIssue, targetState, reason, getToken, matterId, t, fetchData]);
 
   // Filter issues
   const filteredIssues = issues.filter((issue) => {
@@ -186,19 +221,25 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
     }
   }, [selectedIssue]);
 
-  // Demo mode fallback
-  if (isDemoMode) {
-    return <DemoChecksContent matterId={matterId} checks={demoChecks} />;
-  }
-
   return (
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
       <div className="p-6">
+        <RequirementsPanel
+          getToken={getToken}
+          matterId={matterId}
+          mode="checks"
+        />
+        <CheckScopeSelector
+          getToken={getToken}
+          matterId={matterId}
+          value={scope}
+          onChange={setScope}
+        />
         {/* Gates Summary Bar */}
         {gates && (
-          <section className="mb-6 rounded-card border border-border bg-surface p-4">
-            <h2 className="text-xs font-semibold text-muted-ink">
+          <section className="rounded-card border-border bg-surface mb-6 border p-4">
+            <h2 className="text-muted-ink text-xs font-semibold">
               {t("gateSummary")}
             </h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -206,10 +247,7 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
                 label={t("draftGeneration")}
                 blocked={gates.blocksDraftGeneration}
               />
-              <GateBadge
-                label={t("approval")}
-                blocked={gates.blocksApproval}
-              />
+              <GateBadge label={t("approval")} blocked={gates.blocksApproval} />
               <GateBadge
                 label={t("registrationExport")}
                 blocked={gates.blocksRegistrationReadyExport}
@@ -220,7 +258,10 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
               <div className="mt-3 grid gap-2 text-sm">
                 {gates.openStatutoryBlockerIds.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <ShieldAlert className="size-4 shrink-0" strokeWidth={1.5} />
+                    <ShieldAlert
+                      className="size-4 shrink-0"
+                      strokeWidth={1.5}
+                    />
                     <span>
                       {t("statutoryBlockers", {
                         count: gates.openStatutoryBlockerIds.length,
@@ -230,7 +271,10 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
                 )}
                 {gates.openBlockingIssueIds.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="size-4 shrink-0" strokeWidth={1.5} />
+                    <AlertCircle
+                      className="size-4 shrink-0"
+                      strokeWidth={1.5}
+                    />
                     <span>
                       {t("blockingIssues", {
                         count: gates.openBlockingIssueIds.length,
@@ -248,12 +292,15 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
           <h2 className="text-lg font-semibold">{t("issuesHeading")}</h2>
           <Button
             variant="primary"
-            disabled={runningChecks}
+            disabled={runningChecks || !scope}
             onClick={() => void handleRunChecks()}
           >
             {runningChecks ? (
               <>
-                <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} />
+                <LoaderCircle
+                  className="size-4 animate-spin"
+                  strokeWidth={1.5}
+                />
                 {t("runningChecks")}
               </>
             ) : (
@@ -264,7 +311,7 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 rounded border border-red bg-red-bg p-3 text-sm text-red">
+          <div className="border-red bg-red-bg text-red mb-6 rounded border p-3 text-sm">
             <div className="flex items-start gap-2">
               <AlertCircle className="size-5 shrink-0" strokeWidth={1.5} />
               <p>{error}</p>
@@ -275,7 +322,10 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
         {/* Loading State */}
         {loading && (
           <div className="py-8 text-center">
-            <LoaderCircle className="mx-auto size-6 animate-spin text-muted-ink" strokeWidth={1.5} />
+            <LoaderCircle
+              className="text-muted-ink mx-auto size-6 animate-spin"
+              strokeWidth={1.5}
+            />
             <p className="text-muted-ink mt-2 text-sm">{t("loading")}</p>
           </div>
         )}
@@ -287,8 +337,16 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
               <FilterSelect
                 label={t("filterBySeverity")}
                 value={severityFilter}
-                onChange={(v: string) => setSeverityFilter(v as IssueSeverity | "")}
-                options={["", "INFORMATION", "WARNING", "HIGH_RISK", "BLOCKING"]}
+                onChange={(v: string) =>
+                  setSeverityFilter(v as IssueSeverity | "")
+                }
+                options={[
+                  "",
+                  "INFORMATION",
+                  "WARNING",
+                  "HIGH_RISK",
+                  "BLOCKING",
+                ]}
                 getLabel={(v) => {
                   if (v === "") return t("allSeverities");
                   return t(`severity.${v}`);
@@ -340,19 +398,20 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
 
             {/* Check Results (optional, lower priority) */}
             {checkResults.length > 0 && (
-              <section className="mt-8 border-t border-border pt-8">
+              <section className="border-border mt-8 border-t pt-8">
                 <h3 className="text-lg font-semibold">{t("checkResults")}</h3>
                 <div className="mt-3 space-y-2">
                   {checkResults.map((result) => (
                     <div
                       key={result.id}
-                      className="flex items-start gap-3 rounded border border-border-strong bg-surface p-3"
+                      className="border-border-strong bg-surface flex items-start gap-3 rounded border p-3"
                     >
                       <CheckResultIcon outcome={result.outcome} />
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-medium">
                           {tRoot(result.explanationKey)}
                         </div>
+                        <ScopeHistory value={result} />
                         {result.provisional && (
                           <div className="text-muted-ink mt-1 text-xs">
                             {t("provisionalNote")}
@@ -362,6 +421,15 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
                     </div>
                   ))}
                 </div>
+                {resultCursor && (
+                  <Button
+                    variant="secondary"
+                    disabled={loadingMore}
+                    onClick={() => void loadMore()}
+                  >
+                    {tScope("more")}
+                  </Button>
+                )}
               </section>
             )}
           </>
@@ -415,7 +483,11 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
     if (!resolution || !reason.trim()) return;
     resolveCheck(
       resolution.check.id,
-      resolution.action as "resolved" | "waived" | "document-requested" | "checklist-created",
+      resolution.action as
+        | "resolved"
+        | "waived"
+        | "document-requested"
+        | "checklist-created",
       reason,
     );
     setResolution(undefined);
@@ -436,13 +508,15 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 space-y-2">
                   <StatusBadge status={check.status} />
-                  <h3 className="font-semibold">{tRoot(check.descriptionKey)}</h3>
-                  <p className="text-muted-ink text-sm">{tRoot(check.suggestedResolutionKey)}</p>
+                  <h3 className="font-semibold">
+                    {tRoot(check.descriptionKey)}
+                  </h3>
+                  <p className="text-muted-ink text-sm">
+                    {tRoot(check.suggestedResolutionKey)}
+                  </p>
                 </div>
                 <Button
-                  onClick={() =>
-                    setResolution({ check, action: "resolved" })
-                  }
+                  onClick={() => setResolution({ check, action: "resolved" })}
                 >
                   {t("resolve")}
                 </Button>
@@ -500,10 +574,11 @@ function DemoChecksContent({ matterId, checks }: DemoChecksContentProps) {
 /* ── Presentational components ────────────────────────────────────────── */
 
 function GateBadge({ label, blocked }: { label: string; blocked: boolean }) {
+  const t = useTranslations("checkScope");
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded border p-3 text-sm",
+        "flex min-w-0 flex-wrap items-center gap-2 rounded border p-3 text-sm",
         blocked
           ? "border-red bg-red-bg text-red"
           : "border-forest bg-soft-green text-forest",
@@ -515,8 +590,35 @@ function GateBadge({ label, blocked }: { label: string; blocked: boolean }) {
         <CheckCircle className="size-4 shrink-0" strokeWidth={1.5} />
       )}
       <span className="font-medium">{label}</span>
-      <span className="font-semibold">{blocked ? "Blocked" : "Passing"}</span>
+      <span className="font-semibold">
+        {t(blocked ? "gateBlocked" : "gateClear")}
+      </span>
     </div>
+  );
+}
+
+function ScopeHistory({
+  value,
+}: {
+  value: {
+    transactionId?: string | null;
+    subjectId?: string | null;
+    associationVersion?: number | null;
+  };
+}) {
+  const t = useTranslations("checkScope");
+  return (
+    <p className="text-muted-ink mt-1 break-words text-xs leading-5">
+      {value.transactionId ? (
+        <>
+          {t("history")}: {value.transactionId} &middot;{" "}
+          {value.subjectId ?? t("transactionFacts")} &middot;{" "}
+          {t("version", { version: value.associationVersion ?? 0 })}
+        </>
+      ) : (
+        t("unscoped")
+      )}
+    </p>
   );
 }
 
@@ -536,16 +638,17 @@ function IssueRow({ issue, t, tRoot, onSelectDecision }: IssueRowProps) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-2 py-1 text-xs font-semibold">
+            <div className="border-border-strong inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
               <SeverityIcon className="size-3" strokeWidth={2} />
               {t(`severity.${issue.severity}`)}
             </div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-border-strong px-2 py-1 text-xs font-semibold">
+            <div className="border-border-strong inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold">
               <Circle className="size-2.5" fill="currentColor" />
               {stateLabel}
             </div>
           </div>
           <h3 className="mt-2 font-semibold">{tRoot(issue.summaryKey)}</h3>
+          <ScopeHistory value={issue} />
           {issue.blockerKind && (
             <p className="text-muted-ink text-sm">
               {t(`blocker.${issue.blockerKind}`)}
@@ -628,7 +731,7 @@ function IssueDecisionModal({
               onChange={(e) =>
                 onTargetStateChange(e.target.value as IssueState | "")
               }
-              className="border-border-control bg-surface mt-1 w-full rounded-control border p-2"
+              className="border-border-control bg-surface rounded-control mt-1 w-full border p-2"
             >
               <option value="">{t("selectState")}</option>
               {issue.permittedStates.map((state) => (
@@ -661,7 +764,9 @@ function IssueDecisionModal({
           </Button>
           <Button
             variant="primary"
-            disabled={!targetState || (reasonNeeded && !reason.trim()) || submitting}
+            disabled={
+              !targetState || (reasonNeeded && !reason.trim()) || submitting
+            }
             onClick={() => void onSubmit()}
           >
             {submitting ? t("submitting") : t("record")}
@@ -687,13 +792,17 @@ function FilterSelect({
   options,
   getLabel,
 }: FilterSelectProps) {
+  const id = useId();
   return (
-    <div className="flex items-center gap-2">
-      <label className="text-sm font-medium">{label}:</label>
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}:
+      </label>
       <select
+        id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-border-control bg-surface rounded-control border px-2 py-1 text-sm"
+        className="border-border-control bg-surface rounded-control max-w-full border px-2 py-1 text-sm"
       >
         {options.map((option) => (
           <option key={option} value={option}>
@@ -713,11 +822,14 @@ function CheckResultIcon({ outcome }: CheckResultIconProps) {
   switch (outcome) {
     case "PASS":
       return (
-        <CheckCircle className="size-4 shrink-0 text-forest" strokeWidth={1.5} />
+        <CheckCircle
+          className="text-forest size-4 shrink-0"
+          strokeWidth={1.5}
+        />
       );
     case "FAIL":
       return (
-        <AlertCircle className="size-4 shrink-0 text-red" strokeWidth={1.5} />
+        <AlertCircle className="text-red size-4 shrink-0" strokeWidth={1.5} />
       );
     case "INCONCLUSIVE":
       return <Minus className="size-4 shrink-0" strokeWidth={1.5} />;

@@ -644,3 +644,12 @@ interpretation authority inside the same matter transaction.
    candidate steps for conditional characteristic changes.
 7. Require current readiness evaluation for closure and a reason to reopen.
 8. Replace embedded party identity data with protected party references.
+
+### Association revision dependency synchronization (2026-10-09)
+
+Updating an existing transaction association revision notifies the owning check
+and form ports under the existing shared matter mutation lock. Checks in that
+transaction become inconclusive; forms bound to its reviewed facts become stale
+with SCOPE_ASSOCIATION_CHANGED. Fact values and association history are preserved.
+The public scope read contract exposes owned transaction/subject references; callers
+must retain the displayed associationVersion and deliberately renew after 412.

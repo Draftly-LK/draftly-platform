@@ -20,6 +20,7 @@ class SqlFormInputInvalidation:
         fact_ids: tuple[str, ...],
         actor_id: str,
         correlation_id: str,
+        reason: str = "FACT_NO_LONGER_CONFIRMED",
     ) -> None:
         form_ids = (
             await self._session.execute(
@@ -34,7 +35,7 @@ class SqlFormInputInvalidation:
         ).scalars()
         for form_id in form_ids:
             await SqlGeneratedFormCommandAdapter(self._session).mark_stale(
-                user_id=user_id, form_id=form_id, reason="FACT_NO_LONGER_CONFIRMED"
+                user_id=user_id, form_id=form_id, reason=reason
             )
             await self._audit.record(
                 AuditEventInput(
@@ -44,7 +45,7 @@ class SqlFormInputInvalidation:
                     action="rta.form.marked-stale",
                     target_type="generated-form",
                     target_id=form_id,
-                    after_ref="interpretation-changed",
+                    after_ref=reason,
                     correlation_id=correlation_id,
                 )
             )
