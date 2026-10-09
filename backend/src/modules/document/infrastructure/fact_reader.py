@@ -124,9 +124,45 @@ class SqlDocumentFactReader:
             and document.user_id == user_id
             and document.matter_id == matter_id
             and document.interpretation_generation == logical.interpretation_generation
+            and document.class_id == logical.type_id
             and document.extraction_state == "current"
             and document.version_relationship != "SUPERSEDED"
         )
+        if current and document:
+            fragments = list(
+                (
+                    await self._session.execute(
+                        select(DocumentFragmentRow)
+                        .where(
+                            DocumentFragmentRow.user_id == user_id,
+                            DocumentFragmentRow.matter_id == matter_id,
+                            DocumentFragmentRow.detected_document_id == document.id,
+                        )
+                        .order_by(DocumentFragmentRow.order_in_document)
+                    )
+                ).scalars()
+            )
+            expected_pages = [
+                (fragment.source_file_id, page)
+                for fragment in fragments
+                for page in range(fragment.page_start, fragment.page_end + 1)
+            ]
+            actual_pages = (
+                [(page["source_file_id"], page["page_number"]) for page in logical.page_sources]
+                if logical.page_sources is not None
+                else [(logical.source_file_id, page) for page in logical.page_numbers]
+            )
+            current = expected_pages == actual_pages
+            for source_id in {fragment.source_file_id for fragment in fragments}:
+                original = await self._session.get(SourceFileRow, source_id)
+                if (
+                    original is None
+                    or original.user_id != user_id
+                    or original.matter_id != matter_id
+                    or original.state != "PROCESSED"
+                    or original.superseded_by_source_file_id
+                ):
+                    current = False
         return CandidateObservation(
             candidate.id,
             user_id,

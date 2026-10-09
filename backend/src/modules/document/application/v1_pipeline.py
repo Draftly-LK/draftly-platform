@@ -247,6 +247,7 @@ class V1DocumentPipeline:
         for logical_document in logical_documents:
             schema = extraction_schemas.get(logical_document.type_id, ())
             candidates: tuple[ExtractedCandidate, ...] = ()
+            extraction_state = "unsupported" if not schema else "unavailable"
             if schema and logical_document.text.strip():
                 extraction_calls += 1
                 try:
@@ -256,10 +257,16 @@ class V1DocumentPipeline:
                         page_numbers=logical_document.page_numbers,
                         fields=schema,
                     )
+                    extraction_state = "current"
                 except ExtractionProviderError:
                     candidates = ()
+                    extraction_state = "failed"
             processed_documents.append(
-                ProcessedLogicalDocument(logical_document=logical_document, candidates=candidates)
+                ProcessedLogicalDocument(
+                    logical_document=logical_document,
+                    candidates=candidates,
+                    extraction_state=extraction_state,
+                )
             )
 
         return V1PipelineReport(

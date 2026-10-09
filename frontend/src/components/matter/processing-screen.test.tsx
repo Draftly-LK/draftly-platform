@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { webcrypto } from "node:crypto";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -96,7 +97,10 @@ const status = (
     : null,
 });
 
+vi.mock("@/lib/api/auth", () => ({ getMe: async () => ({ id: "synthetic-actor" }) }));
+
 beforeEach(() => {
+  sessionStorage.clear(); vi.stubGlobal("crypto", webcrypto);
   vi.resetAllMocks();
   const file = source();
   mocks.list.mockResolvedValue(page([file]));
@@ -338,7 +342,7 @@ describe("ProcessingScreen persisted outcomes", () => {
       await screen.findByRole("button", { name: "Retry processing" }),
     );
     expect(await screen.findByText("Success")).toBeTruthy();
-    expect(mocks.process).toHaveBeenCalledWith(mocks.token, failed.id, 7);
+    expect(mocks.process).toHaveBeenCalledWith(mocks.token, failed.id, 7, expect.any(String));
   });
 
   it("reports a concurrent stale-version rejection without automatically retrying the mutation", async () => {

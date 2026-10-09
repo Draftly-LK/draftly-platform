@@ -364,8 +364,8 @@ extraction cannot justify a regrouped document that now includes another source.
 Optional unavailable OCR yields empty text and page precision when the original
 and page remain readable. Missing or corrupt original/page artifacts become
 unavailable candidate rows (`evidenceStale=true`, no evidence), keeping other
-register entries visible. These reads do not replace Task 4 invalidation of
-already persisted fact evidence.
+register entries visible. Correction commands also invalidate already persisted
+fact evidence through the owning public port in the same matter transaction.
 
 NIC fields are holder observations: `holderNic`, `holderNameEn`, `holderNameSi`,
 `holderDateOfBirth`, `holderAddress`; survey plans retain `surveyorRegistration`.
@@ -380,10 +380,16 @@ legacy NIC set unassigned. Register reads display the holder alias; the confirme
 projection withholds it until explicit association/review. Downgrade removes
 additive columns/tables but keeps that conservative `scope_status` withholding.
 
-Task 4 implements `FactEvidenceInvalidationPort` using the additive
-`FactEvidenceInvalidation` reference contract and existing `evidence_stale`
-eligibility seam. Interpretation refresh, check/readiness projection and role
-binding are subsequent tasks, not authority granted by these commands.
+`FactEvidenceInvalidationPort` uses `FactEvidenceInvalidation` references and
+existing `evidence_stale` eligibility flags. It invalidates exact dependent
+document/source/run evidence, including transitive derived facts, while
+preserving reviewed values, versions and decision history. Evidence pins the
+interpretation generation as well as the original source/page/hash. Reusing the
+same bytes or returning to an earlier class never renews historical authority.
+New manual page evidence can reference a current unsupported interpretation;
+acceptance still applies the existing critical-fact source policies. See the
+[document correction contract](document-service.md#october-2026-interpretation-and-page-accounting-implementation).
+Richer check/readiness recomputation and role binding remain subsequent tasks.
 
 ### Earlier decisions
 

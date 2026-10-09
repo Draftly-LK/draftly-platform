@@ -12,6 +12,7 @@ them would force the server to pick a lie.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -173,6 +174,18 @@ class DetectedDocumentRead(_CamelModel):
     refresh_failure_reason: str | None = None
 
 
+class PageAccountingRead(_CamelModel):
+    source_file_id: str
+    page_count: int | None
+    unclaimed_page_numbers: list[int]
+    overlapping_page_numbers: list[int]
+    blank_page_numbers: list[int]
+    unsupported_page_numbers: list[int]
+    out_of_bounds_page_numbers: list[int] = Field(default_factory=list)
+    complete: bool
+    manual_review_required: bool
+
+
 class DocumentInboxRead(_CamelModel):
     """The grouped review queue, paginated over source files."""
 
@@ -185,6 +198,7 @@ class DocumentInboxRead(_CamelModel):
     #: Stored, processing, or failed — never quietly counted as done.
     unprocessed_source_file_ids: list[str]
     page: PageInfo
+    page_accounting: list[PageAccountingRead] = Field(default_factory=list)
 
 
 class PageCandidateRead(_CamelModel):
@@ -249,7 +263,24 @@ class FragmentRangeInput(_StrictCamel):
     source_file_id: str
     page_start: int = Field(ge=1)
     page_end: int = Field(ge=1)
-    order_in_document: int = Field(default=0, ge=0)
+    order_in_document: int | None = Field(default=None, ge=0)
+
+
+class RetireDocumentInput(_StrictCamel):
+    document_id: str
+    version: int = Field(ge=1)
+
+
+class CreateGroupRequest(_StrictCamel):
+    fragments: list[FragmentRangeInput] = Field(min_length=1)
+    class_id: str | None = None
+
+
+class PageDispositionRequest(_StrictCamel):
+    page_number: int = Field(ge=1)
+    disposition: Literal["blank", "unsupported", "review_required"]
+    reason: str = Field(min_length=1, max_length=2000)
+    retire_documents: list[RetireDocumentInput] = Field(default_factory=list)
 
 
 class BoundaryDecisionRequest(_StrictCamel):
@@ -261,6 +292,7 @@ class BoundaryDecisionRequest(_StrictCamel):
 
     fragments: list[FragmentRangeInput] = Field(min_length=1)
     note: str | None = None
+    retire_documents: list[RetireDocumentInput] = Field(default_factory=list)
 
 
 class ClassificationDecisionRequest(_StrictCamel):
@@ -309,3 +341,28 @@ class DocumentReviewRead(_CamelModel):
 
 class CandidateEditRequest(_StrictCamel):
     value: str
+
+
+class InterpretationSnapshotRead(_CamelModel):
+    generation: int
+    class_id: str | None
+    fragments: list[FragmentRangeInput]
+    actor_id: str | None
+    created_at: datetime
+
+
+class InterpretationRunRead(_CamelModel):
+    id: str
+    generation: int
+    outcome: str
+    reasons: list[str]
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class InterpretationHistoryRead(_CamelModel):
+    document_id: str
+    matter_id: str
+    current_generation: int
+    snapshots: list[InterpretationSnapshotRead]
+    refresh_runs: list[InterpretationRunRead]

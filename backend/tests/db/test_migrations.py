@@ -89,6 +89,10 @@ def test_upgrade_from_empty_then_downgrade_to_base(empty_schema: str) -> None:
     command.downgrade(_config(), "base")
     assert _tables(empty_schema) == set()
 
+    # A permitted empty-schema rollback must remain deployable again.
+    command.upgrade(_config(), "head")
+    assert len(_tables(empty_schema)) > 20
+
 
 def test_migrations_use_the_direct_url_not_the_pooled_one(
     empty_schema: str, monkeypatch: pytest.MonkeyPatch

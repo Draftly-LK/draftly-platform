@@ -237,6 +237,8 @@ class ProcessingRun:
     #: child tables; it is not placed in logs or event payloads.
     v1_report: V1PipelineReport | None = None
     kind: str = "source"
+    detected_document_id: str | None = None
+    interpretation_generation: int | None = None
 
     @property
     def succeeded(self) -> bool:

@@ -10,7 +10,7 @@ state; the row and its bytes stay (§6.3).
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 
 from sqlalchemy import delete, func, select, true, update
@@ -30,15 +30,22 @@ from src.modules.document.domain.errors import (
     DocumentReviewNotFoundError,
     SourceFileStaleError,
 )
+from src.modules.document.domain.grouping import PageDisposition
 from src.modules.document.domain.ingestion import (
     DetectedDocument,
     DocumentFragment,
+    FragmentRange,
     ProcessingPageOutcome,
     ProcessingRun,
     SourceFile,
 )
 from src.modules.document.domain.ingestion_policies import failure_explanation_key
-from src.modules.document.domain.interpretation import InterpretationPage
+from src.modules.document.domain.interpretation import (
+    InterpretationHistory,
+    InterpretationPage,
+    InterpretationRun,
+    InterpretationSnapshot,
+)
 from src.modules.document.domain.registry import observational_field_key
 from src.modules.document.domain.v1 import (
     DocumentReview,
@@ -52,6 +59,7 @@ from src.modules.document.infrastructure.orm import (
     DocumentFragmentRow,
     DocumentInterpretationRow,
     DocumentProcessingPageRow,
+    PageDispositionRow,
     ProcessingCandidateFieldRow,
     ProcessingLogicalDocumentRow,
     SourceFileProcessingRunRow,
@@ -327,7 +335,42 @@ class SqlDocumentIngestionRepository:
 
     async def get_document(self, user_id: str, document_id: str) -> DetectedDocument | None:
         row = await self._document_row(user_id, document_id)
-        return _to_document(row) if row is not None else None
+        return await self._current_document(row) if row is not None else None
+
+    async def _current_document(self, row: DetectedDocumentRow) -> DetectedDocument:
+        document = _to_document(row)
+        if document.extraction_state != "current":
+            return document
+        logical = (
+            await self._session.execute(
+                select(ProcessingLogicalDocumentRow)
+                .where(
+                    ProcessingLogicalDocumentRow.user_id == row.user_id,
+                    ProcessingLogicalDocumentRow.matter_id == row.matter_id,
+                    ProcessingLogicalDocumentRow.detected_document_id == row.id,
+                    ProcessingLogicalDocumentRow.interpretation_generation
+                    == row.interpretation_generation,
+                    ProcessingLogicalDocumentRow.type_id == row.class_id,
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        fragments = await self.list_fragments_for_document(row.user_id, row.id)
+        pages = [
+            (fragment.source_file_id, page)
+            for fragment in sorted(fragments, key=lambda item: item.order_in_document)
+            for page in range(fragment.page_start, fragment.page_end + 1)
+        ]
+        recorded = (
+            [(page["source_file_id"], page["page_number"]) for page in logical.page_sources]
+            if logical and logical.page_sources is not None
+            else [(logical.source_file_id, page) for page in logical.page_numbers]
+            if logical
+            else []
+        )
+        if logical is None or recorded != pages:
+            document.extraction_state = "unavailable"
+        return document
 
     async def _document_row(self, user_id: str, document_id: str) -> DetectedDocumentRow | None:
         result = await self._session.execute(
@@ -346,7 +389,7 @@ class SqlDocumentIngestionRepository:
             )
             .order_by(DetectedDocumentRow.created_at.asc(), DetectedDocumentRow.id.asc())
         )
-        return [_to_document(row) for row in result.scalars().all()]
+        return [await self._current_document(row) for row in result.scalars().all()]
 
     async def update_document(
         self, document: DetectedDocument, expected_version: int
@@ -492,6 +535,110 @@ class SqlDocumentIngestionRepository:
         )
         await self._session.flush()
 
+    async def create_page_disposition(self, disposition: PageDisposition) -> None:
+        self._session.add(PageDispositionRow(**asdict(disposition)))
+        await self._session.flush()
+
+    async def interpretation_history(self, document: DetectedDocument) -> InterpretationHistory:
+        rows = (
+            await self._session.execute(
+                select(DocumentInterpretationRow)
+                .where(
+                    DocumentInterpretationRow.user_id == document.user_id,
+                    DocumentInterpretationRow.matter_id == document.matter_id,
+                    DocumentInterpretationRow.detected_document_id == document.id,
+                )
+                .order_by(DocumentInterpretationRow.generation)
+            )
+        ).scalars()
+        snapshots = [
+            InterpretationSnapshot(
+                row.generation,
+                row.class_id,
+                tuple(FragmentRange(**item) for item in row.fragments),
+                row.actor_id,
+                row.created_at,
+            )
+            for row in rows
+        ]
+        if not any(item.generation == document.interpretation_generation for item in snapshots):
+            fragments = await self.list_fragments_for_document(document.user_id, document.id)
+            snapshots.append(
+                InterpretationSnapshot(
+                    document.interpretation_generation,
+                    document.class_id,
+                    tuple(
+                        FragmentRange(
+                            item.source_file_id,
+                            item.page_start,
+                            item.page_end,
+                            item.order_in_document,
+                        )
+                        for item in fragments
+                    ),
+                    None,
+                    document.created_at,
+                )
+            )
+        runs = (
+            await self._session.execute(
+                select(SourceFileProcessingRunRow)
+                .where(
+                    SourceFileProcessingRunRow.user_id == document.user_id,
+                    SourceFileProcessingRunRow.matter_id == document.matter_id,
+                    SourceFileProcessingRunRow.detected_document_id == document.id,
+                )
+                .order_by(SourceFileProcessingRunRow.started_at)
+            )
+        ).scalars()
+        return InterpretationHistory(
+            document.id,
+            document.matter_id,
+            document.interpretation_generation,
+            tuple(snapshots),
+            tuple(
+                InterpretationRun(
+                    row.id,
+                    row.interpretation_generation or 1,
+                    row.outcome,
+                    tuple(row.reasons),
+                    row.started_at,
+                    row.finished_at,
+                )
+                for row in runs
+            ),
+        )
+
+    async def list_page_dispositions(self, user_id: str, matter_id: str) -> list[PageDisposition]:
+        rows = (
+            await self._session.execute(
+                select(PageDispositionRow)
+                .where(
+                    PageDispositionRow.user_id == user_id,
+                    PageDispositionRow.matter_id == matter_id,
+                )
+                .order_by(PageDispositionRow.source_version.desc())
+            )
+        ).scalars()
+        latest: dict[tuple[str, int], PageDisposition] = {}
+        for row in rows:
+            latest.setdefault(
+                (row.source_file_id, row.page_number),
+                PageDisposition(
+                    row.id,
+                    row.user_id,
+                    row.matter_id,
+                    row.source_file_id,
+                    row.page_number,
+                    row.disposition,
+                    row.reason,
+                    row.actor_id,
+                    row.source_version,
+                    row.created_at,
+                ),
+            )
+        return list(latest.values())
+
     async def cached_interpretation_page(
         self,
         user_id: str,
@@ -597,6 +744,8 @@ class SqlDocumentIngestionRepository:
             finished_at=run.finished_at,
             correlation_id=run.correlation_id,
             kind=run.kind,
+            detected_document_id=run.detected_document_id,
+            interpretation_generation=run.interpretation_generation,
         )
         self._session.add(row)
         # SQLAlchemy cannot infer insert ordering here because the V1 child

@@ -250,6 +250,7 @@ function DocumentProcessingReviewFlow({
               onChange={setDocument}
             />
             <FactRegister
+              documentContext={document ?? undefined}
               sourceRevision={document?.version}
               matterId={matterId}
               documentId={documentId}

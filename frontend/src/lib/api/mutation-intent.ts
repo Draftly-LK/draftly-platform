@@ -1,12 +1,23 @@
 /** Only opaque retry metadata is retained; the lawyer re-enters the request. */
 const lifetime = 24 * 60 * 60 * 1000;
-type Metadata = { version: 1; key: string; digest: string; createdAt: number };
+type Metadata = {
+  version: 1;
+  key: string;
+  digest: string;
+  createdAt: number;
+  expectedVersion?: number;
+};
 export type ManualIntent = Metadata & {
   storageKey: string;
   persistent: boolean;
 };
 const memory = new Map<string, Metadata>();
 function canonical(value: unknown): unknown {
+  if (
+    (typeof Blob !== "undefined" && value instanceof Blob) ||
+    (typeof FormData !== "undefined" && value instanceof FormData)
+  )
+    throw new Error("Binary requests require explicit byte hashing");
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === "object")
     return Object.fromEntries(
@@ -26,6 +37,9 @@ function valid(value: unknown): value is Metadata {
     /^[0-9a-f-]{36}$/i.test(item.key) &&
     typeof item.digest === "string" &&
     /^[0-9a-f]{64}$/.test(item.digest) &&
+    (item.expectedVersion === undefined ||
+      (Number.isSafeInteger(item.expectedVersion) &&
+        item.expectedVersion > 0)) &&
     Number.isFinite(item.createdAt) &&
     item.createdAt <= Date.now() &&
     Date.now() - item.createdAt < lifetime
@@ -36,16 +50,70 @@ export async function pendingManualIntent(
   matterId: string,
   request: unknown,
 ): Promise<ManualIntent> {
-  if (!actorId || !matterId)
-    throw new Error("Authenticated actor and matter required");
-  const bytes = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(JSON.stringify(canonical(request))),
-  );
-  const digest = Array.from(new Uint8Array(bytes), (byte) =>
+  const digest = await fingerprint(request);
+  return pending(actorId, matterId, "manual-intent", "", digest);
+}
+
+async function hash(bytes: BufferSource): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
-  const storageKey = `draftly:manual-intent:v1:${encodeURIComponent(actorId)}:${encodeURIComponent(matterId)}`;
+}
+
+async function fingerprint(request: unknown) {
+  return hash(new TextEncoder().encode(JSON.stringify(canonical(request))));
+}
+
+export async function pendingOperationIntent(
+  actorId: string,
+  matterId: string,
+  operation: string,
+  request: unknown,
+  expectedVersion?: number,
+): Promise<ManualIntent> {
+  if (
+    !operation ||
+    (expectedVersion !== undefined &&
+      (!Number.isSafeInteger(expectedVersion) || expectedVersion < 1))
+  )
+    throw new Error("Operation and valid precondition required");
+  return pending(
+    actorId,
+    matterId,
+    "operation-intent",
+    operation,
+    await fingerprint(request),
+    expectedVersion,
+  );
+}
+
+/** Re-selecting a file retries its pending upload. A completed upload clears the key. */
+export async function pendingUploadIntent(
+  actorId: string,
+  matterId: string,
+  file: File,
+): Promise<ManualIntent> {
+  const digest = await fingerprint({
+    bytes: await hash(await file.arrayBuffer()),
+    name: file.name,
+    type: file.type,
+    size: file.size,
+  });
+  return pending(actorId, matterId, "upload-intent", digest, digest);
+}
+
+function pending(
+  actorId: string,
+  matterId: string,
+  kind: string,
+  operation: string,
+  digest: string,
+  expectedVersion?: number,
+): ManualIntent {
+  if (!actorId || !matterId)
+    throw new Error("Authenticated actor and matter required");
+  const storageKey = `draftly:${kind}:v1:${encodeURIComponent(actorId)}:${encodeURIComponent(matterId)}${operation ? `:${encodeURIComponent(operation)}` : ""}`;
   let stored: unknown,
     persistent = true;
   try {
@@ -64,7 +132,13 @@ export async function pendingManualIntent(
   const metadata: Metadata =
     valid(previous) && previous.digest === digest
       ? previous
-      : { version: 1, key: crypto.randomUUID(), digest, createdAt: Date.now() };
+      : {
+          version: 1,
+          key: crypto.randomUUID(),
+          digest,
+          createdAt: Date.now(),
+          ...(expectedVersion === undefined ? {} : { expectedVersion }),
+        };
   memory.set(storageKey, metadata);
   try {
     sessionStorage.setItem(storageKey, JSON.stringify(metadata));

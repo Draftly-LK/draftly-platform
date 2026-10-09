@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { FileText, LoaderCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, FileText, LoaderCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import {
@@ -14,6 +14,7 @@ import {
 import { listSourceFiles } from "@/lib/api/documents";
 import type {
   ApiFactType,
+  ApiDetectedDocument,
   ApiMatterFact,
   ApiMatterSubject,
   ApiMatterTransaction,
@@ -55,6 +56,7 @@ export function FactRegister(props: {
   documentId?: string;
   onDecision?: () => void;
   sourceRevision?: number;
+  documentContext?: ApiDetectedDocument;
 }) {
   return (
     <RegisterContent
@@ -68,11 +70,13 @@ function RegisterContent({
   documentId,
   onDecision,
   sourceRevision,
+  documentContext,
 }: {
   matterId: string;
   documentId?: string;
   onDecision?: () => void;
   sourceRevision?: number;
+  documentContext?: ApiDetectedDocument;
 }) {
   const t = useTranslations("factRegister");
   const root = useTranslations();
@@ -296,6 +300,7 @@ function RegisterContent({
       )}
       {manual && (
         <ManualFactInput
+          documentContext={documentContext}
           matterId={matterId}
           types={types}
           subjects={subjects}
@@ -392,6 +397,15 @@ function RegisterContent({
                   {subjectName(fact.subjectId)} ·{" "}
                   {transactionName(fact.transactionId)}
                 </p>
+                {fact.evidenceStale && (
+                  <p className="text-amber-text mt-2 flex items-start gap-2 text-sm">
+                    <AlertTriangle
+                      className="size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                    {t("staleEvidence")}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <Status fact={fact} />

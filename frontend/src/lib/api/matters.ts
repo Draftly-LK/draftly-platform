@@ -65,8 +65,9 @@ export interface ListMattersParams {
 export function createMatter(
   getToken: TokenProvider,
   body: CreateMatterBody,
+  key = crypto.randomUUID(),
 ): Promise<ApiRtaMatter> {
-  return apiFetch<ApiRtaMatter>("/api/v1/matters", { method: "POST", body, getToken });
+  return apiFetch<ApiRtaMatter>("/api/v1/matters", { method: "POST", body, headers: { "Idempotency-Key": key }, getToken });
 }
 
 export function getMatter(getToken: TokenProvider, matterId: string): Promise<ApiRtaMatter> {

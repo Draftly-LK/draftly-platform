@@ -894,6 +894,27 @@ export interface ApiDocumentInbox {
   /** Stored, processing, or failed — never quietly counted as done. */
   unprocessedSourceFileIds: string[];
   page: ApiPageInfo;
+  pageAccounting?: ApiPageAccounting[];
+}
+
+export interface ApiPageAccounting {
+  sourceFileId: string;
+  pageCount: number | null;
+  unclaimedPageNumbers: number[];
+  overlappingPageNumbers: number[];
+  outOfBoundsPageNumbers?: number[];
+  blankPageNumbers: number[];
+  unsupportedPageNumbers: number[];
+  complete: boolean;
+  manualReviewRequired: boolean;
+}
+
+export interface ApiInterpretationHistory {
+  documentId: string;
+  matterId: string;
+  currentGeneration: number;
+  snapshots: { generation: number; classId: string | null; fragments: { sourceFileId: string; pageStart: number; pageEnd: number; orderInDocument?: number }[]; actorId: string | null; createdAt: string }[];
+  refreshRuns: { id: string; generation: number; outcome: string; reasons: string[]; startedAt: string; finishedAt: string | null }[];
 }
 
 /** Mirrors `PageCandidateRead`. Nothing here is verified. */

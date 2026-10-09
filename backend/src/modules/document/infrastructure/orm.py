@@ -176,6 +176,38 @@ class DocumentInterpretationRow(Base):
     )
 
 
+class PageDispositionRow(Base):
+    __tablename__ = "document_page_dispositions"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_file_id",
+            "page_number",
+            "source_version",
+            name="uq_document_page_disposition_version",
+        ),
+        CheckConstraint("page_number >= 1", name="ck_page_disposition_page"),
+        CheckConstraint(
+            "disposition IN ('blank', 'unsupported', 'review_required')",
+            name="ck_page_disposition_status",
+        ),
+        Index("ix_document_page_dispositions_scope", "user_id", "matter_id", "source_file_id"),
+    )
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_file_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("source_files.id"), nullable=False
+    )
+    page_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    disposition: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class DocumentFragmentRow(Base):
     """One page range of one source file in its position within a document."""
 
@@ -217,6 +249,8 @@ class DocumentFragmentRow(Base):
 
 
 class SourceFileProcessingRunRow(Base):
+    detected_document_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    interpretation_generation: Mapped[int | None] = mapped_column(Integer, nullable=True)
     """One attempt to process one source file — including the ones that did nothing.
 
     A run that failed because no provider is configured is recorded exactly like

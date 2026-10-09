@@ -73,6 +73,13 @@ const response = (body: unknown, status = 200) =>
     status,
     headers: { "Content-Type": "application/json" },
   });
+it("shows stale evidence beside the historical status before opening review", async () => {
+  facts = [fact({ evidenceStale: true })];
+  renderWithIntl(<FactsScreen matterId="mat-1" />);
+  await screen.findByText("SYNTHETIC CURRENT");
+  expect(screen.getByText(en.factRegister.staleEvidence)).toBeTruthy();
+  expect(screen.queryByText(en.factRegister.currentValue)).toBeNull();
+});
 beforeEach(() => {
   sessionStorage.clear();
   vi.stubGlobal("crypto", webcrypto);

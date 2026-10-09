@@ -626,6 +626,14 @@ NICs or addresses. `MatterScopePort.lock` serializes these writes with canonical
 verification review; `validate_scope` and `get_transaction` are the public ports
 for other owners. The database migration ships with these records.
 
+Matter creation also requires `Idempotency-Key` at the HTTP boundary. The owning
+service fingerprints the submitted intake metadata and serializes replay through
+the existing public idempotency port. Replaying an authorized create intent
+returns its existing owned matter; changing the body under that key conflicts.
+Document corrections and current-evidence consumers share `MatterMutationLockPort`
+so review, linking, checking and output eligibility cannot interleave with stale
+interpretation authority inside the same matter transaction.
+
 1. Use `inquiry | active | closed | archived` as the matter lifecycle.
 2. Keep the ten canonical workflow phases in `task_service`.
 3. Expose phase, blocking, and readiness through a rebuildable matter

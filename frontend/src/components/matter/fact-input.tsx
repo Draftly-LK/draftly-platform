@@ -18,6 +18,7 @@ import {
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import type {
   ApiFactEvidenceInput,
+  ApiDetectedDocument,
   ApiFactType,
   ApiMatterFact,
   ApiMatterSubject,
@@ -36,6 +37,7 @@ import { EvidenceSelector } from "./fact-evidence";
 
 export function ManualFactInput({
   matterId,
+  documentContext,
   types,
   subjects,
   transactions,
@@ -45,6 +47,7 @@ export function ManualFactInput({
   onSaved,
 }: {
   matterId: string;
+  documentContext?: ApiDetectedDocument;
   types: ApiFactType[];
   subjects: ApiMatterSubject[];
   transactions: ApiMatterTransaction[];
@@ -228,6 +231,7 @@ export function ManualFactInput({
         />
       </label>
       <EvidenceSelector
+        documentContext={documentContext}
         sources={sources}
         value={evidence}
         onChange={setEvidence}
@@ -238,6 +242,18 @@ export function ManualFactInput({
           busy ||
           !definition ||
           (definition.valueKind === "ENUM" && !definition.options?.length) ||
+          (evidence &&
+            documentContext &&
+            evidence.detectedDocumentId === documentContext.id &&
+            (documentContext.versionRelationship === "SUPERSEDED" ||
+              evidence.interpretationGeneration !==
+                documentContext.interpretationGeneration ||
+              !documentContext.fragments.some(
+                (fragment) =>
+                  fragment.sourceFileId === evidence.sourceFileId &&
+                  fragment.pageStart <= evidence.pageNumber &&
+                  fragment.pageEnd >= evidence.pageNumber,
+              ))) ||
           !reason.trim() ||
           !value.trim()
         }

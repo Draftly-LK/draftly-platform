@@ -223,6 +223,16 @@ exists.
 
 ## Evidence and limits
 
+The October 2026 lawyer-led workflow records per-logical-document extraction
+outcomes separately from successful source processing. A group is current only
+after its extraction call completed; failed, unsupported and unavailable groups
+remain explicit. Reprocessing an original preserves organized groups and their
+history, invalidates their previous interpretation eligibility, and requires
+explicit refresh from the confirmed grouping. See
+[document-service.md](document-service.md#october-2026-interpretation-and-page-accounting-implementation)
+for correction, cached-OCR refresh, replay and rollback contracts. A source
+success or an old run ID alone never proves current interpretation success.
+
 The measurements above come from `ocr-benchmark/` in this repo, over one matter:
 7 uploaded files and 26 pages, of which 4 files carry gold labels totalling 37
 fields. The uploads are an identity card, a survey plan, a title certificate, a

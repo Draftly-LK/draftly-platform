@@ -22,6 +22,7 @@ import type {
   ApiSourceFileList,
   ApiSourceProcessingStatus,
   ApiReviewCandidate,
+  ApiInterpretationHistory,
 } from "@/types/rta";
 
 export interface ListSourceFilesParams {
@@ -54,12 +55,13 @@ export function refreshDocumentExtraction(
   getToken: TokenProvider,
   documentId: string,
   version: number,
+  key = crypto.randomUUID(),
 ) {
   return apiFetch<ApiDetectedDocument>(
     `/api/v1/detected-documents/${encodeURIComponent(documentId)}/refresh-extraction`,
     {
       method: "POST",
-      headers: ifMatch(version),
+      headers: { ...ifMatch(version), "Idempotency-Key": key },
       getToken,
     },
   );
@@ -106,6 +108,7 @@ export function uploadSourceFile(
   getToken: TokenProvider,
   matterId: string,
   file: File,
+  key = crypto.randomUUID(),
 ): Promise<ApiSourceFile> {
   const body = new FormData();
   body.append("file", file);
@@ -114,6 +117,7 @@ export function uploadSourceFile(
     {
       method: "POST",
       body,
+      headers: { "Idempotency-Key": key },
       getToken,
     },
   );
@@ -168,10 +172,11 @@ export function processSourceFile(
   getToken: TokenProvider,
   sourceFileId: string,
   version: number,
+  key = crypto.randomUUID(),
 ): Promise<ApiProcessingRun> {
   return apiFetch<ApiProcessingRun>(
     `/api/v1/source-files/${encodeURIComponent(sourceFileId)}/process`,
-    { method: "POST", headers: ifMatch(version), getToken },
+    { method: "POST", headers: { ...ifMatch(version), "Idempotency-Key": key }, getToken },
   );
 }
 
@@ -187,10 +192,11 @@ export function supersedeSourceFile(
   sourceFileId: string,
   body: SupersedeSourceFileBody,
   version: number,
+  key = crypto.randomUUID(),
 ): Promise<ApiSourceFile> {
   return apiFetch<ApiSourceFile>(
     `/api/v1/source-files/${encodeURIComponent(sourceFileId)}/supersede`,
-    { method: "POST", body, headers: ifMatch(version), getToken },
+    { method: "POST", body, headers: { ...ifMatch(version), "Idempotency-Key": key }, getToken },
   );
 }
 
@@ -226,6 +232,7 @@ export interface FragmentRangeInput {
 export interface BoundaryDecisionBody {
   fragments: FragmentRangeInput[];
   note?: string;
+  retireDocuments?: { documentId: string; version: number }[];
 }
 
 /** Split, join, or reorder the pages a document claims. Source bytes untouched. */
@@ -234,10 +241,11 @@ export function recordBoundaryDecision(
   documentId: string,
   body: BoundaryDecisionBody,
   version: number,
+  key = crypto.randomUUID(),
 ): Promise<ApiDetectedDocument> {
   return apiFetch<ApiDetectedDocument>(
     `/api/v1/detected-documents/${encodeURIComponent(documentId)}/boundary-decisions`,
-    { method: "POST", body, headers: ifMatch(version), getToken },
+    { method: "POST", body, headers: { ...ifMatch(version), "Idempotency-Key": key }, getToken },
   );
 }
 
@@ -247,15 +255,53 @@ export interface ClassificationDecisionBody {
   note?: string;
 }
 
+export function getDocumentInterpretations(getToken: TokenProvider, documentId: string) {
+  return apiFetch<ApiInterpretationHistory>(`/api/v1/detected-documents/${encodeURIComponent(documentId)}/interpretations`, { getToken });
+}
+
+export function createDocumentGroup(getToken: TokenProvider, matterId: string, body: { fragments: FragmentRangeInput[]; classId?: string }, key: string) {
+  return apiFetch<ApiDetectedDocument>(`/api/v1/matters/${encodeURIComponent(matterId)}/detected-documents`, { method: "POST", body, headers: { "Idempotency-Key": key }, getToken });
+}
+
+export function recordPageDisposition(getToken: TokenProvider, sourceId: string, body: { pageNumber: number; disposition: "blank" | "unsupported" | "review_required"; reason: string; retireDocuments?: { documentId: string; version: number }[] }, version: number, key: string) {
+  return apiFetch<ApiSourceFile>(`/api/v1/source-files/${encodeURIComponent(sourceId)}/page-dispositions`, { method: "POST", body, headers: { ...ifMatch(version), "Idempotency-Key": key }, getToken });
+}
+
+/** A partial queue cannot establish that every original page is accounted for. */
+export async function getCompleteDocumentInbox(getToken: TokenProvider, matterId: string): Promise<ApiDocumentInbox> {
+  const result = await getDocumentInbox(getToken, matterId, { limit: 100 });
+  const cursors = new Set<string>();
+  let page = result.page;
+  while (page.hasMore) {
+    const cursor = page.nextCursor;
+    if (!cursor || cursors.has(cursor) || cursors.size >= 100) throw new Error("Incomplete document queue");
+    cursors.add(cursor);
+    const next = await getDocumentInbox(getToken, matterId, { limit: 100, cursor });
+    for (const key of ["sourceFiles", "documents"] as const) {
+      // Documents spanning originals may occur on more than one source page.
+      const seen = new Set(result[key].map((item) => item.id));
+      if (key === "sourceFiles") result.sourceFiles.push(...next.sourceFiles.filter((item) => !seen.has(item.id)));
+      else result.documents.push(...next.documents.filter((item) => !seen.has(item.id)));
+    }
+    for (const key of ["boundaryReviewDocumentIds", "classificationReviewDocumentIds", "unidentifiedDocumentIds", "unprocessedSourceFileIds"] as const)
+      result[key] = [...new Set([...result[key], ...next[key]])];
+    result.pageAccounting = [...(result.pageAccounting ?? []), ...(next.pageAccounting ?? [])];
+    page = next.page;
+  }
+  result.page = page;
+  return result;
+}
+
 /** Confirm or correct the class. Only controlled ids are accepted. */
 export function recordClassificationDecision(
   getToken: TokenProvider,
   documentId: string,
   body: ClassificationDecisionBody,
   version: number,
+  key = crypto.randomUUID(),
 ): Promise<ApiDetectedDocument> {
   return apiFetch<ApiDetectedDocument>(
     `/api/v1/detected-documents/${encodeURIComponent(documentId)}/classification-decisions`,
-    { method: "POST", body, headers: ifMatch(version), getToken },
+    { method: "POST", body, headers: { ...ifMatch(version), "Idempotency-Key": key }, getToken },
   );
 }

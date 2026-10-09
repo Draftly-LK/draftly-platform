@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { AlertTriangle, FileCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   getDocumentReview,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/api/documents";
 import type { TokenProvider } from "@/lib/api/client";
 import type {
+  ApiDetectedDocument,
   ApiFactEvidence,
   ApiFactEvidenceInput,
   ApiSourceFile,
@@ -19,13 +21,43 @@ export function EvidenceSelector({
   sources,
   value,
   onChange,
+  documentContext,
 }: {
   sources: ApiSourceFile[];
   value: ApiFactEvidenceInput | undefined;
   onChange: (value: ApiFactEvidenceInput | undefined) => void;
+  documentContext?: ApiDetectedDocument;
 }) {
   const t = useTranslations("factRegister");
+  const operations = useTranslations("documentOperations");
   const source = sources.find((s) => s.id === value?.sourceFileId);
+  const belongs = (item: ApiFactEvidenceInput) =>
+    Boolean(
+      documentContext?.interpretationGeneration &&
+        documentContext.versionRelationship !== "SUPERSEDED" &&
+        documentContext.fragments.some(
+          (fragment) =>
+            fragment.sourceFileId === item.sourceFileId &&
+            fragment.pageStart <= item.pageNumber &&
+            fragment.pageEnd >= item.pageNumber,
+        ),
+    );
+  const pin = (item: ApiFactEvidenceInput): ApiFactEvidenceInput =>
+    belongs(item)
+      ? {
+          ...item,
+          detectedDocumentId: documentContext!.id,
+          interpretationGeneration: documentContext!.interpretationGeneration,
+        }
+      : item;
+  const stale = Boolean(
+    value?.detectedDocumentId &&
+      documentContext &&
+      value.detectedDocumentId === documentContext.id &&
+      (!belongs(value) ||
+        value.interpretationGeneration !==
+          documentContext.interpretationGeneration),
+  );
   return (
     <div className="grid min-w-0 gap-3 sm:grid-cols-2">
       <label className="text-sm font-medium">
@@ -37,11 +69,11 @@ export function EvidenceSelector({
             const source = sources.find((s) => s.id === e.target.value);
             onChange(
               source
-                ? {
+                ? pin({
                     sourceFileId: source.id,
                     sourceSha256: source.sha256,
                     pageNumber: 1,
-                  }
+                  })
                 : undefined,
             );
           }}
@@ -69,7 +101,16 @@ export function EvidenceSelector({
             className={controlClass}
             value={value.pageNumber}
             onChange={(e) =>
-              onChange({ ...value, pageNumber: Number(e.target.value) })
+              onChange(
+                documentContext
+                  ? pin({
+                      sourceFileId: value.sourceFileId,
+                      sourceSha256: value.sourceSha256,
+                      pageNumber: Number(e.target.value),
+                      snippet: value.snippet,
+                    })
+                  : { ...value, pageNumber: Number(e.target.value) },
+              )
             }
           />
         </label>
@@ -87,6 +128,42 @@ export function EvidenceSelector({
             {t("excerptValidation")}
           </span>
         </label>
+      )}
+      {value?.detectedDocumentId && (
+        <div className="space-y-2 text-sm sm:col-span-2">
+          <p
+            role="status"
+            className={`flex items-start gap-2 ${stale ? "text-amber-text" : "text-muted-ink"}`}
+          >
+            {stale ? (
+              <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
+            ) : (
+              <FileCheck className="size-4 shrink-0" aria-hidden="true" />
+            )}
+            {stale
+              ? operations("evidenceChanged")
+              : operations("evidenceGeneration", {
+                  generation: value.interpretationGeneration ?? 1,
+                })}
+          </p>
+          {stale && belongs(value) && (
+            <Button
+              size="sm"
+              onClick={() =>
+                onChange(
+                  pin({
+                    sourceFileId: value.sourceFileId,
+                    sourceSha256: value.sourceSha256,
+                    pageNumber: value.pageNumber,
+                    snippet: value.snippet,
+                  }),
+                )
+              }
+            >
+              {operations("renewEvidence")}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );

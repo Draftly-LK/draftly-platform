@@ -587,6 +587,66 @@ Recommended defaults in bold; confirm or override before coding.
 
 ## 14. References
 
+### October 2026 interpretation and page-accounting implementation
+
+The lawyer-led workflow stores immutable interpretation snapshots. A semantic
+type or ordered source/page change increments the detected document generation;
+an unchanged confirmation does not. Evidence and machine observations pin that
+generation. Exact downstream facts, links, checks and form eligibility become
+stale in the same matter transaction through their owning public contracts.
+Approved field bindings and artifact hashes remain historical and unchanged.
+
+`POST /detected-documents/{id}/refresh-extraction` uses the current confirmed
+type and ordered fragments, validated immutable originals and cached page OCR.
+It appends an interpretation run and new candidates, including exact original
+IDs when multiple originals each contain page 1. Failed or unsupported refresh
+never restores an old candidate. `GET /detected-documents/{id}/interpretations`
+returns snapshots and associated refresh attempts; `GET /review?generation=N`
+opens an exact historical extraction. Legacy rows without matching current
+extraction metadata project unavailable rather than claiming current success.
+Current manual page evidence can pin a supported or unsupported interpretation
+without citing a machine run; accepted-source and critical-fact policy still
+apply in verification.
+
+`POST /matters/{id}/detected-documents` creates a group from unclaimed pages.
+Boundary decisions can retire explicitly version-pinned groups during a merge.
+Inbox page accounting reports unknown bounds, unclaimed, overlapping,
+out-of-bounds, blank and unsupported pages. Unknown or unsupported pages do not
+establish completed review. `POST /source-files/{id}/page-dispositions` appends
+a reasoned blank, unsupported or return-to-review decision. Its optional
+`retireDocuments` only retires active groups consisting entirely of the selected
+original/page; a larger group needs a separate range correction first.
+
+Upload, process, supersede, classification, boundary, refresh, group creation
+and page-disposition commands require `Idempotency-Key`. Versioned commands also
+require `If-Match`. Replay authorizes the owned resource first, serializes a
+first insert with the existing PostgreSQL replay store, and compares the body
+including preconditions. Upload identity hashes the actual bytes and upload
+metadata. A deliberate identical-byte upload with a new key remains a distinct
+record. Terminal process failure followed by a new intent uses the current
+source version and creates a new run. A cached response is historical; clients
+read the current resource before presenting completion or eligibility.
+
+Browser retry storage contains only actor/matter/operation identity, opaque key,
+request digest, creation time and an optional original version. No input values,
+filenames, files or tokens are retained. Manual evidence selected in a document
+view pins source, page and interpretation together. Refreshing props cannot
+renew that pin without an explicit selection or renewal.
+
+Migrations `document0003` and `document0004` are additive. Downgrade refuses to
+discard recorded corrections, mixed-source extraction pins, page dispositions
+or associated interpretation runs. Empty migrated schemas can downgrade to base
+and upgrade again. Running older application readers after corrections is
+unsupported even if the new columns remain: a schema guard cannot stop older
+code from ignoring generation pins. Legacy attempts lacking an association
+cannot be reconstructed as exact document history.
+
+Provider calls currently persist typed failures only when the call returns or
+raises. Bounded OCR/classification/extraction deadlines and cancellation-safe
+outcomes are a required Task 8 integration dependency, not a completed recovery
+guarantee. Fresh intake matters still need checklist context before governed
+extraction schemas are available; Task 5 owns that workflow dependency.
+
 - [OpenContracts repository][opencontracts]
 - [OpenContracts PDF data layer][opencontracts-pdf]
 - [OpenContracts structured-extractor model][opencontracts-extractors]

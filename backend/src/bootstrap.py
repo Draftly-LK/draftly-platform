@@ -189,8 +189,10 @@ def build_matter_service(session: AsyncSession) -> MatterService:
         SqlIntakeAnswerRepository,
         SqlMatterRepository,
     )
+    from src.platform.db.idempotency import SqlIdempotencyStore
 
     return MatterService(
+        replay=SqlIdempotencyStore(session),
         matters=SqlMatterRepository(session),
         answers=SqlIntakeAnswerRepository(session),
         facts=SqlMatterFactAdapter(session),

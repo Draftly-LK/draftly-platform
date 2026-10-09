@@ -25,6 +25,8 @@ import {
   listSourceFiles,
   processSourceFile,
 } from "@/lib/api/documents";
+import { getMe } from "@/lib/api/auth";
+import { pendingOperationIntent, clearManualIntent, type ManualIntent } from "@/lib/api/mutation-intent";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
 import type { ApiSourceProcessingStatus } from "@/types/rta";
@@ -57,6 +59,8 @@ function ProcessingFlow({
   matterId: string;
 }) {
   const t = useTranslations("processing");
+  const retryText = useTranslations("documentOperations");
+  const [storageUnavailable, setStorageUnavailable] = useState(false);
   const fileStateLabel = useEnumLabel("enums.sourceFileState");
   const [entries, setEntries] = useState<ProcessingEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,6 +156,7 @@ function ProcessingFlow({
     };
     replace({ ...entry, isProcessing: true });
     setError(null);
+    let intent: ManualIntent | undefined;
     try {
       // Refresh the concurrency token immediately before every initial attempt or retry.
       const file = await getSourceFile(getToken, id);
@@ -163,9 +168,16 @@ function ProcessingFlow({
         setError(t("staleSource"));
         return;
       }
-      await processSourceFile(getToken, id, file.version);
+      const actor = await getMe(getToken);
+      if (!isCurrent()) return;
+      intent = await pendingOperationIntent(actor.id, matterId, `source:${id}:process`, {}, file.version);
+      if (!isCurrent()) return;
+      setStorageUnavailable(!intent.persistent);
+      await processSourceFile(getToken, id, intent.expectedVersion ?? file.version, intent.key);
+      clearManualIntent(intent);
       replace(await getSourceProcessingStatus(getToken, id));
     } catch (cause: unknown) {
+      if (intent && cause instanceof ApiError && cause.status === 412) clearManualIntent(intent);
       if (!isCurrent()) return;
       setError(
         cause instanceof ApiError && cause.status === 412
@@ -220,6 +232,7 @@ function ProcessingFlow({
             {t("refresh")}
           </Button>
         </div>
+        {storageUnavailable && <p role="status" className="text-amber-text mb-3 text-sm">{retryText("storageUnavailable")}</p>}
         {error && (
           <div
             role="alert"

@@ -125,6 +125,7 @@ class ProcessedPage:
 class ProcessedLogicalDocument:
     logical_document: LogicalDocument
     candidates: tuple[ExtractedCandidate, ...]
+    extraction_state: str = "unavailable"
 
 
 @dataclass

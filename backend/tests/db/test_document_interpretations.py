@@ -13,13 +13,18 @@ from src.bootstrap import (
 from src.modules.check.infrastructure.orm import CrossDocumentCheckRow
 from src.modules.content_governance.contracts import TRANSFER_SALE_SUBTYPE_ID, CompilerInput
 from src.modules.document.contracts import FactEvidenceLocator
+from src.modules.document.domain.ingestion import FragmentRange
+from src.modules.document.domain.v1 import ExtractedCandidate
 from src.modules.document.infrastructure.fact_reader import SqlDocumentFactReader
 from src.modules.document.infrastructure.orm import (
     DetectedDocumentRow,
     DocumentFragmentRow,
     DocumentInterpretationRow,
+    DocumentProcessingPageRow,
     ProcessingCandidateFieldRow,
     ProcessingLogicalDocumentRow,
+    SourceFileProcessingRunRow,
+    SourceFileRow,
 )
 from src.modules.document.infrastructure.repository import SqlDocumentIngestionRepository
 from src.modules.draft.infrastructure.orm import GeneratedFormFieldRow, GeneratedFormRow
@@ -30,6 +35,7 @@ from src.platform.errors import DomainRuleError
 from src.platform.ids import new_id
 from tests.db.test_scoped_fact_review import machine_candidate
 from tests.db.test_scoped_fact_review import matter as matter
+from tests.factories.document import synthetic_pdf
 
 
 async def reviewed_candidate(session, matter):
@@ -102,6 +108,276 @@ async def test_same_class_confirmation_keeps_reviewed_authority(db_session, matt
     )
     summary = await SqlConfirmedFactReader(db_session).summarise(ctx.actor_id, matter.matter_id)
     assert any(value.fact_id == accepted.id for value in summary.scoped_confirmed)
+
+
+async def test_legacy_mismatched_type_never_projects_current_candidate(db_session, matter):
+    ctx, candidate, _, document_id = await reviewed_candidate(db_session, matter)
+    document = await db_session.get(DetectedDocumentRow, document_id)
+    document.class_id = "rta.doc.title_certificate"
+    await db_session.flush()
+    observation = await SqlDocumentFactReader(
+        db_session, build_source_file_storage()
+    ).get_candidate(ctx.actor_id, matter.matter_id, candidate)
+    assert not observation.current
+    view = await build_ingestion_service(db_session).get_detected_document(
+        user_id=ctx.actor_id, document_id=document_id
+    )
+    assert view.document.extraction_state == "unavailable"
+
+
+async def test_mixed_sources_pin_identical_page_numbers_and_preserve_same_type_observations(
+    db_session, matter, monkeypatch
+):
+    monkeypatch.setenv("EXTRACTION_PROVIDER", "vision-stub")
+    monkeypatch.setenv("PROVIDER_DATA_APPROVAL", "true")
+    import src.platform.config as config
+
+    config._settings = None
+    ctx, candidate, _, document_id = await reviewed_candidate(db_session, matter)
+    await build_checklist_service(db_session).compile_snapshot(
+        user_id=ctx.actor_id,
+        matter_id=matter.matter_id,
+        compiler_input=CompilerInput(subtype_id=TRANSFER_SALE_SUBTYPE_ID),
+        actor_id=ctx.actor_id,
+        correlation_id="synthetic-mixed-checklist",
+    )
+    service = build_ingestion_service(db_session)
+    original = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
+    first_source = original.fragments[0].source_file_id
+    second = (
+        await service.upload_source_file(
+            user_id=ctx.actor_id,
+            matter_id=matter.matter_id,
+            actor_id=ctx.actor_id,
+            correlation_id="synthetic-mixed",
+            filename="synthetic-second.pdf",
+            declared_media_type="application/pdf",
+            data=synthetic_pdf(1),
+        )
+    ).source_file
+    second_row = await db_session.get(SourceFileRow, second.id)
+    second_row.state = "PROCESSED"
+    old_page = (
+        await db_session.execute(
+            select(DocumentProcessingPageRow).where(
+                DocumentProcessingPageRow.source_file_id == first_source
+            )
+        )
+    ).scalar_one()
+    old_run = await db_session.get(SourceFileProcessingRunRow, old_page.processing_run_id)
+    run = SourceFileProcessingRunRow(
+        id=new_id("run"),
+        user_id=ctx.actor_id,
+        matter_id=matter.matter_id,
+        source_file_id=second.id,
+        provider="synthetic",
+        outcome="PROCESSED",
+        pages_processed=1,
+        ai_extraction_calls=0,
+        started_at=old_run.started_at,
+        finished_at=old_run.finished_at,
+    )
+    db_session.add(run)
+    await db_session.flush()
+    fields = {
+        column.name: getattr(old_page, column.name)
+        for column in DocumentProcessingPageRow.__table__.columns
+        if column.name not in {"id", "source_file_id", "processing_run_id"}
+    }
+    page = DocumentProcessingPageRow(
+        **fields, id=new_id("page"), source_file_id=second.id, processing_run_id=run.id
+    )
+    storage = build_source_file_storage()
+    page.plain_text_key = "synthetic/second.txt"
+    page.plain_text_version = await storage.put(page.plain_text_key, b"SYNTHETIC SECOND NIC")
+    db_session.add(page)
+    await db_session.flush()
+    corrected = await service.decide_boundary(
+        user_id=ctx.actor_id,
+        document_id=document_id,
+        ranges=[FragmentRange(second.id, 1, 1, 0), FragmentRange(first_source, 1, 1, 1)],
+        actor_id=ctx.actor_id,
+        correlation_id="synthetic-mixed",
+        expected_version=original.document.version,
+    )
+
+    class SyntheticExtractor:
+        async def extract_document(self, *, type_id, text, page_numbers, fields):
+            assert type_id == "rta.doc.nic"
+            assert page_numbers == (1, 2)
+            assert text.index("SYNTHETIC SECOND NIC") < text.index("199900000000")
+            return (
+                ExtractedCandidate(fields[0].key, "SYNTHETIC FIRST", 1, 1),
+                ExtractedCandidate(fields[0].key, "SYNTHETIC SECOND", 2, 1),
+            )
+
+    service._refresh_extractor = SyntheticExtractor()
+    refreshed = await service.refresh_extraction(
+        user_id=ctx.actor_id,
+        document_id=document_id,
+        actor_id=ctx.actor_id,
+        correlation_id="synthetic-mixed",
+        expected_version=corrected.document.version,
+    )
+    assert refreshed.document.extraction_state == "current"
+    repo = SqlDocumentIngestionRepository(db_session)
+    review = await repo.get_document_review(ctx.actor_id, document_id, generation=2)
+    assert [(p.source_file_id, p.page_no) for p in review.pages] == [
+        (second.id, 1),
+        (first_source, 1),
+    ]
+    reader = SqlDocumentFactReader(db_session, storage)
+    current = [
+        item
+        for item in await reader.list_candidates(ctx.actor_id, matter.matter_id)
+        if item.current
+    ]
+    assert len(current) == 2
+    assert {(item.evidence.source_file_id, item.evidence.page_number) for item in current} == {
+        (second.id, 1),
+        (first_source, 1),
+    }
+    for item in current:
+        await reader.validate_evidence(ctx.actor_id, matter.matter_id, item.evidence)
+    historical = await repo.get_document_review(ctx.actor_id, document_id, generation=1)
+    assert historical.pages[0].source_file_id == first_source
+    assert not (await reader.get_candidate(ctx.actor_id, matter.matter_id, candidate)).current
+    history = await service.interpretation_history(ctx.actor_id, document_id)
+    assert [(run.generation, run.outcome) for run in history.refresh_runs] == [(2, "PROCESSED")]
+    from importlib import import_module
+    from unittest.mock import patch
+
+    migration = import_module("migrations.versions.document_0004_page_accounting")
+
+    def refuse_history_loss(session):
+        with (
+            patch("alembic.op.get_bind", return_value=session.connection()),
+            patch("alembic.op.drop_table", side_effect=AssertionError("History guard did not run")),
+        ):
+            with pytest.raises(RuntimeError, match="Cannot downgrade"):
+                migration.downgrade()
+
+    await db_session.run_sync(refuse_history_loss)
+
+
+async def test_source_replacement_invalidates_document_and_source_only_evidence(db_session, matter):
+    ctx, _, accepted, document_id = await reviewed_candidate(db_session, matter)
+    review = build_fact_review_service(db_session)
+    original = await review.get_view(ctx, matter.matter_id, accepted.id)
+    ref = original.evidence[0]
+    source_only = await review.add_manual(
+        ctx,
+        matter.matter_id,
+        ManualFactInput(
+            "rta.parcel.village",
+            "SYNTHETIC VILLAGE",
+            "Synthetic source reading",
+            evidence=FactEvidenceLocator(ref.source_file_id, ref.page_number, ref.source_sha256),
+        ),
+        key="source-only",
+    )
+    service = build_ingestion_service(db_session)
+    replacement = await service.upload_source_file(
+        user_id=ctx.actor_id,
+        matter_id=matter.matter_id,
+        actor_id=ctx.actor_id,
+        correlation_id="synthetic-replacement",
+        filename="synthetic-new.pdf",
+        declared_media_type="application/pdf",
+        data=synthetic_pdf(1),
+    )
+    source = await db_session.get(SourceFileRow, ref.source_file_id)
+    await service.supersede_source_file(
+        user_id=ctx.actor_id,
+        source_file_id=source.id,
+        replacement_source_file_id=replacement.source_file.id,
+        actor_id=ctx.actor_id,
+        correlation_id="synthetic-replacement",
+        expected_version=source.version,
+    )
+    assert (await review.get_view(ctx, matter.matter_id, accepted.id)).fact.evidence_stale
+    assert (await review.get_view(ctx, matter.matter_id, source_only.id)).fact.evidence_stale
+
+
+async def test_reprocessing_failure_withholds_old_reviewed_interpretation(
+    db_session, matter, monkeypatch
+):
+    monkeypatch.setenv("EXTRACTION_PROVIDER", "none")
+    import src.platform.config as config
+
+    config._settings = None
+    ctx, candidate, accepted, document_id = await reviewed_candidate(db_session, matter)
+    reader = SqlDocumentFactReader(db_session, build_source_file_storage())
+    observation = await reader.get_candidate(ctx.actor_id, matter.matter_id, candidate)
+    source = await db_session.get(SourceFileRow, observation.evidence.source_file_id)
+    service = build_ingestion_service(db_session)
+    result = await service.process_source_file(
+        user_id=ctx.actor_id,
+        source_file_id=source.id,
+        actor_id=ctx.actor_id,
+        correlation_id="synthetic-reprocess",
+        expected_version=source.version,
+    )
+    assert result.run.outcome.value == "PROCESSING_FAILED"
+    assert (
+        await build_fact_review_service(db_session).get_view(ctx, matter.matter_id, accepted.id)
+    ).fact.evidence_stale
+    document = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
+    assert document.document.interpretation_generation == 2
+    assert document.document.extraction_state == "refresh_required"
+
+
+async def test_unsupported_current_interpretation_allows_new_manual_page_provenance(
+    db_session, matter, monkeypatch
+):
+    monkeypatch.setenv("EXTRACTION_PROVIDER", "vision-stub")
+    monkeypatch.setenv("PROVIDER_DATA_APPROVAL", "true")
+    import src.platform.config as config
+
+    config._settings = None
+    ctx, _, accepted, document_id = await reviewed_candidate(db_session, matter)
+    review = build_fact_review_service(db_session)
+    original = await review.get_view(ctx, matter.matter_id, accepted.id)
+    ref = original.evidence[0]
+    service = build_ingestion_service(db_session)
+    document = await service.get_detected_document(user_id=ctx.actor_id, document_id=document_id)
+    corrected = await service.decide_classification(
+        user_id=ctx.actor_id,
+        document_id=document_id,
+        class_id="rta.doc.consent_letter",
+        actor_id=ctx.actor_id,
+        correlation_id="synthetic-manual-only",
+        expected_version=document.document.version,
+    )
+    refreshed = await service.refresh_extraction(
+        user_id=ctx.actor_id,
+        document_id=document_id,
+        actor_id=ctx.actor_id,
+        correlation_id="synthetic-manual-only",
+        expected_version=corrected.document.version,
+    )
+    assert refreshed.document.extraction_state == "unsupported"
+    manual = await review.add_manual(
+        ctx,
+        matter.matter_id,
+        ManualFactInput(
+            "rta.parcel.village",
+            "SYNTHETIC MANUAL VILLAGE",
+            "Synthetic current page reading",
+            evidence=FactEvidenceLocator(
+                ref.source_file_id,
+                ref.page_number,
+                ref.source_sha256,
+                detected_document_id=document_id,
+            ),
+        ),
+        key="manual-after-unsupported",
+    )
+    current = await review.get_view(ctx, matter.matter_id, manual.id)
+    assert current.evidence[0].interpretation_generation == 2
+    assert not current.fact.evidence_stale
+    assert not current.fact.is_confirmed
+    assert (await review.get_view(ctx, matter.matter_id, accepted.id)).fact.evidence_stale
 
 
 async def test_manual_evidence_pins_generation_and_unrelated_manual_fact_stays_current(

@@ -97,3 +97,93 @@ describe("manual mutation intent metadata", () => {
     expect(next.persistent).toBe(false);
   });
 });
+
+describe("document operation retry metadata", () => {
+  it("pins the original precondition across reload and isolates operations", async () => {
+    const api = await import("./mutation-intent");
+    const first = await api.pendingOperationIntent(
+      "retry-actor",
+      "matter-1",
+      "document:1:refresh",
+      {},
+      2,
+    );
+    vi.resetModules();
+    const reloaded = await import("./mutation-intent");
+    const retry = await reloaded.pendingOperationIntent(
+      "retry-actor",
+      "matter-1",
+      "document:1:refresh",
+      {},
+      3,
+    );
+    expect(retry.key).toBe(first.key);
+    expect(retry.expectedVersion).toBe(2);
+    expect(
+      (
+        await reloaded.pendingOperationIntent(
+          "retry-actor",
+          "matter-1",
+          "document:1:boundary",
+          {},
+          3,
+        )
+      ).key,
+    ).not.toBe(first.key);
+    reloaded.clearManualIntent(retry);
+    const deliberate = await reloaded.pendingOperationIntent(
+      "retry-actor",
+      "matter-1",
+      "document:1:refresh",
+      {},
+      3,
+    );
+    expect(deliberate.key).not.toBe(first.key);
+    expect(deliberate.expectedVersion).toBe(3);
+  });
+  it("hashes actual upload bytes and retains no filename or file content", async () => {
+    const api = await import("./mutation-intent");
+    const file = () =>
+      new File(["SYNTHETIC PRIVATE BYTES"], "SYNTHETIC PRIVATE NAME.pdf", {
+        type: "application/pdf",
+      });
+    const first = await api.pendingUploadIntent(
+      "upload-actor",
+      "matter-1",
+      file(),
+    );
+    vi.resetModules();
+    const reloaded = await import("./mutation-intent");
+    expect(
+      (await reloaded.pendingUploadIntent("upload-actor", "matter-1", file()))
+        .key,
+    ).toBe(first.key);
+    const changed = new File(
+      ["DIFFERENT SYNTHETIC BYTES"],
+      "SYNTHETIC PRIVATE NAME.pdf",
+      { type: "application/pdf" },
+    );
+    expect(
+      (await reloaded.pendingUploadIntent("upload-actor", "matter-1", changed))
+        .key,
+    ).not.toBe(first.key);
+    reloaded.clearManualIntent(first);
+    expect(
+      (await reloaded.pendingUploadIntent("upload-actor", "matter-1", file()))
+        .key,
+    ).not.toBe(first.key);
+    const stored = Object.values(sessionStorage).join();
+    expect(stored).not.toContain("SYNTHETIC");
+    expect(stored).not.toContain("application/pdf");
+  });
+  it("rejects binary containers in the JSON helper instead of treating them as empty objects", async () => {
+    for (const body of [
+      new File(["one"], "one.pdf"),
+      new FormData(),
+      { nested: new Blob(["two"]) },
+    ])
+      await expect(
+        pendingManualIntent("actor", "matter", body),
+      ).rejects.toThrow();
+  });
+});
