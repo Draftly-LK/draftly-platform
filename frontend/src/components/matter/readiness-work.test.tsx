@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithIntl } from "@/test/render";
@@ -123,7 +123,9 @@ it("requires explicit scope and clears the old association pin on deliberate ref
     );
   }
   renderWithIntl(<Scope />);
-  await screen.findByRole("option", { name: "Transaction 2" });
+  await within(screen.getByLabelText("Transaction")).findByRole("option", {
+    name: "Transaction 2",
+  });
   expect(mocks.scope).toBeNull();
   fireEvent.change(screen.getByLabelText("Transaction"), {
     target: { value: "tx" },

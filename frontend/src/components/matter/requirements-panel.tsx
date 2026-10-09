@@ -24,6 +24,7 @@ import {
 } from "@/lib/api/mutation-intent";
 import { humanizeMessageKey } from "@/lib/i18n/humanize";
 import { useEnumLabel } from "@/lib/i18n/use-enum-label";
+import { notifyMatterWorkChanged } from "@/lib/matter-work-events";
 import type {
   ApiChecklist,
   ApiChecklistItemState,
@@ -37,10 +38,12 @@ export function RequirementsPanel({
   matterId,
   getToken,
   mode,
+  targetRequirementId,
 }: {
   matterId: string;
   getToken: TokenProvider;
   mode: "documents" | "checks";
+  targetRequirementId?: string;
 }) {
   const t = useTranslations("requirementsWork");
   const root = useTranslations();
@@ -60,23 +63,57 @@ export function RequirementsPanel({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [stale, setStale] = useState(false);
+  const [inboxError, setInboxError] = useState(false);
+  const epoch = useRef(0);
+  const contextEpoch = useRef(0);
+  const openedTarget = useRef<string | null>(null);
+  const selectedHeading = useRef<HTMLHeadingElement | null>(null);
+  useEffect(() => {
+    if (loading || !checklist || !targetRequirementId) return;
+    const key = `${matterId}:${targetRequirementId}`;
+    if (openedTarget.current === key) return;
+    const item = checklist.items.find((row) => row.id === targetRequirementId);
+    if (!item) return;
+    openedTarget.current = key;
+    setSelected(item);
+  }, [checklist, loading, matterId, targetRequirementId]);
+  useEffect(() => {
+    if (selected?.id === targetRequirementId) selectedHeading.current?.focus();
+  }, [selected, targetRequirementId]);
+  useEffect(() => {
+    const generation = contextEpoch;
+    setBusy(false);
+    return () => {
+      generation.current++;
+    };
+  }, [matterId, getToken]);
   const pending = useRef<ManualIntent | null>(null);
   const title = (item: ApiChecklistItemState) =>
     root.has(item.labelKey)
       ? root(item.labelKey)
       : humanizeMessageKey(item.labelKey);
   const load = useCallback(async () => {
-    const [next, inbox] = await Promise.all([
+    const run = ++epoch.current;
+    const [next, inbox] = await Promise.allSettled([
       getChecklist(getToken, matterId),
       getCompleteDocumentInbox(getToken, matterId),
     ]);
-    setChecklist(next);
-    setDocuments(inbox.documents);
-    return next;
+    if (run !== epoch.current) return null;
+    if (inbox.status === "fulfilled") setDocuments(inbox.value.documents);
+    else setDocuments([]);
+    setInboxError(inbox.status === "rejected");
+    if (next.status === "rejected") {
+      setChecklist(null);
+      throw next.reason;
+    }
+    setChecklist(next.value);
+    return next.value;
   }, [getToken, matterId]);
   useEffect(() => {
+    const generation = epoch;
     let alive = true;
     setLoading(true);
+    setSelected(null);
     load()
       .catch((cause: unknown) => {
         if (alive) setError(apiErrorMessage(cause, t("unavailable")));
@@ -86,6 +123,7 @@ export function RequirementsPanel({
       });
     return () => {
       alive = false;
+      generation.current++;
     };
   }, [load, t]);
   useEffect(() => {
@@ -104,6 +142,7 @@ export function RequirementsPanel({
     };
   }, [getToken, matterId, selected, t]);
   const choose = (item: ApiChecklistItemState) => {
+    if (busy || loading) return;
     setSelected(item);
     setDocument(null);
     setMethod("");
@@ -113,12 +152,15 @@ export function RequirementsPanel({
     setError(null);
   };
   const renew = async () => {
+    if (busy) return;
+    const context = contextEpoch.current;
     if (pending.current) clearManualIntent(pending.current);
     pending.current = null;
     setBusy(true);
     try {
       if (selected) {
         const actor = await getMe(getToken);
+        if (context !== contextEpoch.current) return;
         for (const operation of ["links", "decisions", "original-inspection"])
           clearPendingOperationIntent(
             actor.id,
@@ -127,25 +169,32 @@ export function RequirementsPanel({
           );
       }
       const fresh = await load();
-      const item = fresh.items.find((row) => row.id === selected?.id);
-      if (item) choose(item);
-      else setSelected(null);
+      if (context !== contextEpoch.current) return;
+      const item = fresh?.items.find((row) => row.id === selected?.id);
+      if (item) {
+        setSelected(item);
+        setDocument(null);
+        setStale(false);
+      } else setSelected(null);
     } catch (cause) {
+      if (context !== contextEpoch.current) return;
       setError(apiErrorMessage(cause, t("unavailable")));
     } finally {
-      setBusy(false);
+      if (context === contextEpoch.current) setBusy(false);
     }
   };
   const save = async (
     operation: RequirementOperation,
     body: Record<string, unknown>,
   ) => {
-    if (!selected || stale) return;
+    if (!selected || stale || busy) return;
+    const context = contextEpoch.current;
     setBusy(true);
     setError(null);
     setNotice("");
     try {
       const actor = await getMe(getToken);
+      if (context !== contextEpoch.current) return;
       const intent = await pendingOperationIntent(
         actor.id,
         matterId,
@@ -154,6 +203,7 @@ export function RequirementsPanel({
         selected.version,
       );
       pending.current = intent;
+      if (context !== contextEpoch.current) return;
       if (!intent.persistent) setNotice(t("retryStorage"));
       await requirementCommand(
         getToken,
@@ -166,11 +216,14 @@ export function RequirementsPanel({
       );
       clearManualIntent(intent);
       pending.current = null;
+      if (context !== contextEpoch.current) return;
+      notifyMatterWorkChanged(matterId);
       setSelected(null);
       setDocument(null);
       setNotice(t("saved"));
       await load();
     } catch (cause) {
+      if (context !== contextEpoch.current) return;
       const changed =
         cause instanceof ApiError && [409, 412].includes(cause.status);
       setStale(changed);
@@ -178,14 +231,21 @@ export function RequirementsPanel({
         changed ? t("changed") : apiErrorMessage(cause, t("saveFailed")),
       );
     } finally {
-      setBusy(false);
+      if (context === contextEpoch.current) setBusy(false);
     }
   };
-  const rows = (checklist?.items ?? []).filter(
-    (item) =>
-      item.lifecycle !== "NOT_TRIGGERED" &&
-      (mode === "checks" || item.computedResolution !== "SATISFIED"),
-  );
+  const rows = (checklist?.items ?? [])
+    .filter(
+      (item) =>
+        item.lifecycle !== "NOT_TRIGGERED" &&
+        (mode === "checks" || item.computedResolution !== "SATISFIED"),
+    )
+    .sort(
+      (a, b) =>
+        Number(a.computedResolution === "SATISFIED") -
+        Number(b.computedResolution === "SATISFIED"),
+    );
+  const groups = [...new Set(rows.map((row) => row.group))];
   const choices: Record<string, string[]> = {
     digitalReview: ["LAWYER_CONFIRMED", "REJECTED"],
     consistency: ["MATCHED", "MISMATCH"],
@@ -216,27 +276,90 @@ export function RequirementsPanel({
         </p>
       )}
       {!loading && checklist && rows.length === 0 && <p>{t("empty")}</p>}
+      {inboxError && (
+        <p role="alert" className="text-amber-text text-sm">
+          {t("inboxUnavailable")}
+        </p>
+      )}
+      <Link
+        className="text-link text-sm underline"
+        href={`/matters/${matterId}/documents`}
+      >
+        {t("collectDocuments")}
+      </Link>
       <div className="grid gap-4 xl:grid-cols-2">
-        <ul className="divide-border max-h-80 divide-y overflow-y-auto">
-          {rows.map((item) => (
-            <li key={item.id} className="py-2">
-              <button
-                type="button"
-                className="text-ink hover:bg-selected-bg w-full rounded px-2 py-1 text-left text-sm font-medium"
-                onClick={() => choose(item)}
-              >
-                {title(item)}
-              </button>
-              <p className="text-muted-ink px-2 text-xs leading-5">
-                {label(item.collection)} &middot; {label(item.digitalReview)}{" "}
-                &middot; {label(item.physicalOriginal)}
-              </p>
-            </li>
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <section key={group}>
+              <h3 className="text-muted-ink mb-2 text-sm font-semibold">
+                {t.has(`groups.${group}`)
+                  ? t(`groups.${group}`)
+                  : t("groups.OFFICE_ADDED")}
+              </h3>
+              <ul className="divide-border divide-y">
+                {rows
+                  .filter((item) => item.group === group)
+                  .map((item) => (
+                    <li key={item.id} className="py-2">
+                      <button
+                        type="button"
+                        disabled={busy || loading}
+                        className="text-ink hover:bg-selected-bg w-full rounded px-2 py-1 text-left text-sm font-medium"
+                        onClick={() => choose(item)}
+                      >
+                        {title(item)}
+                      </button>
+                      <p className="text-muted-ink px-2 text-xs leading-5">
+                        {t("applicability")}: {label(item.applicability)}
+                      </p>
+                      <dl className="grid gap-x-3 px-2 text-xs leading-5 sm:grid-cols-2">
+                        {[
+                          "collection",
+                          "digitalReview",
+                          "physicalOriginal",
+                          "currency",
+                          "consistency",
+                        ].map((field) => (
+                          <div key={field}>
+                            <dt className="text-muted-ink inline">
+                              {t(field)}:{" "}
+                            </dt>
+                            <dd className="inline">
+                              {label(
+                                String(
+                                  item[field as keyof ApiChecklistItemState],
+                                ),
+                              )}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                      {item.computedResolution === "SATISFIED" && (
+                        <p className="text-forest px-2 text-xs">
+                          {t("satisfied")}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
         {selected ? (
           <div className="border-border space-y-4 border-t pt-4 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
-            <h3 className="font-semibold">{title(selected)}</h3>
+            <h3 ref={selectedHeading} tabIndex={-1} className="font-semibold">
+              {title(selected)}
+            </h3>
+            {selected.explanationKey && (
+              <p className="text-muted-ink text-sm">
+                {root.has(selected.explanationKey)
+                  ? root(selected.explanationKey)
+                  : humanizeMessageKey(selected.explanationKey)}
+              </p>
+            )}
+            <p className="text-muted-ink text-sm">
+              {t("applicability")}: {label(selected.applicability)}
+            </p>
             <p className="text-muted-ink text-xs">
               {t("version", { version: selected.version })}
             </p>
@@ -265,7 +388,7 @@ export function RequirementsPanel({
             >
               {t("renew")}
             </Button>
-            {mode === "documents" && (
+            {
               <div className="space-y-3">
                 <label className="block text-sm" htmlFor={`${id}-document`}>
                   {t("document")}
@@ -274,7 +397,7 @@ export function RequirementsPanel({
                   id={`${id}-document`}
                   className={control}
                   value={document?.id ?? ""}
-                  disabled={busy || stale}
+                  disabled={busy || stale || inboxError}
                   onChange={(event) =>
                     setDocument(
                       documents.find((row) => row.id === event.target.value) ??
@@ -309,6 +432,7 @@ export function RequirementsPanel({
                 <Button
                   disabled={
                     busy ||
+                    inboxError ||
                     stale ||
                     !document ||
                     !document.interpretationGeneration
@@ -326,7 +450,7 @@ export function RequirementsPanel({
                   {t("link")}
                 </Button>
               </div>
-            )}
+            }
             {mode === "checks" && (
               <>
                 {selected.physicalOriginalPolicy !== "NOT_REQUIRED" && (
@@ -370,6 +494,7 @@ export function RequirementsPanel({
                     id={`${id}-dimension`}
                     className={control}
                     value={dimension}
+                    disabled={busy || stale}
                     onChange={(event) => {
                       setDimension(event.target.value);
                       setDecision("");
@@ -390,6 +515,7 @@ export function RequirementsPanel({
                     id={`${id}-decision`}
                     className={control}
                     value={decision}
+                    disabled={busy || stale}
                     onChange={(event) => setDecision(event.target.value)}
                   >
                     <option value="">{t("chooseDecision")}</option>
@@ -406,6 +532,7 @@ export function RequirementsPanel({
                     id={`${id}-reason`}
                     className={control}
                     value={reason}
+                    disabled={busy || stale}
                     onChange={(event) => setReason(event.target.value)}
                   />
                   <Button
@@ -455,7 +582,9 @@ export function RequirementsPanel({
                   >
                     {t("viewDocument")}
                   </Link>{" "}
-                  ? {label(link.digitalReview)} &middot;{" "}
+                  &middot; {label(link.digitalReview)} &middot;{" "}
+                  {t(link.isLive ? "liveEvidence" : "historicalEvidence")}{" "}
+                  &middot;{" "}
                   {t("version", { version: link.documentVersion ?? 0 })}
                 </p>
               ))}

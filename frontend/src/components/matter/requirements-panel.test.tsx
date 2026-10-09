@@ -5,7 +5,11 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { renderWithIntl } from "@/test/render";
 import { RequirementsPanel } from "./requirements-panel";
 
-const mocks = vi.hoisted(() => ({ calls: [] as unknown[][], fail: false }));
+const mocks = vi.hoisted(() => ({
+  calls: [] as unknown[][],
+  fail: false,
+  inboxFail: false,
+}));
 vi.mock("@/lib/api/auth", () => ({
   getMe: async () => ({ id: "synthetic-actor" }),
 }));
@@ -14,6 +18,7 @@ vi.mock("@/lib/api/matters", () => ({
     items: [
       {
         id: "item",
+        group: "TITLE",
         version: 4,
         labelKey: "Synthetic original",
         physicalOriginalPolicy: "ORIGINAL_INSPECTED",
@@ -34,7 +39,10 @@ vi.mock("@/lib/api/matters", () => ({
   }),
 }));
 vi.mock("@/lib/api/documents", () => ({
-  getCompleteDocumentInbox: async () => ({ documents: [] }),
+  getCompleteDocumentInbox: async () => {
+    if (mocks.inboxFail) throw new Error("synthetic inbox failure");
+    return { documents: [] };
+  },
 }));
 vi.mock("@/lib/api/requirements", () => ({
   listRequirementLinks: async () => [],
@@ -61,11 +69,48 @@ it("shows guidance until a requirement is selected", async () => {
     screen.getByRole("heading", { name: "Synthetic original" }),
   ).toBeTruthy();
 });
+it("opens the requirement recommended by the matter checklist", async () => {
+  renderWithIntl(
+    <RequirementsPanel
+      matterId="matter"
+      getToken={token}
+      mode="checks"
+      targetRequirementId="item"
+    />,
+  );
+  expect(await screen.findByLabelText("Supporting document")).toBeTruthy();
+  expect(
+    screen.getByRole("heading", { name: "Synthetic original" }),
+  ).toBeTruthy();
+});
 beforeEach(() => {
   mocks.calls = [];
   mocks.fail = false;
+  mocks.inboxFail = false;
   sessionStorage.clear();
   vi.stubGlobal("crypto", webcrypto);
+});
+it("keeps requirements available when the document inbox is unavailable", async () => {
+  mocks.inboxFail = true;
+  renderWithIntl(
+    <RequirementsPanel matterId="matter" getToken={token} mode="checks" />,
+  );
+  expect(
+    await screen.findByRole("button", { name: "Synthetic original" }),
+  ).toBeTruthy();
+});
+it("labels all requirement dimensions and provides linking directly on Checks", async () => {
+  renderWithIntl(
+    <RequirementsPanel matterId="matter" getToken={token} mode="checks" />,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Synthetic original" }),
+  );
+  expect(screen.getByLabelText("Supporting document")).toBeTruthy();
+  expect(
+    screen.getAllByText("Physical-original inspection").length,
+  ).toBeGreaterThan(0);
+  expect(screen.getAllByText(/^Applicability:/).length).toBeGreaterThan(0);
 });
 it("records only the human inspection action and replays an ambiguous failure with exact item pin", async () => {
   mocks.fail = true;

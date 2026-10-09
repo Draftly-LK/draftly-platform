@@ -7,16 +7,11 @@ import type { RtaMatterState } from "@/types/rta";
 import { STAGE_ORDER, stageForState } from "./matter-stage";
 
 /** A registered or closed matter has finished every stage. */
-const COMPLETE_STATES: ReadonlySet<RtaMatterState> = new Set([
-  "REGISTERED",
-  "CLOSED",
-]);
 /** Work has stopped on the current stage; it is not a different stage. */
 const HOLD_STATES: ReadonlySet<RtaMatterState> = new Set([
   "LITIGATION_HOLD",
   "CANCELLED",
 ]);
-const DRAFTING_INDEX = STAGE_ORDER.indexOf("drafting");
 
 /**
  * Where the matter is in its six stages: numbered circles joined by a line,
@@ -30,20 +25,16 @@ const DRAFTING_INDEX = STAGE_ORDER.indexOf("drafting");
  */
 export function MatterStepper({
   state,
-  hasForm = false,
+  evidenceComplete = false,
 }: {
   state: RtaMatterState;
   hasForm?: boolean;
+  evidenceComplete?: boolean;
 }) {
   const t = useTranslations("matterNav");
-  const complete = COMPLETE_STATES.has(state);
   const hold = HOLD_STATES.has(state);
   const stateIndex = STAGE_ORDER.indexOf(stageForState(state));
-  const currentIndex = complete
-    ? STAGE_ORDER.length
-    : hasForm && !hold
-      ? Math.max(stateIndex, DRAFTING_INDEX)
-      : stateIndex;
+  const currentIndex = stateIndex;
   const currentStage =
     STAGE_ORDER[Math.min(currentIndex, STAGE_ORDER.length - 1)];
 
@@ -53,13 +44,11 @@ export function MatterStepper({
         className="text-muted-ink mb-2 text-center text-xs sm:hidden"
         aria-hidden="true"
       >
-        {complete
-          ? t("progressComplete")
-          : t("stepOf", {
-              current: currentIndex + 1,
-              total: STAGE_ORDER.length,
-              stage: t(`stage.${currentStage}`),
-            })}
+        {t("stepOf", {
+          current: currentIndex + 1,
+          total: STAGE_ORDER.length,
+          stage: t(`stage.${currentStage}`),
+        })}
       </p>
       <ol
         aria-label={t("progress")}
@@ -69,7 +58,7 @@ export function MatterStepper({
         }}
       >
         {STAGE_ORDER.map((stage, index) => {
-          const done = index < currentIndex;
+          const done = stage === "evidence" && evidenceComplete;
           const current = index === currentIndex;
           const paused = current && hold;
           const last = index === STAGE_ORDER.length - 1;
@@ -84,7 +73,7 @@ export function MatterStepper({
                   aria-hidden="true"
                   className={cn(
                     "absolute left-1/2 top-3.5 h-0.5 w-full -translate-y-1/2 sm:top-4",
-                    index < currentIndex ? "bg-forest" : "bg-border",
+                    "bg-border",
                   )}
                 />
               ) : null}

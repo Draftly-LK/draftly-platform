@@ -28,6 +28,10 @@ import {
 } from "@/lib/api/checks";
 import { RequirementsPanel } from "@/components/matter/requirements-panel";
 import { CheckScopeSelector } from "./check-scope-selector";
+import {
+  MATTER_WORK_CHANGED,
+  notifyMatterWorkChanged,
+} from "@/lib/matter-work-events";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -49,17 +53,38 @@ import { StatusBadge } from "@/components/ui/status-badge";
  * Entry point: split between API-bound and demo modes using the same pattern
  * as new-matter-screen.tsx. Hooks must stay unconditional within the component.
  */
-export function ChecksScreen({ matterId }: { matterId: string }) {
+export function ChecksScreen({
+  matterId,
+  targetRequirementId,
+}: {
+  matterId: string;
+  targetRequirementId?: string;
+}) {
   return isApiEnabled() ? (
-    <ApiBoundChecksScreen matterId={matterId} />
+    <ApiBoundChecksScreen
+      matterId={matterId}
+      targetRequirementId={targetRequirementId}
+    />
   ) : (
     <DemoChecksScreen matterId={matterId} />
   );
 }
 
-function ApiBoundChecksScreen({ matterId }: { matterId: string }) {
+function ApiBoundChecksScreen({
+  matterId,
+  targetRequirementId,
+}: {
+  matterId: string;
+  targetRequirementId?: string;
+}) {
   const getToken = useTokenProvider();
-  return <ChecksScreenContent matterId={matterId} getToken={getToken} />;
+  return (
+    <ChecksScreenContent
+      matterId={matterId}
+      getToken={getToken}
+      targetRequirementId={targetRequirementId}
+    />
+  );
 }
 
 function DemoChecksScreen({ matterId }: { matterId: string }) {
@@ -75,9 +100,14 @@ function DemoChecksScreen({ matterId }: { matterId: string }) {
 interface ChecksScreenContentProps {
   matterId: string;
   getToken: TokenProvider;
+  targetRequirementId?: string;
 }
 
-function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
+function ChecksScreenContent({
+  matterId,
+  getToken,
+  targetRequirementId,
+}: ChecksScreenContentProps) {
   const t = useTranslations("checks");
   const tRoot = useTranslations();
 
@@ -108,36 +138,70 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
   const reasonInputRef = useRef<HTMLTextAreaElement>(null);
 
   const [scope, setScope] = useState<RunChecksBody | null>(null);
+  const requestEpoch = useRef(0);
+  const contextEpoch = useRef(0);
+  useEffect(() => {
+    const generation = contextEpoch;
+    setScope(null);
+    setSelectedIssue(null);
+    setRunningChecks(false);
+    setSubmittingDecision(false);
+    return () => {
+      generation.current++;
+    };
+  }, [matterId, getToken]);
   const fetchData = useCallback(async () => {
+    const request = ++requestEpoch.current;
     setLoading(true);
     setError(null);
+    setGates(null);
+    setCheckResults([]);
+    setResultCursor(null);
+    setLoadingMore(false);
     try {
       const [issuesResult, resultsResult] = await Promise.all([
         listCompleteIssues(getToken, matterId),
         listCheckResults(getToken, matterId, {}),
       ]);
+      if (request !== requestEpoch.current) return;
       setIssues(issuesResult.items);
       setGates(issuesResult.gates);
       setCheckResults(resultsResult.items);
       setResultCursor(resultsResult.page.nextCursor);
     } catch (cause) {
+      if (request !== requestEpoch.current) return;
       setError(apiErrorMessage(cause, t("loadError")));
     } finally {
-      setLoading(false);
+      if (request === requestEpoch.current) setLoading(false);
     }
   }, [getToken, matterId, t]);
 
   useEffect(() => {
+    const generation = requestEpoch;
     void fetchData();
-  }, [fetchData]);
+    const refresh = (event: Event) => {
+      if (
+        (event as CustomEvent<{ matterId: string }>).detail?.matterId ===
+        matterId
+      )
+        void fetchData();
+    };
+    window.addEventListener(MATTER_WORK_CHANGED, refresh);
+    return () => {
+      generation.current++;
+      window.removeEventListener(MATTER_WORK_CHANGED, refresh);
+    };
+  }, [fetchData, matterId]);
 
   const loadMore = async () => {
-    if (!resultCursor) return;
+    if (!resultCursor || loadingMore || loading) return;
+    const request = requestEpoch.current;
     setLoadingMore(true);
     try {
       const page = await listCheckResults(getToken, matterId, {
         cursor: resultCursor,
       });
+      if (request !== requestEpoch.current) return;
       if (page.page.nextCursor === resultCursor)
         throw new Error(t("loadError"));
       setCheckResults((rows) => [
@@ -148,32 +212,37 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
       ]);
       setResultCursor(page.page.nextCursor);
     } catch (cause) {
+      if (request !== requestEpoch.current) return;
       setError(apiErrorMessage(cause, t("loadError")));
     } finally {
-      setLoadingMore(false);
+      if (request === requestEpoch.current) setLoadingMore(false);
     }
   };
 
   // Run checks
   const handleRunChecks = useCallback(async () => {
-    if (!scope) return;
+    if (!scope || runningChecks || loading) return;
+    const context = contextEpoch.current;
     setRunningChecks(true);
     setError(null);
     try {
       await runChecks(getToken, matterId, scope);
-      await fetchData();
+      if (context !== contextEpoch.current) return;
+      notifyMatterWorkChanged(matterId);
     } catch (cause) {
+      if (context !== contextEpoch.current) return;
       if (cause instanceof ApiError && [409, 412].includes(cause.status))
         setScope(null);
       setError(apiErrorMessage(cause, t("runError")));
     } finally {
-      setRunningChecks(false);
+      if (context === contextEpoch.current) setRunningChecks(false);
     }
-  }, [getToken, matterId, t, scope, fetchData]);
+  }, [getToken, matterId, t, scope, runningChecks, loading]);
 
   // Record issue decision
   const handleRecordDecision = useCallback(async () => {
-    if (!selectedIssue || !targetState) return;
+    if (!selectedIssue || !targetState || submittingDecision) return;
+    const context = contextEpoch.current;
     setSubmittingDecision(true);
     setError(null);
     try {
@@ -187,6 +256,7 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
         },
         selectedIssue.version,
       );
+      if (context !== contextEpoch.current) return;
       setIssues((current) =>
         current.map((issue) =>
           issue.id === updatedIssue.id ? updatedIssue : issue,
@@ -195,17 +265,26 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
       setSelectedIssue(null);
       setTargetState("");
       setReason("");
-      await fetchData();
+      notifyMatterWorkChanged(matterId);
     } catch (cause) {
+      if (context !== contextEpoch.current) return;
       if (cause instanceof ApiError && cause.status === 409) {
         setError(t("conflictError"));
       } else {
         setError(apiErrorMessage(cause, t("decisionError")));
       }
     } finally {
-      setSubmittingDecision(false);
+      if (context === contextEpoch.current) setSubmittingDecision(false);
     }
-  }, [selectedIssue, targetState, reason, getToken, matterId, t, fetchData]);
+  }, [
+    selectedIssue,
+    targetState,
+    reason,
+    getToken,
+    matterId,
+    t,
+    submittingDecision,
+  ]);
 
   // Filter issues
   const filteredIssues = issues.filter((issue) => {
@@ -229,12 +308,14 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
           getToken={getToken}
           matterId={matterId}
           mode="checks"
+          targetRequirementId={targetRequirementId}
         />
         <CheckScopeSelector
           getToken={getToken}
           matterId={matterId}
           value={scope}
           onChange={setScope}
+          disabled={runningChecks || submittingDecision}
         />
         {/* Gates Summary Bar */}
         {gates && (
@@ -253,6 +334,9 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
                 blocked={gates.blocksRegistrationReadyExport}
               />
             </div>
+            <p className="text-muted-ink mt-3 text-sm">
+              {tScope("gateNotice")}
+            </p>
             {(gates.openStatutoryBlockerIds.length > 0 ||
               gates.openBlockingIssueIds.length > 0) && (
               <div className="mt-3 grid gap-2 text-sm">
@@ -292,7 +376,7 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
           <h2 className="text-lg font-semibold">{t("issuesHeading")}</h2>
           <Button
             variant="primary"
-            disabled={runningChecks || !scope}
+            disabled={runningChecks || loading || !scope}
             onClick={() => void handleRunChecks()}
           >
             {runningChecks ? (
@@ -308,10 +392,22 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
             )}
           </Button>
         </div>
+        {!loading && (
+          <p className="text-muted-ink mb-4 text-sm" role="status">
+            {runningChecks
+              ? tScope("pending")
+              : !error && checkResults.length === 0 && !resultCursor
+                ? tScope("notRun")
+                : tScope("coverageUnknown")}
+          </p>
+        )}
 
         {/* Error Alert */}
         {error && (
-          <div className="border-red bg-red-bg text-red mb-6 rounded border p-3 text-sm">
+          <div
+            role="alert"
+            className="border-red bg-red-bg text-red mb-6 rounded border p-3 text-sm"
+          >
             <div className="flex items-start gap-2">
               <AlertCircle className="size-5 shrink-0" strokeWidth={1.5} />
               <p>{error}</p>
@@ -376,7 +472,11 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
             {/* Issues List */}
             {filteredIssues.length === 0 ? (
               <p className="text-muted-ink py-6 text-center text-sm">
-                {issues.length === 0 ? t("noIssues") : t("noMatching")}
+                {error
+                  ? tScope("coverageUnknown")
+                  : issues.length === 0
+                    ? t("noIssues")
+                    : t("noMatching")}
               </p>
             ) : (
               <div className="space-y-3">
@@ -406,8 +506,28 @@ function ChecksScreenContent({ matterId, getToken }: ChecksScreenContentProps) {
                       key={result.id}
                       className="border-border-strong bg-surface flex items-start gap-3 rounded border p-3"
                     >
-                      <CheckResultIcon outcome={result.outcome} />
+                      {gates?.staleCheckIds?.includes(result.id) ||
+                      result.explanationKey === "rta.check.input_changed" ? (
+                        <Info
+                          className="text-muted-ink size-4 shrink-0"
+                          strokeWidth={1.5}
+                        />
+                      ) : (
+                        <CheckResultIcon outcome={result.outcome} />
+                      )}
                       <div className="min-w-0 flex-1">
+                        {(gates?.staleCheckIds?.includes(result.id) ||
+                          result.explanationKey ===
+                            "rta.check.input_changed") && (
+                          <p className="text-amber-text text-xs">
+                            {tScope("staleResult")}
+                          </p>
+                        )}
+                        <p className="text-muted-ink text-xs">
+                          {tScope("outcome", {
+                            outcome: tScope(`outcomes.${result.outcome}`),
+                          })}
+                        </p>
                         <div className="text-sm font-medium">
                           {tRoot(result.explanationKey)}
                         </div>
@@ -581,13 +701,13 @@ function GateBadge({ label, blocked }: { label: string; blocked: boolean }) {
         "flex min-w-0 flex-wrap items-center gap-2 rounded border p-3 text-sm",
         blocked
           ? "border-red bg-red-bg text-red"
-          : "border-forest bg-soft-green text-forest",
+          : "border-border bg-surface text-muted-ink",
       )}
     >
       {blocked ? (
         <ShieldAlert className="size-4 shrink-0" strokeWidth={1.5} />
       ) : (
-        <CheckCircle className="size-4 shrink-0" strokeWidth={1.5} />
+        <Info className="size-4 shrink-0" strokeWidth={1.5} />
       )}
       <span className="font-medium">{label}</span>
       <span className="font-semibold">
