@@ -21,6 +21,7 @@ from src.modules.matter_agent.application.actions import (
 )
 from src.modules.matter_agent.domain.errors import (
     AgentDisabledError,
+    AgentRetryUnavailableError,
     AgentSessionNotFoundError,
     PendingActionExpiredError,
     PendingActionNotFoundError,
@@ -73,11 +74,26 @@ class AgentJob:
     failure_class: str | None = None
 
 
+@dataclass(frozen=True)
+class RetrySource:
+    job: AgentJob
+    message: AgentMessage
+    has_tool_calls: bool
+    is_latest_message: bool
+    existing_retry: AgentJob | None = None
+
+
 class AgentJobPort(Protocol):
     """Job rows plus the outbox enqueue, both inside the caller's transaction."""
 
     async def create(
-        self, *, session_id: str, user_id: str, matter_id: str, correlation_id: str
+        self,
+        *,
+        session_id: str,
+        user_id: str,
+        matter_id: str,
+        correlation_id: str,
+        retry_of_job_id: str | None = None,
     ) -> AgentJob: ...
 
     async def enqueue(
@@ -85,6 +101,10 @@ class AgentJobPort(Protocol):
     ) -> None: ...
 
     async def get(self, *, job_id: str, user_id: str) -> AgentJob | None: ...
+
+    async def retry_source(
+        self, *, job_id: str, user_id: str, matter_id: str
+    ) -> RetrySource | None: ...
 
 
 @dataclass(frozen=True)
@@ -213,6 +233,54 @@ class AgentService:
             )
         )
         return created
+
+    async def retry_turn(self, ctx: RequestContext, matter_id: str, job_id: str) -> AgentJob:
+        """Retry a failed answer using its saved message, without replaying tools.
+
+        The locked original job serializes competing retries. Existing attempts
+        converge, and transcript content and the original failure stay intact.
+        """
+        session = await self.get_or_create_session(ctx, matter_id)
+        source = await self._jobs.retry_source(
+            job_id=job_id, user_id=ctx.actor_id, matter_id=matter_id
+        )
+        if source is None or source.message.session_id != session.id:
+            raise AgentSessionNotFoundError()
+        if source.existing_retry is not None:
+            return source.existing_retry
+        if (
+            source.job.state is not JobState.FAILED
+            or source.job.failure_class != "model_unavailable"
+            or source.has_tool_calls
+            or not source.is_latest_message
+            or source.message.conversation_id != session.active_conversation_id
+        ):
+            raise AgentRetryUnavailableError()
+        job = await self._jobs.create(
+            session_id=session.id,
+            user_id=ctx.actor_id,
+            matter_id=matter_id,
+            correlation_id=ctx.correlation_id,
+            retry_of_job_id=job_id,
+        )
+        await self._jobs.enqueue(
+            job_id=job.job_id,
+            session_id=session.id,
+            message_id=source.message.id,
+            user_id=ctx.actor_id,
+        )
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                matter_id=matter_id,
+                actor=ctx.actor_id,
+                action="agent.turn-retried",
+                target_type="agent_job",
+                target_id=job.job_id,
+                correlation_id=ctx.correlation_id,
+            )
+        )
+        return job
 
     async def append_user_message(
         self, ctx: RequestContext, matter_id: str, *, content: str, job_id: str

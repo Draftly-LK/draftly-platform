@@ -61,6 +61,7 @@ from src.platform.request_context import RequestContext
 router = APIRouter(tags=["matter-agent"])
 
 _SEND_MESSAGE_ROUTE = "POST /matters/{matterId}/agent/messages"
+_RETRY_ROUTE = "POST /matters/{matterId}/agent/jobs/{jobId}/retry"
 
 
 def _parse_last_event_id(value: str | None) -> int:
@@ -283,6 +284,57 @@ async def read_job(
         tool_call_count=job.tool_call_count,
         failure_class=job.failure_class,
     )
+
+
+@router.post(
+    "/matters/{matter_id}/agent/jobs/{job_id}/retry",
+    response_model=JobRead,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def retry_job(
+    matter_id: str,
+    job_id: str,
+    ctx: Annotated[RequestContext, Depends(get_request_context)],
+    service: Annotated[AgentService, Depends(get_agent_service)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
+) -> JobRead:
+    if not idempotency_key:
+        raise IdempotencyKeyRequiredError()
+    # Authorize before reading an idempotency response for this destination.
+    await service.get_or_create_session(ctx, matter_id)
+    await service.read_job(ctx, job_id)
+    store = SqlIdempotencyStore(session)
+    fingerprint = request_fingerprint({"matterId": matter_id, "jobId": job_id})
+    replayed = await store.find(
+        user_id=ctx.actor_id, route=_RETRY_ROUTE, key=idempotency_key, request_hash=fingerprint
+    )
+    if replayed is not None:
+        return JobRead.model_validate(replayed)
+    async with UnitOfWork(session):
+        job = await service.retry_turn(ctx, matter_id, job_id)
+        # Another request with this same key can finish while we wait for the
+        # source job's row lock. Recheck under that lock before inserting.
+        replayed = await store.find(
+            user_id=ctx.actor_id, route=_RETRY_ROUTE, key=idempotency_key, request_hash=fingerprint
+        )
+        if replayed is not None:
+            return JobRead.model_validate(replayed)
+        read = JobRead(
+            job_id=job.job_id,
+            state=job.state.value,
+            tool_call_count=job.tool_call_count,
+            failure_class=job.failure_class,
+        )
+        await store.store(
+            record_id=f"idem_{uuid.uuid4().hex[:16]}",
+            user_id=ctx.actor_id,
+            route=_RETRY_ROUTE,
+            key=idempotency_key,
+            request_hash=fingerprint,
+            response=read.model_dump(by_alias=True),
+        )
+    return read
 
 
 @router.get("/agent-jobs/{job_id}/events")

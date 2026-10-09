@@ -37,6 +37,7 @@ import {
   listAgentMessages,
   newIdempotencyKey,
   rejectAgentAction,
+  retryAgentJob,
   sendAgentMessage,
   startAgentConversation,
   streamAgentJobEvents,
@@ -50,11 +51,14 @@ import { useTokenProvider } from "@/lib/api/use-token-provider";
 
 const PAGE_SIZE = 20;
 const POLL_INTERVAL_MS = 1200;
-const MAX_POLLS = 40;
+// Cover the backend's 120-second turn budget, plus queueing margin.
+const MAX_POLLS = 125;
 type Phase = "idle" | "sending" | "running" | "error";
 interface PendingSend {
   content: string;
   idempotencyKey: string;
+  retryJobId?: string;
+  watchJobId?: string;
 }
 interface MatterContext {
   reference: string;
@@ -174,12 +178,8 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
 
   const watchJob = useCallback(
     async (jobId: string) => {
-      const streamed = await streamAgentJobEvents(getToken, jobId, () => {});
-      for (
-        let attempt = 0;
-        attempt < (streamed ? 1 : MAX_POLLS);
-        attempt += 1
-      ) {
+      await streamAgentJobEvents(getToken, jobId, () => {});
+      for (let attempt = 0; attempt < MAX_POLLS; attempt += 1) {
         const current = await getAgentJob(getToken, jobId);
         setJob(current);
         if (isTerminalJobState(current.state)) return current;
@@ -195,19 +195,43 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
       setPhase("sending");
       setError(null);
       try {
-        const started = await sendAgentMessage(
-          getToken,
-          matterId,
-          send.content,
-          send.idempotencyKey,
-        );
+        const started = send.watchJobId
+          ? await getAgentJob(getToken, send.watchJobId)
+          : send.retryJobId
+            ? await retryAgentJob(
+                getToken,
+                matterId,
+                send.retryJobId,
+                send.idempotencyKey,
+              )
+            : await sendAgentMessage(
+                getToken,
+                matterId,
+                send.content,
+                send.idempotencyKey,
+              );
         setPhase("running");
         setJob(started);
+        pendingSend.current = { ...send, watchJobId: started.jobId };
         await loadPage();
         const finished = await watchJob(started.jobId);
         await loadPage();
         await loadContext();
+        if (!finished) {
+          // An unfinished status is not success. Checking again watches this
+          // same accepted job and cannot append a duplicate user message.
+          setError(t("working"));
+          setPhase("error");
+          return;
+        }
         if (finished && finished.state !== "succeeded") {
+          // A failed job is terminal. Replaying its original send key cannot
+          // execute it again; retry its saved message as a distinct attempt.
+          pendingSend.current = {
+            content: send.content,
+            retryJobId: finished.jobId,
+            idempotencyKey: newIdempotencyKey(),
+          };
           setError(t("turnFailed"));
           setPhase("error");
           return;
@@ -215,6 +239,9 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
         pendingSend.current = null;
         setPhase("idle");
       } catch (cause: unknown) {
+        if (cause instanceof ApiError && cause.code === "agent_retry_unavailable") {
+          pendingSend.current = null;
+        }
         setError(describe(cause, t));
         setPhase("error");
       }
@@ -374,7 +401,7 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
             {error && (
               <div
                 role="alert"
-                className="border-amber bg-amber-bg text-amber-text mb-3 flex items-start gap-3 rounded-card border p-3 text-sm"
+                className="border-amber bg-amber-bg text-amber-text rounded-card mb-3 flex items-start gap-3 border p-3 text-sm"
               >
                 <AlertTriangle className="size-5 shrink-0" />
                 <span className="flex-1">{error}</span>
@@ -411,7 +438,12 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
           )}
         >
           {panelCollapsed ? (
-            <ContextRail context={context} matterId={matterId} onExpand={() => setPanelCollapsed(false)} t={t} />
+            <ContextRail
+              context={context}
+              matterId={matterId}
+              onExpand={() => setPanelCollapsed(false)}
+              t={t}
+            />
           ) : (
             sidePanel
           )}
@@ -420,7 +452,13 @@ export function MatterAssistantScreen({ matterId }: { matterId: string }) {
             matter's header and tabs (the level the wide panel starts at), as Research's
             conversations slide in under its page header. It stays mounted so it can
             animate; while closed it is invisible, so nothing in it can be focused. */}
-        <div aria-hidden={!contextOpen} className={cn("absolute inset-0 z-20 overflow-hidden xl:hidden", contextOpen ? "visible" : "invisible")}>
+        <div
+          aria-hidden={!contextOpen}
+          className={cn(
+            "absolute inset-0 z-20 overflow-hidden xl:hidden",
+            contextOpen ? "visible" : "invisible",
+          )}
+        >
           <button
             type="button"
             tabIndex={-1}
@@ -647,7 +685,11 @@ function usePanelCollapsed(): [boolean, (next: boolean) => void] {
   return [collapsed, update];
 }
 
-function contextMetrics(context: MatterContext | null, matterId: string, t: ReturnType<typeof useTranslations>) {
+function contextMetrics(
+  context: MatterContext | null,
+  matterId: string,
+  t: ReturnType<typeof useTranslations>,
+) {
   return [
     {
       icon: FileText,
@@ -691,7 +733,13 @@ const RAIL_ITEM =
  * button on top, then one icon per section, each a link named in its tooltip
  * and for screen readers.
  */
-function ContextRail({ context, matterId, onExpand, orientation = "column", t }: {
+function ContextRail({
+  context,
+  matterId,
+  onExpand,
+  orientation = "column",
+  t,
+}: {
   context: MatterContext | null;
   matterId: string;
   onExpand: () => void;
@@ -700,15 +748,27 @@ function ContextRail({ context, matterId, onExpand, orientation = "column", t }:
   t: ReturnType<typeof useTranslations>;
 }) {
   const open = (
-    <IconButton label={t("expandContext")} aria-expanded={false} onClick={onExpand}>
+    <IconButton
+      label={t("expandContext")}
+      aria-expanded={false}
+      onClick={onExpand}
+    >
       <PanelRightOpen className="size-5" strokeWidth={1.5} />
     </IconButton>
   );
-  const links = contextMetrics(context, matterId, t).map(({ icon: Icon, label, value, href }) => (
-    <Link key={label} href={href} aria-label={`${label}: ${value}`} title={`${label}: ${value}`} className={RAIL_ITEM}>
-      <Icon aria-hidden="true" className="size-5" strokeWidth={1.5} />
-    </Link>
-  ));
+  const links = contextMetrics(context, matterId, t).map(
+    ({ icon: Icon, label, value, href }) => (
+      <Link
+        key={label}
+        href={href}
+        aria-label={`${label}: ${value}`}
+        title={`${label}: ${value}`}
+        className={RAIL_ITEM}
+      >
+        <Icon aria-hidden="true" className="size-5" strokeWidth={1.5} />
+      </Link>
+    ),
+  );
   // The panel opens from the right, so the row sits on the right with its open
   // button at the far end, next to where the panel appears. DOM order follows
   // the visual order, so focus moves the way the eye does.
@@ -742,7 +802,12 @@ function ContextPanel({
   t: ReturnType<typeof useTranslations>;
 }) {
   const collapse = onCollapse ? (
-    <IconButton label={t("collapseContext")} aria-expanded className="size-8" onClick={onCollapse}>
+    <IconButton
+      label={t("collapseContext")}
+      aria-expanded
+      className="size-8"
+      onClick={onCollapse}
+    >
       <PanelRightClose className="size-4" strokeWidth={1.5} />
     </IconButton>
   ) : null;
@@ -843,7 +908,7 @@ function ProposalCard({
 }) {
   return (
     <div
-      className="border-amber bg-amber-bg ml-12 mt-3 rounded-card border p-4"
+      className="border-amber bg-amber-bg rounded-card ml-12 mt-3 border p-4"
       data-testid="proposal-card"
     >
       <p className="text-sm font-semibold">{t("proposalTitle")}</p>
@@ -916,6 +981,7 @@ function describe(
     if (cause.code === "capability_denied") return t("errorCapability");
     if (cause.code === "matter_agent_disabled") return t("errorDisabled");
     if (cause.code === "agent_model_unavailable") return t("errorProvider");
+    if (cause.code === "agent_retry_unavailable") return t("errorRetry");
     return apiErrorMessage(cause, t("errorUnknown"));
   }
   return t("errorUnknown");

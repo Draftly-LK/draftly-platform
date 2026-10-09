@@ -7,7 +7,8 @@
  *
  * Every send carries an `Idempotency-Key`. A retried send therefore replays
  * the first job instead of asking the assistant the same question twice —
- * which is what makes the retry button in the composer safe.
+ * Transport retries reuse that key. A terminal failure instead uses the
+ * explicit retry endpoint to queue a new attempt for the saved message.
  */
 
 import {
@@ -160,6 +161,20 @@ export function getAgentJob(
   return apiFetch<ApiAgentJob>(`${API_VERSION_PREFIX}/agent-jobs/${jobId}`, {
     method: "GET",
     getToken,
+  });
+}
+
+/** A fresh attempt for the saved message, with its own transport replay key. */
+export function retryAgentJob(
+  getToken: TokenProvider,
+  matterId: string,
+  jobId: string,
+  idempotencyKey: string,
+): Promise<ApiAgentJob> {
+  return apiFetch<ApiAgentJob>(`${AGENT_BASE(matterId)}/jobs/${jobId}/retry`, {
+    method: "POST",
+    getToken,
+    headers: { "Idempotency-Key": idempotencyKey },
   });
 }
 

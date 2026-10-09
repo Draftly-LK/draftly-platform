@@ -2771,7 +2771,8 @@
     "thread": "සංවාදය",
     "empty": "තවම පණිවිඩ නැත. මෙම කාරණය ගැන අසන්න.",
     "expandContext": "කාරණ සන්දර්භය පෙන්වන්න",
-    "collapseContext": "කාරණ සන්දර්භය සඟවන්න"
+    "collapseContext": "කාරණ සන්දර්භය සඟවන්න",
+    "errorRetry": "ඉදිරියට යාමට සංවාදය සමාලෝචනය කර නව පණිවිඩයක් යවන්න."
   },
   "gazette": {
     "modeLabel": "Drafting mode",

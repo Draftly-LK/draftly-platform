@@ -311,6 +311,21 @@ Add:
   message and return an agent job.
 
 - GET /api/v1/agent-jobs/{jobId} — normal job status.
+- POST /api/v1/matters/{matterId}/agent/jobs/{jobId}/retry — requires a new
+  Idempotency-Key for the recovery attempt. Creates a fresh job for the saved
+  user message without appending another transcript row or overwriting the
+  original failed job. The source must be the latest message in the active
+  conversation, belong to the caller and matter, have failed with
+  `model_unavailable`, and have no recorded tool
+  calls. Otherwise recovery returns 409 and the lawyer sends a new instruction.
+  Competing retries lock the original job and converge on one child attempt;
+  `agent_jobs.retry_of_job_id` has a unique constraint. `source_message_id`
+  identifies the immutable input across attempts. Older jobs resolve their
+  original user message by job ID. Retry creation records one
+  `agent.turn-retried` audit action and enqueues the existing `agent.run-turn`
+  job type with identifiers only.
+  Timeouts are not retried automatically: cancellation could have interrupted
+  a tool after it changed matter state but before it recorded its outcome.
 - GET /api/v1/agent-jobs/{jobId}/events — resumable SSE using Last-Event-ID.
 - POST /api/v1/matters/{matterId}/agent/actions/{actionId}/confirm — execute an inline
   protected action after reauthorization and version checks.

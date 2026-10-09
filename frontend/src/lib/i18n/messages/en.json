@@ -2770,7 +2770,8 @@
       "operational": "Operational"
     },
     "expandContext": "Show matter context",
-    "collapseContext": "Hide matter context"
+    "collapseContext": "Hide matter context",
+    "errorRetry": "Review the conversation and send a new message to continue."
   },
   "gazette": {
     "modeLabel": "Drafting mode",

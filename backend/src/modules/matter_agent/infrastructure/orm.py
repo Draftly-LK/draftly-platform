@@ -85,6 +85,7 @@ class AgentMessageRow(Base):
     __table_args__ = (
         UniqueConstraint("session_id", "sequence", name="uq_agent_messages_session_sequence"),
         Index("ix_agent_messages_session_sequence", "session_id", "sequence"),
+        Index("ix_agent_messages_conversation_sequence", "conversation_id", "sequence"),
         Index("ix_agent_messages_user_matter", "user_id", "matter_id"),
     )
 
@@ -117,6 +118,7 @@ class AgentJobRow(Base):
     __table_args__ = (
         Index("ix_agent_jobs_session_state", "session_id", "state"),
         Index("ix_agent_jobs_user_matter", "user_id", "matter_id"),
+        UniqueConstraint("retry_of_job_id", name="uq_agent_jobs_retry_of_job_id"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -128,6 +130,8 @@ class AgentJobRow(Base):
     state: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False, default="")
     failure_class: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_message_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    retry_of_job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     tool_call_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

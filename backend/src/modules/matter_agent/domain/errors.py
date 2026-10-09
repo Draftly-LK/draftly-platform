@@ -13,6 +13,7 @@ from src.platform.errors import (
 __all__ = [
     "AgentDisabledError",
     "AgentSessionNotFoundError",
+    "AgentRetryUnavailableError",
     "LegalResearchUnavailableError",
     "MemoryScopeNotReadyError",
     "ModelProviderError",
@@ -38,6 +39,11 @@ class AgentSessionNotFoundError(NotFoundError):
 class AgentDisabledError(DomainRuleError):
     code = "matter_agent_disabled"
     message = "The matter agent is not enabled for this deployment."
+
+
+class AgentRetryUnavailableError(ConflictError):
+    code = "agent_retry_unavailable"
+    message = "This turn cannot be retried. Review the conversation and send a new message."
 
 
 class ToolNotAllowlistedError(CapabilityDeniedError):

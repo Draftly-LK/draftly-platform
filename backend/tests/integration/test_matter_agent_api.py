@@ -39,6 +39,7 @@ from src.modules.matter.domain.models import (
 )
 from src.modules.matter.infrastructure.orm import MatterRow
 from src.modules.matter_agent.infrastructure.orm import (
+    AgentConversationRow,
     AgentJobRow,
     AgentMessageRow,
     AgentPendingActionRow,
@@ -62,6 +63,7 @@ FOREIGN_MATTER = "mat-someone-else"
 _TABLES = [
     MatterRow.__table__,
     AgentSessionRow.__table__,
+    AgentConversationRow.__table__,
     AgentMessageRow.__table__,
     AgentJobRow.__table__,
     AgentToolCallRow.__table__,
@@ -310,6 +312,147 @@ class TestPagination:
 
 
 class TestJobsAndStreaming:
+    @pytest.mark.parametrize("reason", ["tools", "archived", "newer_message", "timeout"])
+    async def test_retry_does_not_repeat_tools_or_answer_stale_messages(
+        self, session_maker, seeded, reason
+    ) -> None:
+        async with _client(session_maker) as client:
+            sent = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/messages",
+                json={"content": "hello"},
+                headers={"Idempotency-Key": "original"},
+            )
+            job_id = sent.json()["jobId"]
+            async with session_maker() as db:
+                job = await db.get(AgentJobRow, job_id)
+                job.state = "failed"
+                job.failure_class = "model_unavailable"
+                if reason == "timeout":
+                    job.failure_class = "turn_timeout"
+                if reason == "tools":
+                    db.add(
+                        AgentToolCallRow(
+                            id="tool-record",
+                            session_id=job.session_id,
+                            job_id=job.id,
+                            user_id=OWNER,
+                            matter_id=MATTER,
+                            actor_id=OWNER,
+                            tool="create_working_note",
+                            outcome="executed",
+                        )
+                    )
+                await db.commit()
+            if reason == "archived":
+                await client.post(f"/api/v1/matters/{MATTER}/agent/conversations")
+            elif reason == "newer_message":
+                await client.post(
+                    f"/api/v1/matters/{MATTER}/agent/messages",
+                    json={"content": "new question"},
+                    headers={"Idempotency-Key": "newer"},
+                )
+            response = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/jobs/{job_id}/retry",
+                headers={"Idempotency-Key": "retry"},
+            )
+        assert response.status_code == 409
+        assert response.json()["error"]["code"] == "agent_retry_unavailable"
+
+    async def test_retry_queues_a_new_job_for_the_saved_message(
+        self, session_maker, seeded
+    ) -> None:
+        async with _client(session_maker) as client:
+            sent = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/messages",
+                json={"content": "hello"},
+                headers={"Idempotency-Key": "original"},
+            )
+            original_id = sent.json()["jobId"]
+            async with session_maker() as db:
+                original = await db.get(AgentJobRow, original_id)
+                original.state = "failed"
+                original.failure_class = "model_unavailable"
+                # Recovery of jobs created before the migration.
+                original.source_message_id = None
+                await db.commit()
+            url = f"/api/v1/matters/{MATTER}/agent/jobs/{original_id}/retry"
+            retried = await client.post(url, headers={"Idempotency-Key": "retry-1"})
+            assert retried.status_code == 202
+            assert retried.json()["jobId"] != original_id
+            # Network retries and a double click with another key converge.
+            replayed = await client.post(url, headers={"Idempotency-Key": "retry-1"})
+            doubled = await client.post(url, headers={"Idempotency-Key": "retry-2"})
+            assert replayed.json()["jobId"] == doubled.json()["jobId"] == retried.json()["jobId"]
+        async with session_maker() as db:
+            messages = (await db.execute(AgentMessageRow.__table__.select())).all()
+            jobs = (await db.execute(AgentJobRow.__table__.select())).all()
+            outbox = (await db.execute(OutboxRow.__table__.select())).all()
+            audit = (await db.execute(AuditEventRow.__table__.select())).all()
+        assert len(messages) == 1
+        assert messages[0].content == "hello"
+        assert len(jobs) == 2
+        assert any(j.id == original_id and j.state == "failed" for j in jobs)
+        turn_jobs = [r for r in outbox if r.name == "agent.run-turn"]
+        assert len(turn_jobs) == 2
+        assert {r.payload["messageId"] for r in turn_jobs} == {messages[0].id}
+        assert sum(r.action == "agent.turn-retried" for r in audit) == 1
+
+        async with session_maker() as db:
+            retry = await db.get(AgentJobRow, retried.json()["jobId"])
+            retry.state = "failed"
+            retry.failure_class = "model_unavailable"
+            await db.commit()
+        async with _client(session_maker) as client:
+            again = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/jobs/{retry.id}/retry",
+                headers={"Idempotency-Key": "retry-child"},
+            )
+        assert again.status_code == 202
+        async with session_maker() as db:
+            assert len((await db.execute(AgentMessageRow.__table__.select())).all()) == 1
+
+    @pytest.mark.parametrize("state", ["queued", "running", "succeeded"])
+    async def test_retry_refuses_unfinished_or_successful_jobs(
+        self, session_maker, seeded, state
+    ) -> None:
+        async with _client(session_maker) as client:
+            sent = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/messages",
+                json={"content": "hello"},
+                headers={"Idempotency-Key": "original"},
+            )
+            job_id = sent.json()["jobId"]
+            async with session_maker() as db:
+                job = await db.get(AgentJobRow, job_id)
+                job.state = state
+                await db.commit()
+            result = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/jobs/{job_id}/retry",
+                headers={"Idempotency-Key": "retry"},
+            )
+        assert result.status_code == 409
+
+    async def test_foreign_retry_is_indistinguishable_from_absent(
+        self, session_maker, seeded
+    ) -> None:
+        async with _client(session_maker) as client:
+            sent = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/messages",
+                json={"content": "hello"},
+                headers={"Idempotency-Key": "original"},
+            )
+        async with _client(session_maker, actor_id=INTRUDER) as client:
+            foreign = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/jobs/{sent.json()['jobId']}/retry",
+                headers={"Idempotency-Key": "retry"},
+            )
+            missing = await client.post(
+                f"/api/v1/matters/{MATTER}/agent/jobs/absent/retry",
+                headers={"Idempotency-Key": "retry"},
+            )
+        assert foreign.status_code == missing.status_code == 404
+        assert foreign.json()["error"]["code"] == missing.json()["error"]["code"]
+
     async def test_a_job_belonging_to_another_user_is_404(self, session_maker, seeded) -> None:
         async with _client(session_maker) as client:
             created = await client.post(

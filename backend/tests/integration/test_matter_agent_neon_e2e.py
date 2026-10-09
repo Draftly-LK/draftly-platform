@@ -69,9 +69,10 @@ from src.modules.task.infrastructure.orm import (
     SatisfactionLinkRow,
 )
 from src.platform.db.idempotency import IdempotencyKeyRow
-from src.platform.db.session import Base, get_db
+from src.platform.db.session import get_db
 from src.platform.messaging.orm import OutboxRow
 from src.platform.request_context import RequestContext
+from tests.db.fixtures import _upgrade_head
 from tests.db.postgres import database_url, skip_or_fail
 
 OWNER = "usr-e2e-owner"
@@ -126,8 +127,8 @@ async def pg_sessions() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
     engine = create_async_engine(
         url, connect_args={"options": f"-csearch_path={schema}"}, pool_pre_ping=True
     )
-    async with engine.begin() as connection:
-        await connection.run_sync(Base.metadata.create_all, tables=_TABLES)
+    # Exercise the real migration chain, including conversation segments.
+    _upgrade_head(url, schema)
 
     try:
         yield async_sessionmaker(engine, expire_on_commit=False)
