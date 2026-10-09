@@ -301,7 +301,7 @@ class DraftService:
             current = await self._facts.summarise(user_id, form.matter_id)
             projected = scoped_projection(require_template(form.template_id), form.scope, current)
             scope_current = scope_current and not stale_bindings(
-                fields, require_template(form.template_id), projected
+                fields, require_template(form.template_id), projected, strict_confirmed=True
             )
         return FormSnapshot(
             form_id=form.id,
@@ -372,7 +372,9 @@ class DraftService:
         projected = (
             scoped_projection(template, form.scope, current_facts) if form.scope else current_facts
         )
-        if not await self._scope_current(form) or stale_bindings(fields, template, projected):
+        if not await self._scope_current(form) or stale_bindings(
+            fields, template, projected, strict_confirmed=form.scope is not None
+        ):
             raise DomainRuleError("The draft inputs have changed. Create a successor draft.")
         guard_field_decision(
             form=form,
@@ -520,7 +522,9 @@ class DraftService:
             return self._view(form, fields, template, result, candidates, facts)
 
         if not form.is_approved:
-            for form_field, field_reason in stale_bindings(fields, template, facts):
+            for form_field, field_reason in stale_bindings(
+                fields, template, facts, strict_confirmed=form.scope is not None
+            ):
                 invalidate_binding(form_field, field_reason)
                 await self._repo.update_field(form_field)
             form.draft_artifact_hash = self._hash(template, form.subtype_id, fields, form.scope)

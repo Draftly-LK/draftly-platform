@@ -707,6 +707,8 @@ def stale_bindings(
     fields: Sequence[GeneratedFormField],
     template: FormTemplateDefinition,
     facts: FactTierSummary,
+    *,
+    strict_confirmed: bool = False,
 ) -> tuple[tuple[GeneratedFormField, StaleReason], ...]:
     """Populated fields whose binding no longer matches the confirmed tier.
 
@@ -718,7 +720,9 @@ def stale_bindings(
     A non-critical field bound to a candidate is left alone while the fact type
     has no confirmed value: an AI suggestion is not stale merely because nobody
     has confirmed it yet. Once a confirmed value exists, the suggestion is
-    superseded by it and is re-resolved.
+    superseded by it and is re-resolved. Scoped forms pass ``strict_confirmed``:
+    all their bindings came from eligible reviewed facts, so disappearance is
+    stale for noncritical fields too.
     """
     mappings = {mapping.field_id: mapping for mapping in template.field_mappings}
     stale: list[tuple[GeneratedFormField, StaleReason]] = []
@@ -727,10 +731,12 @@ def stale_bindings(
             continue
         mapping = mappings.get(form_field.field_id)
         if mapping is None or mapping.fact_type_id is None:
+            if strict_confirmed:
+                stale.append((form_field, StaleReason.FACT_NO_LONGER_CONFIRMED))
             continue
         current = facts.confirmed.get(mapping.fact_type_id)
         if current is None:
-            if form_field.critical:
+            if form_field.critical or strict_confirmed:
                 stale.append((form_field, StaleReason.FACT_NO_LONGER_CONFIRMED))
             continue
         if current.fact_id != form_field.fact_id or current.version != form_field.fact_version:
@@ -756,7 +762,7 @@ def detect_staleness(
     consulted only when nothing observable has already gone stale, so a caller
     can never talk the form out of a fact-level staleness it does have.
     """
-    bindings = stale_bindings(fields, template, facts)
+    bindings = stale_bindings(fields, template, facts, strict_confirmed=form.scope is not None)
     if bindings:
         return bindings[0][1]
     if template.version != form.template_version:

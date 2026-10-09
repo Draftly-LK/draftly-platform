@@ -539,7 +539,7 @@ class ApprovalService:
         drafting module's staleness sweep in order to have happened.
         """
         moved = superseded_bindings(context.snapshot, context.template, context.facts)
-        if not moved:
+        if not moved and context.snapshot.scope_current:
             return
         await self._mark_stale(user_id, context.snapshot.form_id)
         raise ApprovalSupersededError(

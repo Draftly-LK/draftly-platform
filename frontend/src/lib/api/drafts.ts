@@ -44,7 +44,10 @@ export async function generateForm(
   matterId: string,
   body: GenerateFormBody = {},
 ): Promise<ApiGeneratedForm> {
-  const actor = await getMe(getToken);
+  // Resolve the actor and mutate with one credential, even if the session changes.
+  const token = await getToken();
+  const operationToken: TokenProvider = async () => token;
+  const actor = await getMe(operationToken);
   const intent = await pendingOperationIntent(
     actor.id,
     matterId,
@@ -59,11 +62,12 @@ export async function generateForm(
         method: "POST",
         body,
         headers: { "Idempotency-Key": intent.key },
-        getToken,
+        getToken: operationToken,
       },
     );
   } catch (cause) {
     if (
+      !intent.reused &&
       cause instanceof ApiError &&
       cause.status >= 400 &&
       cause.status < 500 &&
@@ -126,9 +130,11 @@ export async function recordFieldDecision(
   body: FieldDecisionBody,
   version: number,
 ): Promise<ApiGeneratedForm> {
+  const token = await getToken();
+  const operationToken: TokenProvider = async () => token;
   const [actor, form] = await Promise.all([
-    getMe(getToken),
-    getForm(getToken, formId),
+    getMe(operationToken),
+    getForm(operationToken, formId),
   ]);
   const intent = await pendingOperationIntent(
     actor.id,
@@ -148,11 +154,12 @@ export async function recordFieldDecision(
           ...ifMatch(intent.expectedVersion ?? version),
           "Idempotency-Key": intent.key,
         },
-        getToken,
+        getToken: operationToken,
       },
     );
   } catch (cause) {
     if (
+      !intent.reused &&
       cause instanceof ApiError &&
       cause.status >= 400 &&
       cause.status < 500 &&
