@@ -203,7 +203,7 @@ export function RequirementsPanel({
       <h2 id={`${id}-heading`} className="text-lg font-semibold">
         {t(mode === "documents" ? "documentsTitle" : "checksTitle")}
       </h2>
-      <p className="text-muted-ink text-sm leading-6">{t("notice")}</p>
+
       {loading && <p role="status">{t("loading")}</p>}
       {error && (
         <p className="text-red text-sm" role="alert">
@@ -234,7 +234,7 @@ export function RequirementsPanel({
             </li>
           ))}
         </ul>
-        {selected && (
+        {selected ? (
           <div className="border-border space-y-4 border-t pt-4 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
             <h3 className="font-semibold">{title(selected)}</h3>
             <p className="text-muted-ink text-xs">
@@ -461,7 +461,13 @@ export function RequirementsPanel({
               ))}
             </details>
           </div>
-        )}
+        ) : !loading && rows.length > 0 ? (
+          <div className="border-border flex items-center justify-center border-t px-4 py-8 xl:border-l xl:border-t-0">
+            <p className="text-muted-ink max-w-xs text-center text-sm leading-6">
+              {t("selectRequirement")}
+            </p>
+          </div>
+        ) : null}
       </div>
     </section>
   );

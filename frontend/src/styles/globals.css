@@ -4,7 +4,7 @@
 
 :root {
   /* "Trust & authority" palette (docs/review/ui-refresh): authority navy with a
-     restrained gold accent, cool neutral canvas, status hues unchanged.
+     restrained gold accent, cool neutral canvas, neutral warning surfaces.
      Asserted by tests/e2e/design-audit.spec.ts — change both together. */
   --canvas: #f3f5f8;
   --surface: #ffffff;
@@ -20,8 +20,10 @@
   --forest: #1b3358;
   --soft-green: #e7eef8;
   --teal: #176b75;
-  --amber: #9c5b0b;
-  --amber-text: #784405;
+  /* Legacy warning token names stay shared across components. Warnings use
+     neutral colors; their icons and labels continue to communicate status. */
+  --amber: var(--border-control);
+  --amber-text: var(--ink);
   --red: #a43d45;
   --red-hover: #8b323a;
   --selected-bg: #eaf0f8;
@@ -33,7 +35,7 @@
   --active-bg: #e2e8f0;
   --disabled-fg: #929dac;
   --disabled-bg: #eef1f5;
-  --amber-bg: #f8ead5;
+  --amber-bg: var(--hover-bg);
   --teal-bg: #e0eef0;
   --red-bg: #f5e3e5;
   /* Brand chrome: the navigation rail and hero bands sit on navy; gold marks
@@ -78,8 +80,8 @@
   --danger-bg: var(--red-bg);
   --info: var(--teal);
   --info-bg: var(--teal-bg);
-  /* Amber for warnings on navy: --amber-text (2.1:1) is for light surfaces. 8:1 on navy-900. */
-  --amber-on-dark: #f2a541;
+  /* Warnings on navy use the existing high-contrast light text. */
+  --amber-on-dark: var(--on-dark);
   --sidebar-width: 244px;
   /* On-dark surface. The first-run hero sits on a photograph, and without
      these every dark surface reaches for literal white.

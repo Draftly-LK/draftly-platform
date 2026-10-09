@@ -253,9 +253,7 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
           )}
         </>
       )}
-      <div className="border-amber bg-amber-bg text-amber-text mt-6 border-l-2 p-4">
-        {t("corpusNotice")}
-      </div>
+
     </section>
   );
 }

@@ -225,33 +225,6 @@ function ApprovalScreenContent({
             </div>
           )}
 
-          {/* Warnings */}
-          {gate.warnings.length > 0 && (
-            <div className="mb-6">
-              <h3 className="mb-3 font-semibold text-amber-text">{t("warningsTitle")}</h3>
-              <ul className="space-y-2">
-                {gate.warnings.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex gap-3 rounded border border-amber bg-amber-bg p-3 text-sm"
-                  >
-                    <TriangleAlert
-                      className="mt-0.5 size-4 shrink-0 text-amber-text"
-                      strokeWidth={1.5}
-                      aria-hidden="true"
-                    />
-                    <div>
-                      <div className="font-semibold">{codeLabel(item.code)}</div>
-                      {tRoot.has(item.explanationKey) && (
-                        <div className="text-muted-ink mt-1">{tRoot(item.explanationKey)}</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {/* Approval actions */}
           {!alreadyApproved && (
             <div>

@@ -48,6 +48,19 @@ vi.mock("@/lib/api/requirements", () => ({
   },
 }));
 const token = async () => "synthetic-token";
+it("shows guidance until a requirement is selected", async () => {
+  renderWithIntl(
+    <RequirementsPanel matterId="matter" getToken={token} mode="checks" />,
+  );
+  const guidance = await screen.findByText(
+    "Select a requirement on the left to view its details and review actions.",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Synthetic original" }));
+  expect(guidance.isConnected).toBe(false);
+  expect(
+    screen.getByRole("heading", { name: "Synthetic original" }),
+  ).toBeTruthy();
+});
 beforeEach(() => {
   mocks.calls = [];
   mocks.fail = false;

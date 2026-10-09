@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, useRef } from "react";
@@ -164,19 +164,6 @@ function DocumentProcessingReviewFlow({
   const pending = review.candidates.filter(
     (field) => field.reviewState !== "approved",
   ).length;
-  const warnings = page
-    ? [
-        page.rotationStatus === "rotation_uncertain"
-          ? t("rotationWarning")
-          : null,
-        page.qualityStatus !== "normal"
-          ? t(`quality.${page.qualityStatus}`)
-          : null,
-        page.classificationConfidence < 0.55
-          ? t("classificationWarning")
-          : null,
-      ].filter(Boolean)
-    : [];
   const viewerCurrent =
     review.current === true &&
     (!document ||
@@ -223,16 +210,7 @@ function DocumentProcessingReviewFlow({
                 </Button>
               ))}
             </div>
-            {warnings.length > 0 && (
-              <div className="border-amber bg-amber-bg text-amber-text mb-3 rounded border p-3">
-                {warnings.map((warning) => (
-                  <p key={warning}>
-                    <AlertTriangle className="mr-2 inline size-4" />
-                    {warning}
-                  </p>
-                ))}
-              </div>
-            )}
+
             <div className="border-border-strong bg-canvas relative overflow-hidden rounded border">
               {imageUrl ? (
                 <>

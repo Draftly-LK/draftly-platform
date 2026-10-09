@@ -46,10 +46,12 @@ export function SettingsScreen() {
         </section>
         <section className="py-5">
           <h2 className="text-xl font-semibold">{t("language")}</h2>
-          <div className="mt-4">
+          <div className="mt-3">
             <LocaleSwitch />
           </div>
-          <p className="text-muted-ink mt-4 text-sm leading-6">{t("reducedMotion")}</p>
+          <p className="text-muted-ink mt-2 text-sm leading-6">
+            {t("reducedMotion")}
+          </p>
         </section>
       </div>
     </AppShell>

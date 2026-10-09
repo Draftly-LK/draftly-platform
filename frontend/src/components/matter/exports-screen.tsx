@@ -270,14 +270,6 @@ function ExportsScreenContent({ matterId, getToken }: ExportsScreenContentProps)
     <AppShell matterId={matterId}>
       <PageHeader title={t("title")} description={t("description")} />
 
-      {/* Warning banner */}
-      <div className="border-amber bg-amber-bg border-b px-6 py-3">
-        <div className="flex gap-3 text-sm text-amber-text">
-          <AlertCircle className="size-5 shrink-0 mt-0.5" strokeWidth={1.5} aria-hidden="true" />
-          <p>{t("warning")}</p>
-        </div>
-      </div>
-
       <div className="p-6">
         {/* Error message */}
         {error && (
