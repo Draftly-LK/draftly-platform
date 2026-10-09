@@ -25,3 +25,11 @@ class MatterResearchPort(Protocol):
         sources: SourceScope,
         operation_id: str,
     ) -> GroundedResearch: ...
+
+
+class LegalSourceAvailabilityPort(Protocol):
+    """Fresh permission for exact stored legal passages; unknown/empty fails closed."""
+
+    async def passages_available(
+        self, source_ids: tuple[str, ...], *, corpus_version: str
+    ) -> bool: ...

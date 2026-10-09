@@ -10,6 +10,47 @@ client material on it.
 
 ## What runs where
 
+### Optional governed statutory release
+
+The retrieval builder now requires explicit named contexts: `deploy` for its
+adapter, `platform` for the backend corpus-governance validator, and `legal_sources`
+for reviewed release inputs. `deploy/build.sh` supplies all three; both compose
+files continue consuming prebuilt images. The default empty legal context retains
+legacy retrieval with unsupported source metadata. Existing case retrieval is
+unchanged. No deployed source approval or provider configuration is changed here.
+
+After independent source approvals, an operator can supply `LEGAL_RELEASE_CONTEXT`
+to the build script and `LEGAL_RELEASE_TRUST_FILE` for its BuildKit
+`legal_release_trust` secret. The context contains canonical `manifest.json`, raw
+detached `manifest.sig` and only the listed reviewed originals/UTF-8 inputs. The
+trusted public key is supplied independently, never accepted from that context.
+Invalid or incomplete supplied releases fail; they cannot select a directory
+fallback. The five checked package modules match the inspected eb47114a boundary;
+other package revisions are unsupported until explicitly adapted. Dense builds
+of this new boundary remain unsupported; no provider is enabled implicitly.
+
+The builder consumes already-validated immutable bytes through the existing
+section parser/index builder, preserving gazette kinds. It records the signed
+source envelope and actual index SHA in a `legal-index-v2` attestation. Original
+source files are absent from runtime. Runtime verifies signature/policy with the
+build-trusted public key and verifies the actual index hash and pointer.
+
+Serving a governed image additionally requires a read-only operator mount at
+`/run/draftly/legal-active-release` containing its exact `legal-index-v2` identity.
+The build does not create this grant. Missing, changed or withdrawn state returns
+503 on statutory routes; availability checks return false to the backend. Update
+the mounted file atomically to withdraw a release; retain immutable history.
+Mount a containing directory when atomic replacement must be visible to Docker.
+No active marker or production signing key is created by this change. Metadata
+requests carry public source IDs/references only. Full-text native `/answer` is
+closed for governed releases; platform composition consumes bounded permitted
+`/search` excerpts. Public Library releases use separate audience/trust/current
+mounts documented in the Library service plan.
+
+Static checks do not establish deployed source coverage. The user waived runtime
+tests, synthetic engine execution, browser checks and extraction benchmarks;
+actual package build/HTTP integration and source coverage remain unverified.
+
 | Piece | Where | Address |
 | --- | --- | --- |
 | Landing page and pilot-request form | Docker container `landing` on the VPS | <https://draftly.adlahiru.com> |

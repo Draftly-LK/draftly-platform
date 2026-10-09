@@ -325,7 +325,10 @@ and serves it without the source corpus present: the build records the corpus
 fingerprints, and `deploy/retrieval/serve_frozen.py` serves those instead of
 re-hashing, until the research repo's `DRAFTLY_INDEX_FROZEN` mode is on its
 main branch. The index in that image is built from the research
-checkout, not yet from a signed corpus release manifest.
+checkout in legacy mode. The optional governed statutory builder instead consumes
+exact signed release inputs through the platform validator and existing engine.
+Its current-release runtime grant is separately mounted and fails closed when
+absent or withdrawn; no such deployment grant is enabled by the implementation.
 
 This stack is for V0 (synthetic and approved pilot data). It does not change the
 Production V1 gates in the environments table.

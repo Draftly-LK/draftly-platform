@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
+from src.modules.corpus_governance.contracts import AuthorityMetadata
+
 
 class ScopeType(str, Enum):
     LIBRARY = "library"
@@ -24,6 +26,8 @@ class AuthorityKind(str, Enum):
     """Where a cited passage came from. Case law is always an unverified research lead."""
 
     STATUTE = "statute"
+    AMENDMENT = "amendment"
+    GAZETTE = "gazette"
     CASE = "case"
 
 
@@ -66,6 +70,7 @@ class RetrievalPassage:
     verified: bool = True
     kind: AuthorityKind = AuthorityKind.STATUTE
     source_url: str | None = None
+    authority_metadata: AuthorityMetadata | None = None
 
 
 @dataclass(frozen=True)
@@ -115,6 +120,9 @@ class SearchResult:
     degraded_channels: list[str] = field(default_factory=list)
     status: RetrievalStatus = RetrievalStatus.COMPLETE
     corpus_version: str | None = None
+    source_release_version: str | None = None
+    authorities: tuple[AuthorityMetadata, ...] = ()
+    coverage_gaps: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

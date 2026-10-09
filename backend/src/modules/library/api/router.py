@@ -26,7 +26,9 @@ def _read(source: LegalSourceSummary) -> LegalSourceRead:
 async def browse_library(
     ctx: Annotated[RequestContext, Depends(get_request_context)],
     service: Annotated[LibraryService, Depends(get_service)],
-    authority_type: Annotated[Literal["statute", "amendment"] | None, Query(alias="type")] = None,
+    authority_type: Annotated[
+        Literal["statute", "amendment", "gazette"] | None, Query(alias="type")
+    ] = None,
     query: Annotated[str | None, Query(max_length=256)] = None,
 ) -> LegalSourceListRead:
     rows = await service.browse(ctx, authority_type, query)

@@ -492,6 +492,203 @@
         "title": "AttestationRead",
         "type": "object"
       },
+      "AuthorityMetadata": {
+        "properties": {
+          "commencementKnown": {
+            "title": "Commencementknown",
+            "type": "boolean"
+          },
+          "commencementPage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commencementpage"
+          },
+          "commencementSourceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commencementsourceid"
+          },
+          "currencyStatus": {
+            "enum": [
+              "current",
+              "superseded",
+              "reverify",
+              "unknown"
+            ],
+            "title": "Currencystatus",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivefrom"
+          },
+          "effectiveTo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectiveto"
+          },
+          "kind": {
+            "enum": [
+              "statute",
+              "amendment",
+              "gazette"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "publicationDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicationdate"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/AuthorityRelationship"
+            },
+            "title": "Relationships",
+            "type": "array"
+          },
+          "releaseVersion": {
+            "title": "Releaseversion",
+            "type": "string"
+          },
+          "reviewState": {
+            "title": "Reviewstate",
+            "type": "string"
+          },
+          "sourceId": {
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "title": "Sourcesha256",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "title",
+          "reference",
+          "kind",
+          "sourceUrl",
+          "sourceSha256",
+          "publicationDate",
+          "effectiveFrom",
+          "effectiveTo",
+          "commencementKnown",
+          "commencementSourceId",
+          "commencementPage",
+          "relationships",
+          "releaseVersion",
+          "reviewState",
+          "currencyStatus"
+        ],
+        "title": "AuthorityMetadata",
+        "type": "object"
+      },
+      "AuthorityRelationship": {
+        "properties": {
+          "relation": {
+            "enum": [
+              "amends",
+              "supersedes",
+              "made-under",
+              "commences"
+            ],
+            "title": "Relation",
+            "type": "string"
+          },
+          "reviewState": {
+            "enum": [
+              "unreviewed",
+              "reviewed"
+            ],
+            "title": "Reviewstate",
+            "type": "string"
+          },
+          "supportingPage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supportingpage"
+          },
+          "targetReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetreference"
+          },
+          "targetSourceId": {
+            "title": "Targetsourceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relation",
+          "targetSourceId",
+          "targetReference",
+          "supportingPage",
+          "reviewState"
+        ],
+        "title": "AuthorityRelationship",
+        "type": "object"
+      },
       "BeneficialOwnerReadSchema": {
         "properties": {
           "evidenceRefs": {
@@ -5276,6 +5473,16 @@
             "title": "Id",
             "type": "string"
           },
+          "metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorityMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "reference": {
             "title": "Reference",
             "type": "string"
@@ -5295,7 +5502,8 @@
           "type": {
             "enum": [
               "statute",
-              "amendment"
+              "amendment",
+              "gazette"
             ],
             "title": "Type",
             "type": "string"
@@ -5797,6 +6005,8 @@
             "default": "statute",
             "enum": [
               "statute",
+              "amendment",
+              "gazette",
               "case"
             ],
             "title": "Authoritykind",
@@ -9368,6 +9578,32 @@
       },
       "SearchRead": {
         "properties": {
+          "authorities": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AuthorityMetadata"
+            },
+            "title": "Authorities",
+            "type": "array"
+          },
+          "corpusVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corpusversion"
+          },
+          "coverageGaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Coveragegaps",
+            "type": "array"
+          },
           "degradedChannels": {
             "items": {
               "type": "string"
@@ -9381,6 +9617,17 @@
             },
             "title": "Passages",
             "type": "array"
+          },
+          "sourceReleaseVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcereleaseversion"
           }
         },
         "required": [
@@ -13314,7 +13561,8 @@
                 {
                   "enum": [
                     "statute",
-                    "amendment"
+                    "amendment",
+                    "gazette"
                   ],
                   "type": "string"
                 },

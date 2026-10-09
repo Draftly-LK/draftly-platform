@@ -11,7 +11,7 @@ export interface ResearchCitation {
   page: number;
   verified: boolean;
   /** "case" citations are unverified research leads. Older citations read as "statute". */
-  authorityKind?: "statute" | "case";
+  authorityKind?: "statute" | "amendment" | "gazette" | "case";
   title?: string | null;
   reference?: string | null;
   sourceUrl?: string | null;

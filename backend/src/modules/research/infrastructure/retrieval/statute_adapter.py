@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import re
 import sqlite3
 from pathlib import Path
 
 from src.modules.research.domain.models import (
+    AuthorityKind,
     RetrievalPassage,
     RetrievalStatus,
     Scope,
@@ -66,15 +69,37 @@ class StatuteRetrievalAdapter:
     """Read-only lexical retrieval over the pinned 57-statute/18-amendment release."""
 
     async def search(self, query: str, scope: Scope, corpus_version: str) -> SearchResult:
-        del scope
+        del scope, corpus_version
         if not CORPUS_DB.exists():
             return SearchResult(
                 degraded_channels=["statute-corpus"], status=RetrievalStatus.UNAVAILABLE
             )
-        passages = await asyncio.to_thread(self._search, query, corpus_version)
+        try:
+            manifest = json.loads(CORPUS_DB.with_name("release.json").read_bytes())
+            checksum = await asyncio.to_thread(
+                lambda: hashlib.sha256(CORPUS_DB.read_bytes()).hexdigest()
+            )
+            if manifest["sqliteSha256"] != checksum:
+                raise ValueError("Bundled release checksum mismatch")
+            actual_version = "statutes-bundled-v1:" + checksum
+            passages = await asyncio.to_thread(self._search, query, actual_version)
+        except (OSError, ValueError, KeyError, sqlite3.Error):
+            return SearchResult(
+                status=RetrievalStatus.UNAVAILABLE, coverage_gaps=["source-release-unavailable"]
+            )
+        gaps = ["authority-metadata-unsupported"]
+        if re.search(r"\bGazette\b", query, re.I):
+            gaps.append("requested-authority-missing")
+            passages = []
         return SearchResult(
-            passages=passages, degraded_channels=["dense"], corpus_version=corpus_version
+            passages=passages,
+            degraded_channels=["dense"],
+            corpus_version=actual_version,
+            coverage_gaps=gaps,
         )
+
+    async def passages_available(self, source_ids: tuple[str, ...], *, corpus_version: str) -> bool:
+        return False  # This unsigned legacy release has no current source-policy attestation.
 
     def _search(self, query: str, corpus_version: str) -> list[RetrievalPassage]:
         if not CORPUS_DB.exists():
@@ -135,7 +160,9 @@ class StatuteRetrievalAdapter:
                     text=body[:4000],
                     page=int(page_match.group(1)) if page_match else 0,
                     corpus_version=corpus_version,
-                    verified=True,
+                    verified=False,
+                    kind=AuthorityKind(str(row["kind"])),
+                    source_url=str(row["public_source_url"]) or None,
                 )
             )
             if len(passages) == 12:

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import sqlite3
 from pathlib import Path
 from typing import cast
 
+from src.modules.corpus_governance.infrastructure.manifest import validate_release
 from src.modules.library.domain.models import AuthorityType, LegalSourceSummary
 
 CORPUS_DIRECTORY = (
@@ -13,6 +15,9 @@ CORPUS_DIRECTORY = (
 )
 CORPUS_DB = CORPUS_DIRECTORY / "statutes.sqlite"
 RELEASE_MANIFEST = CORPUS_DIRECTORY / "release.json"
+PUBLIC_RELEASE = Path("/run/draftly/public-catalogue")
+PUBLIC_TRUST = Path("/run/draftly/trust/public-catalogue.pub")
+PUBLIC_ACTIVE = Path("/run/draftly/current-public-release")
 
 
 class SqliteLegalCatalogue:
@@ -39,12 +44,45 @@ class SqliteLegalCatalogue:
         authority_type: AuthorityType | None,
         query: str | None,
     ) -> list[LegalSourceSummary]:
+        if PUBLIC_RELEASE.exists() or PUBLIC_TRUST.exists() or PUBLIC_ACTIVE.exists():
+            release = validate_release(
+                (PUBLIC_RELEASE / "manifest.json").read_bytes(),
+                (PUBLIC_RELEASE / "manifest.sig").read_bytes(),
+                PUBLIC_TRUST.read_bytes(),
+                "public-catalogue",
+                PUBLIC_RELEASE,
+            )
+            if PUBLIC_ACTIVE.read_text(encoding="utf-8").strip() != release.release_version:
+                raise RuntimeError("Public catalogue release is withdrawn or unavailable")
+            return [
+                LegalSourceSummary(
+                    id=m.source_id,
+                    title=m.title,
+                    reference=m.reference,
+                    type=m.kind,
+                    weight="unverified-candidate",
+                    verified=m.review_state == "approved",
+                    section_count=0,
+                    source_url=m.source_url,
+                    extraction_confidence="reviewed-source-metadata",
+                    corpus_version=release.release_version,
+                    metadata=m,
+                )
+                for entry in release.sources
+                for m in (entry.source.metadata,)
+                if (authority_id is None or m.source_id == authority_id)
+                and (authority_type is None or m.kind == authority_type)
+                and (not query or query.casefold() in (m.title + " " + m.reference).casefold())
+            ]
         if not self.database_path.exists() or not self.manifest_path.exists():
             raise RuntimeError("The pinned legal catalogue release is unavailable.")
 
         manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
-        verified = manifest.get("verificationState") == "verified"
-        corpus_version = f"{manifest['name']}:{str(manifest['corpusFingerprint'])[:16]}"
+        checksum = hashlib.sha256(self.database_path.read_bytes()).hexdigest()
+        if manifest.get("sqliteSha256") != checksum:
+            raise RuntimeError("The pinned legal catalogue checksum differs from its release")
+        verified = False  # Legacy metadata is unsigned; folder/title never establish review.
+        corpus_version = "statutes-bundled-v1:" + checksum
         clauses: list[str] = []
         parameters: list[str] = []
         if authority_id:

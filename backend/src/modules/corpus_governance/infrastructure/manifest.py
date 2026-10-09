@@ -223,6 +223,10 @@ def _source(value: object, version: str) -> LegalSource:
                 policy["download"], ("source-file", "link-to-official-source", "blocked")
             ),
             approval=_approval(policy["approval"]),
+            quotation_hashes=tuple(
+                _sha(item) for item in _array(policy.get("quotationHashes", []))
+            ),
+            quotation_character_limit=_page(policy.get("quotationCharacterLimit")),
         ),
     )
 
@@ -275,14 +279,17 @@ def _read_input(root: Path, source_input: SourceInput) -> bytes:
     return content
 
 
-def validate_release(
+def validate_release_metadata(
     manifest_bytes: bytes,
     signature: bytes,
     trusted_public_key: bytes | None,
     audience: CorpusAudience,
-    source_root: Path,
-) -> ValidatedRelease:
-    """Verify with a caller-trusted raw Ed25519 key; no key is read from the envelope."""
+) -> tuple[str, tuple[LegalSource, ...]]:
+    """Verify signed policies/metadata only; this does not attest input or index bytes.
+
+    Frozen consumers must independently bind this identity to their checked artifact.
+    The trust key comes from the deployment boundary, never from the envelope.
+    """
     if trusted_public_key is None:
         raise ReleaseUnavailableError("A trusted release signing key is required")
     try:
@@ -304,10 +311,7 @@ def validate_release(
         if release_audience != audience:
             raise PublicationDenied("Release audience does not match requested audience")
         version = RELEASE_PREFIX + hashlib.sha256(manifest_bytes).hexdigest()
-        root = source_root.resolve(strict=True)
-        if not root.is_dir():
-            raise ReleaseUnavailableError("Release source root is unavailable")
-        entries: list[ReleasedSource] = []
+        sources: list[LegalSource] = []
         seen: set[str] = set()
         for value in _array(envelope["sources"]):
             source = _source(value, version)
@@ -315,18 +319,42 @@ def validate_release(
                 raise ReleaseIntegrityError("Duplicate source ID")
             seen.add(source.metadata.source_id)
             validate_source(source, release_audience)
-            _read_input(root, source.original)
-            indexed_content = _read_input(root, source.indexed) if source.indexed else None
-            if indexed_content is not None:
-                indexed_content.decode("utf-8")
-            entries.append(ReleasedSource(source, indexed_content))
-        return assemble_release(version, release_audience, tuple(entries))
+            sources.append(source)
+        return version, tuple(sources)
     except ReleaseUnavailableError:
         raise
     except InvalidSignature:
         raise ReleaseIntegrityError("Release signature is invalid") from None
     except (OSError, ValueError, TypeError, KeyError, RecursionError):
         raise ReleaseIntegrityError("Release metadata or source input is invalid") from None
+
+
+def validate_release(
+    manifest_bytes: bytes,
+    signature: bytes,
+    trusted_public_key: bytes | None,
+    audience: CorpusAudience,
+    source_root: Path,
+) -> ValidatedRelease:
+    version, sources = validate_release_metadata(
+        manifest_bytes, signature, trusted_public_key, audience
+    )
+    try:
+        root = source_root.resolve(strict=True)
+        if not root.is_dir():
+            raise ReleaseUnavailableError("Release source root is unavailable")
+        entries: list[ReleasedSource] = []
+        for source in sources:
+            _read_input(root, source.original)
+            indexed_content = _read_input(root, source.indexed) if source.indexed else None
+            if indexed_content is not None:
+                indexed_content.decode("utf-8")
+            entries.append(ReleasedSource(source, indexed_content))
+        return assemble_release(version, audience, tuple(entries))
+    except ReleaseUnavailableError:
+        raise
+    except (OSError, ValueError, TypeError):
+        raise ReleaseIntegrityError("Release source input is invalid") from None
 
 
 class ManifestAuthorityReader:

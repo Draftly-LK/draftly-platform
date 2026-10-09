@@ -1,4 +1,4 @@
-export type LegalSourceType = "statute" | "amendment";
+export type LegalSourceType = "statute" | "amendment" | "gazette";
 
 export interface LegalSourceSummary {
   id: string;

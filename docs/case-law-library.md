@@ -71,6 +71,8 @@ Build from the platform root, using the research checkout as an explicit input:
 ```powershell
 docker build -f deploy/retrieval/Dockerfile `
   --build-context deploy=deploy/retrieval `
+  --build-context platform=backend `
+  --build-context legal_sources=deploy/retrieval/empty-release `
   -t draftly-retrieval ../draftly-research
 ```
 

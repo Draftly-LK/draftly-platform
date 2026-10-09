@@ -90,6 +90,32 @@ records the corpus versions it searched, joined with `+`.
 
 ## 1. What it owns
 
+### Governed statutory retrieval (2026-10-09)
+
+The existing engine can consume an independently approved statutory release,
+including gazettes, through the module-hash-checked platform adapter. Its existing
+parser, SQLite writer and ranker remain authoritative. `legal-index-v2` binds the
+actual index bytes to signed `legal-sources-v1` metadata. HTTP passage metadata
+and `SearchResult.authorities` carry the actual index identity; the signed source
+identity is retained separately as `source_release_version`. Aggregation retains
+both pins and explicit coverage gaps, including metadata-only source leads.
+
+Exact Gazette misses withhold unrelated topical passages. Recorded incoming and
+outgoing relationships retain their direction and supporting locators. Publication
+never supplies unknown commencement. Quotation and display policy are enforced
+before passages leave the engine; the native engine answer route is unavailable
+for governed releases, because platform composition owns this contract.
+
+`LegalSourceAvailabilityPort.passages_available(source_ids, corpus_version=...)`
+checks current source policy for exact stored references. Empty IDs, legacy or
+unknown releases, withdrawal, changed index bytes/pointer, missing sources and
+transport failure return false. A separately mounted current-release identity is
+required for governed serving; builds do not create this grant. Legacy HTTP and
+bundled SQLite retrieval report unsupported metadata and unverified status.
+The bundled SQLite hash is checked against its own release manifest; caller
+labels cannot supply its identity. Tests and live engine coverage remain unmeasured
+under the explicit user waiver.
+
 Answering a question over the **controlled legal corpus** and returning a
 `GroundedAnswer` whose every claim traces to a source passage and an authority
 status — or returning the `insufficient-authority` branch when the corpus does

@@ -125,7 +125,8 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
   const statuteCount = sources.filter(
     (source) => source.type === "statute",
   ).length;
-  const amendmentCount = sources.length - statuteCount;
+  const amendmentCount = sources.filter((source) => source.type === "amendment").length;
+  const gazetteCount = sources.filter((source) => source.type === "gazette").length;
 
   return (
     <section>
@@ -148,7 +149,7 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
         </ErrorState>
       ) : (
         <>
-          <div className="border-border bg-surface divide-border rounded-card grid grid-cols-3 divide-x border">
+          <div className="border-border bg-surface divide-border rounded-card grid grid-cols-4 divide-x border">
             <Count label={t("all")} value={loading ? null : sources.length} />
             <Count
               label={t("statutes")}
@@ -158,6 +159,7 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
               label={t("amendments")}
               value={loading ? null : amendmentCount}
             />
+            <Count label={t("gazettes")} value={loading ? null : gazetteCount} />
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
@@ -182,6 +184,7 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
               <option value="all">{t("all")}</option>
               <option value="statute">{t("statutes")}</option>
               <option value="amendment">{t("amendments")}</option>
+              <option value="gazette">{t("gazettes")}</option>
             </select>
           </div>
 
@@ -227,7 +230,7 @@ function StatutorySources({ getToken }: { getToken: TokenProvider }) {
                         </a>
                       </h2>
                       <p className="text-muted-ink break-words text-sm">
-                        {source.type === "amendment" ? t("amendment") : t("statute")}
+                        {source.type === "gazette" ? t("gazettes") : source.type === "amendment" ? t("amendment") : t("statute")}
                         {" · "}
                         <span className="tabular-nums">{source.reference}</span>
                         {" · "}

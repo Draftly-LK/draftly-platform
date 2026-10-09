@@ -32,6 +32,25 @@ to apply to every record without this separate display policy.
 
 ## 1. What it owns
 
+### Governed metadata projection (2026-10-09)
+
+The closed catalogue vocabulary includes statute, amendment and gazette. A
+separately signed `public-catalogue` release mounted at
+`/run/draftly/public-catalogue` is validated with the independent trust file
+`/run/draftly/trust/public-catalogue.pub` and current identity file
+`/run/draftly/current-public-release`. Any partially supplied configuration fails
+closed. No internal-research release or text is projected through this path.
+The optional `metadata` response retains recorded dates, relationships, source
+hash and review state; unknown dates remain null. Content review does not assign
+binding legal weight. The Library UI uses its existing gazette labels and filter.
+
+Without configured governance inputs, the legacy catalogue validates its actual
+SQLite checksum and remains explicitly unverified with no date metadata. The
+legacy manifest cannot upgrade review status. Removing a governed release means
+withdrawing its current identity; retain the trust/configuration mount so missing
+release material fails closed rather than selecting legacy mode. No mounts,
+approvals or source publication were enabled by this implementation.
+
 **Read-only browse and lookup** over the controlled legal-source catalogue:
 list authorities filtered by type or topic and open one authority under its
 approved display policy. It owns the reference view of the published corpus:

@@ -7,6 +7,13 @@ It takes canonical manifest bytes, a detached raw Ed25519 signature, a trusted
 root `Path`. It performs no network requests, key generation or source publication.
 Production signer identity, trust distribution and key custody remain human-owned.
 
+The frozen producer also uses `validate_release_metadata` to repeat the same
+signature, parser and policy validation without reopening absent originals.
+That narrow function does not verify source bytes or an index. The builder must
+first use `validate_release`; the runtime separately verifies the actual SQLite
+artifact and its immutable attestation, plus the independently mounted current
+release identity. It never treats metadata-only validation as indexing approval.
+
 The release envelope has exactly `schemaVersion`, `audience` and `sources`.
 `schemaVersion` is `legal-source-release-v1`; `audience` is `internal-research` or
 `public-catalogue`; `sources` is an array. Encode with
@@ -52,6 +59,19 @@ and optional `indexedSha256`, matching the exact original and derivative.
 `approval` object. The enums are the corpus-governance service-plan values.
 The trusted signer attests that these independently recorded approvals exist;
 the validator cannot supply or grant those decisions.
+
+Optional policy fields `quotationHashes` (SHA-256 of each exact approved UTF-8
+excerpt) and `quotationCharacterLimit` (positive Unicode code-point count per
+source per retrieval response, including all emitted excerpts)
+record the reviewed output boundary. Supply both together. Neither an indexing
+grant nor a quotation enum alone permits output: absent descriptors retain
+metadata/indexing support but withhold passages and replay availability with a
+`quotation-boundary-unavailable` gap. The producer does not truncate text into an
+invented permission; its exact emitted excerpt must match a signed hash, and the
+aggregate response must fit the signed limit. Short-quotation policy emits at
+most one approved excerpt per source in a response.
+These fields authorize no source-file reader or bulk download. No descriptors
+were created for the pending real sources.
 
 Unknown rights/provenance, incomplete approvals, blocked indexing, quarantine,
 retirement and inappropriate audiences refuse the entire release. Licensed and
