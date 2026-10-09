@@ -174,6 +174,25 @@ policies remain unchanged.
 - [ ] Run affected backend/frontend/migration gates; review and commit
   `feat(e7): bind Form 8 to reviewed transaction facts`.
 
+### Approved extension execution sequence
+
+After Task7, execute Tasks9–11 below before final Task8. The approved companion
+[design](../specs/2026-10-09-matter-statute-amendment-discovery.md) and
+[plan](2026-10-09-matter-statute-amendment-discovery.md) specify files/contracts.
+
+- Task9 corresponds to companion TaskA: immutable signed audience release policy
+  and reviewed authority metadata, with source publication blocked until approved.
+- Task10 corresponds to TaskB: existing engine source identity, gazette input and
+  amendment relationships; preserve exact release and truthful coverage gaps.
+- Task11 corresponds to TaskC: persist selected reviewed transaction/current-date
+  contexts and show source metadata in the shared Overview conversation.
+
+On 2026-10-09 the user explicitly waived further test-suite, browser and benchmark
+execution and requested changes within one hour. This overrides older execution
+steps requiring RED/GREEN or complete test runs. Keep existing tests, compile/type/
+lint/build checks and independent code review. Report skipped acceptance evidence
+as unverified. Legal/privacy/authorization/source approval requirements remain.
+
 ### Task 8: Synthetic reference and persistent integrated journey
 
 **Files:** independent synthetic fixture generator/reference/evaluation under
