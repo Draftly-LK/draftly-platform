@@ -273,6 +273,7 @@ export function FactScopeInput({
   subjectLabel,
   getToken,
   onChanged,
+  disabled = false,
 }: {
   matterId: string;
   subjects: ApiMatterSubject[];
@@ -280,6 +281,7 @@ export function FactScopeInput({
   subjectLabel: (s: ApiMatterSubject) => string;
   getToken: TokenProvider;
   onChanged: () => void;
+  disabled?: boolean;
 }) {
   const t = useTranslations("factRegister");
   const roleLabel = useEnumLabel("factRegister.roles");
@@ -476,7 +478,7 @@ export function FactScopeInput({
       <summary ref={setupSummary} className="cursor-pointer font-semibold">
         {t("scopeTitle")}
       </summary>
-      <div className="space-y-4 pt-4">
+      <fieldset disabled={disabled} className="space-y-4 pt-4">
         <p className="text-muted-ink text-sm">{t("scopeNotice")}</p>
         {error != null && <RegisterError cause={error} />}
         {retryUnavailable && (
@@ -585,7 +587,7 @@ export function FactScopeInput({
         >
           {t("saveTransaction")}
         </Button>
-      </div>
+      </fieldset>
     </details>
   );
 }

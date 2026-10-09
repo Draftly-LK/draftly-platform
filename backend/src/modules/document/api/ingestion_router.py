@@ -468,6 +468,14 @@ async def process_source_file(
         return cached
 
     async def completed(view: ProcessingRunView) -> None:
+        from src.modules.matter_agent.application.task_suggestions import (
+            publish_processing_followthrough,
+        )
+        from src.modules.matter_agent.infrastructure.event_publisher import AgentEventPublisher
+
+        await publish_processing_followthrough(
+            view, ctx, AgentEventPublisher(session), ingestion=service
+        )
         await replay.save(_to_run_read(view))
         await uow.commit()
 

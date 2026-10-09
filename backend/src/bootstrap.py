@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from src.modules.matter_agent.application.agent_service import AgentService
     from src.modules.research.application.service import ResearchService
     from src.modules.task.application.readiness_service import ReadinessService
+    from src.modules.task.application.work_service import WorkTaskService
     from src.modules.verification.application.review_service import FactReviewService
 
 if TYPE_CHECKING:
@@ -85,12 +86,14 @@ def register_routers(app: FastAPI) -> None:
     from src.modules.research.api.case_router import router as case_research_router
     from src.modules.research.api.router import router as research_router
     from src.modules.task.api.router import router as checklist_router
+    from src.modules.task.api.work_router import router as work_checklist_router
     from src.modules.verification.api.router import router as verification_router
 
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(rule_pack_router, prefix="/api/v1")
     app.include_router(matter_router, prefix="/api/v1")
     app.include_router(checklist_router, prefix="/api/v1")
+    app.include_router(work_checklist_router, prefix="/api/v1")
     app.include_router(document_router, prefix="/api/v1")
     app.include_router(verification_router, prefix="/api/v1")
     app.include_router(check_router, prefix="/api/v1")
@@ -510,6 +513,9 @@ def build_agent_tools(session: AsyncSession, *, session_id: str, memory: Any) ->
             ),
             wt.RecordDocumentReceiptTool.name: wt.RecordDocumentReceiptTool(
                 checklist, matters, build_matter_scope_service(session)
+            ),
+            wt.SuggestChecklistItemTool.name: wt.SuggestChecklistItemTool(
+                build_work_task_service(session), ingestion=ingestion, session_id=session_id
             ),
             **wt.confirmed_proposal_tools(build_agent_service(session), session_id),
         }
@@ -1254,6 +1260,18 @@ def build_dispatcher() -> MessageDispatcher:
     for event_name in NOTIFICATION_CONSUMED_EVENTS:
         dispatcher.register_event(event_name, make_event_handler(event_name))
 
+    async def document_task_handler(
+        session: AsyncSession, message: ClaimedMessage
+    ) -> MessageResult:
+        from src.modules.matter_agent.document_followthrough import consume_processed_document
+
+        if message.name in NOTIFICATION_CONSUMED_EVENTS:
+            await consume_registered_event(session, message.payload)
+        await consume_processed_document(session, message.payload)
+        return MessageResult.DONE
+
+    dispatcher.register_event("document.processing-completed", document_task_handler)
+
     return dispatcher
 
 
@@ -1275,6 +1293,329 @@ def build_readiness_service(session: AsyncSession) -> ReadinessService:
                 build_check_service(session), SqlMatterScopeRepository(session)
             ),
         },
+    )
+
+
+def build_work_task_service(session: AsyncSession) -> WorkTaskService:
+    """Compose owner reads; operational tasks have no legal decision command port."""
+    from datetime import UTC, datetime
+
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.document.infrastructure.requirement_reader import SqlRequirementDocumentReader
+    from src.modules.task.application.work_service import WorkTaskService
+    from src.modules.task.contracts import ReadinessReference
+    from src.modules.task.domain.work import WorkAction, WorkGroup, WorkState, WorkTask
+    from src.modules.task.infrastructure.work_repository import SqlWorkRepository
+    from src.platform.errors import DomainRuleError, NotFoundError
+
+    ingestion = build_ingestion_service(session)
+    document_reader = SqlRequirementDocumentReader(session, build_source_file_storage())
+    facts = build_fact_review_service(session)
+    scopes = build_matter_scope_service(session)
+    drafts = build_draft_service(session)
+    checklist = build_checklist_service(session)
+    readiness = build_readiness_service(session)
+    checks = build_check_service(session)
+
+    class References:
+        async def current_reference(
+            self, ctx: RequestContext, matter_id: str, reference: ReadinessReference
+        ) -> ReadinessReference | None:
+            kind, ref_id = reference.kind, reference.id
+            if kind in {"source", "source-file"}:
+                source = (
+                    await ingestion.get_source_file(user_id=ctx.actor_id, source_file_id=ref_id)
+                ).source_file
+                if (
+                    source.matter_id != matter_id
+                    or source.state.value in {"SUPERSEDED", "REJECTED"}
+                    or not source.has_stored_bytes
+                ):
+                    return None
+                if not await ingestion.has_current_original(
+                    user_id=ctx.actor_id, matter_id=matter_id, source_file_id=ref_id
+                ):
+                    return None
+                return ReadinessReference(kind, source.id, source.version)
+            if kind == "document":
+                document = await document_reader.requirement_document(
+                    ctx.actor_id, matter_id, ref_id
+                )
+                return ReadinessReference(
+                    kind, document.id, document.version, document.interpretation_generation
+                )
+            if kind == "fact":
+                fact = (await facts.get_view(ctx, matter_id, ref_id)).fact
+                if not fact.is_live or fact.evidence_stale:
+                    return None
+                transaction = (
+                    await scopes.get_transaction(ctx, matter_id, fact.transaction_id)
+                    if fact.transaction_id
+                    else None
+                )
+                return ReadinessReference(
+                    kind,
+                    fact.id,
+                    fact.version,
+                    transaction_id=fact.transaction_id,
+                    subject_id=fact.subject_id,
+                    association_version=transaction.version if transaction else None,
+                )
+            if kind == "transaction":
+                transaction = await scopes.get_transaction(ctx, matter_id, ref_id)
+                return ReadinessReference(
+                    kind,
+                    transaction.id,
+                    transaction.version,
+                    association_version=transaction.version,
+                )
+            if kind == "form":
+                form = await drafts.get_form_snapshot(ctx.actor_id, ref_id)
+                if (
+                    form is None
+                    or form.matter_id != matter_id
+                    or not form.scope_current
+                    or form.stale_reason
+                ):
+                    return None
+                return ReadinessReference(
+                    kind,
+                    form.form_id,
+                    form.version,
+                    transaction_id=form.scope.transaction_id if form.scope else None,
+                    association_version=form.scope.association_version if form.scope else None,
+                )
+            if kind == "requirement":
+                view = await checklist.get_checklist(user_id=ctx.actor_id, matter_id=matter_id)
+                item = next((row for row in view.items if row.item.id == ref_id), None)
+                return (
+                    ReadinessReference(kind, item.item.id, item.item.version)
+                    if item and not item.has_invalid_support
+                    else None
+                )
+            raise DomainRuleError("This supporting record type is unavailable.")
+
+    class Projection:
+        async def projected_tasks(
+            self, ctx: RequestContext, matter_id: str
+        ) -> tuple[WorkTask, ...]:
+            view = await readiness.evaluate(ctx, matter_id)
+            rows: list[WorkTask] = []
+
+            def append(
+                key: str,
+                group: WorkGroup,
+                state: WorkState,
+                section: str,
+                evidence: tuple[ReadinessReference, ...] = (),
+            ) -> None:
+                rows.append(
+                    WorkTask(
+                        id=f"work:{matter_id}:{key}",
+                        user_id=ctx.actor_id,
+                        matter_id=matter_id,
+                        group=group,
+                        origin="operational",
+                        state=state,
+                        title_key=f"matterChecklist.tasks.{key}.title",
+                        reason_key=f"matterChecklist.tasks.{key}.reason",
+                        created_by="system",
+                        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+                        evidence=evidence,
+                        action=WorkAction("navigate", section),
+                    )
+                )
+
+            categories = {
+                "documents": (
+                    "upload",
+                    "processing",
+                    "grouping",
+                    "classification",
+                    "extraction",
+                    "documents",
+                ),
+                "facts": ("facts",),
+                "checks": ("checks",),
+            }
+            for key, relevant in categories.items():
+                dependencies = [dep for dep in view.dependencies if dep.category in relevant]
+                state: WorkState = (
+                    "pending-applicability"
+                    if any(dep.state == "unknown" for dep in dependencies)
+                    else "blocked"
+                    if any(dep.state == "failed" for dep in dependencies)
+                    else "not-started"
+                    if dependencies
+                    else "complete"
+                )
+                append(
+                    key,
+                    "documents" if key in {"documents", "facts"} else "evidence",
+                    state,
+                    "documents" if key == "documents" else "facts" if key == "facts" else "checks",
+                    tuple(ref for dep in dependencies for ref in dep.references),
+                )
+            issues, issue_cursor = await checks.list_issues(
+                user_id=ctx.actor_id, matter_id=matter_id, limit=100
+            )
+            issue_gates = await checks.gates(ctx.actor_id, matter_id)
+            stale_issue_support = any(
+                issue.check_id in issue_gates.stale_check_ids
+                for issue in issues
+                if issue.check_id is not None
+            )
+            issue_state: WorkState = (
+                "pending-applicability"
+                if issue_cursor is not None
+                else "not-applicable"
+                if not issues
+                else "stale"
+                if stale_issue_support
+                else "complete"
+                if all(issue.is_closed for issue in issues)
+                else "not-started"
+            )
+            append(
+                "issues",
+                "evidence",
+                issue_state,
+                "checks",
+                tuple(
+                    ReadinessReference(
+                        "issue",
+                        issue.id,
+                        issue.version,
+                        transaction_id=issue.transaction_id,
+                        subject_id=issue.subject_id,
+                        association_version=issue.association_version,
+                    )
+                    for issue in issues
+                ),
+            )
+            try:
+                transactions = await scopes.list_transactions(ctx, matter_id, limit=100)
+                if len(transactions) == 100:
+                    append("setup", "documents", "pending-applicability", "facts")
+                else:
+                    ready = bool(transactions) and all(
+                        row.parcel_subject_ids and row.party_roles for row in transactions
+                    )
+                    append(
+                        "setup",
+                        "documents",
+                        "complete" if ready else "not-started",
+                        "facts",
+                        tuple(
+                            ReadinessReference(
+                                "transaction", row.id, row.version, association_version=row.version
+                            )
+                            for row in transactions
+                        ),
+                    )
+            except (DomainRuleError, NotFoundError):
+                append("setup", "documents", "pending-applicability", "facts")
+            forms, cursor = await drafts.list_forms(
+                user_id=ctx.actor_id, matter_id=matter_id, limit=100
+            )
+            if not forms:
+                append("draft", "drafting", "not-started", "drafts")
+                append("approval", "drafting", "not-started", "exports")
+            elif cursor is not None:
+                append("draft", "drafting", "pending-applicability", "drafts")
+                append("approval", "drafting", "pending-applicability", "exports")
+            else:
+                # Review latest forms in every explicit scope; no one form may
+                # clear the work for another transaction or parcel.
+                seen_scopes = set()
+                current_forms = []
+                predecessors = {
+                    form.predecessor_form_id for form in forms if form.predecessor_form_id
+                }
+                for form in forms:
+                    if form.id in predecessors:
+                        continue
+                    identity = (
+                        (
+                            form.scope.transaction_id,
+                            form.scope.parcel_subject_id,
+                            form.scope.transferor_subject_id,
+                            form.scope.transferee_subject_id,
+                            form.template_id,
+                        )
+                        if form.scope
+                        else (None, form.template_id)
+                    )
+                    if identity in seen_scopes:
+                        continue
+                    seen_scopes.add(identity)
+                    current_forms.append(await drafts.get_form_snapshot(ctx.actor_id, form.id))
+                stale = any(
+                    form is None or not form.scope_current or form.stale_reason
+                    for form in current_forms
+                )
+                reviewed = not stale and all(
+                    form is not None
+                    and not form.unreviewed_field_ids
+                    and not form.unresolved_field_ids
+                    for form in current_forms
+                )
+                append(
+                    "draft",
+                    "drafting",
+                    "stale" if stale else "complete" if reviewed else "in-progress",
+                    "drafts",
+                    tuple(
+                        ReadinessReference(
+                            "form",
+                            form.form_id,
+                            form.version,
+                            transaction_id=form.scope.transaction_id if form.scope else None,
+                            association_version=form.scope.association_version
+                            if form.scope
+                            else None,
+                        )
+                        for form in current_forms
+                        if form is not None
+                    ),
+                )
+                approved = not stale and all(
+                    form is not None
+                    and form.approval_id is not None
+                    and form.approved_artifact_hash is not None
+                    for form in current_forms
+                )
+                append(
+                    "approval",
+                    "drafting",
+                    "stale" if stale else "complete" if approved else "not-started",
+                    "exports",
+                    tuple(
+                        ReadinessReference(
+                            "form",
+                            form.form_id,
+                            form.version,
+                            transaction_id=form.scope.transaction_id if form.scope else None,
+                            association_version=form.scope.association_version
+                            if form.scope
+                            else None,
+                        )
+                        for form in current_forms
+                        if form is not None
+                    ),
+                )
+            return tuple(rows)
+
+    return WorkTaskService(
+        SqlWorkRepository(session),
+        build_matter_service(session),
+        _build_document_matter_lock(session),
+        References(),
+        Projection(),
+        checklist,
+        AuditService(repository=SqlAuditRepository(session)),
+        _build_agent_authorizer(session),
     )
 
 

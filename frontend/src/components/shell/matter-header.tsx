@@ -5,23 +5,35 @@ import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
-import { listForms } from "@/lib/api/drafts";
+import {
+  isApiEnabled,
+  type TokenProvider,
+  apiErrorMessage,
+} from "@/lib/api/client";
+import { getReadiness } from "@/lib/api/requirements";
+import { MATTER_WORK_CHANGED } from "@/lib/matter-work-events";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { segmentedOption, segmentedTrack } from "@/components/ui/segmented-control";
+import {
+  segmentedOption,
+  segmentedTrack,
+} from "@/components/ui/segmented-control";
 import type { ApiRtaMatter, RtaMatterState } from "@/types/rta";
-import { MATTER_SECTIONS, matterSectionHref, sectionForPath } from "./matter-sections";
+import {
+  MATTER_SECTIONS,
+  matterSectionHref,
+  sectionForPath,
+} from "./matter-sections";
 import { MatterStepper } from "./matter-stepper";
-
 
 interface HeaderData {
   reference: string;
   state: RtaMatterState | null;
   /** Whether a form has been generated for this matter. */
   hasForm?: boolean;
+  evidenceComplete?: boolean;
   /** Why the matter could not be loaded, shown under the title. */
   error?: string;
 }
@@ -49,29 +61,54 @@ const matterCache = new Map<string, CachedMatter>();
 
 interface CachedMatter {
   matter: ApiRtaMatter;
-  hasForm: boolean;
+  evidenceComplete: boolean;
 }
 
 function ApiBoundMatterHeader({ matterId }: { matterId: string }) {
   const getToken = useTokenProvider();
-  const [matter, setMatter] = useState<CachedMatter | null>(() => matterCache.get(matterId) ?? null);
+  const [matter, setMatter] = useState<CachedMatter | null>(() => {
+    const cached = matterCache.get(matterId);
+    return cached ? { ...cached, evidenceComplete: false } : null;
+  });
   const [error, setError] = useState<string | null>(null);
   const t = useTranslations("matterNav");
 
   useEffect(() => {
     let cancelled = false;
+    let request = 0;
     setError(null);
-    setMatter(matterCache.get(matterId) ?? null);
-    fetchMatter(getToken, matterId)
-      .then((result) => {
-        matterCache.set(matterId, result);
-        if (!cancelled) setMatter(result);
-      })
-      .catch((cause: unknown) => {
-        if (!cancelled) setError(apiErrorMessage(cause, t("loadError")));
-      });
+    const cached = matterCache.get(matterId);
+    setMatter(cached ? { ...cached, evidenceComplete: false } : null);
+    const refresh = () => {
+      const run = ++request;
+      setMatter((current) =>
+        current ? { ...current, evidenceComplete: false } : null,
+      );
+      void fetchMatter(getToken, matterId)
+        .then((result) => {
+          if (!cancelled && run === request) {
+            matterCache.set(matterId, result);
+            setMatter(result);
+            setError(null);
+          }
+        })
+        .catch((cause: unknown) => {
+          if (!cancelled && run === request)
+            setError(apiErrorMessage(cause, t("loadError")));
+        });
+    };
+    refresh();
+    const changed = (event: Event) => {
+      if (
+        (event as CustomEvent<{ matterId: string }>).detail?.matterId ===
+        matterId
+      )
+        refresh();
+    };
+    window.addEventListener(MATTER_WORK_CHANGED, changed);
     return () => {
       cancelled = true;
+      window.removeEventListener(MATTER_WORK_CHANGED, changed);
     };
   }, [getToken, matterId, t]);
 
@@ -87,25 +124,39 @@ function ApiBoundMatterHeader({ matterId }: { matterId: string }) {
   return (
     <MatterHeaderShell
       matterId={matterId}
-      data={matter ? { reference: matter.matter.reference, state: matter.matter.state, hasForm: matter.hasForm } : null}
+      data={
+        matter
+          ? {
+              reference: matter.matter.reference,
+              state: matter.matter.state,
+              evidenceComplete: matter.evidenceComplete,
+            }
+          : null
+      }
     />
   );
 }
 
-async function fetchMatter(getToken: TokenProvider, matterId: string): Promise<CachedMatter> {
-  // The form count only moves the stepper on, so a failed lookup counts as none.
-  const [matter, hasForm] = await Promise.all([
+async function fetchMatter(
+  getToken: TokenProvider,
+  matterId: string,
+): Promise<CachedMatter> {
+  const [matter, readiness] = await Promise.all([
     getMatter(getToken, matterId),
-    listForms(getToken, matterId, { limit: 1 }).then(
-      (forms) => forms.items.length > 0,
-      () => false,
-    ),
+    getReadiness(getToken, matterId).catch(() => null),
   ]);
-  return { matter, hasForm };
+  const evidenceComplete =
+    readiness !== null &&
+    readiness.requirementTotal !== null &&
+    readiness.requirementTotal > 0 &&
+    readiness.requirementCompleted === readiness.requirementTotal;
+  return { matter, evidenceComplete };
 }
 
 function DemoMatterHeader({ matterId }: { matterId: string }) {
-  const matter = useDemoStore((state) => state.matters.find((item) => item.id === matterId));
+  const matter = useDemoStore((state) =>
+    state.matters.find((item) => item.id === matterId),
+  );
   if (!matter) return null;
   return (
     <MatterHeaderShell
@@ -132,18 +183,28 @@ function MatterHeaderShell({
     <header data-matter-header className="border-border bg-surface border-b">
       {/* pl-16 below lg keeps the title clear of the fixed mobile menu button. */}
       <div className="flex items-center gap-4 pb-3 pl-16 pr-6 pt-5 lg:pl-6">
-        <span className="bg-surface-inverse text-gold hidden size-12 shrink-0 place-items-center rounded-lg sm:grid" aria-hidden="true">
+        <span
+          className="bg-surface-inverse text-gold hidden size-12 shrink-0 place-items-center rounded-lg sm:grid"
+          aria-hidden="true"
+        >
           <FileText className="size-6" strokeWidth={1.5} />
         </span>
         <div className="min-w-0 flex-1">
           {data ? (
-            <h1 className="font-display text-2xl font-semibold leading-tight tabular-nums [overflow-wrap:anywhere] sm:truncate sm:text-3xl">
+            <h1 className="font-display text-2xl font-semibold tabular-nums leading-tight [overflow-wrap:anywhere] sm:truncate sm:text-3xl">
               {data.reference}
             </h1>
           ) : (
-            <div aria-hidden="true" className="bg-disabled-bg h-8 w-56 max-w-full animate-pulse rounded-control motion-reduce:animate-none sm:h-9" />
+            <div
+              aria-hidden="true"
+              className="bg-disabled-bg rounded-control h-8 w-56 max-w-full animate-pulse motion-reduce:animate-none sm:h-9"
+            />
           )}
-          {data?.error && <p role="alert" className="text-red mt-0.5 text-sm">{data.error}</p>}
+          {data?.error && (
+            <p role="alert" className="text-red mt-0.5 text-sm">
+              {data.error}
+            </p>
+          )}
           {updatedAt && (
             <div className="text-muted-ink mt-0.5 truncate text-sm">
               {t("updated", { date: updatedAt })}
@@ -152,7 +213,10 @@ function MatterHeaderShell({
         </div>
       </div>
       {data?.state ? (
-        <MatterStepper state={data.state} hasForm={data.hasForm} />
+        <MatterStepper
+          state={data.state}
+          evidenceComplete={data.evidenceComplete}
+        />
       ) : data === null ? (
         <div aria-hidden="true" className="h-[68px] sm:h-[76px]" />
       ) : null}
@@ -174,7 +238,11 @@ function MatterTabs({ matterId, label }: { matterId: string; label: string }) {
   const t = useTranslations("matterNav");
   const pathname = usePathname();
   const ref = useRef<HTMLDivElement>(null);
-  const [scroll, setScroll] = useState({ overflow: false, start: false, end: false });
+  const [scroll, setScroll] = useState({
+    overflow: false,
+    start: false,
+    end: false,
+  });
 
   const measure = useCallback(() => {
     const strip = ref.current;
@@ -194,9 +262,11 @@ function MatterTabs({ matterId, label }: { matterId: string; label: string }) {
       if (!strip || !active) return;
       const left = active.offsetLeft;
       const right = left + active.offsetWidth;
-      if (!nudge) strip.scrollLeft = left - (strip.clientWidth - active.offsetWidth) / 2;
+      if (!nudge)
+        strip.scrollLeft = left - (strip.clientWidth - active.offsetWidth) / 2;
       else if (left < strip.scrollLeft) strip.scrollLeft = left - 8;
-      else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth + 8;
+      else if (right > strip.scrollLeft + strip.clientWidth)
+        strip.scrollLeft = right - strip.clientWidth + 8;
       measure();
     },
     [measure],
@@ -208,7 +278,8 @@ function MatterTabs({ matterId, label }: { matterId: string; label: string }) {
     const strip = ref.current;
     if (!strip) return;
     const settle = () => reveal(true);
-    const observer = typeof ResizeObserver === "function" ? new ResizeObserver(settle) : null;
+    const observer =
+      typeof ResizeObserver === "function" ? new ResizeObserver(settle) : null;
     observer?.observe(strip);
     if (strip.firstElementChild) observer?.observe(strip.firstElementChild);
     void document.fonts?.ready.then(settle);
@@ -219,23 +290,45 @@ function MatterTabs({ matterId, label }: { matterId: string; label: string }) {
     reveal(false);
   }, [reveal, pathname, scroll.overflow]);
 
-  const scrollBy = (direction: 1 | -1) => ref.current?.scrollBy({ left: direction * SCROLL_STEP, behavior: "smooth" });
+  const scrollBy = (direction: 1 | -1) =>
+    ref.current?.scrollBy({
+      left: direction * SCROLL_STEP,
+      behavior: "smooth",
+    });
 
   return (
-    <nav aria-label={label} className="flex items-center justify-center gap-2 px-4 pb-4 pt-1 lg:px-6">
+    <nav
+      aria-label={label}
+      className="flex items-center justify-center gap-2 px-4 pb-4 pt-1 lg:px-6"
+    >
       {/* Shortcuts for the swipe; tabbing through the links still reaches every section. */}
-      {scroll.overflow ? <ScrollButton side="start" label={t("tabsBack")} disabled={!scroll.start} onClick={() => scrollBy(-1)} /> : null}
+      {scroll.overflow ? (
+        <ScrollButton
+          side="start"
+          label={t("tabsBack")}
+          disabled={!scroll.start}
+          onClick={() => scrollBy(-1)}
+        />
+      ) : null}
       <div
         ref={ref}
         onScroll={measure}
         // `relative` makes the strip the pills' offset parent, so centring the current one measures from the strip.
-        className={cn(segmentedTrack, "relative min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden")}
+        className={cn(
+          segmentedTrack,
+          "relative min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        )}
       >
         {MATTER_SECTIONS.map((tab) => {
           const href = matterSectionHref(tab, matterId);
           const active = sectionForPath(pathname, matterId) === tab;
           return (
-            <Link key={tab} href={href} aria-current={active ? "page" : undefined} className={cn(segmentedOption(active), "shrink-0")}>
+            <Link
+              key={tab}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn(segmentedOption(active), "shrink-0")}
+            >
               {t(tab)}
             </Link>
           );
@@ -243,12 +336,29 @@ function MatterTabs({ matterId, label }: { matterId: string; label: string }) {
         {/* A scrolled strip drops its end padding, which let the rounded end clip the last pill. */}
         <span aria-hidden="true" className="w-0.5 shrink-0" />
       </div>
-      {scroll.overflow ? <ScrollButton side="end" label={t("tabsMore")} disabled={!scroll.end} onClick={() => scrollBy(1)} /> : null}
+      {scroll.overflow ? (
+        <ScrollButton
+          side="end"
+          label={t("tabsMore")}
+          disabled={!scroll.end}
+          onClick={() => scrollBy(1)}
+        />
+      ) : null}
     </nav>
   );
 }
 
-function ScrollButton({ side, label, disabled, onClick }: { side: "start" | "end"; label: string; disabled: boolean; onClick: () => void }) {
+function ScrollButton({
+  side,
+  label,
+  disabled,
+  onClick,
+}: {
+  side: "start" | "end";
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+}) {
   const Icon = side === "start" ? ChevronLeft : ChevronRight;
   return (
     <button
@@ -257,7 +367,7 @@ function ScrollButton({ side, label, disabled, onClick }: { side: "start" | "end
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="border-border-strong bg-surface text-ink hover:bg-hover-bg grid size-8 shrink-0 place-items-center rounded-full border transition-opacity duration-150 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-surface motion-reduce:transition-none"
+      className="border-border-strong bg-surface text-ink hover:bg-hover-bg disabled:hover:bg-surface grid size-8 shrink-0 place-items-center rounded-full border transition-opacity duration-150 disabled:cursor-default disabled:opacity-40 motion-reduce:transition-none"
     >
       <Icon aria-hidden="true" className="size-4" strokeWidth={1.5} />
     </button>

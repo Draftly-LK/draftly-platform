@@ -80,6 +80,7 @@ class AuditAction(str, enum.Enum):
     # Workflow
     STEP_COMPLETED = "step.completed"
     STEP_OVERRIDDEN = "step.overridden"
+    WORK_TASK_DECISION_RECORDED = "work-task.decision-recorded"
     # Draft
     DRAFT_CREATED = "draft.created"
     DRAFT_APPROVED = "draft.approved"

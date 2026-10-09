@@ -1,28 +1,41 @@
 "use client";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { listTransactions, listSubjects } from "@/lib/api/facts";
 import type { TokenProvider } from "@/lib/api/client";
 import type { RunChecksBody } from "@/lib/api/checks";
 import type { ApiMatterTransaction, ApiMatterSubject } from "@/types/rta";
+import { FactScopeInput } from "@/components/matter/fact-input";
+import {
+  MATTER_WORK_CHANGED,
+  notifyMatterWorkChanged,
+} from "@/lib/matter-work-events";
 export function CheckScopeSelector({
   matterId,
   getToken,
   value,
   onChange,
+  disabled = false,
 }: {
   matterId: string;
   getToken: TokenProvider;
   value: RunChecksBody | null;
   onChange: (scope: RunChecksBody | null) => void;
+  disabled?: boolean;
 }) {
   const t = useTranslations("checkScope");
   const id = useId();
   const [transactions, setTransactions] = useState<ApiMatterTransaction[]>([]);
   const [subjects, setSubjects] = useState<ApiMatterSubject[]>([]);
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const epoch = useRef(0);
   const load = useCallback(async () => {
+    const run = ++epoch.current;
+    onChange(null);
+    setLoading(true);
+    setError(false);
     try {
       const all: ApiMatterTransaction[] = [];
       let cursor: string | undefined;
@@ -62,19 +75,39 @@ export function CheckScopeSelector({
         )
       )
         throw new Error("Missing subject reference");
+      if (run !== epoch.current) return;
       setTransactions(all);
       setSubjects(allSubjects);
       setError(false);
     } catch {
+      if (run !== epoch.current) return;
       setError(true);
       onChange(null);
+    } finally {
+      if (run === epoch.current) setLoading(false);
     }
   }, [getToken, matterId, onChange]);
   useEffect(() => {
+    const generation = epoch;
     void load();
-  }, [load]);
+    const refresh = (event: Event) => {
+      if (
+        (event as CustomEvent<{ matterId: string }>).detail?.matterId ===
+        matterId
+      )
+        void load();
+    };
+    window.addEventListener(MATTER_WORK_CHANGED, refresh);
+    return () => {
+      generation.current++;
+      window.removeEventListener(MATTER_WORK_CHANGED, refresh);
+    };
+  }, [load, matterId]);
   const selected = transactions.find((row) => row.id === value?.transactionId);
   const stale = value && selected?.version !== value.associationVersion;
+  useEffect(() => {
+    if (stale) onChange(null);
+  }, [stale, onChange]);
   const control =
     "border-border-control bg-surface rounded-control min-h-10 w-full border px-3 py-2 text-sm";
   return (
@@ -86,6 +119,26 @@ export function CheckScopeSelector({
         {t("title")}
       </h2>
       <p className="text-muted-ink text-sm">{t("notice")}</p>
+      {loading && (
+        <p role="status" className="text-muted-ink text-sm">
+          {t("loading")}
+        </p>
+      )}
+      {!loading && !error && transactions.length === 0 && (
+        <p className="text-muted-ink text-sm">{t("empty")}</p>
+      )}
+      <FactScopeInput
+        key={matterId}
+        matterId={matterId}
+        getToken={getToken}
+        subjects={subjects}
+        transactions={transactions}
+        subjectLabel={(subject) =>
+          `${t(subject.kind === "parcel" ? "parcelNumber" : "partyNumber", { number: subject.ordinal })} · ${subject.id}`
+        }
+        onChanged={() => notifyMatterWorkChanged(matterId)}
+        disabled={disabled || loading || error}
+      />
       {error && (
         <p role="alert" className="text-red">
           {t("unavailable")}
@@ -102,7 +155,7 @@ export function CheckScopeSelector({
           <select
             id={`${id}-transaction`}
             className={control}
-            disabled={error}
+            disabled={disabled || loading || error}
             value={value?.transactionId ?? ""}
             onChange={(event) => {
               const row = transactions.find(
@@ -132,7 +185,7 @@ export function CheckScopeSelector({
           <select
             id={`${id}-subject`}
             className={control}
-            disabled={error || !selected || !!stale}
+            disabled={disabled || loading || error || !selected || !!stale}
             value={value?.subjectId ?? ""}
             onChange={(event) => {
               if (value)
@@ -170,6 +223,7 @@ export function CheckScopeSelector({
       )}
       <Button
         variant="secondary"
+        disabled={disabled || loading}
         onClick={() => {
           onChange(null);
           void load();

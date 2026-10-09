@@ -1,0 +1,44 @@
+{
+  "synthetic": true,
+  "scans": [
+    {
+      "screen": "overview-existing",
+      "violations": []
+    },
+    {
+      "screen": "checks-setup",
+      "violations": []
+    },
+    {
+      "screen": "overview-sinhala",
+      "violations": []
+    },
+    {
+      "screen": "overview-empty",
+      "violations": []
+    },
+    {
+      "screen": "checks-empty",
+      "violations": []
+    }
+  ],
+  "errors": [],
+  "checks": [
+    "create task",
+    "link source",
+    "complete with note",
+    "refresh persists",
+    "history pins",
+    "inline two parties and parcel",
+    "no guessed roles",
+    "explicit transaction select",
+    "checks request",
+    "1024 no horizontal overflow",
+    "200 percent text",
+    "keyboard add task",
+    "Sinhala render",
+    "unassessed empty matter",
+    "assessment setup deep link and keyboard focus",
+    "no transaction not run state"
+  ]
+}

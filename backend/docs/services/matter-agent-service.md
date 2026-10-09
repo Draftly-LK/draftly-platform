@@ -646,8 +646,9 @@ service. No tool reaches a repository or the database directly.
 | `save_working_note` | `matter_agent_service` |
 | `assign_checklist_item`, `update_checklist_due_date`, `request_checklist_collection`, `record_document_receipt`, `propose_document_link` | `checklist_service` |
 | `update_field_candidate` | `DocumentReviewService` |
+| `suggest_checklist_item` | `task_service` operational proposals |
 
-Nine are **not** implemented. Each is denied with `tool_not_implemented`,
+Eight are **not** implemented. Each is denied with `tool_not_implemented`,
 audited, and carries a stated reason in
 `matter_agent.application.tools.OUT_OF_SCOPE`. A test asserts that every
 allowlisted tool is either implemented or listed there, so the set cannot drift.
@@ -655,10 +656,26 @@ allowlisted tool is either implemented or listed there, so the set cannot drift.
 - `compare_parcel_identity` — no parcel aggregate exists in the domain.
 - `create_field_candidate` — candidates are created by the extraction pipeline;
   the review service exposes edit and approve, not create.
-- `suggest_checklist_item` — items are compiled from governed templates; ad-hoc
-  creation is a content-governance change, not an agent capability.
 - The six `propose_*` confirmation-card tools — the pending-action lifecycle is
   built and tested, but no tool creates a card yet.
+
+### Source-bound operational proposals (2026-10-09)
+
+`suggest_checklist_item` proposes work outside the compiled legal checklist.
+It requires authenticated matter access, the existing administrative proposal
+capabilities, a title, reason, presentation group and exact source-file version.
+The document owner supplies current document and interpretation-generation pins.
+Changed generations produce separate proposals; duplicate calls do not duplicate
+the same suggestion. The tool cannot accept a suggestion or record completion.
+
+Successful source processing publishes `document.processing-completed` in the
+processing transaction. Its task consumer rechecks the actor's current account,
+capabilities, matter access and exact supporting versions before creating a
+localized document-review suggestion. The outbox carries identifiers and version
+pins only. It includes current document pins on reruns that reuse existing groups.
+Rejected or superseded groups do not support proposals. Stale or denied events
+are suppressed. The lawyer accepts or dismisses suggestions on Matter Overview;
+unaccepted suggestions do not contribute to completion progress.
 
 ### The RECEIVED / SATISFIED line
 

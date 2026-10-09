@@ -67,6 +67,14 @@ class RequirementDocumentPort(Protocol):
     ) -> FactEvidenceSource: ...
 
 
+class SourceIntegrityReadPort(Protocol):
+    async def has_current_original(
+        self, *, user_id: str, matter_id: str, source_file_id: str
+    ) -> bool:
+        """Validate eligibility and exact stored-byte integrity without exposing bytes."""
+        ...
+
+
 @dataclass(frozen=True)
 class CandidateObservation:
     id: str

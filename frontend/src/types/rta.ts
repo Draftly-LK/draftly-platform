@@ -1073,6 +1073,7 @@ export interface ApiLegalIssue {
 
 /** Mirrors `IssueGatesRead`. */
 export interface ApiIssueGates {
+  staleCheckIds?: string[];
   blocksDraftGeneration: boolean;
   blocksApproval: boolean;
   blocksRegistrationReadyExport: boolean;

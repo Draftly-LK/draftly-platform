@@ -28,6 +28,57 @@ registration
 closure
 ```
 
+## Matter work checklist (2026-10-09)
+
+Matter Overview combines governed requirements with recorded operational work.
+Its six presentation groups are `documents`, `evidence`, `drafting`, `execution`,
+`registration`, and `completion`. Canonical phases and existing readiness,
+approval, export, and registration policies remain authoritative.
+
+Operational tasks live separately in `matter_work_tasks`, with append-only
+decisions in `matter_work_task_history`. Lawyer-created tasks and accepted agent
+suggestions record work and exact supporting references. They cannot waive,
+satisfy, or complete a governed requirement. Completing a built-in later-phase
+work record does not enter an attestation, approve a draft, or close a matter.
+
+`GET /matters/{id}/work-checklist` returns tasks, pending suggestions, completion
+counts, assessment state, and a deterministic next action. Owner reads supply
+document/fact work, explicit scope setup, check uncertainty, issue dispositions,
+reviewed forms, and actual approvals. Evidence satisfaction still comes from
+the existing checklist policy. Superseded form predecessors remain stored but
+do not duplicate current work.
+
+Commands are `POST /work-tasks`, `PATCH /work-tasks/{taskId}`,
+`POST /work-tasks/{taskId}/decisions`, and
+`POST /task-suggestions/{suggestionId}/decisions`, under the matter path.
+They require the existing checklist-decision capability and idempotency key;
+updates require `If-Match`. Single-task reads return an ETag. History and the
+suggestion list use signed cursors. Replay follows a fresh matter-access and
+capability check.
+
+Supporting source files, documents, facts, transaction associations, forms,
+and requirements pin their exact versions and interpretation generation where
+relevant. Foreign or unavailable references are refused. Changed pins derive
+`stale` on read without mutating or erasing a decision. Explicit renewed review
+adopts current support and resets pending work; previous completion and pins
+remain in history. A completion command cannot remove existing dependencies.
+
+Agent suggestions stay outside the applicable count until lawyer acceptance.
+Proposal creation uses existing `checklist.administer` and
+`checklist.suggest-item` capabilities after matter ownership is checked, with
+the same matter mutation lock. This permits operational proposals from the
+existing reviewer role; accepting them still requires the unchanged
+`rta.checklist.decide` lawyer capability.
+Changed source pins prevent obsolete acceptance. This proposal layer does not
+allow AI to alter compiled governed steps. Suggestions deduplicate by purpose,
+scope, and pinned sources and retain agent provenance.
+
+Progress counts each known applicable row once, excludes cancelled and
+non-applicable work, and counts only current completion. Unresolved applicability
+or unsupported check-coverage certainty shows assessment state. Zero known
+tasks never produce 100%. This percentage measures recorded work, not legal
+readiness.
+
 The frontend may group these phases into the four familiar work areas
 Examination, Drafting, Execution, and Attestation. Those groups are a
 presentation choice and do not replace the canonical phase recorded by the

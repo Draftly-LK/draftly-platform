@@ -125,10 +125,6 @@ OUT_OF_SCOPE: Mapping[str, str] = MappingProxyType(
             "Candidates are created by the extraction pipeline, not by hand. "
             "review_service exposes edit and approve, but no create."
         ),
-        "suggest_checklist_item": (
-            "Checklist items are compiled from governed templates. Ad-hoc item "
-            "creation is a content-governance change, not an agent capability."
-        ),
         "propose_form_field_correction": "Confirmation cards are not wired yet.",
         "propose_issue_resolution": "Confirmation cards are not wired yet.",
         "propose_step_completion": "Confirmation cards are not wired yet.",

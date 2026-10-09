@@ -266,9 +266,11 @@ def test_dispatcher_registers_the_delivery_job_and_every_consumed_event() -> Non
     from src.modules.matter_agent.jobs import RUN_TURN_JOB_TYPE
 
     registered = set(bootstrap.build_dispatcher().registered())
-    expected = {(KIND_JOB, DELIVER_JOB_TYPE), (KIND_JOB, RUN_TURN_JOB_TYPE)} | {
-        (KIND_EVENT, name) for name in NOTIFICATION_CONSUMED_EVENTS
-    }
+    expected = {
+        (KIND_JOB, DELIVER_JOB_TYPE),
+        (KIND_JOB, RUN_TURN_JOB_TYPE),
+        (KIND_EVENT, "document.processing-completed"),
+    } | {(KIND_EVENT, name) for name in NOTIFICATION_CONSUMED_EVENTS}
     assert registered == expected
 
 

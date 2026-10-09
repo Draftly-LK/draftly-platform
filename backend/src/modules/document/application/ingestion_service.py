@@ -47,6 +47,8 @@ from src.modules.document.domain.errors import (
     SourceFileSupersedeTargetError,
     SourceFileTooLargeError,
     SourceObjectIntegrityError,
+    SourceObjectNotFoundError,
+    SourceObjectUnavailableError,
     UnknownDocumentClassError,
 )
 from src.modules.document.domain.grouping import PageAccounting, PageDisposition, account_pages
@@ -459,6 +461,32 @@ class SourceFileIngestionService:
             target_id=source.id,
         )
         return source, data
+
+    async def has_current_original(
+        self, *, user_id: str, matter_id: str, source_file_id: str
+    ) -> bool:
+        """Technical evidence validation; no bytes leave the owner and no decision is written."""
+        source = await self._require_source(user_id, source_file_id)
+        if (
+            source.matter_id != matter_id
+            or source.state
+            not in {
+                SourceFileState.STORED,
+                SourceFileState.PROCESSING,
+                SourceFileState.PROCESSED,
+                SourceFileState.PROCESSING_FAILED,
+            }
+            or not source.has_stored_bytes
+            or source.superseded_by_source_file_id is not None
+        ):
+            return False
+        try:
+            data = await self._storage.get(
+                source.storage_object_key, version=source.storage_object_version
+            )
+        except (SourceObjectNotFoundError, SourceObjectUnavailableError):
+            return False
+        return hashlib.sha256(data).hexdigest() == source.sha256
 
     async def get_processing_status(
         self, *, user_id: str, source_file_id: str

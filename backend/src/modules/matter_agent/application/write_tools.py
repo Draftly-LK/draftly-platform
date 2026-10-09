@@ -19,8 +19,11 @@ from typing import Any
 from src.modules.content_governance.contracts import CollectionStatus, DigitalReviewStatus
 from src.modules.matter_agent.application.actions import CHECKLIST_DECISION, build_pending_action
 from src.modules.matter_agent.application.read_tools import _BaseTool, require_tool_rta
+from src.modules.matter_agent.application.task_suggestions import SuggestChecklistItemTool
 from src.modules.matter_agent.domain.models import SuggestionOrigin
 from src.modules.matter_agent.ports import ToolInvocation, ToolResult
+
+__all__ = ["SuggestChecklistItemTool"]
 
 
 class RunChecksTool(_BaseTool):

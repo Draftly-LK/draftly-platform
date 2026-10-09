@@ -3305,6 +3305,8 @@
     "quickAccept": "Accept"
   },
   "requirementsWork": {
+    "assessmentPending": "Requirements are still being assessed. Review the matter setup, documents and verified facts to continue.",
+    "reviewSetup": "Review matter setup",
     "selectRequirement": "Select a requirement on the left to view its details and review actions.",
     "documentsTitle": "Missing requirements",
     "checksTitle": "Requirements and human review",
@@ -3319,10 +3321,10 @@
     "chooseDocument": "Choose a document",
     "viewDocument": "Review document",
     "link": "Record receipt and link",
-    "linkFirst": "Link the supporting original in Documents before recording inspection.",
+    "linkFirst": "Link supporting evidence before recording original inspection.",
     "collection": "Collection",
     "digitalReview": "Evidence review",
-    "physicalOriginal": "Physical original",
+    "physicalOriginal": "Physical-original inspection",
     "currency": "Currency",
     "consistency": "Consistency",
     "applicability": "Applicability",
@@ -3336,7 +3338,18 @@
     "changed": "This requirement or its evidence changed. Review the latest requirement and reselect its supporting document before trying again.",
     "saveFailed": "The result is uncertain. Retry the same action to recover its recorded result.",
     "saved": "Decision recorded. Select a requirement to continue.",
-    "retryStorage": "Retry protection is available only in this open tab. Keep the tab open if the save result is uncertain."
+    "retryStorage": "Retry protection is available only in this open tab. Keep the tab open if the save result is uncertain.",
+    "inboxUnavailable": "Supporting documents are unavailable. Requirements remain available; refresh before linking evidence.",
+    "collectDocuments": "Collect or upload supporting documents",
+    "satisfied": "Satisfied under requirement policy",
+    "liveEvidence": "Current evidence link",
+    "historicalEvidence": "Historical evidence link",
+    "groups": {
+      "LEGAL_REGISTRY": "Registry evidence",
+      "TITLE_EXAMINATION": "Title examination",
+      "CONDITIONAL": "Conditional requirements",
+      "OFFICE_ADDED": "Additional requirements"
+    }
   },
   "checkScope": {
     "title": "Automated checks",
@@ -3356,7 +3369,23 @@
     "unscoped": "Historical result without scope",
     "more": "Load more results",
     "gateBlocked": "Blocked by recorded issues",
-    "gateClear": "No issue gate"
+    "gateClear": "No recorded blocking issues",
+    "loading": "Loading transaction setup...",
+    "empty": "Set up the transaction, parties and parcel below, then select the scope for checks.",
+    "partyNumber": "Party {number}",
+    "gateNotice": "Issue gates do not establish overall readiness. Requirements, current checks and lawyer decisions still apply.",
+    "notRun": "Not run",
+    "pending": "Pending",
+    "staleResult": "Needs review - recorded result is stale",
+    "outcome": "Recorded outcome: {outcome}",
+    "coverageUnknown": "Applicable check coverage is still being assessed.",
+    "outcomes": {
+      "PASS": "Passed",
+      "FAIL": "Failed",
+      "PENDING": "Pending",
+      "INCONCLUSIVE": "Inconclusive",
+      "BLOCKED": "Blocked"
+    }
   },
   "readinessWork": {
     "title": {
@@ -3423,6 +3452,154 @@
       "stale": "The source or association changed. Create a successor after review.",
       "unassigned": "Select and review the subject or transaction role.",
       "unsupported": "This field requires supported information or a separate human act."
+    }
+  },
+  "workChecklist": {
+    "heading": "Matter checklist",
+    "assistant": "Matter assistant",
+    "add": "Add task",
+    "refresh": "Refresh checklist",
+    "loading": "Loading the matter checklist…",
+    "unavailable": "The checklist is unavailable. Refresh to try again.",
+    "saveFailed": "The result is uncertain. Retry the same action to recover its recorded result.",
+    "changed": "This task or its evidence changed. Refresh the checklist and review the current task before trying again.",
+    "saved": "The action was recorded.",
+    "retryStorage": "Retry protection is available only in this open tab. Keep this tab open if the result is uncertain.",
+    "progress": "Matter progress: {completed} of {total} applicable tasks complete — {percent}%",
+    "progressLabel": "Recorded matter workflow completion",
+    "noApplicable": "No applicable tasks determined yet",
+    "assessing": "Checklist still being assessed",
+    "eligibility": "Approval and export eligibility are determined separately by backend policy.",
+    "next": "Next: {task}",
+    "review": "Review",
+    "task": "Task",
+    "reason": "Why it is needed",
+    "group": "Stage",
+    "save": "Save task",
+    "close": "Close",
+    "suggestions": "Agent suggestions",
+    "suggestionsNotice": "Suggestions join the checklist only after you accept them. They do not change legal requirements.",
+    "accept": "Accept suggestion",
+    "dismiss": "Dismiss suggestion",
+    "completed": "Completed and inactive tasks ({count})",
+    "noOutstanding": "No outstanding tasks recorded",
+    "untitled": "Review task",
+    "reasonUnknown": "Review the supporting information before recording a conclusion.",
+    "assigned": "Assigned to {actor}",
+    "completedBy": "Completed by {actor} · {time}",
+    "timeUnknown": "Time not recorded",
+    "evidence": "Supporting evidence {number}",
+    "version": "Version {version}",
+    "noEvidence": "No supporting evidence linked",
+    "note": "Decision note",
+    "completeTask": "Complete task",
+    "reopen": "Needs review",
+    "cancelTask": "Cancel task",
+    "history": "View history",
+    "historyUnavailable": "Task history is unavailable. Try again.",
+    "noHistory": "No decisions recorded yet",
+    "moreHistory": "Load more history",
+    "historyEvent": "{decision} · {actor} · {time}",
+    "details": "Details and history",
+    "groups": {
+      "documents": "Documents and facts",
+      "evidence": "Evidence and checks",
+      "drafting": "Drafting",
+      "execution": "Signing and attestation",
+      "registration": "Stamping and registration",
+      "completion": "Final completion"
+    },
+    "states": {
+      "not-started": "To do",
+      "in-progress": "Processing",
+      "blocked": "Blocked",
+      "complete": "Complete",
+      "stale": "Needs review",
+      "pending-applicability": "Still being assessed",
+      "not-applicable": "Not applicable",
+      "cancelled": "Cancelled"
+    },
+    "origins": {
+      "governed": "Existing workflow requirement",
+      "operational": "Recorded workflow activity",
+      "lawyer": "Lawyer-added task",
+      "agent": "Accepted agent suggestion"
+    },
+    "decisions": {
+      "create": "Created",
+      "created": "Created",
+      "complete": "Completed",
+      "review": "Needs review",
+      "cancel": "Cancelled",
+      "accept": "Accepted",
+      "dismiss": "Dismissed",
+      "stale": "Needs review",
+      "update": "Updated"
+    },
+    "recordCompletion": "Record completion",
+    "reviewCompletion": "Review completion",
+    "operationalNotice": "This records your workflow work. It does not create an approval, attestation, registration or legal closure event.",
+    "completionEvidence": "Evidence used for this decision",
+    "recordedDecision": "Decision recorded",
+    "linkEvidence": "Link supporting document",
+    "documentNumber": "Document {number}",
+    "evidenceUnavailable": "Supporting documents are unavailable. Try again.",
+    "agentSuggestion": "Agent suggestion",
+    "awaitingAcceptance": "Awaiting lawyer acceptance",
+    "generation": "Interpretation {generation}",
+    "associationRevision": "Association revision {version}",
+    "reviewCurrentEvidence": "Review current evidence"
+  },
+  "matterChecklist": {
+    "tasks": {
+      "setup": {
+        "title": "Set up transaction, parties and parcel",
+        "reason": "Review explicit party roles and property associations before checks and drafting."
+      },
+      "documents": {
+        "title": "Upload and process source documents",
+        "reason": "Add the supporting records and review processing results."
+      },
+      "facts": {
+        "title": "Review extracted facts and associations",
+        "reason": "Confirm or correct the information used by the matter workflow."
+      },
+      "checks": {
+        "title": "Run and review applicable automated checks",
+        "reason": "Checks must use current reviewed facts and transaction scope."
+      },
+      "issues": {
+        "title": "Resolve findings and record lawyer conclusions",
+        "reason": "Review the evidence and record a decision for each outstanding finding."
+      },
+      "draft": {
+        "title": "Prepare and review the draft",
+        "reason": "Use reviewed facts, then review the draft's own approval and export conditions."
+      },
+      "execution": {
+        "title": "Review signing and attestation work",
+        "reason": "Record applicable human work and supporting evidence using the existing requirements."
+      },
+      "registration": {
+        "title": "Review stamping and registration work",
+        "reason": "Review applicable records and outstanding requirements before subsequent steps."
+      },
+      "completion": {
+        "title": "Review final matter completion",
+        "reason": "Review recorded work and remaining requirements before recording your conclusion."
+      },
+      "assessment": {
+        "title": "Review checklist assessment",
+        "reason": "Requirements or workflow coverage remain unknown. Review the current matter setup and evidence."
+      },
+      "documentReview": {
+        "title": "Review information from the processed document",
+        "reason": "The document was processed. Review and associate its extracted facts before relying on them."
+      },
+      "approval": {
+        "title": "Review approval and export",
+        "reason": "Review the draft's current approval and export conditions before producing approved output."
+      }
     }
   }
 }
