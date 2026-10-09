@@ -71,6 +71,7 @@ class SaveWorkingNoteTool:
                     }
                 },
                 "required": ["body"],
+                "additionalProperties": False,
             },
         )
 
@@ -113,6 +114,9 @@ def build_tool_registry(tools: Mapping[str, AgentToolPort]) -> dict[str, AgentTo
 #: The executor denies each with `tool_not_implemented` and audits the denial.
 OUT_OF_SCOPE: Mapping[str, str] = MappingProxyType(
     {
+        "generate_working_draft": "Deferred until the scoped draft contract is implemented in Task 7.",
+        "update_field_candidate": "Use the canonical human review flow; no automatic candidate edits.",
+        "propose_document_link": "Use the versioned, confirmed propose_requirement_link tool.",
         "compare_parcel_identity": (
             "No parcel aggregate exists in the domain. Implementing this would "
             "mean inventing a shape the rest of the system does not have."
@@ -125,8 +129,6 @@ OUT_OF_SCOPE: Mapping[str, str] = MappingProxyType(
             "Checklist items are compiled from governed templates. Ad-hoc item "
             "creation is a content-governance change, not an agent capability."
         ),
-        "propose_candidate_approval": "Confirmation cards are not wired yet.",
-        "propose_requirement_link": "Confirmation cards are not wired yet.",
         "propose_form_field_correction": "Confirmation cards are not wired yet.",
         "propose_issue_resolution": "Confirmation cards are not wired yet.",
         "propose_step_completion": "Confirmation cards are not wired yet.",

@@ -192,6 +192,9 @@ class AgentPendingActionRow(Base):
     user_id: Mapped[str] = mapped_column(String(64), nullable=False)
     matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
     action_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    result: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict, server_default="{}"
+    )
     arguments: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     target_ref: Mapped[str] = mapped_column(String(128), nullable=False)
     target_version: Mapped[int] = mapped_column(Integer, nullable=False)

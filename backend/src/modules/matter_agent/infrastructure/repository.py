@@ -12,6 +12,8 @@ indistinguishable from a genuinely missing session.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
 
@@ -89,6 +91,13 @@ def _to_message(row: AgentMessageRow) -> AgentMessage:
                 label=str(item.get("label", item.get("sourceId", ""))),
                 verification_status=str(item.get("verificationStatus", "unverified")),
                 locator=(str(item["locator"]) if item.get("locator") is not None else None),
+                source_file_id=item.get("sourceFileId"),
+                page=item.get("page"),
+                version=item.get("version"),
+                transaction_id=item.get("transactionId"),
+                subject_id=item.get("subjectId"),
+                passage=item.get("passage"),
+                corpus_version=item.get("corpusVersion"),
             )
             for item in row.citations
         ),
@@ -103,6 +112,7 @@ def _to_pending_action(row: AgentPendingActionRow) -> PendingAction:
         matter_id=row.matter_id,
         user_id=row.user_id,
         action_kind=row.action_kind,
+        result=row.result or {},
         arguments=dict(row.arguments),
         target_ref=row.target_ref,
         target_version=row.target_version,
@@ -267,6 +277,19 @@ class NeonConversationAdapter:
                         "label": item.label,
                         "verificationStatus": item.verification_status,
                         "locator": item.locator,
+                        **{
+                            k: v
+                            for k, v in {
+                                "sourceFileId": item.source_file_id,
+                                "page": item.page,
+                                "version": item.version,
+                                "transactionId": item.transaction_id,
+                                "subjectId": item.subject_id,
+                                "passage": item.passage,
+                                "corpusVersion": item.corpus_version,
+                            }.items()
+                            if v is not None
+                        },
                     }
                     for item in message.citations
                 ],
@@ -318,11 +341,18 @@ class NeonConversationAdapter:
         )
 
     async def recent(
-        self, *, session_id: str, limit: int, conversation_id: str | None = None
+        self,
+        *,
+        session_id: str,
+        limit: int,
+        conversation_id: str | None = None,
+        through_sequence: int | None = None,
     ) -> tuple[AgentMessage, ...]:
         query = select(AgentMessageRow).where(AgentMessageRow.session_id == session_id)
         if conversation_id is not None:
             query = query.where(AgentMessageRow.conversation_id == conversation_id)
+        if through_sequence is not None:
+            query = query.where(AgentMessageRow.sequence <= through_sequence)
         rows = (
             (await self._db.execute(query.order_by(AgentMessageRow.sequence.desc()).limit(limit)))
             .scalars()
@@ -365,6 +395,11 @@ class SqlPendingActionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._db = session
 
+    @asynccontextmanager
+    async def execution(self) -> AsyncIterator[None]:
+        async with self._db.begin_nested():
+            yield
+
     async def get(self, *, action_id: str, matter_id: str) -> PendingAction | None:
         row = (
             await self._db.execute(
@@ -384,6 +419,7 @@ class SqlPendingActionRepository:
                 user_id=action.user_id,
                 matter_id=action.matter_id,
                 action_kind=action.action_kind,
+                result=dict(action.result),
                 arguments=dict(action.arguments),
                 target_ref=action.target_ref,
                 target_version=action.target_version,
@@ -404,6 +440,7 @@ class SqlPendingActionRepository:
                 select(AgentPendingActionRow).where(AgentPendingActionRow.id == action.id)
             )
         ).scalar_one()
+        row.result = dict(action.result)
         row.state = action.state.value
         row.reason_code = action.reason_code
         row.confirmed_by = action.confirmed_by

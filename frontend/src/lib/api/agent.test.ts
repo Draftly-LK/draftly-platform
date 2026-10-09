@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   confirmAgentAction,
   getAgentJob,
+  getLatestAgentJob,
+  getAgentAction,
   getAgentSession,
   isTerminalJobState,
   listAgentConversations,
@@ -68,6 +70,16 @@ describe("agent endpoint URLs", () => {
     return seen;
   }
 
+  it("reads recovery and proposal state under the current matter", async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
+    expect(await capture((token) => getLatestAgentJob(token, "mat-1"))).toBe(
+      "http://api.test/api/v1/matters/mat-1/agent/latest-job",
+    );
+    expect(
+      await capture((token) => getAgentAction(token, "mat-1", "action-1")),
+    ).toBe("http://api.test/api/v1/matters/mat-1/agent/actions/action-1");
+  });
+
   it("hits the versioned session route exactly once", async () => {
     process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
     const url = await capture((getToken) => getAgentSession(getToken, "mat-1"));
@@ -128,19 +140,31 @@ describe("sendAgentMessage", () => {
     process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
     const calls: { url: string; init?: RequestInit }[] = [];
     const original = globalThis.fetch;
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    globalThis.fetch = (async (
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) => {
       calls.push({ url: String(input), init });
-      return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response("{}", {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
     }) as typeof fetch;
     try {
       await sendAgentMessage(async () => "token", "mat-1", "hello", "key-1");
     } finally {
       globalThis.fetch = original;
     }
-    expect(calls[0]?.url).toBe("http://api.test/api/v1/matters/mat-1/agent/messages");
+    expect(calls[0]?.url).toBe(
+      "http://api.test/api/v1/matters/mat-1/agent/messages",
+    );
     expect(calls[0]?.init?.method).toBe("POST");
-    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ content: "hello" });
-    expect((calls[0]?.init?.headers as Record<string, string>)["Idempotency-Key"]).toBe("key-1");
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({
+      content: "hello",
+    });
+    expect(
+      (calls[0]?.init?.headers as Record<string, string>)["Idempotency-Key"],
+    ).toBe("key-1");
   });
 });
 
@@ -172,8 +196,10 @@ describe("streamAgentJobEvents", () => {
         'ne\ndata: {"ok":true}\n\n',
       )) as typeof fetch;
     const seen: [string, unknown][] = [];
-    const finished = await streamAgentJobEvents(async () => "t", "job-1", (name, data) =>
-      seen.push([name, data]),
+    const finished = await streamAgentJobEvents(
+      async () => "t",
+      "job-1",
+      (name, data) => seen.push([name, data]),
     );
     expect(finished).toBe(true);
     expect(seen).toEqual([
@@ -184,25 +210,39 @@ describe("streamAgentJobEvents", () => {
 
   it("reports an unparseable frame without data and ignores data-less frames", async () => {
     process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
-    globalThis.fetch = (async () => streamOf("event: x\ndata: {bad\n\n: comment\n\n")) as typeof fetch;
+    globalThis.fetch = (async () =>
+      streamOf("event: x\ndata: {bad\n\n: comment\n\n")) as typeof fetch;
     const seen: [string, unknown][] = [];
-    await streamAgentJobEvents(async () => "t", "job-1", (name, data) => seen.push([name, data]));
+    await streamAgentJobEvents(
+      async () => "t",
+      "job-1",
+      (name, data) => seen.push([name, data]),
+    );
     expect(seen).toEqual([["x", null]]);
   });
 
   it("returns false when unconfigured, unauthenticated, rejected or dropped", async () => {
     const noop = () => undefined;
-    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(false);
+    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(
+      false,
+    );
 
     process.env.NEXT_PUBLIC_API_BASE_URL = "http://api.test";
-    expect(await streamAgentJobEvents(async () => null, "job-1", noop)).toBe(false);
+    expect(await streamAgentJobEvents(async () => null, "job-1", noop)).toBe(
+      false,
+    );
 
-    globalThis.fetch = (async () => new Response("no", { status: 500 })) as typeof fetch;
-    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(false);
+    globalThis.fetch = (async () =>
+      new Response("no", { status: 500 })) as typeof fetch;
+    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(
+      false,
+    );
 
     globalThis.fetch = (async () => {
       throw new Error("offline");
     }) as typeof fetch;
-    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(false);
+    expect(await streamAgentJobEvents(async () => "t", "job-1", noop)).toBe(
+      false,
+    );
   });
 });

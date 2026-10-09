@@ -1673,6 +1673,17 @@
       },
       "CitationRead": {
         "properties": {
+          "corpusVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corpusversion"
+          },
           "label": {
             "title": "Label",
             "type": "string"
@@ -1688,6 +1699,39 @@
             ],
             "title": "Locator"
           },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "passage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passage"
+          },
+          "sourceFileId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcefileid"
+          },
           "sourceId": {
             "title": "Sourceid",
             "type": "string"
@@ -1696,9 +1740,42 @@
             "title": "Sourcetype",
             "type": "string"
           },
+          "subjectId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subjectid"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          },
           "verificationStatus": {
             "title": "Verificationstatus",
             "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
           }
         },
         "required": [
@@ -6922,6 +6999,11 @@
             "title": "Actionkind",
             "type": "string"
           },
+          "arguments": {
+            "additionalProperties": true,
+            "title": "Arguments",
+            "type": "object"
+          },
           "createdAt": {
             "format": "date-time",
             "title": "Createdat",
@@ -6936,12 +7018,32 @@
             "title": "Id",
             "type": "string"
           },
+          "reasonCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reasoncode"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          },
           "state": {
             "enum": [
               "proposed",
               "confirmed",
               "rejected",
-              "expired"
+              "expired",
+              "executed",
+              "declined",
+              "stale",
+              "failed"
             ],
             "title": "State",
             "type": "string"
@@ -13535,6 +13637,62 @@
         ]
       }
     },
+    "/api/v1/matters/{matter_id}/agent/actions/{action_id}": {
+      "get": {
+        "operationId": "read_action_api_v1_matters__matter_id__agent_actions__action_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "action_id",
+            "required": true,
+            "schema": {
+              "title": "Action Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Action",
+        "tags": [
+          "matter-agent"
+        ]
+      }
+    },
     "/api/v1/matters/{matter_id}/agent/actions/{action_id}/confirm": {
       "post": {
         "description": "Execute a proposed card after re-checking authority and version.\n\nCapability, practising status, ownership and the target version are all\nre-read here. A stale proposal is 412 and must be regenerated.",
@@ -13822,6 +13980,61 @@
           }
         ],
         "summary": "Retry Job",
+        "tags": [
+          "matter-agent"
+        ]
+      }
+    },
+    "/api/v1/matters/{matter_id}/agent/latest-job": {
+      "get": {
+        "operationId": "latest_job_api_v1_matters__matter_id__agent_latest_job_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "matter_id",
+            "required": true,
+            "schema": {
+              "title": "Matter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/src__modules__matter_agent__api__schemas__JobRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Latest Job Api V1 Matters  Matter Id  Agent Latest Job Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Latest Job",
         "tags": [
           "matter-agent"
         ]

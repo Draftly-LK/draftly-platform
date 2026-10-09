@@ -85,31 +85,50 @@ class DocumentReadAdapter:
         self._ingestion = ingestion
         self._review = review
 
-    async def documents_for_agent(self, *, user_id: str, matter_id: str) -> dict[str, Any]:
-        sources, _ = await self._ingestion.list_source_files(
-            user_id=user_id, matter_id=matter_id, limit=50
+    async def documents_for_agent(
+        self, *, user_id: str, matter_id: str, cursor: str | None = None
+    ) -> dict[str, Any]:
+        sources, next_cursor = await self._ingestion.list_source_files(
+            user_id=user_id, matter_id=matter_id, limit=50, cursor=cursor
         )
-        return {
-            "sourceFiles": [
+        rows = []
+        for view in sources:
+            status = await self._ingestion.get_processing_status(
+                user_id=user_id, source_file_id=view.source_file.id
+            )
+            run = status.latest_run
+            rows.append(
                 {
                     "sourceFileId": view.source_file.id,
                     "filename": view.source_file.filename,
-                    "state": _enum_value(getattr(view.source_file, "state", None)),
+                    "state": _enum_value(view.source_file.state),
+                    "version": view.source_file.version,
+                    "latestRun": {
+                        "id": run.id,
+                        "outcome": _enum_value(run.outcome),
+                        "failureReason": _enum_value(run.failure_reason),
+                        "succeeded": run.succeeded,
+                    }
+                    if run
+                    else None,
                     "detectedDocumentIds": list(view.detected_document_ids),
                     "containsMultipleDocuments": view.contains_multiple_documents,
                     "duplicateOfSourceFileId": view.duplicate_of_source_file_id,
                 }
-                for view in sources
-            ]
-        }
+            )
+        return {"sourceFiles": rows, "hasMore": next_cursor is not None, "nextCursor": next_cursor}
 
     async def extraction_for_agent(
-        self, *, user_id: str, detected_document_id: str
+        self, *, user_id: str, matter_id: str, detected_document_id: str
     ) -> dict[str, Any]:
         review = await self._review.get_review(
             user_id=user_id, detected_document_id=detected_document_id
         )
+        if review.matter_id != matter_id:
+            raise DocumentReviewNotFoundError()
         return {
+            "interpretationGeneration": review.interpretation_generation,
+            "current": review.current,
             "detectedDocumentId": review.detected_document_id,
             "typeId": review.type_id,
             "suggestedName": review.suggested_name,
@@ -128,6 +147,7 @@ class DocumentReadAdapter:
             ],
             "pages": [
                 {
+                    "sourceFileId": page.source_file_id,
                     "pageId": page.id,
                     "pageNo": page.page_no,
                     "qualityStatus": page.quality_status,
@@ -139,11 +159,13 @@ class DocumentReadAdapter:
         }
 
     async def ocr_pages_for_agent(
-        self, *, user_id: str, detected_document_id: str, page_no: int | None
+        self, *, user_id: str, matter_id: str, detected_document_id: str, page_no: int | None
     ) -> dict[str, Any]:
         review = await self._review.get_review(
             user_id=user_id, detected_document_id=detected_document_id
         )
+        if review.matter_id != matter_id:
+            raise DocumentReviewNotFoundError()
         wanted = [page for page in review.pages if page_no is None or page.page_no == page_no]
         pages: list[dict[str, Any]] = []
         for page in wanted:
@@ -152,11 +174,19 @@ class DocumentReadAdapter:
             except DocumentReviewNotFoundError:
                 # A missing derivative is reported, not silently dropped: an
                 # absent page must not read as an empty page.
-                pages.append({"pageNo": page.page_no, "text": "", "available": False})
+                pages.append(
+                    {
+                        "pageNo": page.page_no,
+                        "sourceFileId": page.source_file_id,
+                        "text": "",
+                        "available": False,
+                    }
+                )
                 continue
             pages.append(
                 {
                     "pageNo": page.page_no,
+                    "sourceFileId": page.source_file_id,
                     "text": _ocr_text(raw),
                     "available": True,
                 }
@@ -193,18 +223,25 @@ class DraftReadAdapter:
     def __init__(self, drafts: Any) -> None:
         self._drafts = drafts
 
-    async def drafts_for_agent(self, *, user_id: str, matter_id: str) -> dict[str, Any]:
-        forms, _ = await self._drafts.list_forms(user_id=user_id, matter_id=matter_id, limit=50)
+    async def drafts_for_agent(
+        self, *, user_id: str, matter_id: str, cursor: str | None = None
+    ) -> dict[str, Any]:
+        forms, next_cursor = await self._drafts.list_forms(
+            user_id=user_id, matter_id=matter_id, limit=50, cursor=cursor
+        )
         return {
+            "hasMore": next_cursor is not None,
+            "nextCursor": next_cursor,
+            "preflightAvailable": False,
             "forms": [
                 {
                     "formId": form.id,
                     "templateId": getattr(form, "template_id", None),
-                    "status": _enum_value(getattr(form, "status", None)),
+                    "status": _enum_value(form.state),
                     "version": getattr(form, "version", None),
                 }
                 for form in forms
-            ]
+            ],
         }
 
 

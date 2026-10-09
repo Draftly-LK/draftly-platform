@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import structlog
+from pydantic import ValidationError
 
 from src.modules.auth.ports import AuditEventInput, AuditPort
 from src.modules.matter_agent.domain.allowlist import get_tool
@@ -27,6 +28,7 @@ from src.modules.matter_agent.ports import (
     AgentToolPort,
     ProposedToolCall,
     ToolCallRepository,
+    ToolDeclaration,
     ToolInvocation,
     ToolResult,
 )
@@ -88,6 +90,9 @@ class ToolExecutor:
         self._audit = audit
         self._events = events
 
+    def declarations(self, reachable: frozenset[str]) -> tuple[ToolDeclaration, ...]:
+        return tuple(tool.declaration() for name, tool in self._tools.items() if name in reachable)
+
     async def execute(
         self,
         proposal: ProposedToolCall,
@@ -130,13 +135,27 @@ class ToolExecutor:
             )
 
         try:
+            from src.modules.matter_agent.application.validation import validate_arguments
+
+            arguments = validate_arguments(implementation.declaration(), proposal.arguments)
             result = await implementation.execute(
                 ToolInvocation(
                     tool_name=proposal.name,
-                    arguments=dict(proposal.arguments),
+                    arguments=arguments,
                     matter_id=execution.matter_id,
                     actor_id=execution.ctx.actor_id,
+                    context=execution.ctx,
+                    job_id=execution.job_id,
                 )
+            )
+        except ValidationError:
+            return await self._record(
+                execution,
+                proposal,
+                started_at,
+                capability=capability,
+                outcome=ToolCallOutcome.DENIED,
+                reason_code="invalid_tool_arguments",
             )
         except DraftlyError as exc:
             return await self._record(

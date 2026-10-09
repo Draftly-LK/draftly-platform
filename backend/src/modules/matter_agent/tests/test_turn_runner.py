@@ -174,7 +174,7 @@ class TestTheHappyPath:
         message = conversation.messages[0]
         assert message.content == "The property is Lot 17 [1]. An invented source  is ignored."
         assert tuple(citation.source_id for citation in message.citations) == ("fact_1",)
-        assert message.citations[0].verification_status == "verified"
+        assert message.citations[0].verification_status == "unverified"
 
 
 class TestBudget:
@@ -239,7 +239,7 @@ class TestAbstention:
 
         assert model.calls == 0, "the model must not be consulted at all"
         assert result.failure_class == "legal_research_unavailable"
-        assert "not available yet" in conversation.messages[0].content
+        assert "unavailable for this question" in conversation.messages[0].content
 
     async def test_an_operational_question_is_not_treated_as_legal(self) -> None:
         runner, _, model, _ = make_runner(turns=[ModelTurn(text="Three outstanding.")])
@@ -249,7 +249,10 @@ class TestAbstention:
 
 class TestToolExposure:
     async def test_only_tools_the_caller_can_execute_are_offered(self) -> None:
-        runner, _, model, _ = make_runner(turns=[ModelTurn(text="ok")])
+        runner, _, model, _ = make_runner(
+            turns=[ModelTurn(text="ok")],
+            tools={"read_matter_summary": RecordingTool("read_matter_summary")},
+        )
         await runner.run(make_request(capabilities=frozenset()))
 
         offered = set(model.offered_tools[0])

@@ -208,6 +208,6 @@ class TestRejection:
 
         rejected = await service.reject_action(CTX, "mat-1", action_id="apa-1", reason="wrong")
 
-        assert rejected.state is PendingActionState.REJECTED
-        assert pending.rows["apa-1"].state is PendingActionState.REJECTED
+        assert rejected.state is PendingActionState.DECLINED
+        assert pending.rows["apa-1"].state is PendingActionState.DECLINED
         assert "agent.action-rejected" in audit.actions()

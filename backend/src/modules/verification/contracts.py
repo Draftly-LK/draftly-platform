@@ -2,14 +2,15 @@
 
 `matter` needs confirmed values to evaluate the eligibility gates. `check` needs
 exact fact versions to pin a check result to. `draft` needs to know which
-critical facts are still unconfirmed. All three get read ports; none gets the
-ability to confirm a fact, which is a human act recorded here.
+critical facts are still unconfirmed. Those consumers get read ports. The matter
+conversation also receives the review command input for explicit lawyer-confirmed
+proposals; authorization and immutable decisions remain owned by verification.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from src.modules.document.contracts import FactEvidenceLocator
 
@@ -149,3 +150,16 @@ class FactScopeDependenciesPort(Protocol):
     async def fact_ids_for_transaction(
         self, user_id: str, matter_id: str, transaction_id: str
     ) -> tuple[str, ...]: ...
+
+
+@dataclass(frozen=True)
+class ReviewFactInput:
+    action: Literal["accept", "correct", "reject", "associate", "edit"]
+    expected_version: int
+    reason: str | None = None
+    value: Any = None
+    transaction_id: str | None = None
+    subject_id: str | None = None
+    expected_scope_token: str | None = None
+    resolve_fact_ids: tuple[str, ...] = ()
+    evidence: FactEvidenceLocator | None = None

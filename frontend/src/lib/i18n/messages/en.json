@@ -2771,7 +2771,43 @@
     },
     "expandContext": "Show matter context",
     "collapseContext": "Hide matter context",
-    "errorRetry": "Review the conversation and send a new message to continue."
+    "errorRetry": "Review the conversation and send a new message to continue.",
+    "fullView": "Open full conversation",
+    "proposalTarget": "Target",
+    "proposalVersion": "Version {version}",
+    "sourceVersion": "Source version: {version}",
+    "sourceUnavailable": "The source passage is unavailable.",
+    "actionState": {
+      "proposed": "Awaiting your decision",
+      "confirmed": "Confirmed",
+      "executed": "Applied",
+      "declined": "Declined",
+      "rejected": "Declined",
+      "stale": "Changed since proposed; review again",
+      "failed": "Could not apply",
+      "expired": "Expired"
+    },
+    "actionKind": {
+      "checklist-decision": "Review a requirement",
+      "requirement-link": "Link supporting evidence",
+      "fact-accept": "Accept a register value"
+    },
+    "proposalFields": {
+      "factValue": "Value to accept",
+      "transactionId": "Transaction",
+      "subjectId": "Subject",
+      "digitalReview": "Review decision",
+      "detectedDocumentId": "Document",
+      "documentVersion": "Document version",
+      "interpretationGeneration": "Interpretation generation",
+      "resolveFactIds": "Conflicting entries to resolve",
+      "evidenceReferenceIds": "Supporting evidence",
+      "reason": "Reason"
+    },
+    "turnFailedAfterTools": "The response could not finish after using tools. Review the matter’s recorded work before sending another request.",
+    "resultRecord": "Recorded result",
+    "proposalUnavailable": "This proposal is unavailable. Reload to try again.",
+    "matchedSource": "Matched source passage"
   },
   "gazette": {
     "modeLabel": "Drafting mode",

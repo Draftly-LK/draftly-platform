@@ -582,3 +582,35 @@ Recommended defaults in bold; confirm or override before coding.
 - [LibreChat Agents documentation](https://www.librechat.ai/docs/features/agents)
 - [LibreChat authentication documentation](https://www.librechat.ai/docs/features/authentication)
 - [LibreChat access-control documentation](https://www.librechat.ai/docs/features/access_control)
+
+## October 2026 grounded matter-conversation contract
+
+`research.contracts.MatterResearchPort.answer` is a narrow application contract
+for the persistent matter conversation. The research owner resolves the matter
+scope and checks `research.enabled` before retrieval, then reserves and consumes
+`research_queries.monthly` against the durable agent job identifier. Failures or
+cancellation release the reservation. Terminal agent-job replay does not execute
+retrieval or consume another unit. No new conversation store or retrieval provider
+is introduced by this adapter.
+
+The existing approved composer and controlled, versioned corpus are reused.
+Absent approved configuration returns unavailable without a provider call. Only
+nonblank claims whose citation IDs all resolve to returned, versioned passages
+are retained. Unsupported claims are dropped; an empty result abstains. Exact
+passages and corpus versions cross the contract, along with degraded-channel
+status. The bundled statute adapter's boolean is only a structural source match; its
+release metadata remains unverified. The matter conversation therefore keeps
+statute and case citations unverified and labels saved passages as matched source
+content. The agent cannot replace these claims
+with model-only legal text. Questions and raw tool arguments are absent from audit
+and log records. Provider choices, configuration values and approval policy remain
+owned by the existing research/provider boundaries.
+
+The current source contract does not supply amendment-to-section relationships,
+commencement/effective/repeal dates, an as-of query date or a consolidated-law
+view. The bundled release lists 57 statutes and 18 amendments; that count does
+not establish currency or completeness for a matter. The HTTP adapter maps
+returned excerpts and attaches the caller's corpus label; the endpoint does not
+attest its deployed revision. Discovery of all applicable amendments/Gazettes
+and date-sensitive applicability requires the separately reviewed follow-up.
+Retrieval failure logs retain only the exception class, never a query URL.

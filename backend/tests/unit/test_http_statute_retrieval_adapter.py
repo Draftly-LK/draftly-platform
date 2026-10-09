@@ -135,3 +135,18 @@ async def test_a_hit_missing_section_id_is_skipped_not_fatal() -> None:
 
     result = await _adapter(handler).search("q", SCOPE, CORPUS_VERSION)
     assert [p.authority_id for p in result.passages] == ["SRC071:s1"]
+
+
+async def test_http_failure_log_never_contains_private_query_url(monkeypatch):
+    from unittest.mock import Mock
+
+    from src.modules.research.infrastructure.retrieval import http_adapter
+
+    logger = Mock()
+    monkeypatch.setattr(http_adapter, "log", logger)
+    result = await _adapter(lambda request: httpx.Response(503)).search(
+        "SYNTHETIC_PRIVATE_QUERY", SCOPE, CORPUS_VERSION
+    )
+    assert result.degraded_channels == ["retrieval-engine"]
+    assert "SYNTHETIC_PRIVATE_QUERY" not in str(logger.warning.call_args)
+    assert logger.warning.call_args.kwargs == {"error_class": "HTTPStatusError"}

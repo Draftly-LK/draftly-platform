@@ -1,0 +1,59 @@
+- main:
+  - heading "කාරණා සහායක" [level=1]
+  - paragraph: ප්‍රශ්න අසන්න, සාක්ෂි සමාලෝචනය කරන්න, සහ ඊළඟ පියවර සූදානම් කරන්න.
+  - button "නව සංවාදයක්":
+    - img
+    - text: නව සංවාදයක්
+  - region "සංවාදය":
+    - article:
+      - img
+      - text: සහායක
+      - time: 05:30 AM
+      - paragraph: SYNTHETIC proposal awaiting your decision.
+      - paragraph: සත්‍යාපනය නොකළ. විශ්වාස කිරීමට පෙර පරීක්ෂා කරන්න.
+    - paragraph: සහායක වෙනසක් යෝජනා කරයි
+    - paragraph: ඔබේ තීරණය බලාපොරොත්තුවෙන්
+    - paragraph: ලේඛනයේ අගයක් පිළිගන්න
+    - term: අදාළ වාර්තාව
+    - definition: fact:synthetic-candidate · අනුවාදය 2
+    - term: පිළිගත යුතු අගය
+    - definition: SYNTHETIC reviewed value
+    - term: ගනුදෙනුව
+    - definition: transaction-synthetic
+    - term: විෂය
+    - definition: parcel-synthetic
+    - paragraph:
+      - img
+      - text: තවම කිසිවක් වෙනස් වී නැත. යෙදීමට තහවුරු කරන්න.
+    - button "තහවුරු කරන්න":
+      - img
+      - text: තහවුරු කරන්න
+    - button "ප්‍රතික්ෂේප කරන්න":
+      - img
+      - text: ප්‍රතික්ෂේප කරන්න
+    - article:
+      - img
+      - text: සහායක
+      - time: 05:30 AM
+      - paragraph:
+        - text: SYNTHETIC grounded response
+        - button "SYNTHETIC case lead, unverified": "[1]"
+        - text: .
+      - button "[1] SYNTHETIC case lead"
+      - paragraph: සත්‍යාපනය නොකළ. විශ්වාස කිරීමට පෙර පරීක්ෂා කරන්න.
+  - text: සහායකට පණිවිඩයක් යවන්න
+  - textbox "සහායකට පණිවිඩයක් යවන්න"
+  - button "යවන්න" [disabled]
+  - status
+  - paragraph: Draftly වැරදි කළ හැක. වැදගත් විස්තර උපුටා දක්වා ඇති මූලාශ්‍රයෙන් තහවුරු කරන්න.
+  - complementary "කාරණා සන්දර්භය":
+    - button "කාරණ සන්දර්භය පෙන්වන්න":
+      - img
+    - 'link "ලේඛන: 0 · 0 පොරොත්තුවෙන්"':
+      - /url: /matters/mat_synthetic/documents
+    - 'link "තහවුරු කළ කරුණු: 0 / 0"':
+      - /url: /matters/mat_synthetic/facts
+    - 'link "පරීක්ෂණ: 1 · 0 ගැටලු"':
+      - /url: /matters/mat_synthetic/checks
+    - 'link "කෙටුම්පත්: 0"':
+      - /url: /matters/mat_synthetic/drafts

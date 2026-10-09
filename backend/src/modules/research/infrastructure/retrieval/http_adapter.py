@@ -60,7 +60,7 @@ class HttpStatuteRetrievalAdapter:
                 response.raise_for_status()
                 hits = response.json()
         except (httpx.HTTPError, ValueError) as exc:
-            log.warning("research.retrieval_engine_unreachable", error=str(exc))
+            log.warning("research.retrieval_engine_unreachable", error_class=type(exc).__name__)
             return SearchResult(degraded_channels=["retrieval-engine"])
 
         if not isinstance(hits, list):

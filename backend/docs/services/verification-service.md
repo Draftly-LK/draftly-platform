@@ -427,3 +427,15 @@ confirmed winner silently. Unrelated bound fact IDs remain unaffected. Approved
 artifacts, rendered values, bindings and decision history remain retained while
 the form owner marks the output stale. FactTierSummary also exposes lossless scoped
 conflict tuples so explicit scoped consumers do not borrow matter-wide conflicts.
+
+### Confirmed conversation proposals (2026-10-09)
+
+`ReviewFactInput` is published from `verification.contracts` and remains imported
+at the existing review-service path for compatibility. `authorize_decision` exposes
+the owning service's existing fact-specific capability and practising checks.
+The conversation uses these only for an explicit lawyer-confirmed acceptance card;
+it cannot directly mutate candidates or assert a reviewed value. Confirmation
+pins the exact candidate version, scope token and selected conflict IDs and uses
+an action-specific idempotency key. The canonical `decide` command remains the
+owner of evidence checks, immutable successor creation, audit and invalidation.
+Authorization is repeated before replaying an executed proposal result.

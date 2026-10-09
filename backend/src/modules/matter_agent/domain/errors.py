@@ -105,11 +105,13 @@ class ModelProviderError(DraftlyError):
 
 
 class LegalResearchUnavailableError(DomainRuleError):
-    """The fixed abstention until a retrieval engine is connected.
+    """The fail-closed response when grounded retrieval cannot answer.
 
     `matter-agent-service.md` §Agent loop: a legal question is never answered
     from model knowledge.
     """
 
     code = "legal_research_unavailable"
-    message = "Legal research is not available yet, so this question cannot be answered here."
+    message = (
+        "Legal research is unavailable for this question. Review the sources or try again later."
+    )

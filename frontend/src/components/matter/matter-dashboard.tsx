@@ -10,12 +10,12 @@ import {
   ListChecks,
   LoaderCircle,
   ShieldCheck,
-  Sparkles,
   TriangleAlert,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { MatterConversation } from "./matter-conversation";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button, buttonClass } from "@/components/ui/button";
@@ -49,7 +49,9 @@ import type {
  */
 export function MatterDashboard({ matterId }: { matterId: string }) {
   const getToken = useTokenProvider();
-  return <DashboardFlow getToken={getToken} matterId={matterId} />;
+  return (
+    <DashboardFlow key={matterId} getToken={getToken} matterId={matterId} />
+  );
 }
 
 interface DashboardData {
@@ -74,6 +76,7 @@ function DashboardFlow({
   const t = useTranslations("overview");
   const tReady = useTranslations("readinessWork");
   const [refresh, setRefresh] = useState(0);
+  const refreshMatter = useCallback(() => setRefresh((value) => value + 1), []);
   const tNav = useTranslations("matterNav");
   const tRoot = useTranslations();
   const [data, setData] = useState<DashboardData | null>(null);
@@ -85,7 +88,7 @@ function DashboardFlow({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    if (refresh === 0) setLoading(true);
     setError(null);
 
     // The matter is the only required call. The rest are per-section counts;
@@ -452,33 +455,13 @@ function DashboardFlow({
           ))}
         </ul>
 
-        <section className="border-border bg-surface rounded-card flex flex-col gap-4 border p-5 sm:flex-row sm:items-center sm:p-6">
-          <span
-            aria-hidden="true"
-            className="bg-selected-bg text-forest grid size-10 shrink-0 place-items-center rounded-full"
-          >
-            <Sparkles className="size-5" strokeWidth={1.5} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-base font-semibold">{t("assistantTitle")}</h2>
-            <p className="text-muted-ink mt-1 text-xs leading-5">
-              {t("summaryNotice")}
-            </p>
-          </div>
-          <Link
-            href={`/matters/${matterId}/assistant`}
-            className={cn(
-              buttonClass("secondary"),
-              "w-full shrink-0 sm:w-auto",
-            )}
-          >
-            {t("openAssistant")}
-            <ArrowRight
-              aria-hidden="true"
-              className="size-4"
-              strokeWidth={1.5}
-            />
-          </Link>
+        <section className="border-border bg-surface rounded-card overflow-hidden border">
+          <MatterConversation
+            key={matterId}
+            matterId={matterId}
+            embedded
+            onChanged={refreshMatter}
+          />
         </section>
       </div>
     </AppShell>

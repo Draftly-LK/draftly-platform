@@ -45,10 +45,19 @@ export interface ApiAgentCitation {
     | "check"
     | "draft"
     | "party"
+    | "statute"
+    | "case"
     | "record";
   label: string;
   verificationStatus: "verified" | "unverified" | "operational";
   locator: string | null;
+  sourceFileId?: string | null;
+  page?: number | null;
+  version?: number | null;
+  transactionId?: string | null;
+  subjectId?: string | null;
+  passage?: string | null;
+  corpusVersion?: string | null;
 }
 
 export interface ApiAgentMessage {
@@ -81,13 +90,45 @@ export interface ApiPendingAction {
   actionKind: string;
   targetRef: string;
   targetVersion: number;
-  state: "proposed" | "confirmed" | "rejected" | "expired";
+  state:
+    | "proposed"
+    | "confirmed"
+    | "rejected"
+    | "expired"
+    | "executed"
+    | "declined"
+    | "stale"
+    | "failed";
+  arguments: Record<string, unknown>;
+  result: Record<string, unknown>;
+  reasonCode: string | null;
   expiresAt: string;
   createdAt: string;
 }
 
 const AGENT_BASE = (matterId: string) =>
   `${API_VERSION_PREFIX}/matters/${matterId}/agent`;
+
+export function getLatestAgentJob(
+  getToken: TokenProvider,
+  matterId: string,
+): Promise<ApiAgentJob | null> {
+  return apiFetch<ApiAgentJob | null>(`${AGENT_BASE(matterId)}/latest-job`, {
+    method: "GET",
+    getToken,
+  });
+}
+
+export function getAgentAction(
+  getToken: TokenProvider,
+  matterId: string,
+  actionId: string,
+): Promise<ApiPendingAction> {
+  return apiFetch<ApiPendingAction>(
+    `${AGENT_BASE(matterId)}/actions/${actionId}`,
+    { method: "GET", getToken },
+  );
+}
 
 export function getAgentSession(
   getToken: TokenProvider,

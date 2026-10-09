@@ -1,0 +1,59 @@
+- main:
+  - heading "Matter assistant" [level=1]
+  - paragraph: Ask questions, review evidence, and prepare the next step.
+  - button "New conversation":
+    - img
+    - text: New conversation
+  - region "Conversation":
+    - article:
+      - img
+      - text: Assistant
+      - time: 05:30 AM
+      - paragraph: SYNTHETIC proposal awaiting your decision.
+      - paragraph: Unverified. Check anything before you rely on it.
+    - paragraph: The assistant suggests a change
+    - paragraph: Awaiting your decision
+    - paragraph: Accept a register value
+    - term: Target
+    - definition: fact:synthetic-candidate · Version 2
+    - term: Value to accept
+    - definition: SYNTHETIC reviewed value
+    - term: Transaction
+    - definition: transaction-synthetic
+    - term: Subject
+    - definition: parcel-synthetic
+    - paragraph:
+      - img
+      - text: Nothing has changed yet. Confirm to apply it.
+    - button "Confirm":
+      - img
+      - text: Confirm
+    - button "Reject":
+      - img
+      - text: Reject
+    - article:
+      - img
+      - text: Assistant
+      - time: 05:30 AM
+      - paragraph:
+        - text: SYNTHETIC grounded response
+        - button "SYNTHETIC case lead, unverified": "[1]"
+        - text: .
+      - button "[1] SYNTHETIC case lead"
+      - paragraph: Unverified. Check anything before you rely on it.
+  - text: Message the assistant
+  - textbox "Message the assistant"
+  - button "Send" [disabled]
+  - status
+  - paragraph: Draftly can make mistakes. Verify important details against the cited source.
+  - complementary "Matter context":
+    - button "Show matter context":
+      - img
+    - 'link "Documents: 0 · 0 Pending"':
+      - /url: /matters/mat_synthetic/documents
+    - 'link "Verified facts: 0 / 0"':
+      - /url: /matters/mat_synthetic/facts
+    - 'link "Checks: 1 · 0 Issues"':
+      - /url: /matters/mat_synthetic/checks
+    - 'link "Drafts: 0"':
+      - /url: /matters/mat_synthetic/drafts

@@ -2772,7 +2772,43 @@
     "empty": "තවම පණිවිඩ නැත. මෙම කාරණය ගැන අසන්න.",
     "expandContext": "කාරණ සන්දර්භය පෙන්වන්න",
     "collapseContext": "කාරණ සන්දර්භය සඟවන්න",
-    "errorRetry": "ඉදිරියට යාමට සංවාදය සමාලෝචනය කර නව පණිවිඩයක් යවන්න."
+    "errorRetry": "ඉදිරියට යාමට සංවාදය සමාලෝචනය කර නව පණිවිඩයක් යවන්න.",
+    "fullView": "සම්පූර්ණ සංවාදය විවෘත කරන්න",
+    "proposalTarget": "අදාළ වාර්තාව",
+    "proposalVersion": "අනුවාදය {version}",
+    "sourceVersion": "මූලාශ්‍ර අනුවාදය: {version}",
+    "sourceUnavailable": "මූලාශ්‍ර කොටස ලබා ගත නොහැක.",
+    "actionState": {
+      "proposed": "ඔබේ තීරණය බලාපොරොත්තුවෙන්",
+      "confirmed": "තහවුරු කර ඇත",
+      "executed": "යොදා ඇත",
+      "declined": "ප්‍රතික්ෂේප කර ඇත",
+      "rejected": "ප්‍රතික්ෂේප කර ඇත",
+      "stale": "යෝජනාවෙන් පසු වෙනස් වී ඇත — නැවත සමාලෝචනය කරන්න",
+      "failed": "යෙදිය නොහැකි විය",
+      "expired": "කල් ඉකුත් වී ඇත"
+    },
+    "actionKind": {
+      "checklist-decision": "අවශ්‍යතාවයක් සමාලෝචනය කරන්න",
+      "requirement-link": "සහායක සාක්ෂි සම්බන්ධ කරන්න",
+      "fact-accept": "ලේඛනයේ අගයක් පිළිගන්න"
+    },
+    "proposalFields": {
+      "factValue": "පිළිගත යුතු අගය",
+      "transactionId": "ගනුදෙනුව",
+      "subjectId": "විෂය",
+      "digitalReview": "සමාලෝචන තීරණය",
+      "detectedDocumentId": "ලේඛනය",
+      "documentVersion": "ලේඛන අනුවාදය",
+      "interpretationGeneration": "අර්ථකථන අනුවාදය",
+      "resolveFactIds": "විසඳිය යුතු ගැටුම් සහිත සටහන්",
+      "evidenceReferenceIds": "සහායක සාක්ෂි",
+      "reason": "හේතුව"
+    },
+    "turnFailedAfterTools": "මෙවලම් භාවිතයෙන් පසු ප්‍රතිචාරය සම්පූර්ණ කළ නොහැකි විය. නැවත ඉල්ලීමක් යැවීමට පෙර කාරණයේ සටහන් වූ කටයුතු සමාලෝචනය කරන්න.",
+    "resultRecord": "සටහන් කළ ප්‍රතිඵලය",
+    "proposalUnavailable": "මෙම යෝජනාව ලබා ගත නොහැක. නැවත උත්සාහ කිරීමට පිටුව යළි පූරණය කරන්න.",
+    "matchedSource": "ගැළපෙන මූලාශ්‍ර පාඨය"
   },
   "gazette": {
     "modeLabel": "Drafting mode",

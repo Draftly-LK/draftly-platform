@@ -18,7 +18,7 @@ from typing import Any
 
 from src.modules.content_governance.contracts import CollectionStatus, DigitalReviewStatus
 from src.modules.matter_agent.application.actions import CHECKLIST_DECISION, build_pending_action
-from src.modules.matter_agent.application.read_tools import _BaseTool
+from src.modules.matter_agent.application.read_tools import _BaseTool, require_tool_rta
 from src.modules.matter_agent.domain.models import SuggestionOrigin
 from src.modules.matter_agent.ports import ToolInvocation, ToolResult
 
@@ -27,22 +27,33 @@ class RunChecksTool(_BaseTool):
     """``check.run`` — run the deterministic rule pack over confirmed facts."""
 
     name = "run_checks"
+    properties = {
+        "transactionId": {"type": "string"},
+        "subjectId": {"type": "string"},
+        "associationVersion": {"type": "integer", "minimum": 1},
+    }
+    required = ["transactionId", "associationVersion"]
 
     def __init__(self, checks: Any, matters: Any) -> None:
         self._checks = checks
         self._matters = matters
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
-        summary = await self._matters.get_access_summary(invocation.actor_id, invocation.matter_id)
+        from src.modules.content_governance.contracts import CAP_ISSUE_TRIAGE
+
+        summary = await require_tool_rta(invocation, self._matters, CAP_ISSUE_TRIAGE)
         result = await self._checks.run_checks(
             user_id=invocation.actor_id,
             matter_id=invocation.matter_id,
             actor_id=invocation.actor_id,
-            correlation_id="",
+            correlation_id=invocation.context.correlation_id if invocation.context else "",
             subtype_id=getattr(summary, "subtype_id", None) if summary else None,
+            transaction_id=invocation.arguments["transactionId"],
+            subject_id=invocation.arguments.get("subjectId"),
+            association_version=invocation.arguments["associationVersion"],
         )
         results = getattr(result, "results", ())
-        issues = getattr(result, "issues", ())
+        issues = getattr(result, "raised_issues", ())
         return ToolResult(
             summary=(
                 f"Ran the rule pack: {len(results)} results, {len(issues)} open issues. "
@@ -88,7 +99,7 @@ class GenerateWorkingDraftTool(_BaseTool):
             user_id=invocation.actor_id,
             matter_id=invocation.matter_id,
             actor_id=invocation.actor_id,
-            correlation_id="",
+            correlation_id=invocation.context.correlation_id if invocation.context else "",
             subtype_id=getattr(summary, "subtype_id", None),
             subtype_decision_status=getattr(summary, "subtype_decision_status", None),
             template_id=_optional_str(invocation.arguments.get("templateId")),
@@ -104,8 +115,10 @@ class GenerateWorkingDraftTool(_BaseTool):
 class _ChecklistAdminTool(_BaseTool):
     """Shared base for the four administrative checklist writes."""
 
-    def __init__(self, checklist: Any) -> None:
+    def __init__(self, checklist: Any, matters: Any = None, scopes: Any = None) -> None:
         self._checklist = checklist
+        self._matters = matters
+        self._scopes = scopes
 
     async def _administer(
         self,
@@ -115,6 +128,12 @@ class _ChecklistAdminTool(_BaseTool):
         due_at: datetime | None = None,
         collection: CollectionStatus | None = None,
     ) -> ToolResult:
+        if self._matters is not None:
+            from src.modules.content_governance.contracts import CAP_CHECKLIST_DECIDE
+
+            await require_tool_rta(invocation, self._matters, CAP_CHECKLIST_DECIDE)
+        if self._scopes is not None:
+            await self._scopes.lock(invocation.context, invocation.matter_id)
         item_id = str(invocation.arguments.get("itemId", ""))
         if not item_id:
             return ToolResult(summary="No checklist item id was supplied.")
@@ -128,7 +147,7 @@ class _ChecklistAdminTool(_BaseTool):
             matter_id=invocation.matter_id,
             item_id=item_id,
             actor_id=invocation.actor_id,
-            correlation_id="",
+            correlation_id=invocation.context.correlation_id if invocation.context else "",
             expected_version=expected_version,
             assigned_to=assigned_to,
             due_at=due_at,
@@ -243,7 +262,7 @@ class ProposeDocumentLinkTool(_BaseTool):
             item_id=item_id,
             detected_document_id=document_id,
             actor_id=invocation.actor_id,
-            correlation_id="",
+            correlation_id=invocation.context.correlation_id if invocation.context else "",
             lawyer_confirmed=False,
             note=_optional_str(invocation.arguments.get("note")),
         )
@@ -341,7 +360,7 @@ class UpdateFieldCandidateTool(_BaseTool):
             candidate_id=candidate_id,
             value=value,
             expected_version=expected_version,
-            correlation_id="",
+            correlation_id=invocation.context.correlation_id if invocation.context else "",
         )
         return ToolResult(
             # Never echoes the value: a candidate value is matter content.
@@ -384,3 +403,105 @@ def _parse_iso(value: Any) -> datetime | None:
 
 
 AI_SUGGESTED = SuggestionOrigin.AI_SUGGESTED.value
+
+
+class ConfirmedProposalTool(_BaseTool):
+    """Build a current, authorized proposal; no owning command executes here."""
+
+    def __init__(
+        self,
+        service: Any,
+        *,
+        session_id: str,
+        name: str,
+        kind: str,
+        properties: dict[str, Any],
+        required: list[str],
+    ) -> None:
+        self._service, self._session_id = service, session_id
+        self.name, self.kind, self.properties, self.required = name, kind, properties, required
+
+    async def execute(self, invocation: ToolInvocation) -> ToolResult:
+        from src.platform.errors import DomainRuleError
+
+        if invocation.context is None:
+            raise DomainRuleError()
+        args = dict(invocation.arguments)
+        target = (
+            f"fact:{args['factId']}"
+            if self.kind == "fact-accept"
+            else f"checklist-item:{args['itemId']}"
+        )
+        action = await self._service.propose_action(
+            invocation.context,
+            invocation.matter_id,
+            session_id=self._session_id,
+            kind=self.kind,
+            arguments=args,
+            target_ref=target,
+            target_version=args["expectedVersion"],
+        )
+        return ToolResult(
+            summary="A proposal is ready for human review. No decision has been applied.",
+            pending_action_id=action.id,
+            resource_refs=(),
+            payload={"actionId": action.id},
+        )
+
+
+def confirmed_proposal_tools(service: Any, session_id: str) -> dict[str, ConfirmedProposalTool]:
+    from src.modules.matter_agent.application.actions import FACT_ACCEPT, REQUIREMENT_LINK
+
+    specifications = [
+        (
+            "propose_checklist_decision",
+            CHECKLIST_DECISION,
+            {
+                **_ITEM_ARGS,
+                "digitalReview": {"type": "string", "enum": [v.value for v in DigitalReviewStatus]},
+            },
+            ["itemId", "expectedVersion", "digitalReview"],
+        ),
+        (
+            "propose_requirement_link",
+            REQUIREMENT_LINK,
+            {
+                **_ITEM_ARGS,
+                "detectedDocumentId": {"type": "string"},
+                "documentVersion": {"type": "integer", "minimum": 1},
+                "interpretationGeneration": {"type": "integer", "minimum": 1},
+                "evidenceReferenceIds": {"type": "array", "items": {"type": "string"}},
+                "reason": {"type": "string", "maxLength": 2000},
+            },
+            [
+                "itemId",
+                "expectedVersion",
+                "detectedDocumentId",
+                "documentVersion",
+                "interpretationGeneration",
+            ],
+        ),
+        (
+            "propose_candidate_approval",
+            FACT_ACCEPT,
+            {
+                "factId": {"type": "string"},
+                "expectedVersion": {"type": "integer", "minimum": 1},
+                "expectedScopeToken": {"type": "string"},
+                "reason": {"type": "string", "maxLength": 2000},
+                "resolveFactIds": {"type": "array", "items": {"type": "string"}},
+            },
+            ["factId", "expectedVersion", "expectedScopeToken"],
+        ),
+    ]
+    return {
+        name: ConfirmedProposalTool(
+            service,
+            session_id=session_id,
+            name=name,
+            kind=kind,
+            properties=properties,
+            required=required,
+        )
+        for name, kind, properties, required in specifications
+    }

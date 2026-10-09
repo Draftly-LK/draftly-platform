@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.api.deps import get_request_context
@@ -151,7 +151,14 @@ async def pg_sessions() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
 async def seeded(pg_sessions: async_sessionmaker[AsyncSession]) -> None:
     now = datetime.now(tz=UTC)
     async with pg_sessions() as session:
-        session.add(UserRow(id=OWNER, display_name="E2E Owner", role=Role.APPROVER.value))
+        session.add(
+            UserRow(
+                id=OWNER,
+                display_name="Synthetic E2E Owner",
+                role=Role.APPROVER.value,
+                account_status="active",
+            )
+        )
         session.add(
             MatterRow(
                 id=MATTER,
@@ -321,7 +328,7 @@ class TestTheCompleteFlow:
                 f"/api/v1/matters/{MATTER}/agent/actions/{action_id}/confirm"
             )
         assert confirmed.status_code == 200
-        assert confirmed.json()["state"] == "confirmed"
+        assert confirmed.json()["state"] == "executed"
 
         # Only now does the matter change, and it changed in Postgres.
         async with pg_sessions() as session:
@@ -410,3 +417,238 @@ class TestTheCompleteFlow:
                 .one()
             )
         assert item["digital_review"] == DigitalReviewStatus.UNREVIEWED.value
+
+
+async def test_concurrent_first_confirmations_mutate_and_audit_once(
+    pg_sessions, seeded, scripted_model
+):
+    async with _client(pg_sessions) as client:
+        await client.post(
+            f"/api/v1/matters/{MATTER}/agent/messages",
+            json={"content": "Synthetic review request"},
+            headers={"Idempotency-Key": "concurrent-confirm"},
+        )
+    await _drain_turn(pg_sessions)
+    async with _client(pg_sessions) as client:
+        page = (await client.get(f"/api/v1/matters/{MATTER}/agent/messages")).json()
+        action_id = next(row["pendingActionId"] for row in page["items"] if row["pendingActionId"])
+        responses = await asyncio.gather(
+            *(
+                client.post(f"/api/v1/matters/{MATTER}/agent/actions/{action_id}/confirm")
+                for _ in range(2)
+            )
+        )
+        assert [r.status_code for r in responses] == [200, 200]
+        assert responses[0].json() == responses[1].json()
+        card = (await client.get(f"/api/v1/matters/{MATTER}/agent/actions/{action_id}")).json()
+        assert card["state"] == "executed" and card["result"]["version"] == 2
+    async with pg_sessions() as session:
+        assert (
+            await session.execute(
+                text("SELECT version FROM checklist_items WHERE id=:id"), {"id": ITEM}
+            )
+        ).scalar_one() == 2
+        assert (
+            await session.execute(
+                text(
+                    "SELECT count(*) FROM audit_events WHERE action='agent.action-confirmed' AND target_id=:id"
+                ),
+                {"id": action_id},
+            )
+        ).scalar_one() == 1
+
+
+async def test_simultaneous_identical_send_and_replayed_worker_do_not_duplicate(
+    pg_sessions, seeded, scripted_model
+):
+    async with _client(pg_sessions) as client:
+        responses = await asyncio.gather(
+            *(
+                client.post(
+                    f"/api/v1/matters/{MATTER}/agent/messages",
+                    json={"content": "Synthetic shared conversation request"},
+                    headers={"Idempotency-Key": "same-logical-send"},
+                )
+                for _ in range(2)
+            )
+        )
+        assert all(r.status_code == 202 for r in responses)
+        assert responses[0].json()["jobId"] == responses[1].json()["jobId"]
+        latest = await client.get(f"/api/v1/matters/{MATTER}/agent/latest-job")
+        assert latest.json()["jobId"] == responses[0].json()["jobId"]
+    await _drain_turn(pg_sessions)
+    await _drain_turn(pg_sessions)
+    async with _client(pg_sessions) as client:
+        page = (await client.get(f"/api/v1/matters/{MATTER}/agent/messages")).json()
+        assert [m["role"] for m in page["items"]].count("user") == 1
+        assert [m["role"] for m in page["items"]].count("assistant") == 1
+        await client.post(f"/api/v1/matters/{MATTER}/agent/conversations")
+        assert (await client.get(f"/api/v1/matters/{MATTER}/agent/latest-job")).json() is None
+        assert (await client.get(f"/api/v1/matters/{MATTER}/agent/messages")).json()["items"] == []
+
+
+async def test_grounded_research_roundtrip_uses_owner_scope_and_real_metering(
+    pg_sessions, seeded, monkeypatch
+):
+    from unittest.mock import AsyncMock
+
+    from src.api.deps import build_billing_service
+    from src.modules.research.application.service import ResearchService
+    from src.modules.research.domain.models import ComposedClaim, RetrievalPassage, SearchResult
+
+    retrieval, composer = AsyncMock(), AsyncMock()
+    retrieval.search.return_value = SearchResult(
+        [
+            RetrievalPassage(
+                "synthetic",
+                "SYNTHETIC-STATUTE",
+                "Synthetic corpus fixture",
+                "Synthetic reference",
+                "Synthetic supporting source passage.",
+                1,
+                "synthetic-v1",
+            )
+        ]
+    )
+    composer.compose.return_value = (
+        ComposedClaim("Synthetic supported research claim.", ("SYNTHETIC-STATUTE",)),
+    )
+    monkeypatch.setattr(
+        "src.bootstrap.build_research_service",
+        lambda session: ResearchService(session, retrieval, composer),
+    )
+    async with pg_sessions() as session:
+        assert await build_billing_service(session).ensure_trial(OWNER) is not None
+        await session.commit()
+    async with _client(pg_sessions) as client:
+        sent = await client.post(
+            f"/api/v1/matters/{MATTER}/agent/messages",
+            json={"content": "Synthetic question: what does the statute require?"},
+            headers={"Idempotency-Key": "grounded-synthetic"},
+        )
+        assert sent.status_code == 202
+    await _drain_turn(pg_sessions)
+    await _drain_turn(pg_sessions)
+    async with _client(pg_sessions) as client:
+        page = (await client.get(f"/api/v1/matters/{MATTER}/agent/messages")).json()
+        answer = next(m for m in page["items"] if m["role"] == "assistant")
+        assert "Synthetic supported research claim. [1]" in answer["content"]
+        assert answer["citations"][0]["passage"] == "Synthetic supporting source passage."
+        assert answer["citations"][0]["corpusVersion"] == "synthetic-v1"
+        assert answer["citations"][0]["verificationStatus"] == "unverified"
+    composer.compose.assert_awaited_once()
+    assert retrieval.search.await_args.args[1].matter_id == MATTER
+    async with pg_sessions() as session:
+        usage = (
+            await session.execute(
+                text(
+                    "SELECT state, quantity FROM usage_ledger_entries WHERE user_id=:id AND metric='research_queries.monthly'"
+                ),
+                {"id": OWNER},
+            )
+        ).all()
+        assert usage == [("consumed", 1)]
+
+
+async def test_queued_turn_rechecks_suspended_actor_before_any_provider(
+    pg_sessions, seeded, monkeypatch
+):
+    from unittest.mock import Mock
+
+    model_factory = Mock()
+    monkeypatch.setattr("src.bootstrap.build_agent_model", model_factory)
+    async with _client(pg_sessions) as client:
+        await client.post(
+            f"/api/v1/matters/{MATTER}/agent/messages",
+            json={"content": "Synthetic queued request"},
+            headers={"Idempotency-Key": "suspended-synthetic"},
+        )
+    async with pg_sessions() as session:
+        await session.execute(
+            text("UPDATE users SET account_status='suspended' WHERE id=:id"), {"id": OWNER}
+        )
+        await session.commit()
+    await _drain_turn(pg_sessions)
+    model_factory.assert_not_called()
+    async with pg_sessions() as session:
+        assert (
+            await session.execute(
+                text("SELECT failure_class FROM agent_jobs WHERE matter_id=:id"), {"id": MATTER}
+            )
+        ).scalar_one() == "access_unavailable"
+
+
+async def test_read_then_provider_failure_keeps_recovery_refs_on_reload_and_blocks_duplicate_retry(
+    pg_sessions, seeded, monkeypatch
+):
+    from src.modules.matter_agent.domain.errors import ModelProviderError
+
+    class ReadThenFail:
+        calls = 0
+
+        async def run_turn(self, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                return ModelTurn(tool_calls=(ProposedToolCall("read_matter_summary", {}),))
+            raise ModelProviderError()
+
+    model = ReadThenFail()
+    monkeypatch.setattr("src.bootstrap.build_agent_model", lambda: model)
+    async with _client(pg_sessions) as client:
+        sent = await client.post(
+            f"/api/v1/matters/{MATTER}/agent/messages",
+            json={"content": "Synthetic matter summary request"},
+            headers={"Idempotency-Key": "read-then-fail"},
+        )
+        job_id = sent.json()["jobId"]
+    await _drain_turn(pg_sessions)
+    await _drain_turn(pg_sessions)
+    async with _client(pg_sessions) as client:
+        latest = (await client.get(f"/api/v1/matters/{MATTER}/agent/latest-job")).json()
+        assert latest["state"] == "failed" and latest["toolCallCount"] == 1
+        page = (await client.get(f"/api/v1/matters/{MATTER}/agent/messages")).json()
+        recovery = next(m for m in page["items"] if m["role"] == "assistant")
+        assert "Recorded work before it stopped" in recovery["content"]
+        assert recovery["citations"][0]["sourceId"] == MATTER
+        refused = await client.post(
+            f"/api/v1/matters/{MATTER}/agent/jobs/{job_id}/retry",
+            headers={"Idempotency-Key": "unsafe-duplicate"},
+        )
+        assert refused.status_code == 409
+    assert model.calls == 2
+    async with pg_sessions() as session:
+        assert (
+            await session.execute(
+                text("SELECT count(*) FROM agent_tool_calls WHERE job_id=:id"), {"id": job_id}
+            )
+        ).scalar_one() == 1
+
+
+async def test_queued_source_cutoff_is_applied_before_sql_history_limit(pg_sessions, seeded):
+    from src.modules.matter_agent.domain.models import MessageRole
+    from src.modules.matter_agent.infrastructure.repository import (
+        NeonConversationAdapter,
+        SqlAgentSessionRepository,
+    )
+
+    async with _client(pg_sessions) as client:
+        await client.get(f"/api/v1/matters/{MATTER}/agent")
+    async with pg_sessions() as session:
+        owner_id = (await session.execute(select(AgentSessionRow.user_id))).scalar_one()
+        chat = await SqlAgentSessionRepository(session).find(user_id=owner_id, matter_id=MATTER)
+        conversation = NeonConversationAdapter(session)
+        source = await conversation.append(
+            session=chat, role=MessageRole.USER, content="SYNTHETIC queued source"
+        )
+        for number in range(25):
+            await conversation.append(
+                session=chat, role=MessageRole.USER, content=f"SYNTHETIC later {number}"
+            )
+        history = await conversation.recent(
+            session_id=chat.id,
+            conversation_id=chat.active_conversation_id,
+            limit=20,
+            through_sequence=source.sequence,
+        )
+        assert [row.id for row in history] == [source.id]
+        await session.commit()

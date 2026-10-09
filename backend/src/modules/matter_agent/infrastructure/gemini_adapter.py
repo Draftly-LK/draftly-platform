@@ -138,7 +138,7 @@ def _build_config(system_prompt: str, tools: Sequence[ToolDeclaration]) -> Any:
         types.FunctionDeclaration(
             name=tool.name,
             description=tool.description,
-            parameters=types.Schema(**tool.parameters) if tool.parameters else None,
+            parameters_json_schema=tool.parameters if tool.parameters else None,
         )
         for tool in tools
     ]
@@ -172,3 +172,8 @@ def _to_turn(response: Any, *, model: str) -> ModelTurn:
         tool_calls=tuple(proposals),
         model_version=model,
     )
+
+
+class UnavailableAgentAdapter:
+    async def run_turn(self, **kwargs: Any) -> ModelTurn:
+        raise ModelProviderError()

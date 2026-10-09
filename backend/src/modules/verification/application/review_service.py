@@ -29,6 +29,7 @@ from src.modules.matter.contracts import (
     require_rta_capability,
 )
 from src.modules.verification.contracts import ConfirmedFactReadPort
+from src.modules.verification.contracts import ReviewFactInput as ReviewFactInput
 from src.modules.verification.domain.errors import EvidenceRequiredError, FactNotFoundError
 from src.modules.verification.domain.models import EvidenceReference, ExtractedFact, ReviewDecision
 from src.modules.verification.domain.policies import guard_negative_conclusion
@@ -52,19 +53,6 @@ class ManualFactInput:
     reason: str
     transaction_id: str | None = None
     subject_id: str | None = None
-    evidence: FactEvidenceLocator | None = None
-
-
-@dataclass(frozen=True)
-class ReviewFactInput:
-    action: Literal["accept", "correct", "reject", "associate", "edit"]
-    expected_version: int
-    reason: str | None = None
-    value: Any = None
-    transaction_id: str | None = None
-    subject_id: str | None = None
-    expected_scope_token: str | None = None
-    resolve_fact_ids: tuple[str, ...] = ()
     evidence: FactEvidenceLocator | None = None
 
 
@@ -130,6 +118,12 @@ class FactReviewService:
         )
         if fact_type_id is not None:
             await self._practising.assert_practising(ctx)
+
+    async def authorize_decision(self, ctx: RequestContext, matter_id: str, fact_id: str) -> None:
+        """Current authority for a confirmed external proposal, including replay."""
+        await self._authorize(ctx, matter_id)
+        fact, _ = await self._find(ctx, matter_id, fact_id)
+        await self._authorize(ctx, matter_id, fact.fact_type_id)
 
     async def _scope(
         self,

@@ -1,0 +1,1196 @@
+{
+  "fixture": "Real components and production CSS; test bundle identity and HTTP fixtures only; backend integration separately verified on migrated disposable PG",
+  "probes": [
+    {
+      "locale": "en",
+      "width": 1440,
+      "screen": "overview",
+      "zoom": 100,
+      "overflow": false,
+      "language": "en",
+      "headings": [
+        "SYNTHETIC review matter",
+        "Overview"
+      ],
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "screen": "assistant",
+      "zoom": 100,
+      "overflow": false,
+      "language": "en",
+      "headings": [
+        "SYNTHETIC review matter",
+        "Matter assistant"
+      ],
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "width": 1024,
+      "screen": "overview",
+      "zoom": 100,
+      "overflow": false,
+      "language": "en",
+      "headings": [
+        "SYNTHETIC review matter",
+        "Overview"
+      ],
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "width": 1024,
+      "screen": "assistant",
+      "zoom": 100,
+      "overflow": false,
+      "language": "en",
+      "headings": [
+        "SYNTHETIC review matter",
+        "Matter assistant"
+      ],
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1440,
+      "screen": "overview",
+      "zoom": 100,
+      "overflow": false,
+      "language": "si",
+      "headings": [
+        "SYNTHETIC review matter",
+        "දළ විශ්ලේෂණය"
+      ],
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1440,
+      "screen": "assistant",
+      "zoom": 100,
+      "overflow": false,
+      "language": "si",
+      "headings": [
+        "SYNTHETIC review matter",
+        "කාරණා සහායක"
+      ],
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1024,
+      "screen": "overview",
+      "zoom": 100,
+      "overflow": false,
+      "language": "si",
+      "headings": [
+        "SYNTHETIC review matter",
+        "දළ විශ්ලේෂණය"
+      ],
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1024,
+      "screen": "assistant",
+      "zoom": 100,
+      "overflow": false,
+      "language": "si",
+      "headings": [
+        "SYNTHETIC review matter",
+        "කාරණා සහායක"
+      ],
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 720,
+      "screen": "overview",
+      "zoom": 200,
+      "overflow": false,
+      "language": "si",
+      "headings": [
+        "SYNTHETIC review matter",
+        "දළ විශ්ලේෂණය"
+      ],
+      "serious": []
+    }
+  ],
+  "errors": [],
+  "requests": [
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic/confirm",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/agent-jobs/job-synthetic/events",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/agent-jobs/job-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/readiness",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/me",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/messages",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/actions/proposal-synthetic",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/document-inbox",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/facts",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/checklist",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/issues",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/forms",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/matters/mat_synthetic/agent/latest-job",
+      "method": "GET"
+    }
+  ],
+  "confirms": 1,
+  "sends": 1,
+  "retries": 0
+}

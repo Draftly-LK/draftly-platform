@@ -102,7 +102,14 @@ class TestRefusals:
 class TestExecution:
     async def test_an_authorised_call_runs_and_is_recorded(self) -> None:
         tool = RecordingTool(
-            "save_working_note", result=ToolResult(summary="Saved.", resource_refs=("note-1",))
+            "save_working_note",
+            result=ToolResult(summary="Saved.", resource_refs=("note-1",)),
+            parameters={
+                "type": "object",
+                "properties": {"body": {"type": "string"}},
+                "required": ["body"],
+                "additionalProperties": False,
+            },
         )
         executor, calls, audit = build({"save_working_note": tool})
 

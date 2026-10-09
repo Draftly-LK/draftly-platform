@@ -12,11 +12,13 @@ from datetime import UTC, datetime
 from typing import Protocol
 
 from src.modules.auth.ports import AuditEventInput, AuditPort
+from src.modules.matter.contracts import MatterScopePort
 from src.modules.matter_agent.application.actions import (
     ACTION_SPECS,
     ActionExecutor,
     AuthorizationPort,
     UnknownActionKindError,
+    build_pending_action,
     guard_target_version,
 )
 from src.modules.matter_agent.domain.errors import (
@@ -25,6 +27,7 @@ from src.modules.matter_agent.domain.errors import (
     AgentSessionNotFoundError,
     PendingActionExpiredError,
     PendingActionNotFoundError,
+    PendingActionStaleError,
 )
 from src.modules.matter_agent.domain.models import (
     AgentConversation,
@@ -44,6 +47,8 @@ from src.modules.matter_agent.ports import (
     PendingActionRepository,
 )
 from src.platform import ids
+from src.platform.errors import DraftlyError, PreconditionFailedError
+from src.platform.idempotency import fingerprint
 from src.platform.pagination import Cursor
 from src.platform.request_context import RequestContext
 
@@ -102,6 +107,10 @@ class AgentJobPort(Protocol):
 
     async def get(self, *, job_id: str, user_id: str) -> AgentJob | None: ...
 
+    async def latest(
+        self, *, session_id: str, user_id: str, conversation_id: str | None
+    ) -> AgentJob | None: ...
+
     async def retry_source(
         self, *, job_id: str, user_id: str, matter_id: str
     ) -> RetrySource | None: ...
@@ -135,6 +144,7 @@ class AgentService:
         events: AgentEventPort | None = None,
         authorizer: AuthorizationPort | None = None,
         action_executor: ActionExecutor | None = None,
+        scopes: MatterScopePort | None = None,
     ) -> None:
         self._sessions = sessions
         self._conversation = conversation
@@ -147,6 +157,7 @@ class AgentService:
         self._events = events
         self._authorizer = authorizer
         self._action_executor = action_executor
+        self._scopes = scopes
 
     async def get_or_create_session(self, ctx: RequestContext, matter_id: str) -> AgentSession:
         """Return the matter's session, provisioning it lazily on first use."""
@@ -217,6 +228,7 @@ class AgentService:
 
     async def start_conversation(self, ctx: RequestContext, matter_id: str) -> AgentConversation:
         """Archive the visible segment and begin a clean one without deleting audit history."""
+        await self.lock(ctx, matter_id)
         session = await self.get_or_create_session(ctx, matter_id)
         updated = await self._sessions.start_conversation(session)
         conversations = await self._sessions.list_conversations(updated)
@@ -363,6 +375,14 @@ class AgentService:
         )
         return job
 
+    async def latest_job(self, ctx: RequestContext, matter_id: str) -> AgentJob | None:
+        session = await self.get_or_create_session(ctx, matter_id)
+        return await self._jobs.latest(
+            session_id=session.id,
+            user_id=ctx.actor_id,
+            conversation_id=session.active_conversation_id,
+        )
+
     async def read_job(self, ctx: RequestContext, job_id: str) -> AgentJob:
         """A job owned by another user is absent, not forbidden."""
         job = await self._jobs.get(job_id=job_id, user_id=ctx.actor_id)
@@ -370,67 +390,124 @@ class AgentService:
             raise AgentSessionNotFoundError()
         return job
 
-    async def confirm_action(
+    async def lock(self, ctx: RequestContext, matter_id: str) -> None:
+        await self._require_matter(ctx, matter_id)
+        if self._scopes is not None:
+            await self._scopes.lock(ctx, matter_id)
+
+    async def read_action(
+        self, ctx: RequestContext, matter_id: str, action_id: str
+    ) -> PendingAction:
+        await self.lock(ctx, matter_id)
+        action = await self._actions.get(action_id=action_id, matter_id=matter_id)
+        if action is None or action.user_id != ctx.actor_id:
+            raise PendingActionNotFoundError()
+        if action.state is PendingActionState.PROPOSED and not action.is_open(
+            now=datetime.now(tz=UTC)
+        ):
+            action = replace(
+                action, state=PendingActionState.EXPIRED, reason_code="pending_action_expired"
+            )
+            await self._actions.update(action)
+            await self._action_audit(action, ctx, "expired")
+        return action
+
+    async def _authorize_action(self, action: PendingAction, ctx: RequestContext) -> None:
+        try:
+            spec = ACTION_SPECS.get(action.action_kind)
+            if spec is None:
+                raise UnknownActionKindError()
+            if self._authorizer is not None:
+                await self._authorizer.authorize(ctx, spec.capability, action.matter_id)
+                if spec.requires_practising:
+                    await self._authorizer.require_practising_notary(ctx, action.matter_id)
+            if self._action_executor is not None:
+                await self._action_executor.authorize(action, ctx)
+
+        except DraftlyError as exc:
+            await self._action_audit(replace(action, reason_code=exc.code), ctx, "denied")
+            raise
+
+    async def propose_action(
         self,
         ctx: RequestContext,
         matter_id: str,
         *,
-        action_id: str,
+        session_id: str,
+        kind: str,
+        arguments: dict[str, object],
+        target_ref: str,
+        target_version: int,
     ) -> PendingAction:
-        """Re-check authority and version, then mark the card confirmed.
-
-        Nothing about the original proposal is trusted: capability, practising
-        status, ownership and the target version are all re-read now. A card
-        whose target moved is 412 and must be regenerated.
-
-        Confirming twice is safe without an idempotency key: an already
-        confirmed card is returned unchanged rather than applied again.
-        """
-        await self._require_matter(ctx, matter_id)
-        existing = await self._actions.get(action_id=action_id, matter_id=matter_id)
-        if existing is not None and existing.state is PendingActionState.CONFIRMED:
-            return existing
-        action = await self._require_open_action(matter_id, action_id)
-
-        # Authority is re-read now, not inherited from the proposal. A role
-        # change or a lapsed practice certificate between proposal and
-        # confirmation takes effect immediately.
-        spec = ACTION_SPECS.get(action.action_kind)
-        if spec is None:
-            raise UnknownActionKindError()
-        if self._authorizer is not None:
-            await self._authorizer.authorize(ctx, spec.capability, matter_id)
-            if spec.requires_practising:
-                await self._authorizer.require_practising_notary(ctx, matter_id)
-
-        current = await self._targets.current_version(
-            matter_id=matter_id, target_ref=action.target_ref
+        await self.lock(ctx, matter_id)
+        action = build_pending_action(
+            session_id=session_id,
+            matter_id=matter_id,
+            user_id=ctx.actor_id,
+            kind=kind,
+            arguments=arguments,
+            target_ref=target_ref,
+            target_version=target_version,
         )
+        await self._authorize_action(action, ctx)
+        if self._action_executor is None:
+            raise UnknownActionKindError()
+        current, pins = await self._action_executor.current(action, ctx)
         guard_target_version(action, current)
+        if kind == "fact-accept" and pins.get("scopeToken") != arguments.get("expectedScopeToken"):
+            raise PendingActionStaleError()
+        action = replace(
+            action, arguments={**arguments, "_pins": fingerprint(pins), "reviewed": pins}
+        )
+        await self._actions.create(action)
+        await self._action_audit(action, ctx, "proposed")
+        return action
 
-        # The effect happens before the card is marked confirmed, so a failure
-        # leaves the card open rather than claiming an action that never ran.
-        if self._action_executor is not None:
-            await self._action_executor.execute(action, ctx)
-
+    async def confirm_action(
+        self, ctx: RequestContext, matter_id: str, *, action_id: str
+    ) -> PendingAction:
+        await self.lock(ctx, matter_id)
+        action = await self.read_action(ctx, matter_id, action_id)
+        # Re-authorize before ANY cached execution is returned.
+        await self._authorize_action(action, ctx)
+        if action.state in (PendingActionState.CONFIRMED, PendingActionState.EXECUTED):
+            return action
+        await self._require_confirmable(action, ctx)
+        try:
+            if self._action_executor is not None:
+                current, pins = await self._action_executor.current(action, ctx)
+                guard_target_version(action, current)
+                if action.arguments.get("_pins") != fingerprint(pins):
+                    raise PendingActionStaleError()
+                async with self._actions.execution():
+                    result = await self._action_executor.execute(action, ctx)
+            else:
+                current = await self._targets.current_version(
+                    matter_id=matter_id, target_ref=action.target_ref
+                )
+                guard_target_version(action, current)
+                result = {}
+        except DraftlyError as exc:
+            stale = isinstance(exc, (PreconditionFailedError, PendingActionStaleError))
+            failed = replace(
+                action,
+                state=PendingActionState.STALE if stale else PendingActionState.FAILED,
+                reason_code=exc.code,
+            )
+            await self._actions.update(failed)
+            await self._action_audit(failed, ctx, "stale" if stale else "failed")
+            raise
         confirmed = replace(
             action,
-            state=PendingActionState.CONFIRMED,
+            state=PendingActionState.EXECUTED
+            if self._action_executor
+            else PendingActionState.CONFIRMED,
             confirmed_by=ctx.actor_id,
             confirmed_at=datetime.now(tz=UTC),
+            result=result,
         )
         await self._actions.update(confirmed)
-        await self._audit.record(
-            AuditEventInput(
-                user_id=ctx.actor_id,
-                matter_id=matter_id,
-                actor=ctx.actor_id,
-                action="agent.action-confirmed",
-                target_type="agent_pending_action",
-                target_id=action.id,
-                correlation_id=ctx.correlation_id,
-            )
-        )
+        await self._action_audit(confirmed, ctx, "confirmed")
         await self._publish(
             "agent.action-confirmed",
             ctx,
@@ -441,39 +518,25 @@ class AgentService:
         return confirmed
 
     async def reject_action(
-        self,
-        ctx: RequestContext,
-        matter_id: str,
-        *,
-        action_id: str,
-        reason: str | None,
+        self, ctx: RequestContext, matter_id: str, *, action_id: str, reason: str | None
     ) -> PendingAction:
-        """Preserve the rejected proposal rather than deleting it.
-
-        A rejection is evidence about the agent's behaviour and is kept.
-        """
-        await self._require_matter(ctx, matter_id)
-        action = await self._require_open_action(matter_id, action_id)
+        await self.lock(ctx, matter_id)
+        action = await self.read_action(ctx, matter_id, action_id)
+        await self._authorize_action(action, ctx)
+        if action.state in (PendingActionState.DECLINED, PendingActionState.REJECTED):
+            return action
+        await self._require_confirmable(action, ctx)
         rejected = replace(
             action,
-            state=PendingActionState.REJECTED,
+            state=PendingActionState.DECLINED,
+            result={"declineReason": reason} if reason else {},
             reason_code="rejected_by_user",
             confirmed_by=ctx.actor_id,
             confirmed_at=datetime.now(tz=UTC),
         )
         await self._actions.update(rejected)
-        await self._audit.record(
-            AuditEventInput(
-                user_id=ctx.actor_id,
-                matter_id=matter_id,
-                actor=ctx.actor_id,
-                action="agent.action-rejected",
-                target_type="agent_pending_action",
-                target_id=action.id,
-                reason=reason,
-                correlation_id=ctx.correlation_id,
-            )
-        )
+        # Free-form reasons remain in the command/proposal record, never audit.
+        await self._action_audit(rejected, ctx, "rejected")
         await self._publish(
             "agent.action-rejected",
             ctx,
@@ -482,6 +545,31 @@ class AgentService:
             data={"actionId": action.id, "reasonCode": "rejected_by_user"},
         )
         return rejected
+
+    async def _require_confirmable(self, action: PendingAction, ctx: RequestContext) -> None:
+        if action.is_open(now=datetime.now(tz=UTC)):
+            return
+        if action.state is PendingActionState.PROPOSED:
+            expired = replace(
+                action, state=PendingActionState.EXPIRED, reason_code="pending_action_expired"
+            )
+            await self._actions.update(expired)
+            await self._action_audit(expired, ctx, "expired")
+        raise PendingActionExpiredError()
+
+    async def _action_audit(self, action: PendingAction, ctx: RequestContext, outcome: str) -> None:
+        await self._audit.record(
+            AuditEventInput(
+                user_id=ctx.actor_id,
+                matter_id=action.matter_id,
+                actor=ctx.actor_id,
+                action=f"agent.action-{outcome}",
+                target_type="agent_pending_action",
+                target_id=action.id,
+                correlation_id=ctx.correlation_id,
+                reason=action.reason_code,
+            )
+        )
 
     async def _publish(
         self,

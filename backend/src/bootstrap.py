@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from src.modules.document.application.review_service import DocumentReviewService
     from src.modules.matter.application.scope_service import MatterScopeService
     from src.modules.matter_agent.application.agent_service import AgentService
+    from src.modules.research.application.service import ResearchService
     from src.modules.task.application.readiness_service import ReadinessService
     from src.modules.verification.application.review_service import FactReviewService
 
@@ -216,6 +217,7 @@ def build_agent_service(session: AsyncSession) -> AgentService:
     """
     from src.modules.audit.application.audit_service import AuditService
     from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.document.infrastructure.requirement_reader import SqlRequirementDocumentReader
     from src.modules.matter_agent.application.actions import ActionExecutor
     from src.modules.matter_agent.application.agent_service import AgentService, AgentSettings
     from src.modules.matter_agent.infrastructure.event_publisher import AgentEventPublisher
@@ -247,7 +249,13 @@ def build_agent_service(session: AsyncSession) -> AgentService:
         targets=SqlTargetVersionAdapter(session),
         events=AgentEventPublisher(session),
         authorizer=_build_agent_authorizer(session),
-        action_executor=ActionExecutor(checklist=build_checklist_service(session)),
+        action_executor=ActionExecutor(
+            checklist=build_checklist_service(session),
+            matters=build_matter_service(session),
+            facts=build_fact_review_service(session),
+            documents=SqlRequirementDocumentReader(session, build_source_file_storage()),
+        ),
+        scopes=build_matter_scope_service(session),
     )
 
 
@@ -305,6 +313,23 @@ async def run_agent_turn(
             job_id=job_id, outcome=JobState.FAILED, tool_call_count=0, failure_class="unknown_actor"
         )
 
+    from src.modules.auth.domain.models import AccountStatus
+    from src.modules.matter_agent.domain.models import JobState, TurnResult
+
+    owned = await build_matter_service(session).get_access_summary(
+        chat_session.user_id, chat_session.matter_id
+    )
+    if (
+        not settings.matter_agent_enabled
+        or user.account_status is not AccountStatus.ACTIVE
+        or owned is None
+    ):
+        return TurnResult(
+            job_id=job_id,
+            outcome=JobState.FAILED,
+            tool_call_count=0,
+            failure_class="access_unavailable",
+        )
     role = user.role
     if role is None:
         from src.modules.matter_agent.domain.models import JobState, TurnResult
@@ -353,6 +378,7 @@ async def run_agent_turn(
             session=domain_session,
             job_id=job_id,
             user_message=user_message.content,
+            source_sequence=user_message.sequence,
             execution=execution,
             budget=TurnBudget(
                 max_tool_calls=settings.matter_agent_max_tool_calls,
@@ -409,12 +435,11 @@ def build_agent_tools(session: AsyncSession, *, session_id: str, memory: Any) ->
     """
     from src.modules.matter_agent.application import read_adapters as ra
     from src.modules.matter_agent.application import read_tools as rt
+    from src.modules.matter_agent.application import scoped_tools as st
     from src.modules.matter_agent.application import write_tools as wt
+    from src.modules.matter_agent.application.legal_tool import ResearchLegalQuestionTool
     from src.modules.matter_agent.application.tools import SaveWorkingNoteTool, build_tool_registry
     from src.modules.matter_agent.infrastructure.note_repository import SqlMatterNoteRepository
-    from src.modules.matter_agent.infrastructure.repository import SqlPendingActionRepository
-    from src.modules.verification.application.fact_query_service import FactQueryService
-    from src.modules.verification.infrastructure.repository import SqlVerificationRepository
 
     matters = build_matter_service(session)
     checklist = build_checklist_service(session)
@@ -422,64 +447,68 @@ def build_agent_tools(session: AsyncSession, *, session_id: str, memory: Any) ->
     review = build_document_review_service(session)
     checks = build_check_service(session)
     drafts = build_draft_service(session)
-    facts = FactQueryService(repository=SqlVerificationRepository(session))
 
     documents = ra.DocumentReadAdapter(ingestion=ingestion, review=review)
 
     return build_tool_registry(
         {
+            ResearchLegalQuestionTool.name: ResearchLegalQuestionTool(
+                build_matter_research(session)
+            ),
             # Reads
             rt.ReadMatterSummaryTool.name: rt.ReadMatterSummaryTool(
                 ra.MatterSummaryAdapter(matters)
             ),
             rt.ReadChecklistStateTool.name: rt.ReadChecklistStateTool(
-                ra.ChecklistSummaryAdapter(checklist)
+                ra.ChecklistSummaryAdapter(checklist), matters
             ),
             rt.ReadDocumentStatusTool.name: rt.ReadDocumentStatusTool(documents),
             rt.ReadDocumentExtractionTool.name: rt.ReadDocumentExtractionTool(documents),
             rt.ReadDocumentOcrPagesTool.name: rt.ReadDocumentOcrPagesTool(documents),
-            rt.ReadVerifiedFactsTool.name: rt.ReadVerifiedFactsTool(ra.FactReadAdapter(facts)),
+            st.ReadRegisterTool.name: st.ReadRegisterTool(build_fact_review_service(session)),
+            st.ReadReadinessTool.name: st.ReadReadinessTool(build_readiness_service(session)),
             rt.ReadDraftPreflightTool.name: rt.ReadDraftPreflightTool(ra.DraftReadAdapter(drafts)),
             rt.SearchMatterMemoryTool.name: rt.SearchMatterMemoryTool(memory),
-            rt.ListMatterInventoryTool.name: rt.ListMatterInventoryTool(
-                ra.InventoryAdapter(matters=matters, documents=documents)
+            st.ReadScopeInventoryTool.name: st.ReadScopeInventoryTool(
+                build_matter_scope_service(session)
             ),
-            # Writes
             wt.RunChecksTool.name: wt.RunChecksTool(checks, matters),
-            wt.GenerateWorkingDraftTool.name: wt.GenerateWorkingDraftTool(drafts, matters),
             SaveWorkingNoteTool.name: SaveWorkingNoteTool(
                 SqlMatterNoteRepository(session), session_id=session_id
             ),
-            wt.AssignChecklistItemTool.name: wt.AssignChecklistItemTool(checklist),
-            wt.UpdateChecklistDueDateTool.name: wt.UpdateChecklistDueDateTool(checklist),
-            wt.RequestChecklistCollectionTool.name: wt.RequestChecklistCollectionTool(checklist),
-            wt.RecordDocumentReceiptTool.name: wt.RecordDocumentReceiptTool(checklist),
-            wt.ProposeDocumentLinkTool.name: wt.ProposeDocumentLinkTool(checklist),
-            wt.UpdateFieldCandidateTool.name: wt.UpdateFieldCandidateTool(review),
-            wt.ProposeChecklistDecisionTool.name: wt.ProposeChecklistDecisionTool(
-                SqlPendingActionRepository(session), session_id=session_id
+            wt.AssignChecklistItemTool.name: wt.AssignChecklistItemTool(
+                checklist, matters, build_matter_scope_service(session)
             ),
+            wt.UpdateChecklistDueDateTool.name: wt.UpdateChecklistDueDateTool(
+                checklist, matters, build_matter_scope_service(session)
+            ),
+            wt.RequestChecklistCollectionTool.name: wt.RequestChecklistCollectionTool(
+                checklist, matters, build_matter_scope_service(session)
+            ),
+            wt.RecordDocumentReceiptTool.name: wt.RecordDocumentReceiptTool(
+                checklist, matters, build_matter_scope_service(session)
+            ),
+            **wt.confirmed_proposal_tools(build_agent_service(session), session_id),
         }
     )
 
 
 def build_agent_model() -> Any:
-    """The model adapter. Deterministic fake unless Gemini is configured.
-
-    Falling back to the fake rather than raising means a missing key degrades
-    the assistant instead of breaking the deployment, and no test ever reaches
-    a provider by accident.
-    """
+    """Use the configured model; missing configuration is an explicit unavailable state."""
     settings = get_settings()
-    if settings.matter_agent_enabled and settings.gemini_api_key:
+    if (
+        settings.matter_agent_enabled
+        and settings.gemini_api_key
+        and settings.provider_data_approval
+    ):
         from src.modules.matter_agent.infrastructure.gemini_adapter import GeminiAgentAdapter
 
         return GeminiAgentAdapter(
             api_key=settings.gemini_api_key, model=settings.matter_agent_model
         )
-    from src.modules.matter_agent.infrastructure.fake_model import FakeAgentModelAdapter
+    from src.modules.matter_agent.infrastructure.gemini_adapter import UnavailableAgentAdapter
 
-    return FakeAgentModelAdapter()
+    return UnavailableAgentAdapter()
 
 
 def build_agent_memory() -> Any:
@@ -1211,4 +1240,43 @@ def build_readiness_service(session: AsyncSession) -> ReadinessService:
                 build_check_service(session), SqlMatterScopeRepository(session)
             ),
         },
+    )
+
+
+def build_research_service(session: AsyncSession) -> ResearchService:
+    """The existing research providers and approval gate, shared by API and agent."""
+    from src.modules.research.application.service import ResearchService
+    from src.modules.research.infrastructure.retrieval import (
+        GroundedStatuteComposer,
+        HttpStatuteRetrievalAdapter,
+        StatuteRetrievalAdapter,
+    )
+    from src.modules.research.infrastructure.retrieval.case_http import HttpCaseSearchAdapter
+
+    settings = get_settings()
+    composer = (
+        GroundedStatuteComposer(api_key=settings.gemini_api_key, model=settings.research_model)
+        if settings.gemini_api_key and settings.provider_data_approval
+        else None
+    )
+    retrieval = (
+        HttpStatuteRetrievalAdapter(base_url=settings.retrieval_base_url)
+        if settings.retrieval_base_url
+        else StatuteRetrievalAdapter()
+    )
+    return ResearchService(
+        session, retrieval, composer, HttpCaseSearchAdapter(base_url=settings.retrieval_base_url)
+    )
+
+
+def build_matter_research(session: AsyncSession) -> Any:
+    from src.api.deps import build_billing_service
+    from src.modules.audit.application.audit_service import AuditService
+    from src.modules.audit.infrastructure.repository import SqlAuditRepository
+    from src.modules.research.application.matter_research import MatterResearchService
+
+    return MatterResearchService(
+        build_research_service(session),
+        build_billing_service(session),
+        AuditService(repository=SqlAuditRepository(session)),
     )

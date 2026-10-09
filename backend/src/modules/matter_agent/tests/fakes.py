@@ -6,6 +6,7 @@ allocation is monotonic and unique, and every recorded tool call is kept.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
@@ -137,11 +138,18 @@ class FakeConversation:
         )
 
     async def recent(
-        self, *, session_id: str, limit: int, conversation_id: str | None = None
+        self,
+        *,
+        session_id: str,
+        limit: int,
+        conversation_id: str | None = None,
+        through_sequence: int | None = None,
     ) -> tuple[AgentMessage, ...]:
         rows = [m for m in self.messages if m.session_id == session_id]
         if conversation_id is not None:
             rows = [m for m in rows if m.conversation_id == conversation_id]
+        if through_sequence is not None:
+            rows = [m for m in rows if m.sequence <= through_sequence]
         return tuple(rows[-limit:])
 
 
@@ -216,6 +224,10 @@ class FakeJobs:
 
 
 class FakePendingActions:
+    @asynccontextmanager
+    async def execution(self):
+        yield
+
     def __init__(self, *, seed: list[PendingAction] | None = None) -> None:
         self.rows = {action.id: action for action in (seed or [])}
 
@@ -243,13 +255,16 @@ class FakeTargets:
 class RecordingTool:
     """A tool that records what it was given and returns a fixed result."""
 
-    def __init__(self, name: str, *, result: ToolResult | None = None) -> None:
+    def __init__(
+        self, name: str, *, result: ToolResult | None = None, parameters: dict | None = None
+    ) -> None:
         self.name = name
         self.invocations: list[ToolInvocation] = []
         self._result = result or ToolResult(summary="done")
+        self._parameters = parameters or {}
 
     def declaration(self) -> ToolDeclaration:
-        return ToolDeclaration(name=self.name, description="", parameters={})
+        return ToolDeclaration(name=self.name, description="", parameters=self._parameters)
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         self.invocations.append(invocation)

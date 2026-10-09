@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.matter_agent.application.agent_service import AgentJob, RetrySource
@@ -95,6 +95,41 @@ class SqlAgentJobPort:
             state=JobState(row.state),
             tool_call_count=row.tool_call_count,
             failure_class=row.failure_class,
+        )
+
+    async def latest(
+        self, *, session_id: str, user_id: str, conversation_id: str | None
+    ) -> AgentJob | None:
+        row = (
+            await self._db.execute(
+                select(AgentJobRow)
+                .join(
+                    AgentMessageRow,
+                    or_(
+                        AgentMessageRow.id == AgentJobRow.source_message_id,
+                        (AgentJobRow.source_message_id.is_(None))
+                        & (AgentMessageRow.job_id == AgentJobRow.id),
+                    ),
+                )
+                .where(
+                    AgentJobRow.user_id == user_id,
+                    AgentJobRow.session_id == session_id,
+                    AgentMessageRow.conversation_id == conversation_id,
+                    AgentMessageRow.role == "user",
+                )
+                .order_by(AgentJobRow.created_at.desc(), AgentJobRow.id.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        return (
+            AgentJob(
+                job_id=row.id,
+                state=JobState(row.state),
+                tool_call_count=row.tool_call_count,
+                failure_class=row.failure_class,
+            )
+            if row
+            else None
         )
 
     async def retry_source(

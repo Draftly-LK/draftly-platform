@@ -8,6 +8,7 @@ provider SDK.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -21,6 +22,7 @@ from src.modules.matter_agent.domain.models import (
     ToolCallRecord,
 )
 from src.platform.pagination import Cursor
+from src.platform.request_context import RequestContext
 
 # ── Model provider ───────────────────────────────────────────────────────────
 
@@ -109,7 +111,12 @@ class ConversationPort(Protocol):
     ) -> MessagePage: ...
 
     async def recent(
-        self, *, session_id: str, limit: int, conversation_id: str | None = None
+        self,
+        *,
+        session_id: str,
+        limit: int,
+        conversation_id: str | None = None,
+        through_sequence: int | None = None,
     ) -> tuple[AgentMessage, ...]:
         """The newest `limit` messages, oldest first, for the model turn."""
         ...
@@ -173,6 +180,8 @@ class ToolInvocation:
     arguments: dict[str, Any]
     matter_id: str
     actor_id: str
+    context: RequestContext | None = None
+    job_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -187,6 +196,7 @@ class ToolResult:
     payload: dict[str, Any] = field(default_factory=dict)
     resource_refs: tuple[str, ...] = ()
     pending_action_id: str | None = None
+    citations: tuple[AgentCitation, ...] = ()
 
 
 class AgentToolPort(Protocol):
@@ -238,6 +248,8 @@ class ToolCallRepository(Protocol):
 
 
 class PendingActionRepository(Protocol):
+    def execution(self) -> AbstractAsyncContextManager[None]: ...
+
     async def get(self, *, action_id: str, matter_id: str) -> PendingAction | None: ...
 
     async def create(self, action: PendingAction) -> PendingAction: ...
