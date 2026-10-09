@@ -1,5 +1,12 @@
 # document_service — implementation design
 
+The `SourceIntegrityReadPort` supplies technical validation for operational task
+support. It checks source ownership, the current eligible state, the exact
+stored object version, and the upload SHA-256. Rejected, superseded, unstored,
+missing, unavailable, or corrupt sources cannot support current completion.
+This read exposes no bytes and writes no lawyer decision or viewing audit;
+ordinary source viewing retains its existing audited owner path.
+
 ## Canonical fact register contract (2026-10-09)
 
 Intake recognition uses `content_governance.contracts.DOCUMENT_CLASSES` before

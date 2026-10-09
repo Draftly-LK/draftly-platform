@@ -1,5 +1,11 @@
 # Backend infrastructure and operations
 
+The additive `task0003` migration introduces matter-scoped operational tasks
+and append-only task decision history. It does not backfill completion from a
+matter lifecycle stage or modify original evidence. Downgrade refuses to drop
+these tables once work has been recorded; disabling the checklist interface is
+the rollback path that preserves its history.
+
 Companion to `backend/backend-implementation-plan-v0.md`,
 `jobs-and-workers.md`, and `services/README.md`. Records the platform choices
 behind every service: datastores, object storage, queue, secrets, environments,

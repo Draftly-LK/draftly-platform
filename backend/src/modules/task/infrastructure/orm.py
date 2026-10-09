@@ -160,3 +160,52 @@ class SatisfactionLinkRow(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class WorkTaskRow(Base):
+    """Operational tasks never write governed requirement state."""
+
+    __tablename__ = "matter_work_tasks"
+    __table_args__ = (
+        Index("ix_work_tasks_user_matter", "user_id", "matter_id"),
+        UniqueConstraint("user_id", "matter_id", "dedup_key", name="uq_work_task_dedup"),
+    )
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    group: Mapped[str] = mapped_column(String(32), nullable=False)
+    origin: Mapped[str] = mapped_column(String(32), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    title: Mapped[str | None] = mapped_column(Text)
+    title_key: Mapped[str | None] = mapped_column(String(256))
+    reason: Mapped[str | None] = mapped_column(Text)
+    reason_key: Mapped[str | None] = mapped_column(String(256))
+    assigned_to: Mapped[str | None] = mapped_column(String(64))
+    completed_by: Mapped[str | None] = mapped_column(String(64))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    created_by: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    suggestion_status: Mapped[str | None] = mapped_column(String(32))
+    dedup_key: Mapped[str | None] = mapped_column(String(64))
+    provenance: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
+
+
+class WorkHistoryRow(Base):
+    __tablename__ = "matter_work_task_history"
+    __table_args__ = (Index("ix_work_history_task", "user_id", "matter_id", "task_id", "id"),)
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    task_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("matter_work_tasks.id"), nullable=False
+    )
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    matter_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    decision: Mapped[str] = mapped_column(String(32), nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    previous_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    state: Mapped[str] = mapped_column(String(32), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
