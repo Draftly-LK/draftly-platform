@@ -558,6 +558,13 @@ versioning; it touches neither matter storage nor the legal corpus index.
 - **list_workflow_modules(ctx, filter) -> WorkflowModuleRead[]**.
 - **list_deadline_rules(ctx, filter) -> DeadlineRuleRead[]**.
 
+The authenticated read-only `GET /api/v1/rta/fact-types` catalogue exposes
+existing fact definition IDs, field and label keys, subject and value kinds,
+critical/search-evidence metadata, current content versions, and supported
+existing enum options. It contains no matter values or prescribed wording.
+The canonical register uses this catalogue for manual information entry;
+fact review and negative-conclusion rules remain in the backend review service.
+
 Per-matter services request `approved` definitions only; a `draft` or `retired`
 definition is never handed to matter work (§7). These three reads are wired in
 the frontend today as mock accessors (`getTemplates`, `getQuestions`,

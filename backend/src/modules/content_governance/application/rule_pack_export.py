@@ -11,6 +11,7 @@ prescribed legal wording passes through here.
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
 
 from src.modules.content_governance.contracts import (
@@ -21,12 +22,22 @@ from src.modules.content_governance.contracts import (
     CONDITIONAL_MODULES,
     CURRENT_VERSIONS,
     DOCUMENT_CLASSES,
+    FACT_TYPES,
     FAMILIES,
     FORM_TEMPLATES,
     LEGACY_MATTER_TYPE_MAP,
     REGIME_ID,
     REQUIREMENTS,
     SEED_SOURCE_RECORDS,
+    DischargeEvidenceKind,
+    DispositionScope,
+    DisputeStage,
+    EncumbranceStatus,
+    NoticeStatus,
+    OccupationStatus,
+    ParcelKind,
+    ProbatePath,
+    TitleClass,
 )
 
 
@@ -272,6 +283,53 @@ def sources_contract() -> dict[str, Any]:
                 "notes": record.notes,
             }
             for record in SEED_SOURCE_RECORDS
+        ],
+    }
+
+
+# These project existing meanings from facts.py/fact_values.py and the typed
+# EligibilityInput fields. They do not change review or negative-search policy.
+_FACT_ENUMS: dict[str, tuple[type[Enum], str]] = {
+    "rta.title.class": (TitleClass, "enums.titleClass"),
+    "rta.interest.mortgage_status": (EncumbranceStatus, "enums.encumbranceStatus"),
+    "rta.interest.lease_status": (EncumbranceStatus, "enums.encumbranceStatus"),
+    "rta.interest.occupation_status": (OccupationStatus, "enums.occupationStatus"),
+    "rta.interest.caveat_or_notice_status": (NoticeStatus, "enums.noticeStatus"),
+    "rta.interest.discharge_evidence_kind": (DischargeEvidenceKind, "enums.dischargeEvidenceKind"),
+    "rta.process.probate_path": (ProbatePath, "enums.probatePath"),
+    "rta.instrument.disposition_scope": (DispositionScope, "newMatter.scope"),
+    "rta.parcel.kind": (ParcelKind, "newMatter.parcelKind"),
+    "rta.process.dispute_stage": (DisputeStage, "enums.disputeStage"),
+}
+
+
+def _fact_options(fact_id: str) -> list[dict[str, str]]:
+    if fact_id == "rta.instrument.exact_subtype":
+        return [{"value": subtype.id, "labelKey": subtype.label_key} for subtype in ALL_SUBTYPES]
+    if fact_id not in _FACT_ENUMS:
+        return []
+    enum_type, label_group = _FACT_ENUMS[fact_id]
+    return [
+        {"value": value.value, "labelKey": f"{label_group}.{value.value}"} for value in enum_type
+    ]
+
+
+def fact_types_contract() -> dict[str, Any]:
+    """Existing governed fact metadata only; no values or authority changes."""
+    return {
+        "versions": CURRENT_VERSIONS.as_dict(),
+        "factTypes": [
+            {
+                "id": fact.id,
+                "fieldKey": fact.field_key,
+                "labelKey": fact.label_key,
+                "subject": fact.subject.value,
+                "valueKind": fact.value_kind.value,
+                "critical": fact.critical,
+                "negativeRequiresSearchEvidence": fact.negative_requires_search_evidence,
+                "options": _fact_options(fact.id),
+            }
+            for fact in FACT_TYPES
         ],
     }
 

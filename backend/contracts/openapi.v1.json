@@ -18008,6 +18008,34 @@
         ]
       }
     },
+    "/api/v1/rta/fact-types": {
+      "get": {
+        "operationId": "get_fact_types_api_v1_rta_fact_types_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Fact Types Api V1 Rta Fact Types Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Fact Types",
+        "tags": [
+          "rta-rule-pack"
+        ]
+      }
+    },
     "/api/v1/rta/forms": {
       "get": {
         "operationId": "get_forms_api_v1_rta_forms_get",

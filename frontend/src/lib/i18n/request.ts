@@ -1,12 +1,16 @@
 import { getRequestConfig } from "next-intl/server";
 import en from "./messages/en.json";
+import si from "./messages/si.json";
+import { cookies } from "next/headers";
 import { messageFallback } from "./humanize";
-import { DEFAULT_LOCALE } from "./multilingual";
+import { LOCALE_COOKIE, parseLocaleCookie } from "./multilingual";
 
-// English only: no language switch, and any stored locale cookie is ignored.
-export default getRequestConfig(async () => ({
-  locale: DEFAULT_LOCALE,
-  messages: en,
-  timeZone: "Asia/Colombo",
-  getMessageFallback: messageFallback,
-}));
+export default getRequestConfig(async () => {
+  const locale = parseLocaleCookie((await cookies()).get(LOCALE_COOKIE)?.value);
+  return {
+    locale,
+    messages: locale === "si" ? si : en,
+    timeZone: "Asia/Colombo",
+    getMessageFallback: messageFallback,
+  };
+});

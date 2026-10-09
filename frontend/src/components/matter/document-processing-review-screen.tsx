@@ -1,29 +1,21 @@
 "use client";
 
-import {
-  AlertTriangle,
-  Check,
-  CheckCheck,
-  LoaderCircle,
-  Save,
-} from "lucide-react";
+import { AlertTriangle, LoaderCircle } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { humanizeMessageKey } from "@/lib/i18n/humanize";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { ClassificationReviewScreen } from "@/components/matter/classification-review-screen";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { ApiError, isApiEnabled, apiErrorMessage } from "@/lib/api/client";
 import {
-  approveReviewCandidate,
-  editReviewCandidate,
   getDocumentReview,
   getPrivateDocumentArtifact,
 } from "@/lib/api/documents";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
-import type { ApiDetectedDocument, ApiDocumentReview, ApiReviewCandidate } from "@/types/rta";
+import type { ApiDetectedDocument, ApiDocumentReview } from "@/types/rta";
+import { FactRegister } from "./fact-register";
 import { DocumentDecisions, isDocumentDecided } from "./document-decisions";
 import { ReviewNextStep } from "./review-next-step";
 
@@ -44,7 +36,12 @@ export function DocumentProcessingReviewScreen(props: {
   documentId: string;
 }) {
   if (!isApiEnabled()) return <ClassificationReviewScreen {...props} />;
-  return <DocumentProcessingReviewFlow {...props} />;
+  return (
+    <DocumentProcessingReviewFlow
+      key={`${props.matterId}:${props.documentId}`}
+      {...props}
+    />
+  );
 }
 
 function DocumentProcessingReviewFlow({
@@ -55,31 +52,31 @@ function DocumentProcessingReviewFlow({
   documentId: string;
 }) {
   const t = useTranslations("documentProcessingReview");
+  const evidenceT = useTranslations("factRegister");
   const getToken = useTokenProvider();
   const [review, setReview] = useState<ApiDocumentReview | null>(null);
   const [legacy, setLegacy] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [ocr, setOcr] = useState<OcrPayload | null>(null);
-  const [edits, setEdits] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
+  const [ocrUnavailable, setOcrUnavailable] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [document, setDocument] = useState<ApiDetectedDocument | null>(null);
+  const reviewGeneration = useRef({ value: 0 });
 
   useEffect(() => {
     let active = true;
+    const epoch = reviewGeneration.current;
     getDocumentReview(getToken, documentId)
       .then((value) => {
         if (!active) return;
+        if (
+          value.matterId !== matterId ||
+          value.detectedDocumentId !== documentId
+        )
+          throw new Error("Foreign document review");
         setReview(value);
-        setEdits(
-          Object.fromEntries(
-            value.candidates.map((field) => [
-              field.id,
-              field.editedValue ?? field.candidateValue,
-            ]),
-          ),
-        );
       })
       .catch((cause: unknown) => {
         if (!active) return;
@@ -88,13 +85,13 @@ function DocumentProcessingReviewFlow({
           cause.code === "document_review_not_found"
         )
           setLegacy(true);
-        else
-          setError(apiErrorMessage(cause, t("loadError")));
+        else setError(apiErrorMessage(cause, t("loadError")));
       });
     return () => {
       active = false;
+      epoch.value++;
     };
-  }, [documentId, getToken, t]);
+  }, [documentId, matterId, getToken, t]);
 
   const page = review?.pages[pageIndex];
   useEffect(() => {
@@ -103,20 +100,26 @@ function DocumentProcessingReviewFlow({
     let objectUrl: string | null = null;
     setImageUrl(null);
     setOcr(null);
-    Promise.all([
-      getPrivateDocumentArtifact(getToken, page.imageUrl, controller.signal),
-      getPrivateDocumentArtifact(getToken, page.ocrUrl, controller.signal),
-    ])
-      .then(async ([image, json]) => {
+    setOcrUnavailable(false);
+    setImageError(false);
+    void getPrivateDocumentArtifact(getToken, page.imageUrl, controller.signal)
+      .then((image) => {
+        if (controller.signal.aborted) return;
         objectUrl = URL.createObjectURL(image);
         setImageUrl(objectUrl);
-        setOcr(JSON.parse(await json.text()) as OcrPayload);
       })
-      .catch((cause: unknown) => {
-        if (!controller.signal.aborted)
-          setError(
-            apiErrorMessage(cause, t("artifactError")),
-          );
+      .catch(() => {
+        if (!controller.signal.aborted) setImageError(true);
+      });
+    void getPrivateDocumentArtifact(getToken, page.ocrUrl, controller.signal)
+      .then(async (json) => {
+        const parsed = JSON.parse(await json.text()) as OcrPayload;
+        if (!Array.isArray(parsed.elements))
+          throw new Error("Invalid OCR payload");
+        if (!controller.signal.aborted) setOcr(parsed);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setOcrUnavailable(true);
       });
     return () => {
       controller.abort();
@@ -128,70 +131,6 @@ function DocumentProcessingReviewFlow({
     () => ocr?.elements.filter((element) => element.level === "word") ?? [],
     [ocr],
   );
-  const updateCandidate = (saved: ApiReviewCandidate) => {
-    setReview((current) =>
-      current
-        ? {
-            ...current,
-            candidates: current.candidates.map((item) =>
-              item.id === saved.id ? saved : item,
-            ),
-          }
-        : current,
-    );
-    setEdits((current) => ({
-      ...current,
-      [saved.id]: saved.editedValue ?? saved.candidateValue,
-    }));
-  };
-  const save = async (field: ApiReviewCandidate) => {
-    setBusy(field.id);
-    setError(null);
-    try {
-      updateCandidate(
-        await editReviewCandidate(
-          getToken,
-          field.id,
-          edits[field.id] ?? "",
-          field.version,
-        ),
-      );
-    } catch (cause) {
-      setError(apiErrorMessage(cause, t("saveError")));
-    } finally {
-      setBusy(null);
-    }
-  };
-  const approve = async (field: ApiReviewCandidate) => {
-    setBusy(field.id);
-    setError(null);
-    try {
-      updateCandidate(
-        await approveReviewCandidate(getToken, field.id, field.version),
-      );
-    } catch (cause) {
-      setError(apiErrorMessage(cause, t("approveError")));
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  /** Approves every field still waiting, one at a time, stopping at the first refusal. */
-  const approveAll = async () => {
-    if (!review) return;
-    for (const field of review.candidates) {
-      if (field.reviewState === "approved") continue;
-      setBusy(field.id);
-      setError(null);
-      try {
-        updateCandidate(await approveReviewCandidate(getToken, field.id, field.version));
-      } catch (cause) {
-        setError(apiErrorMessage(cause, t("approveError")));
-        break;
-      }
-    }
-    setBusy(null);
-  };
 
   if (legacy)
     return (
@@ -207,7 +146,9 @@ function DocumentProcessingReviewFlow({
       </AppShell>
     );
 
-  const pending = review.candidates.filter((field) => field.reviewState !== "approved").length;
+  const pending = review.candidates.filter(
+    (field) => field.reviewState !== "approved",
+  ).length;
   const warnings = page
     ? [
         page.rotationStatus === "rotation_uncertain"
@@ -284,6 +225,10 @@ function DocumentProcessingReviewFlow({
                     ))}
                   </svg>
                 </>
+              ) : imageError ? (
+                <p role="alert" className="text-red p-6 text-sm">
+                  {t("artifactError")}
+                </p>
               ) : (
                 <div className="flex min-h-96 items-center justify-center">
                   <LoaderCircle className="size-6 animate-spin" />
@@ -291,82 +236,48 @@ function DocumentProcessingReviewFlow({
               )}
             </div>
             <p className="text-muted-ink mt-2 text-xs">{t("overlayNote")}</p>
+            {ocrUnavailable && (
+              <p role="status" className="text-muted-ink mt-2 text-xs">
+                {evidenceT("ocrUnavailable")}
+              </p>
+            )}
           </section>
           <div className="min-w-0 space-y-6">
-          <DocumentDecisions getToken={getToken} matterId={matterId} documentId={documentId} onChange={setDocument} />
-          <section className="border-border bg-surface rounded-card border p-4">
-            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-semibold">{t("fieldsTitle")}</h2>
-              {pending > 0 ? (
-                <Button size="sm" variant="primary" disabled={busy !== null} onClick={() => void approveAll()}>
-                  <CheckCheck aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                  {t("approveAll", { count: pending })}
-                </Button>
-              ) : null}
-            </div>
-            <p className="text-muted-ink mb-4 text-sm">
-              {t("fieldsDescription")}
-            </p>
-            <div className="space-y-4">
-              {review.candidates.map((field) => (
-                <div key={field.id}>
-                  <label className="text-sm font-medium">
-                    {humanizeMessageKey(field.key)}
-                    <input
-                      className="border-border-control mt-1 w-full rounded-control border px-3 py-2"
-                      value={edits[field.id] ?? ""}
-                      onChange={(event) =>
-                        setEdits((current) => ({
-                          ...current,
-                          [field.id]: event.target.value,
-                        }))
-                      }
-                      disabled={
-                        busy === field.id || field.reviewState === "approved"
-                      }
-                    />
-                  </label>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-muted-ink text-xs">
-                      {field.reviewState === "approved"
-                        ? t("approved")
-                        : t("unverified")}
-                    </span>
-                    <Button
-                      size="sm"
-                      className="whitespace-nowrap"
-                      onClick={() => void save(field)}
-                      disabled={
-                        busy === field.id || field.reviewState === "approved"
-                      }
-                    >
-                      <Save className="size-4" />
-                      {t("save")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      className="whitespace-nowrap"
-                      onClick={() => void approve(field)}
-                      disabled={
-                        busy === field.id || field.reviewState === "approved"
-                      }
-                    >
-                      <Check className="size-4" />
-                      {t("approve")}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+            <DocumentDecisions
+              getToken={getToken}
+              matterId={matterId}
+              documentId={documentId}
+              onChange={setDocument}
+            />
+            <FactRegister
+              matterId={matterId}
+              documentId={documentId}
+              onDecision={() => {
+                const request = ++reviewGeneration.current.value;
+                void getDocumentReview(getToken, documentId)
+                  .then((value) => {
+                    if (
+                      request === reviewGeneration.current.value &&
+                      value.matterId === matterId &&
+                      value.detectedDocumentId === documentId
+                    )
+                      setReview(value);
+                  })
+                  .catch((cause) => {
+                    if (request === reviewGeneration.current.value)
+                      setError(apiErrorMessage(cause, t("loadError")));
+                  });
+              }}
+            />
           </div>
         </div>
         <ReviewNextStep
           getToken={getToken}
           matterId={matterId}
           documentId={documentId}
-          done={document !== null && isDocumentDecided(document) && pending === 0}
+          done={
+            document !== null && isDocumentDecided(document) && pending === 0
+          }
         />
       </div>
     </AppShell>

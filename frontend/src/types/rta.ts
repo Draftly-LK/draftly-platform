@@ -499,6 +499,150 @@ export interface ApiPageInfo {
   limit: number;
 }
 
+/** Canonical register wire contract; values and immutable lineage are form-free. */
+export type ApiFactValue = string | number | boolean | null;
+export interface ApiFactEvidenceInput {
+  sourceFileId: string;
+  pageNumber: number;
+  sourceSha256: string;
+  extractionRunId?: string | null;
+  detectedDocumentId?: string | null;
+  candidateId?: string | null;
+  candidateVersion?: number | null;
+  snippet?: string;
+}
+export interface ApiFactEvidence {
+  id: string;
+  sourceFileId: string;
+  detectedDocumentId: string | null;
+  pageNumber: number;
+  sourceSha256: string;
+  extractionRunId: string | null;
+  supportingText: string | null;
+  pageText: string | null;
+  precision: "page" | "text";
+  candidateId: string | null;
+  candidateVersion: number | null;
+  boundingBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    coordinateSpace: string;
+  } | null;
+}
+export interface ApiMatterFact {
+  id: string;
+  matterId: string;
+  factTypeId: string;
+  fieldKey: string | null;
+  labelKey: string;
+  value: ApiFactValue;
+  originalValue: ApiFactValue;
+  status:
+    | "EXTRACTED_CANDIDATE"
+    | "CORROBORATED"
+    | "CONFLICTED"
+    | "REVIEW_REQUIRED"
+    | "LAWYER_CONFIRMED"
+    | "LOCKED_FOR_FORM"
+    | "REJECTED"
+    | "SUPERSEDED";
+  origin: "legacy" | "machine" | "lawyer";
+  modelReportedConfidence: number | null;
+  evidence: ApiFactEvidence[];
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  version: number;
+  createdAt: string;
+  transactionId: string | null;
+  subjectId: string | null;
+  scopeStatus: "legacy-unassigned" | "unassigned" | "assigned";
+  evidenceStale: boolean;
+  sourceCandidateId: string | null;
+  manualReason: string | null;
+  lineageId: string | null;
+  supersedesFactId: string | null;
+  supersededByFactId: string | null;
+  scopeToken: string | null;
+  conflictFactIds: string[];
+}
+export interface ApiFactDecision {
+  id: string;
+  targetId: string;
+  decision: string;
+  reviewerId: string;
+  reviewerRole: string;
+  createdAt: string;
+  previousValue: ApiFactValue;
+  newValue: ApiFactValue;
+  reason: string | null;
+  resolvedFactIds: string[];
+}
+export interface ApiFactHistory {
+  items: ApiMatterFact[];
+  decisions: ApiFactDecision[];
+  page: ApiPageInfo;
+}
+export type TransactionRole =
+  | "transferor"
+  | "transferee"
+  | "owner"
+  | "donor"
+  | "donee"
+  | "lessor"
+  | "lessee"
+  | "mortgagor"
+  | "mortgagee"
+  | "other";
+export interface ApiMatterSubject {
+  id: string;
+  userId: string;
+  matterId: string;
+  kind: "party" | "parcel";
+  ordinal: number;
+}
+export interface ApiMatterTransaction {
+  id: string;
+  userId: string;
+  matterId: string;
+  ordinal: number;
+  version: number;
+  parcelSubjectIds: string[];
+  partyRoles: { subjectId: string; role: TransactionRole }[];
+}
+export interface ApiFactType {
+  id: string;
+  fieldKey: string | null;
+  labelKey: string;
+  subject:
+    | "MATTER"
+    | "REGIME"
+    | "TITLE"
+    | "PARCEL"
+    | "PARTY"
+    | "INSTRUMENT"
+    | "INTEREST"
+    | "ORGANIZATION"
+    | "PROCESS";
+  valueKind:
+    | "TEXT"
+    | "IDENTIFIER"
+    | "ENUM"
+    | "DATE"
+    | "MONEY"
+    | "AREA"
+    | "BOOLEAN"
+    | "COUNT";
+  critical: boolean;
+  negativeRequiresSearchEvidence: boolean;
+  options: { value: string; labelKey: string }[];
+}
+export interface ApiFactTypes {
+  versions: Record<string, string>;
+  factTypes: ApiFactType[];
+}
+
 /** Mirrors `MatterListRead`. */
 export interface ApiRtaMatterList {
   items: ApiRtaMatter[];
