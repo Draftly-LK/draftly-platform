@@ -35,7 +35,7 @@ import draftly.case_retrieval.index as case_index
 import draftly.retrieval.index as statute_index
 from fastapi import HTTPException, Query
 from fastapi.responses import JSONResponse
-from legal_release import FrozenRelease, artifact_file
+from legal_release import ACTIVE, REQUIRED, TRUST, FrozenRelease, artifact_file
 
 FINGERPRINTS = Path(statute_index.INDEX_DIR).parent / "frozen-fingerprints.json"
 
@@ -43,7 +43,13 @@ _recorded = json.loads(FINGERPRINTS.read_text(encoding="utf-8"))
 _statutes: str = _recorded["statutes"]
 _cases: str = _recorded["cases"]
 _legal_record = artifact_file(statute_index)
-_legal = FrozenRelease(_legal_record) if _legal_record.exists() else None
+# Missing governed material is an unavailable image, never a legacy downgrade.
+# Broken supplied symlinks also express intent and must fail validation. This
+# executes before importing the native API, so its unfiltered routes cannot load.
+_governed = any(
+    path.exists() or path.is_symlink() for path in (_legal_record, REQUIRED, TRUST, ACTIVE)
+)
+_legal = FrozenRelease(_legal_record) if _governed else None
 
 statute_index.corpus_fingerprint = lambda documents: _statutes
 case_index.corpus_fingerprint = lambda rows: _cases

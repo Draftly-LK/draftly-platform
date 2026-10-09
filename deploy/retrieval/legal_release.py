@@ -31,6 +31,7 @@ MODULE_HASHES = {
 }
 BOUNDARY = "draftly-retrieval-eb47114a-platform-v1"
 TRUST = Path("/app/trust/legal-release.pub")
+REQUIRED = Path("/app/trust/legal-release.required")
 ACTIVE = Path("/run/draftly/legal-active-release")
 GAZETTE = re.compile(r"\bGazette(?:\s+Extraordinary)?\s*(?:No\.?\s*)?(\d{3,5}/\d{1,3})", re.I)
 
@@ -146,6 +147,9 @@ def build(source_root=Path("/release-input"), trust=Path("/run/secrets/legal_rel
     # Public trust material comes ONLY from the independent build secret, never
     # from the release input. No signing material or active-release grant is created.
     TRUST.write_bytes(key)
+    # This immutable image marker records required governance, not permission to
+    # publish. The independently mounted ACTIVE grant is still compulsory.
+    REQUIRED.write_text("legal-index-v2\n", encoding="utf-8")
 
 
 def statute_fingerprint():

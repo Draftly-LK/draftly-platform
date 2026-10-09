@@ -34,6 +34,13 @@ section parser/index builder, preserving gazette kinds. It records the signed
 source envelope and actual index SHA in a `legal-index-v2` attestation. Original
 source files are absent from runtime. Runtime verifies signature/policy with the
 build-trusted public key and verifies the actual index hash and pointer.
+The builder also installs `/app/trust/legal-release.required`, copied by the
+existing trust-directory image step. This marker records mandatory governance;
+it grants no permission to serve. Presence of this marker, the independent trust
+key, current-release state or the governed artifact selects governed startup.
+Missing or broken frozen artifact or trust then refuses startup before native API
+routes load; unavailable current permission still returns 503 through the governed
+request gate. Only an image with none of those inputs selects compatible legacy mode.
 
 Serving a governed image additionally requires a read-only operator mount at
 `/run/draftly/legal-active-release` containing its exact `legal-index-v2` identity.
