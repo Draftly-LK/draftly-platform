@@ -23,21 +23,21 @@ repository gates. Synthetic fixtures only. Never commit or push to main.
 
 ## Tasks and commit boundaries
 
-- [ ] Persist operational tasks, suggestions and append-only history with an
+- [x] Persist operational tasks, suggestions and append-only history with an
   additive migration and task-owned authorized/versioned commands. Test isolation,
   concurrency, replay, source pins, completion and cancellation before implementing.
-- [ ] Project requirements, document/fact/check/form/event state and custom tasks
+- [x] Project requirements, document/fact/check/form/event state and custom tasks
   into six display groups, known leaf counts, assessment state and next action.
   Test empty/unknown, stale, duplicate and incomplete dependencies.
-- [ ] Connect existing agent follow-through to durable proposals. Test duplicate
+- [x] Connect existing agent follow-through to durable proposals. Test duplicate
   events, accepted/dismissed proposals and invalidated source versions.
-- [ ] Build Overview progress, grouped tasks, task creation, suggestions, actions
+- [x] Build Overview progress, grouped tasks, task creation, suggestions, actions
   and history. Preserve the matter assistant behind an expandable section. Test
   mutations, failed requests, refresh, obsolete responses and bilingual layout.
-- [ ] Connect shared transaction setup on Checks, explicit requirement dimensions,
+- [x] Connect shared transaction setup on Checks, explicit requirement dimensions,
   live evidence actions, neutral issue gates and truthful shell completion. Test
   missing associations, explicit selection, stale versions and unresolved evidence.
-- [ ] Run synthetic browser acceptance and accessibility checks; record durable
+- [x] Run synthetic browser acceptance and accessibility checks; record durable
   review evidence. Obtain independent review, resolve important findings and run
   final gates before pushing the feature branch and opening a PR.
 
