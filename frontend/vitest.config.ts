@@ -29,12 +29,18 @@ export default defineConfig({
       exclude: ["src/**/*.test.{ts,tsx}", "src/**/*.d.ts", "src/test/**"],
       // Measured 2026-09-19: overall lines 27.0, branches 85.8, functions 76.9;
       // lib lines 93.3, branches 91.3, functions 92.2; components lines 3.1.
+      // Global branch floor set to 75% at the product owner's request (2026-10-09).
       thresholds: {
         lines: 26,
         statements: 26,
-        branches: 84,
+        branches: 75,
         functions: 75,
-        "src/lib/**": { lines: 80, statements: 80, branches: 90, functions: 91 },
+        "src/lib/**": {
+          lines: 80,
+          statements: 80,
+          branches: 90,
+          functions: 91,
+        },
         "src/components/**": { lines: 2, statements: 2 },
       },
     },
