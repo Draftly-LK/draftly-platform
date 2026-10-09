@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-  # deploy.yml runs this same workflow first on every push to prod.
+  # Deployment and manual main-to-prod promotion reuse these same checks.
   workflow_call:
 
 permissions:
@@ -169,6 +169,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: shellcheck deploy scripts
         run: shellcheck -S error deploy/*.sh
+      - name: Test production promotion guards
+        run: python3 -m unittest discover -s deploy/tests -p test_promote_prod.py -v
       - name: Validate the compose stack
         run: |
           set -euo pipefail

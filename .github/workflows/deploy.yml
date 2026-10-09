@@ -4,7 +4,7 @@ name: Deploy
 #
 #   push to prod  ->  CI (same gates as pull requests)  ->  deploy  ->  smoke test
 #
-# `prod` is the deployment branch: merging into it is the only way to ship. The
+# `prod` is the deployment branch: promoting into it is the way to ship. The
 # job logs in over SSH with a key that can run exactly one server-side script
 # (deploy/ci-deploy.sh): "deploy <sha>" or "rollback". The server builds the
 # images, runs migrations, starts the stack and health-checks it; a failed
@@ -24,6 +24,10 @@ on:
         type: choice
         options: [deploy, rollback]
         default: deploy
+      expected_sha:
+        description: Optional exact commit required by a promotion request
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -35,16 +39,20 @@ concurrency:
 
 jobs:
   ci:
-    if: github.event_name == 'push'
+    # Check the exact prod commit even on manual deploys. Rollback remains usable
+    # when the current release cannot pass CI.
+    if: >-
+      github.ref == 'refs/heads/prod' &&
+      (github.event_name == 'push' || inputs.action == 'deploy')
     uses: ./.github/workflows/ci.yml
 
   deploy:
     needs: [ci]
-    # A push deploys only after CI is green. A manual run skips CI (the ci job
-    # is skipped) and is only allowed from prod.
+    # Deploy only after CI is green; manual rollback can skip CI.
     if: >-
       !cancelled() && github.ref == 'refs/heads/prod' &&
-      (github.event_name == 'workflow_dispatch' || needs.ci.result == 'success')
+      ((github.event_name == 'workflow_dispatch' && inputs.action == 'rollback') ||
+       needs.ci.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment:
@@ -54,10 +62,18 @@ jobs:
       APP_URL: ${{ vars.APP_URL || 'https://app.draftly.adlahiru.com' }}
       LANDING_URL: ${{ vars.LANDING_URL || 'https://draftly.adlahiru.com' }}
       ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'deploy' }}
+      EXPECTED_SHA: ${{ inputs.expected_sha }}
       VPS_HOST: ${{ secrets.VPS_HOST }}
       VPS_USER: ${{ secrets.VPS_USER }}
       VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: env.ACTION != 'rollback'
+        with:
+          persist-credentials: false
+      - name: Check the requested release commit
+        if: env.ACTION != 'rollback'
+        run: bash deploy/check-release-sha.sh
       - name: Set up SSH
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}

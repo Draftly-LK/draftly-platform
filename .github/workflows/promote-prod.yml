@@ -1,0 +1,47 @@
+name: Promote main to prod
+run-name: Manually promote main (${{ github.sha }}) to production
+
+# Only a person clicking Run workflow initiates promotion; main pushes do not.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote-main-to-prod
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    if: github.ref == 'refs/heads/main' && github.repository == 'Draftly-LK/draftly-platform'
+    uses: ./.github/workflows/ci.yml
+
+  promote:
+    needs: [ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+    env:
+      PROMOTION_SHA: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Fast-forward prod to checked main
+        run: bash deploy/promote-prod.sh
+      - name: Start production deployment
+        run: gh workflow run deploy.yml --ref prod -f action=deploy -f expected_sha="$PROMOTION_SHA"
+      - name: Record deployment handoff
+        run: |
+          {
+            printf '## Production deployment requested\n\n'
+            printf 'Promoted main commit: `%s`\n\n' "$PROMOTION_SHA"
+            printf '[Follow the Deploy workflow](https://github.com/%s/actions/workflows/deploy.yml).\n\n' "$GH_REPO"
+            printf 'This run confirms promotion and dispatch, not a completed deployment.\n'
+            printf 'Deploy checks prod with CI, deploys to the VPS, then runs public smoke tests.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
