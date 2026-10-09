@@ -69,14 +69,28 @@ root login. Once you log in with a key, set `PasswordAuthentication no` and
 ## Branches and how a change reaches production
 
 ```text
-dev/<name>/<topic>  --PR-->  main  --PR-->  prod  --push triggers-->  CI -> deploy -> smoke test
+dev/<name>/<topic> --PR--> main --manual promotion + CI--> prod --Deploy--> CI -> deploy -> smoke test
 ```
 
 - `main` is the integration branch. Nothing is committed or pushed to it
   directly; changes arrive by pull request.
 - `prod` is the **deployment branch**. Every push to `prod` runs
-  `.github/workflows/deploy.yml`. Promote by opening a pull request from `main`
-  into `prod` (or a hotfix branch into `prod`).
+  `.github/workflows/deploy.yml`. Promote using **Actions → Promote main to
+  prod → Run workflow**, selecting **main**. This runs CI on the selected main
+  commit, checks that main has not advanced, and fast-forwards prod without a
+  merge commit or force push. A diverged prod requires reconciliation by pull
+  request. Promotion is never triggered automatically by a push to main.
+- Promotion uses `GITHUB_TOKEN` with job-scoped `contents: write` and
+  `actions: write`. Its push does not trigger a push workflow, so it explicitly
+  dispatches **Deploy** on prod. That separate run checks the prod commit again
+  and rejects a commit that differs from the requested promotion SHA before
+  SSH deployment. It reports deployment/smoke-test results; promotion success alone does not
+  mean the site has deployed. If dispatch fails after sync, rerun promotion or
+  manually run Deploy on prod.
+- A run promotes the main snapshot selected when **Run workflow** is clicked.
+  It rechecks live main before pushing prod; if main advances after that final
+  check, the tested snapshot can still ship. GitHub provides no atomic update of
+  both refs here. Later main changes need another manual promotion.
 - Deploy sequence on each push to `prod`:
   1. `ci.yml` runs (frontend typecheck, lint, tests, build; backend lock, ruff,
      mypy, pytest; landing tests; Docker image builds; compose, Caddyfile and
@@ -89,7 +103,8 @@ dev/<name>/<topic>  --PR-->  main  --PR-->  prod  --push triggers-->  CI -> depl
      If any step fails, the previous images are put back automatically.
   4. The workflow smoke-tests the public URLs. If that fails, it rolls back.
 - Manual runs: Actions, Deploy, "Run workflow" on branch `prod`, then choose
-  `deploy` (redeploy the tip of `prod`) or `rollback`.
+  `deploy` (check CI and redeploy the tip of `prod`) or `rollback` (skip CI and
+  restore the previous release).
 
 ## One-time GitHub setup
 
@@ -118,6 +133,10 @@ here. Repository Settings, then:
    and `deploy-config`, and block force pushes. GitHub protection is not
    reliable on this private organisation repository, so agents also follow the
    no-direct-push rule in `CLAUDE.md`.
+   Manual promotion also needs the repository's rules to permit the workflow
+   actor to fast-forward `prod`. If a rule requires a PR without an allowed
+   automation exception, promotion fails; do not disable protection to bypass
+   it. Continue using a main-to-prod PR in that configuration.
 4. **Variables** (optional): `APP_URL` and `LANDING_URL` if the hostnames change.
 
 ## Secrets: what exists and where
