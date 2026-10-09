@@ -237,6 +237,34 @@ function DraftEditorScreenContent({ matterId, source }: { matterId: string; sour
         </div>
       )}
 
+      <div className="px-6 py-3 text-sm">
+        <Link className="underline" href={`/matters/${matterId}/facts`}>
+          {tRoot("formScope.openRegister")}
+        </Link>
+        {" · "}
+        <Link className="underline" href={`/matters/${matterId}/documents`}>
+          {tRoot("formScope.openInputs")}
+        </Link>
+        {" · "}
+        <Link className="underline" href={`/matters/${matterId}/drafts`}>
+          {tRoot("formScope.refresh")}
+        </Link>
+        {form.scope && (
+          <p className="text-muted-ink mt-2">
+            {tRoot("formScope.pinned", {
+              version: form.scope.associationVersion,
+            })}
+          </p>
+        )}
+        {form.predecessorFormId && (
+          <Link
+            className="underline"
+            href={`/matters/${matterId}/drafts/${form.predecessorFormId}`}
+          >
+            {tRoot("formScope.previous")}
+          </Link>
+        )}
+      </div>
       {gazette ? (
         <GazetteWorkspace
           form={form}

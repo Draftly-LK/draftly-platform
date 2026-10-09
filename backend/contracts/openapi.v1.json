@@ -3755,6 +3755,17 @@
             "title": "Lawyerauthoredallowed",
             "type": "boolean"
           },
+          "missingCause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missingcause"
+          },
           "order": {
             "title": "Order",
             "type": "integer"
@@ -3877,6 +3888,64 @@
         "title": "FormFieldRead",
         "type": "object"
       },
+      "FormScopeRead": {
+        "additionalProperties": false,
+        "properties": {
+          "associationVersion": {
+            "minimum": 1.0,
+            "title": "Associationversion",
+            "type": "integer"
+          },
+          "parcelSubjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parcelsubjectid"
+          },
+          "transactionId": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Transactionid",
+            "type": "string"
+          },
+          "transfereeSubjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transfereesubjectid"
+          },
+          "transferorSubjectId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transferorsubjectid"
+          }
+        },
+        "required": [
+          "transactionId",
+          "associationVersion"
+        ],
+        "title": "FormScopeRead",
+        "type": "object"
+      },
       "FragmentRangeInput": {
         "additionalProperties": false,
         "properties": {
@@ -3966,6 +4035,28 @@
         "additionalProperties": false,
         "description": "Nothing legal is accepted from the client.\n\n``templateId`` selects between the templates the *confirmed subtype* already\npermits — the prescribed instrument and its operational companions. It can\nnever introduce one the subtype does not select (§9.1).",
         "properties": {
+          "predecessorFormId": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessorformid"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormScopeRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "templateId": {
             "anyOf": [
               {
@@ -4074,12 +4165,33 @@
             "title": "Namespace",
             "type": "string"
           },
+          "predecessorFormId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessorformid"
+          },
           "preflight": {
             "$ref": "#/components/schemas/PreflightRead"
           },
           "rulePackVersion": {
             "title": "Rulepackversion",
             "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormScopeRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "staleReason": {
             "anyOf": [
@@ -4199,9 +4311,30 @@
             "title": "Matterid",
             "type": "string"
           },
+          "predecessorFormId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predecessorformid"
+          },
           "rulePackVersion": {
             "title": "Rulepackversion",
             "type": "string"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FormScopeRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "staleReason": {
             "anyOf": [
@@ -12953,6 +13086,23 @@
           },
           {
             "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          },
+          {
+            "in": "header",
             "name": "If-Match",
             "required": false,
             "schema": {
@@ -15794,6 +15944,23 @@
             "schema": {
               "title": "Matter Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
             }
           }
         ],

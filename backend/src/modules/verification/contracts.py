@@ -44,6 +44,7 @@ class FactTierSummary:
     #: Lossless eligible values. Consumers must select an explicit scope.
     scoped_confirmed: tuple[ConfirmedFactValue, ...] = ()
     scoped_conflicts: tuple[tuple[str | None, str | None, str], ...] = ()
+    scoped_gaps: tuple[tuple[str | None, str | None, str, str], ...] = ()
 
 
 class ConfirmedFactReadPort(Protocol):

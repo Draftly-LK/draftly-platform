@@ -345,6 +345,16 @@ def evaluate_approval_gate(
     mappings = {mapping.field_id: mapping for mapping in template.field_mappings}
     bound = {binding.field_id: binding for binding in snapshot.critical_fact_bindings}
     items: list[ApprovalGateItem] = []
+    if not snapshot.scope_current:
+        items.append(_item(ApprovalGateCode.FORM_STALE, snapshot.form_id))
+    items.extend(
+        _item(ApprovalGateCode.FORM_NOT_REVIEWABLE, field_id)
+        for field_id in snapshot.unreviewed_field_ids
+    )
+    items.extend(
+        _item(ApprovalGateCode.FORM_STALE, field_id)
+        for field_id in superseded_bindings(snapshot, template, facts)
+    )
 
     for field_id in snapshot.unresolved_field_ids:
         mapping = mappings.get(field_id)
@@ -470,7 +480,16 @@ def superseded_bindings(
         mapping = mappings.get(binding.field_id)
         if mapping is None or mapping.fact_type_id is None:
             continue
-        current = facts.confirmed.get(mapping.fact_type_id)
+        if snapshot.scope is not None:
+            matches = [
+                value
+                for value in facts.scoped_confirmed
+                if value.fact_id == binding.fact_id
+                and value.transaction_id == snapshot.scope.transaction_id
+            ]
+            current = matches[0] if len(matches) == 1 and snapshot.scope_current else None
+        else:
+            current = facts.confirmed.get(mapping.fact_type_id)
         if (
             current is None
             or current.fact_id != binding.fact_id

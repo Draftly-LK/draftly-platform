@@ -16,6 +16,17 @@ from src.modules.content_governance.contracts import GeneratedFormState
 
 
 @dataclass(frozen=True)
+class FormScope:
+    """Explicit selections; the association revision is part of the snapshot."""
+
+    transaction_id: str
+    association_version: int
+    parcel_subject_id: str | None = None
+    transferor_subject_id: str | None = None
+    transferee_subject_id: str | None = None
+
+
+@dataclass(frozen=True)
 class BoundFact:
     """One canonical fact bound into a form, at the version that was bound."""
 
@@ -53,6 +64,9 @@ class FormSnapshot:
     #: approval certifies; a critical binding is (§9.3).
     critical_fact_bindings: tuple[BoundFact, ...] = field(default_factory=tuple)
     unresolved_field_ids: tuple[str, ...] = field(default_factory=tuple)
+    scope: FormScope | None = None
+    scope_current: bool = True
+    unreviewed_field_ids: tuple[str, ...] = ()
 
 
 class GeneratedFormReadPort(Protocol):

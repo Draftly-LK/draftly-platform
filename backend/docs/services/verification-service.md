@@ -1,5 +1,10 @@
 # verification-service — implementation design
 
+The confirmed-fact read contract also exposes `scoped_gaps`, containing only
+transaction/subject/type references and an unreviewed, stale or unassigned cause.
+This diagnostic metadata supplies scoped form gaps; it does not promote a
+candidate or change the conservative legacy `confirmed` projection.
+
 Companion to `backend/backend-implementation-plan-v0.md`, `document-service.md`,
 `document-processing.md`, and `memory-service.md`. This service is the
 **authoritative fact tier** — the gate where a machine candidate becomes a

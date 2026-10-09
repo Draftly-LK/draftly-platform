@@ -555,6 +555,22 @@ class SqlConfirmedFactReader:
             has_current_search_evidence=SEARCH_EVIDENCE_FACT_TYPE_ID in confirmed,
             scoped_confirmed=tuple(scoped),
             scoped_conflicts=tuple(scoped_conflicts),
+            scoped_gaps=tuple(
+                (
+                    f.transaction_id,
+                    f.subject_id,
+                    f.fact_type_id,
+                    "stale"
+                    if f.evidence_stale
+                    else "unassigned"
+                    if f.scope_status == "unassigned"
+                    else "unreviewed",
+                )
+                for f in facts
+                if f.is_live
+                and f.status.value != "REJECTED"
+                and (f.evidence_stale or f.scope_status == "unassigned" or not f.is_confirmed)
+            ),
         )
 
 

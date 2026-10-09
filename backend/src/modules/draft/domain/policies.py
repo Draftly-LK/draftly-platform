@@ -867,6 +867,7 @@ def draft_artifact_hash(
     rule_pack_version: str,
     subtype_id: str,
     fields: Iterable[GeneratedFormField],
+    scope: dict[str, Any] | None = None,
 ) -> str:
     """A digest over the binding record, not over a rendered file.
 
@@ -875,7 +876,7 @@ def draft_artifact_hash(
     without keeping every rendered artifact: two forms with the same hash bound
     the same fact versions of the same template.
     """
-    payload = {
+    payload: dict[str, Any] = {
         "templateId": template_id,
         "templateVersion": template_version,
         "rulePackVersion": rule_pack_version,
@@ -895,5 +896,7 @@ def draft_artifact_hash(
             for form_field in sorted(fields, key=lambda f: (f.order, f.field_id))
         ],
     }
+    if scope is not None:
+        payload["scope"] = scope
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
     return f"sha256:{hashlib.sha256(encoded).hexdigest()}"

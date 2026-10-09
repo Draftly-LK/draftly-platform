@@ -6,14 +6,24 @@ import { subtypeLabelKey } from "@/lib/rta/taxonomy";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { isApiEnabled, type TokenProvider, apiErrorMessage } from "@/lib/api/client";
+import {
+  isApiEnabled,
+  type TokenProvider,
+  apiErrorMessage,
+} from "@/lib/api/client";
+import { FormScopeSelector } from "@/components/editor/form-scope-selector";
 import { generateForm, listForms } from "@/lib/api/drafts";
 import { getMatter } from "@/lib/api/matters";
 import { useTokenProvider } from "@/lib/api/use-token-provider";
 import { DEMO_GAZETTE_FORMS } from "@/lib/gazette-forms/demo-forms";
 import { useDemoStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import type { ApiGeneratedFormSummary, ApiRtaMatter, GeneratedFormState } from "@/types/rta";
+import type {
+  ApiFormScope,
+  ApiGeneratedFormSummary,
+  ApiRtaMatter,
+  GeneratedFormState,
+} from "@/types/rta";
 import { AppShell } from "@/components/shell/app-shell";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
@@ -75,6 +85,9 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [scope, setScope] = useState<ApiFormScope | null>(null);
+  const [predecessor, setPredecessor] = useState<string | null>(null);
+  const tScope = useTranslations("formScope");
 
   // Demo fallback
   const allDrafts = useDemoStore((state) => state.drafts);
@@ -121,13 +134,18 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
     setGenerating(true);
     setError(null);
     try {
-      const newForm = await generateForm(getToken, matterId);
+      if (!scope) return;
+      const newForm = await generateForm(getToken, matterId, {
+        templateId: "reg_2022_form_08",
+        scope,
+        ...(predecessor ? { predecessorFormId: predecessor } : {}),
+      });
       router.push(`/matters/${matterId}/drafts/${newForm.id}`);
     } catch (cause) {
       setError(apiErrorMessage(cause, t("generationError")));
       setGenerating(false);
     }
-  }, [getToken, matterId, isDemoMode, router, t]);
+  }, [getToken, matterId, isDemoMode, router, t, scope, predecessor]);
 
   if (isDemoMode) {
     return (
@@ -150,7 +168,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
               <p className="text-muted-ink">{t("noDrafts")}</p>
             </div>
           ) : (
-            <div className="border-border bg-surface overflow-x-auto rounded-card border">
+            <div className="border-border bg-surface rounded-card overflow-x-auto border">
               <table className="w-full min-w-[900px] border-collapse whitespace-nowrap text-left">
                 <thead className="bg-canvas text-muted-ink text-xs">
                   <tr className="border-border h-10 border-b">
@@ -186,7 +204,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                       </td>
                       <td className="px-4">
                         <Link
-                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
+                          className="border-border-strong hover:bg-hover-bg rounded-control inline-flex min-h-8 items-center gap-2 border px-3"
                           href={`/matters/${matterId}/drafts/${draft.id}`}
                         >
                           {t("open")}
@@ -211,7 +229,11 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
         title={t("title")}
         description={t("description")}
         action={
-          <Button variant="primary" disabled={loading || generating} onClick={() => void handleGenerateForm()}>
+          <Button
+            variant="primary"
+            disabled={loading || generating || !scope}
+            onClick={() => void handleGenerateForm()}
+          >
             {generating ? (
               <LoaderCircle className="size-4 animate-spin" strokeWidth={1.5} />
             ) : (
@@ -223,16 +245,40 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
       />
 
       {error && (
-        <div className="mx-6 mt-6 flex gap-3 rounded border border-red bg-red-bg p-4 text-sm text-red">
-          <AlertCircle className="mt-0.5 size-5 shrink-0" strokeWidth={1.5} aria-hidden="true" />
+        <div className="border-red bg-red-bg text-red mx-6 mt-6 flex gap-3 rounded border p-4 text-sm">
+          <AlertCircle
+            className="mt-0.5 size-5 shrink-0"
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
           <p>{error}</p>
         </div>
       )}
 
       <div className="p-6">
+        {getToken && (
+          <FormScopeSelector
+            matterId={matterId}
+            getToken={getToken}
+            value={scope}
+            onChange={setScope}
+          />
+        )}
+        {predecessor && (
+          <p className="mb-3 text-sm">
+            {tScope("successorNotice")}{" "}
+            <Button onClick={() => setPredecessor(null)}>
+              {tScope("newIntent")}
+            </Button>
+          </p>
+        )}
         {loading ? (
-          <div className="flex items-center gap-2 text-muted-ink">
-            <LoaderCircle className="size-5 animate-spin" strokeWidth={1.5} aria-hidden="true" />
+          <div className="text-muted-ink flex items-center gap-2">
+            <LoaderCircle
+              className="size-5 animate-spin"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            />
             {t("loading")}
           </div>
         ) : forms.length === 0 ? (
@@ -240,7 +286,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
             <p className="text-muted-ink">{t("noDrafts")}</p>
           </div>
         ) : (
-          <div className="border-border bg-surface overflow-x-auto rounded-card border">
+          <div className="border-border bg-surface rounded-card overflow-x-auto border">
             <table className="w-full min-w-[900px] border-collapse whitespace-nowrap text-left">
               <thead className="bg-canvas text-muted-ink text-xs">
                 <tr className="border-border h-10 border-b">
@@ -254,32 +300,57 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
               <tbody>
                 {forms.map((form) => {
                   const StateIcon = FORM_STATE_ICONS[form.state];
-                  const formattedDate = new Date(form.createdAt).toLocaleDateString();
+                  const formattedDate = new Date(
+                    form.createdAt,
+                  ).toLocaleDateString();
                   return (
                     <tr
                       key={form.id}
                       className="border-border h-11 border-b last:border-b-0"
                     >
-                      <td className="px-4">{tRoot((matter?.subtypeId ? subtypeLabelKey(matter.subtypeId) : undefined) ?? "label.form")}</td>
+                      <td className="px-4">
+                        {tRoot(
+                          (matter?.subtypeId
+                            ? subtypeLabelKey(matter.subtypeId)
+                            : undefined) ?? "label.form",
+                        )}
+                      </td>
                       <td className="px-4 tabular-nums">v{form.formVersion}</td>
                       <td className="px-4">
-                        <span className={cn(
-                          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold",
-                          getFormStateStyles(form.state)
-                        )}>
-                          <StateIcon className="size-4" strokeWidth={1.5} aria-hidden="true" />
+                        <span
+                          className={cn(
+                            "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 py-1 text-xs font-semibold",
+                            getFormStateStyles(form.state),
+                          )}
+                        >
+                          <StateIcon
+                            className="size-4"
+                            strokeWidth={1.5}
+                            aria-hidden="true"
+                          />
                           {tRoot(`generatedFormState.${form.state}`)}
                         </span>
                       </td>
                       <td className="px-4 text-sm">{formattedDate}</td>
                       <td className="px-4">
                         <Link
-                          className="border-border-strong hover:bg-hover-bg inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
+                          className="border-border-strong hover:bg-hover-bg rounded-control inline-flex min-h-8 items-center gap-2 border px-3"
                           href={`/matters/${matterId}/drafts/${form.id}`}
                         >
                           {t("open")}
                           <ArrowRight className="size-4" strokeWidth={1.5} />
                         </Link>
+                        {form.templateId === "reg_2022_form_08" && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => {
+                              setPredecessor(form.id);
+                              setScope(null);
+                            }}
+                          >
+                            {tScope("refresh")}
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -325,15 +396,24 @@ function DemoGazetteForms({ matterId }: { matterId: string }) {
       <h2 className="mb-2 text-lg font-semibold">{t("gazetteForms")}</h2>
       <ul className="border-border-strong bg-surface divide-border divide-y rounded border">
         {forms.map((form) => (
-          <li key={form.id} className="flex min-h-11 flex-wrap items-center gap-3 px-4 py-2">
+          <li
+            key={form.id}
+            className="flex min-h-11 flex-wrap items-center gap-3 px-4 py-2"
+          >
             <span className="font-medium">{tRoot(form.titleKey)}</span>
-            <span className="text-muted-ink text-sm">{t("formNumber", { number: form.formNumber })}</span>
+            <span className="text-muted-ink text-sm">
+              {t("formNumber", { number: form.formNumber })}
+            </span>
             <Link
-              className="border-border-strong hover:bg-hover-bg ml-auto inline-flex min-h-8 items-center gap-2 rounded-control border px-3"
+              className="border-border-strong hover:bg-hover-bg rounded-control ml-auto inline-flex min-h-8 items-center gap-2 border px-3"
               href={`/matters/${matterId}/drafts/${form.id}`}
             >
               {t("open")}
-              <ArrowRight className="size-4" strokeWidth={1.5} aria-hidden="true" />
+              <ArrowRight
+                className="size-4"
+                strokeWidth={1.5}
+                aria-hidden="true"
+              />
             </Link>
           </li>
         ))}

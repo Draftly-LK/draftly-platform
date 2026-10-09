@@ -25,9 +25,10 @@ production rendering (§9.5).
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response
+from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.deps import get_request_context, require_if_match
@@ -40,6 +41,7 @@ from src.modules.draft.api.schemas import (
     FactCandidateRead,
     FieldDecisionRequest,
     FormFieldRead,
+    FormScopeRead,
     GeneratedFormListRead,
     GeneratedFormRead,
     GeneratedFormSummaryRead,
@@ -50,13 +52,20 @@ from src.modules.draft.api.schemas import (
     PreflightRead,
 )
 from src.modules.draft.application.draft_service import DraftService, FormFieldView, FormView
+from src.modules.draft.contracts import FormScope
 from src.modules.draft.domain.models import GeneratedForm, StaleReason
 from src.modules.draft.domain.policies import FieldDecisionAction, PreflightResult
 from src.modules.matter.contracts import MatterAccessSummary, require_rta_capability
 from src.modules.matter.domain.errors import MatterNotFoundError
+from src.platform.db.idempotency import (
+    IdempotencyKeyRequiredError,
+    SqlIdempotencyStore,
+    request_fingerprint,
+)
 from src.platform.db.session import get_db, get_uow
 from src.platform.db.unit_of_work import UnitOfWork
 from src.platform.errors import DomainRuleError
+from src.platform.ids import new_id
 from src.platform.request_context import RequestContext
 
 router = APIRouter(tags=["forms"])
@@ -117,10 +126,13 @@ def _stale_reason(raw: str | None) -> StaleReason | None:
         )
 
 
-def _to_field_read(view: FormFieldView) -> FormFieldRead:
+def _to_field_read(view: FormFieldView, missing_cause: str | None = None) -> FormFieldRead:
     form_field, mapping = view.field, view.mapping
     return FormFieldRead(
         id=form_field.id,
+        missing_cause=missing_cause
+        if form_field.is_unresolved or missing_cause == "stale"
+        else None,
         field_id=form_field.field_id,
         label_key=mapping.label_key,
         section_key=mapping.section_key,
@@ -213,10 +225,15 @@ def _to_form_read(view: FormView) -> GeneratedFormRead:
         approved_artifact_hash=form.approved_artifact_hash,
         approval_id=form.approval_id,
         stale_reason=form.stale_reason,
+        scope=FormScopeRead(**asdict(form.scope)) if form.scope else None,
+        predecessor_form_id=form.predecessor_form_id,
         # §9.5 — the recorded defects of the source text travel with the draft,
         # so a lawyer approving one sees the variance rather than discovering it.
         known_source_defect_keys=list(template.known_source_defect_keys),
-        fields=[_to_field_read(field_view) for field_view in view.fields],
+        fields=[
+            _to_field_read(field_view, form.missing_causes.get(field_view.field.field_id))
+            for field_view in view.fields
+        ],
         preflight=_to_preflight_read(view.preflight),
         created_at=form.created_at.isoformat(),
         updated_at=form.updated_at.isoformat(),
@@ -238,6 +255,8 @@ def _to_summary_read(form: GeneratedForm) -> GeneratedFormSummaryRead:
         approved_artifact_hash=form.approved_artifact_hash,
         approval_id=form.approval_id,
         stale_reason=form.stale_reason,
+        scope=FormScopeRead(**asdict(form.scope)) if form.scope else None,
+        predecessor_form_id=form.predecessor_form_id,
         created_at=form.created_at.isoformat(),
         updated_at=form.updated_at.isoformat(),
         version=form.version,
@@ -249,6 +268,7 @@ async def generate_form(
     matter_id: str,
     body: GenerateFormRequest,
     response: Response,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", max_length=255),
     ctx: RequestContext = Depends(get_request_context),
     service: DraftService = Depends(get_draft_service),
     session: AsyncSession = Depends(get_db),
@@ -263,6 +283,18 @@ async def generate_form(
     """
     _ = uow
     matter = await _authorize(ctx, matter_id, session, CAP_FORM_GENERATE)
+    if not idempotency_key:
+        raise IdempotencyKeyRequiredError()
+    store = SqlIdempotencyStore(session)
+    route = f"forms:create:{matter_id}"
+    digest = request_fingerprint(body.model_dump(mode="json"))
+    prior = await store.find(
+        user_id=ctx.actor_id, route=route, key=idempotency_key, request_hash=digest
+    )
+    if prior:
+        result = GeneratedFormRead.model_validate(prior)
+        response.headers["ETag"] = f'"{result.version}"'
+        return result
     view = await service.generate_form(
         user_id=ctx.actor_id,
         matter_id=matter_id,
@@ -271,9 +303,20 @@ async def generate_form(
         subtype_id=matter.subtype_id,
         subtype_decision_status=matter.subtype_decision_status,
         template_id=body.template_id,
+        scope=FormScope(**body.scope.model_dump()) if body.scope else None,
+        predecessor_form_id=body.predecessor_form_id,
+    )
+    result = _to_form_read(view)
+    await store.store(
+        record_id=new_id("idem"),
+        user_id=ctx.actor_id,
+        route=route,
+        key=idempotency_key,
+        request_hash=digest,
+        response=result.model_dump(mode="json", by_alias=True),
     )
     response.headers["ETag"] = f'"{view.form.version}"'
-    return _to_form_read(view)
+    return result
 
 
 @router.get("/matters/{matter_id}/forms", response_model=GeneratedFormListRead)
@@ -316,6 +359,7 @@ async def decide_field(
     form_id: str,
     body: FieldDecisionRequest,
     response: Response,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key", max_length=255),
     ctx: RequestContext = Depends(get_request_context),
     service: DraftService = Depends(get_draft_service),
     session: AsyncSession = Depends(get_db),
@@ -331,6 +375,20 @@ async def decide_field(
     _ = uow
     view = await service.get_form(user_id=ctx.actor_id, form_id=form_id)
     await _authorize(ctx, view.form.matter_id, session, CAP_FORM_FIELD_DECIDE)
+    if not idempotency_key:
+        raise IdempotencyKeyRequiredError()
+    store = SqlIdempotencyStore(session)
+    route = f"forms:decide:{form_id}"
+    digest = request_fingerprint(
+        {**body.model_dump(mode="json"), "expectedVersion": expected_version}
+    )
+    prior = await store.find(
+        user_id=ctx.actor_id, route=route, key=idempotency_key, request_hash=digest
+    )
+    if prior:
+        result = GeneratedFormRead.model_validate(prior)
+        response.headers["ETag"] = f'"{result.version}"'
+        return result
     updated = await service.decide_field(
         user_id=ctx.actor_id,
         form_id=form_id,
@@ -342,8 +400,17 @@ async def decide_field(
         value=body.value,
         reason=body.reason,
     )
+    result = _to_form_read(updated)
+    await store.store(
+        record_id=new_id("idem"),
+        user_id=ctx.actor_id,
+        route=route,
+        key=idempotency_key,
+        request_hash=digest,
+        response=result.model_dump(mode="json", by_alias=True),
+    )
     response.headers["ETag"] = f'"{updated.form.version}"'
-    return _to_form_read(updated)
+    return result
 
 
 @router.post("/forms/{form_id}/preflight", response_model=GeneratedFormRead)

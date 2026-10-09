@@ -631,6 +631,7 @@ def build_draft_service(session: AsyncSession) -> DraftService:
     from src.modules.audit.infrastructure.repository import SqlAuditRepository
     from src.modules.draft.application.draft_service import DraftService
     from src.modules.draft.infrastructure.repository import SqlGeneratedFormRepository
+    from src.modules.matter.infrastructure.scope_repository import SqlMatterScopeRepository
     from src.modules.matter.infrastructure.workflow_commands import (
         SqlMatterWorkflowCommandAdapter,
     )
@@ -640,6 +641,7 @@ def build_draft_service(session: AsyncSession) -> DraftService:
         session, SqlConfirmedFactReader(session), SqlMatterWorkflowCommandAdapter(session)
     )
     return DraftService(
+        scopes=SqlMatterScopeRepository(session),
         matter_lock=_build_document_matter_lock(session),
         repository=SqlGeneratedFormRepository(session),
         facts=facts,

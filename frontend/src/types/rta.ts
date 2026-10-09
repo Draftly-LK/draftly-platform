@@ -1140,6 +1140,14 @@ export interface ApiFormField {
   displayValue: string;
   renderedValue: string | null;
   unresolvedReason: string | null;
+  missingCause?:
+    | "absent"
+    | "unreviewed"
+    | "conflict"
+    | "stale"
+    | "unassigned"
+    | "unsupported"
+    | null;
   factId: string | null;
   factVersion: number | null;
   evidenceReferenceIds: string[];
@@ -1182,6 +1190,14 @@ export interface ApiPreflight {
 }
 
 /** Mirrors `GeneratedFormRead`. */
+export interface ApiFormScope {
+  transactionId: string;
+  associationVersion: number;
+  parcelSubjectId: string | null;
+  transferorSubjectId: string | null;
+  transfereeSubjectId: string | null;
+}
+
 export interface ApiGeneratedForm {
   id: string;
   matterId: string;
@@ -1198,6 +1214,8 @@ export interface ApiGeneratedForm {
   approvedArtifactHash: string | null;
   approvalId: string | null;
   staleReason: string | null;
+  scope?: ApiFormScope | null;
+  predecessorFormId?: string | null;
   /** §9.5 — the recorded defects of the source text travel with the draft. */
   knownSourceDefectKeys: string[];
   fields: ApiFormField[];
@@ -1221,6 +1239,8 @@ export interface ApiGeneratedFormSummary {
   approvedArtifactHash: string | null;
   approvalId: string | null;
   staleReason: string | null;
+  scope?: ApiFormScope | null;
+  predecessorFormId?: string | null;
   createdAt: string;
   updatedAt: string;
   version: number;

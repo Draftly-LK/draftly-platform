@@ -3320,5 +3320,35 @@
     "retry": "Refresh readiness",
     "open": "Open review",
     "evaluated": "Evaluated at {time}"
+  },
+  "formScope": {
+    "title": "Optional Form 8 draft",
+    "notice": "Choose the transaction, parcel and reviewed party roles for this draft. Missing selections stay unresolved. Drafting is optional and does not establish legal readiness.",
+    "transaction": "Transaction",
+    "choose": "Choose a transaction",
+    "transactionNumber": "Transaction {number}",
+    "parcel": "Parcel",
+    "transferor": "Transferor",
+    "transferee": "Transferee",
+    "unassigned": "Not selected",
+    "parcelNumber": "Parcel {number}",
+    "partyNumber": "Party {number}",
+    "unavailable": "The scope could not be loaded. Reload to try again.",
+    "renew": "Reload scope",
+    "openRegister": "Review information and associations",
+    "openInputs": "Open source inputs",
+    "refresh": "Create a successor draft",
+    "successorNotice": "This will create a new draft. Select its current scope; earlier snapshots and approvals remain in history.",
+    "newIntent": "Create separately",
+    "previous": "Open previous snapshot",
+    "pinned": "Association revision {version} is pinned to this snapshot.",
+    "causes": {
+      "absent": "No eligible information exists in this scope.",
+      "unreviewed": "Review this information in the canonical register.",
+      "conflict": "Conflicting information needs a lawyer's decision.",
+      "stale": "The source or association changed. Create a successor after review.",
+      "unassigned": "Select and review the subject or transaction role.",
+      "unsupported": "This field requires supported information or a separate human act."
+    }
   }
 }
