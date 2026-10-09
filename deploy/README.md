@@ -177,6 +177,13 @@ A failed build, migration or health check restores the previous images, and a
 failed public smoke test afterwards triggers a rollback. It can also be run by
 hand from the Actions tab (`deploy` or `rollback`).
 
+To sync and deploy `main` manually, open **Actions → Promote main to prod →
+Run workflow**, select **main**, and run it. CI must pass before `prod` is
+fast-forwarded. The workflow explicitly starts **Deploy**, which checks `prod`
+again before shipping; follow that separate run for deployment and smoke-test
+results. A changed `main` during CI or a diverged `prod` stops promotion.
+There is no automatic promotion on pushes to `main`.
+
 The production setup, including every secret and where it lives, is described
 in [PRODUCTION.md](PRODUCTION.md). In short, the one-time steps are:
 
