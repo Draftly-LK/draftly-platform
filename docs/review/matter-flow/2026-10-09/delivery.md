@@ -2,9 +2,11 @@
 
 Feature branch: `dev/codex/lawyer-led-matter-workflow`.
 [PR #98](https://github.com/Draftly-LK/draftly-platform/pull/98) was human-merged
-at 08:34:11 UTC on 2026-10-09 through `cc7c07e`. Remaining source/date changes,
-final fixes and delivery evidence belong to draft
-[PR #100](https://github.com/Draftly-LK/draftly-platform/pull/100).
+at 08:34:11 UTC on 2026-10-09 through `cc7c07e`.
+Source/date [PR #100](https://github.com/Draftly-LK/draftly-platform/pull/100)
+was also human-merged at 09:16:03 UTC through `96ec278`, before the final fix
+and delivery commits. Those remaining commits belong to draft
+[PR #101](https://github.com/Draftly-LK/draftly-platform/pull/101).
 This report distinguishes implemented behavior, retained verification, and
 acceptance that remains unverified. It is not a claim that every success
 criterion passed. A human merges the PR.
@@ -230,7 +232,7 @@ sequential final typecheck passed without a product/configuration workaround.
 The ordered feature commit table below follows first-parent history. Upstream
 PR97 Vision wiring, the human merge of PR98, and PR99 manual production promotion
 are preserved by `96ec278`; their external commits are not attributed to this
-implementation. The delivery documentation commit containing this report follows
+implementation. The delivery documentation commits containing this report follow
 the listed code commits. Objectives refer to the seven numbered requirements;
 "statutes" denotes the separately approved amendment/date extension.
 
