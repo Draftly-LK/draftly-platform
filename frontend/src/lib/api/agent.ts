@@ -36,6 +36,58 @@ export interface ApiAgentConversation {
   updatedAt: string;
 }
 
+export interface ApiResearchSelection {
+  transactionId: string;
+  associationVersion: number;
+}
+export interface ApiLegalDateContext {
+  currentDate: string;
+  transactionId: string | null;
+  associationVersion: number | null;
+  transactionDate: string | null;
+  factId: string | null;
+  factVersion: number | null;
+  reason:
+    | "reviewed-date"
+    | "date-missing"
+    | "date-conflict"
+    | "transaction-required";
+}
+export interface ApiLegalAuthority {
+  sourceId: string;
+  title: string;
+  reference: string;
+  kind: "statute" | "amendment" | "gazette";
+  sourceUrl: string;
+  sourceSha256: string;
+  publicationDate: string | null;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+  commencementKnown: boolean;
+  commencementSourceId: string | null;
+  commencementPage: number | null;
+  relationships: {
+    relation: "amends" | "supersedes" | "made-under" | "commences";
+    targetSourceId: string;
+    targetReference: string | null;
+    supportingPage: number | null;
+    reviewState: "unreviewed" | "reviewed";
+  }[];
+  releaseVersion: string;
+  reviewState: string;
+  currencyStatus: "current" | "superseded" | "reverify" | "unknown";
+}
+export interface ApiLegalContext {
+  kind: "selection" | "result";
+  transactionId: string | null;
+  associationVersion: number | null;
+  dateContext: ApiLegalDateContext | null;
+  authorities: ApiLegalAuthority[];
+  coverageGaps: string[];
+  sourceReleaseVersion: string | null;
+  unavailableReason: string | null;
+  visibility: "available" | "current-policy-unavailable";
+}
 export interface ApiAgentCitation {
   sourceId: string;
   sourceType:
@@ -46,6 +98,8 @@ export interface ApiAgentCitation {
     | "draft"
     | "party"
     | "statute"
+    | "amendment"
+    | "gazette"
     | "case"
     | "record";
   label: string;
@@ -58,6 +112,7 @@ export interface ApiAgentCitation {
   subjectId?: string | null;
   passage?: string | null;
   corpusVersion?: string | null;
+  authorityMetadata?: ApiLegalAuthority | null;
 }
 
 export interface ApiAgentMessage {
@@ -70,6 +125,7 @@ export interface ApiAgentMessage {
   pendingActionId: string | null;
   conversationId: string | null;
   citations: ApiAgentCitation[];
+  legalContext?: ApiLegalContext | null;
 }
 
 export interface ApiAgentMessagePage {
@@ -209,11 +265,12 @@ export function sendAgentMessage(
   matterId: string,
   content: string,
   idempotencyKey: string,
+  selection?: ApiResearchSelection | null,
 ): Promise<ApiAgentJob> {
   return apiFetch<ApiAgentJob>(`${AGENT_BASE(matterId)}/messages`, {
     method: "POST",
     getToken,
-    body: { content },
+    body: { content, ...(selection ?? {}) },
     headers: { "Idempotency-Key": idempotencyKey },
   });
 }

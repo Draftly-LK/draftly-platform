@@ -6,6 +6,14 @@ from src.modules.corpus_governance.domain.models import CorpusAudience, LegalSou
 
 def validate_source(source: LegalSource, audience: CorpusAudience) -> None:
     metadata, policy = source.metadata, source.policy
+    if bool(policy.quotation_hashes) != (policy.quotation_character_limit is not None):
+        raise PublicationDenied("Quotation hashes and character limit must be recorded together")
+    if policy.quotation == "blocked" and policy.quotation_hashes:
+        raise PublicationDenied("Blocked quotation cannot carry an excerpt grant")
+    if policy.quotation_character_limit is not None and (
+        type(policy.quotation_character_limit) is not int or policy.quotation_character_limit < 1
+    ):
+        raise PublicationDenied("Quotation character limit must be a positive integer")
     if (
         metadata.review_state != "approved"
         or source.source_use_class == "quarantined"

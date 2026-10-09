@@ -32,6 +32,8 @@ from src.modules.matter_agent.api.schemas import (
     CitationRead,
     ConversationRead,
     JobRead,
+    LegalAuthorityRead,
+    LegalContextRead,
     MessageListRead,
     MessageRead,
     PageInfo,
@@ -42,6 +44,7 @@ from src.modules.matter_agent.api.schemas import (
     SessionRead,
 )
 from src.modules.matter_agent.application.agent_service import AgentService
+from src.modules.matter_agent.domain.legal_context import authority_payload, legal_context_payload
 from src.modules.matter_agent.domain.models import (
     AgentConversation,
     AgentMessage,
@@ -116,6 +119,9 @@ def _to_message_read(message: AgentMessage) -> MessageRead:
         job_id=message.job_id,
         pending_action_id=message.pending_action_id,
         conversation_id=message.conversation_id,
+        legal_context=LegalContextRead.model_validate(legal_context_payload(message.legal_context))
+        if message.legal_context is not None
+        else None,
         citations=[
             CitationRead(
                 source_id=item.source_id,
@@ -130,6 +136,11 @@ def _to_message_read(message: AgentMessage) -> MessageRead:
                 subject_id=item.subject_id,
                 passage=item.passage,
                 corpus_version=item.corpus_version,
+                authority_metadata=LegalAuthorityRead.model_validate(
+                    authority_payload(item.authority_metadata)
+                )
+                if item.authority_metadata is not None
+                else None,
             )
             for item in message.citations
         ],
@@ -258,7 +269,9 @@ async def send_message(
         raise IdempotencyKeyRequiredError()
 
     store = SqlIdempotencyStore(session)
-    fingerprint = request_fingerprint({"matterId": matter_id, **body.model_dump(by_alias=True)})
+    fingerprint = request_fingerprint(
+        {"matterId": matter_id, **body.model_dump(by_alias=True, exclude_none=True)}
+    )
     async with UnitOfWork(session):
         await service.lock(ctx, matter_id)
         await service.get_or_create_session(ctx, matter_id)
@@ -270,7 +283,13 @@ async def send_message(
         )
         if replayed is not None:
             return JobRead.model_validate(replayed)
-        job = await service.start_turn(ctx, matter_id, content=body.content)
+        job = await service.start_turn(
+            ctx,
+            matter_id,
+            content=body.content,
+            transaction_id=body.transaction_id,
+            association_version=body.association_version,
+        )
         read = JobRead(job_id=job.job_id, state=job.state.value, tool_call_count=0)
         await store.store(
             record_id=f"idem_{uuid.uuid4().hex[:16]}",

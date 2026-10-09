@@ -361,11 +361,13 @@ follows reviewed incoming and outgoing edges and returns the original records,
 preserving edge direction, section references and supporting pages. No source
 bytes, file paths or approval commands cross this DTO boundary.
 
-This boundary does not yet wire a production index build or runtime reader.
-Consumers must enforce the recorded quotation/display/download policy separately;
-an indexing permission is not permission to emit a passage. The subsequent
-retrieval integration owns that wiring. Runtime quarantine requires withdrawing
-the affected release from service, not mutating a frozen release in place.
+The optional frozen producer now uses this validator before the existing engine
+accepts exact release-listed bytes. Runtime repeats shared signed metadata/policy
+validation and verifies the actual index attestation. Research enforces recorded
+quotation/display policy before emitting a passage; public catalogue validation
+uses its separate audience. No source release has been published by this wiring.
+Runtime quarantine requires withdrawing the independently mounted current release
+identity, not mutating a frozen release in place. Missing current state fails closed.
 See [the release operator contract](../legal-source-releases.md).
 
 A maintainer or legal reviewer can quarantine a source immediately. Quarantine:
@@ -433,3 +435,11 @@ retains the minimum non-content audit record.
 - [Sri Lanka Intellectual Property Act, No. 36 of 2003 on WIPO Lex](https://www.wipo.int/wipolex/en/legislation/details/6705)
 - CommonLII copyright policy and source-specific notices, to be archived in the
   rights-review record before relying on CommonLII material.
+
+## Conversation replay consumer (2026-10-09)
+
+Matter history now checks the public research availability port against exact
+stored source IDs and index releases before displaying or replaying supporting
+legal text. Unavailable, withdrawn or unknown current policy withholds that text
+without deleting historical references or dated result context. Source review
+metadata never grants legal applicability or draft readiness.

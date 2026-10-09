@@ -365,6 +365,10 @@ async def raw_search(
             SearchPassageRead.model_validate(p, from_attributes=True) for p in result.passages
         ],
         degraded_channels=result.degraded_channels,
+        corpus_version=result.corpus_version,
+        source_release_version=result.source_release_version,
+        authorities=result.authorities,
+        coverage_gaps=result.coverage_gaps,
     )
 
 

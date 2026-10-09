@@ -6,3 +6,4 @@ uvicorn[standard]==0.51.0
 numpy==2.5.1
 python-dotenv==1.2.2
 google-genai==2.12.1
+cryptography==50.0.0

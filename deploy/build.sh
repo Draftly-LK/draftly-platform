@@ -52,6 +52,10 @@ for target in "${targets[@]}"; do
       [ -d "$RETRIEVAL_CONTEXT/src/draftly/retrieval" ] || {
         echo "Research repo not found at $RETRIEVAL_CONTEXT (set RETRIEVAL_CONTEXT in deploy/.env)." >&2; exit 1; }
       embed_args=()
+      legal_args=()
+      if [ -n "${LEGAL_RELEASE_TRUST_FILE:-}" ]; then
+        legal_args=(--secret "id=legal_release_trust,src=$LEGAL_RELEASE_TRUST_FILE")
+      fi
       if [ "$(env_value RETRIEVAL_WITH_EMBEDDINGS)" = "1" ]; then
         GEMINI_API_KEY="$(require GEMINI_API_KEY)"; export GEMINI_API_KEY
         embed_args=(--build-arg WITH_EMBEDDINGS=1 --secret id=gemini_api_key,env=GEMINI_API_KEY)
@@ -59,6 +63,9 @@ for target in "${targets[@]}"; do
       docker buildx build --platform "$PLATFORM" --load -t "$RETRIEVAL_IMAGE" \
         -f "$DEPLOY_DIR/retrieval/Dockerfile" \
         --build-context "deploy=$DEPLOY_DIR/retrieval" \
+        --build-context "platform=$REPO_DIR/backend" \
+        --build-context "legal_sources=${LEGAL_RELEASE_CONTEXT:-$DEPLOY_DIR/retrieval/empty-release}" \
+        ${legal_args[@]+"${legal_args[@]}"} \
         ${embed_args[@]+"${embed_args[@]}"} \
         "$RETRIEVAL_CONTEXT"
       ;;

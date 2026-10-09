@@ -492,6 +492,258 @@
         "title": "AttestationRead",
         "type": "object"
       },
+      "AuthorityMetadata": {
+        "properties": {
+          "commencementKnown": {
+            "title": "Commencementknown",
+            "type": "boolean"
+          },
+          "commencementPage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commencementpage"
+          },
+          "commencementSourceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commencementsourceid"
+          },
+          "currencyStatus": {
+            "enum": [
+              "current",
+              "superseded",
+              "reverify",
+              "unknown"
+            ],
+            "title": "Currencystatus",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivefrom"
+          },
+          "effectiveTo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectiveto"
+          },
+          "kind": {
+            "enum": [
+              "statute",
+              "amendment",
+              "gazette"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "publicationDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicationdate"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/AuthorityRelationship"
+            },
+            "title": "Relationships",
+            "type": "array"
+          },
+          "releaseVersion": {
+            "title": "Releaseversion",
+            "type": "string"
+          },
+          "reviewState": {
+            "title": "Reviewstate",
+            "type": "string"
+          },
+          "sourceId": {
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "title": "Sourcesha256",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "title",
+          "reference",
+          "kind",
+          "sourceUrl",
+          "sourceSha256",
+          "publicationDate",
+          "effectiveFrom",
+          "effectiveTo",
+          "commencementKnown",
+          "commencementSourceId",
+          "commencementPage",
+          "relationships",
+          "releaseVersion",
+          "reviewState",
+          "currencyStatus"
+        ],
+        "title": "AuthorityMetadata",
+        "type": "object"
+      },
+      "AuthorityRelationship": {
+        "properties": {
+          "relation": {
+            "enum": [
+              "amends",
+              "supersedes",
+              "made-under",
+              "commences"
+            ],
+            "title": "Relation",
+            "type": "string"
+          },
+          "reviewState": {
+            "enum": [
+              "unreviewed",
+              "reviewed"
+            ],
+            "title": "Reviewstate",
+            "type": "string"
+          },
+          "supportingPage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supportingpage"
+          },
+          "targetReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetreference"
+          },
+          "targetSourceId": {
+            "title": "Targetsourceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relation",
+          "targetSourceId",
+          "targetReference",
+          "supportingPage",
+          "reviewState"
+        ],
+        "title": "AuthorityRelationship",
+        "type": "object"
+      },
+      "AuthorityRelationshipRead": {
+        "properties": {
+          "relation": {
+            "enum": [
+              "amends",
+              "supersedes",
+              "made-under",
+              "commences"
+            ],
+            "title": "Relation",
+            "type": "string"
+          },
+          "reviewState": {
+            "enum": [
+              "unreviewed",
+              "reviewed"
+            ],
+            "title": "Reviewstate",
+            "type": "string"
+          },
+          "supportingPage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supportingpage"
+          },
+          "targetReference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Targetreference"
+          },
+          "targetSourceId": {
+            "title": "Targetsourceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "relation",
+          "targetSourceId",
+          "reviewState"
+        ],
+        "title": "AuthorityRelationshipRead",
+        "type": "object"
+      },
       "BeneficialOwnerReadSchema": {
         "properties": {
           "evidenceRefs": {
@@ -1673,6 +1925,16 @@
       },
       "CitationRead": {
         "properties": {
+          "authorityMetadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LegalAuthorityRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "corpusVersion": {
             "anyOf": [
               {
@@ -5054,6 +5316,323 @@
         "title": "LawyerConfirmationRead",
         "type": "object"
       },
+      "LegalAuthorityRead": {
+        "properties": {
+          "commencementKnown": {
+            "title": "Commencementknown",
+            "type": "boolean"
+          },
+          "commencementPage": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commencementpage"
+          },
+          "commencementSourceId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commencementsourceid"
+          },
+          "currencyStatus": {
+            "enum": [
+              "current",
+              "superseded",
+              "reverify",
+              "unknown"
+            ],
+            "title": "Currencystatus",
+            "type": "string"
+          },
+          "effectiveFrom": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectivefrom"
+          },
+          "effectiveTo": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effectiveto"
+          },
+          "kind": {
+            "enum": [
+              "statute",
+              "amendment",
+              "gazette"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "publicationDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publicationdate"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/AuthorityRelationshipRead"
+            },
+            "title": "Relationships",
+            "type": "array"
+          },
+          "releaseVersion": {
+            "title": "Releaseversion",
+            "type": "string"
+          },
+          "reviewState": {
+            "enum": [
+              "discovered",
+              "provenance-recorded",
+              "rights-reviewed",
+              "content-reviewed",
+              "approved",
+              "quarantined",
+              "retired",
+              "unknown"
+            ],
+            "title": "Reviewstate",
+            "type": "string"
+          },
+          "sourceId": {
+            "title": "Sourceid",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "title": "Sourcesha256",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceId",
+          "title",
+          "reference",
+          "kind",
+          "sourceUrl",
+          "sourceSha256",
+          "commencementKnown",
+          "releaseVersion",
+          "reviewState",
+          "currencyStatus"
+        ],
+        "title": "LegalAuthorityRead",
+        "type": "object"
+      },
+      "LegalContextRead": {
+        "properties": {
+          "associationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
+          "authorities": {
+            "items": {
+              "$ref": "#/components/schemas/LegalAuthorityRead"
+            },
+            "title": "Authorities",
+            "type": "array"
+          },
+          "coverageGaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Coveragegaps",
+            "type": "array"
+          },
+          "dateContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LegalDateContextRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "default": "result",
+            "enum": [
+              "selection",
+              "result"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "sourceReleaseVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcereleaseversion"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          },
+          "unavailableReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailablereason"
+          },
+          "visibility": {
+            "default": "available",
+            "enum": [
+              "available",
+              "current-policy-unavailable"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "title": "LegalContextRead",
+        "type": "object"
+      },
+      "LegalDateContextRead": {
+        "properties": {
+          "associationVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
+          "currentDate": {
+            "format": "date",
+            "title": "Currentdate",
+            "type": "string"
+          },
+          "factId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factid"
+          },
+          "factVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factversion"
+          },
+          "reason": {
+            "enum": [
+              "reviewed-date",
+              "date-missing",
+              "date-conflict",
+              "transaction-required"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "transactionDate": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactiondate"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
+          }
+        },
+        "required": [
+          "currentDate",
+          "reason"
+        ],
+        "title": "LegalDateContextRead",
+        "type": "object"
+      },
       "LegalIssueListRead": {
         "properties": {
           "gates": {
@@ -5276,6 +5855,16 @@
             "title": "Id",
             "type": "string"
           },
+          "metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorityMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "reference": {
             "title": "Reference",
             "type": "string"
@@ -5295,7 +5884,8 @@
           "type": {
             "enum": [
               "statute",
-              "amendment"
+              "amendment",
+              "gazette"
             ],
             "title": "Type",
             "type": "string"
@@ -5797,6 +6387,8 @@
             "default": "statute",
             "enum": [
               "statute",
+              "amendment",
+              "gazette",
               "case"
             ],
             "title": "Authoritykind",
@@ -9368,6 +9960,32 @@
       },
       "SearchRead": {
         "properties": {
+          "authorities": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/AuthorityMetadata"
+            },
+            "title": "Authorities",
+            "type": "array"
+          },
+          "corpusVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corpusversion"
+          },
+          "coverageGaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Coveragegaps",
+            "type": "array"
+          },
           "degradedChannels": {
             "items": {
               "type": "string"
@@ -9381,6 +9999,17 @@
             },
             "title": "Passages",
             "type": "array"
+          },
+          "sourceReleaseVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcereleaseversion"
           }
         },
         "required": [
@@ -10778,6 +11407,16 @@
             ],
             "title": "Jobid"
           },
+          "legalContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LegalContextRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pendingActionId": {
             "anyOf": [
               {
@@ -10845,11 +11484,36 @@
         "additionalProperties": false,
         "description": "Requires ``Idempotency-Key`` (``api-conventions.md`` §4).",
         "properties": {
+          "associationVersion": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Associationversion"
+          },
           "content": {
             "maxLength": 10000,
             "minLength": 1,
             "title": "Content",
             "type": "string"
+          },
+          "transactionId": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transactionid"
           }
         },
         "required": [
@@ -13314,7 +13978,8 @@
                 {
                   "enum": [
                     "statute",
-                    "amendment"
+                    "amendment",
+                    "gazette"
                   ],
                   "type": "string"
                 },

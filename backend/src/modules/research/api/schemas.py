@@ -6,6 +6,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
+from src.modules.corpus_governance.contracts import AuthorityMetadata
+
 
 class CamelModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
@@ -57,7 +59,7 @@ class MessageCitationRead(CamelModel):
     page: int
     verified: bool
     # "case" citations are unverified research leads; earlier rows read as "statute".
-    authority_kind: Literal["statute", "case"] = "statute"
+    authority_kind: Literal["statute", "amendment", "gazette", "case"] = "statute"
     title: str | None = None
     reference: str | None = None
     source_url: str | None = None
@@ -132,6 +134,10 @@ class SearchPassageRead(CamelModel):
 class SearchRead(CamelModel):
     passages: list[SearchPassageRead]
     degraded_channels: list[str]
+    corpus_version: str | None = None
+    source_release_version: str | None = None
+    authorities: tuple[AuthorityMetadata, ...] = ()
+    coverage_gaps: list[str] = Field(default_factory=list)
 
 
 class ActionRequest(StrictCamel):

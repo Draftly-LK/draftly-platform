@@ -7,7 +7,8 @@
 # as the named context `deploy`. Normally built through ../build.sh; by hand:
 #
 #   docker build -f deploy/retrieval/Dockerfile \
-#     --build-context deploy=deploy/retrieval -t draftly-retrieval ../draftly
+#     --build-context deploy=deploy/retrieval --build-context platform=backend \
+#     --build-context legal_sources=deploy/retrieval/empty-release -t draftly-retrieval ../draftly
 #
 # The builder stage indexes the corpus and records its fingerprints; the runtime
 # stage carries only the code, the finished indexes and the small files read per
@@ -32,6 +33,8 @@ RUN pip install -r /tmp/requirements.txt && rm /tmp/requirements.txt
 COPY src/draftly/__init__.py src/draftly/__init__.py
 COPY src/draftly/retrieval src/draftly/retrieval
 COPY src/draftly/case_retrieval src/draftly/case_retrieval
+COPY --from=platform src/modules/corpus_governance src/modules/corpus_governance
+COPY --from=deploy legal_release.py ./
 
 
 FROM base AS builder
@@ -54,6 +57,8 @@ COPY scripts/case-law-statute-linking/output/resolved_links.csv \
 COPY scripts/case-law-information-extraction/output/rules_high_confidence.csv \
      scripts/case-law-information-extraction/output/
 RUN --mount=type=secret,id=gemini_api_key,required=false \
+    --mount=type=secret,id=legal_release_trust,required=false \
+    --mount=type=bind,from=legal_sources,target=/release-input \
     set -eu; \
     flags=""; \
     if [ "$WITH_EMBEDDINGS" = "1" ]; then \
@@ -61,20 +66,21 @@ RUN --mount=type=secret,id=gemini_api_key,required=false \
         export GEMINI_API_KEY="$(cat /run/secrets/gemini_api_key)"; \
         flags="--with-embeddings"; \
     fi; \
-    python -m draftly.retrieval build $flags; \
+    python legal_release.py $flags; \
     python -m draftly.case_retrieval build $flags; \
     python -c 'from pathlib import Path; from case_catalogue import record_coverage; from draftly.case_retrieval.index import build_index; record_coverage(Path("data/case-catalogue/cases.sqlite"), Path(build_index().db_path))'; \
     rm -f data/processed/retrieval-indexes/*/build.lock; \
     python -c 'import json; \
-from draftly.retrieval.corpus import corpus_fingerprint as s, load_statute_documents as d; \
+from legal_release import statute_fingerprint; \
 from draftly.case_retrieval.corpus import corpus_fingerprint as c, load_conveyancing_case_rows as r; \
-json.dump({"statutes": s(d()), "cases": c(r())}, open("data/processed/retrieval-indexes/frozen-fingerprints.json", "w"))'
+json.dump({"statutes": statute_fingerprint(), "cases": c(r())}, open("data/processed/retrieval-indexes/frozen-fingerprints.json", "w"))'
 
 
 FROM base AS runtime
 RUN useradd --system --uid 10001 --no-create-home draftly
 COPY --from=builder /app/data/processed/retrieval-indexes data/processed/retrieval-indexes
 COPY --from=builder /app/data/case-catalogue data/case-catalogue
+COPY --from=builder /app/trust trust
 # Read per request by /topics, /sources, /search, /similar-cases and the case graph.
 COPY data/processed/documents.csv data/processed/source-registry.csv \
      data/processed/topics.csv data/processed/topic-sources.csv \

@@ -214,7 +214,8 @@ function safeSourceUrl(url: string | null | undefined): string | null {
 }
 
 function kindOf(citation: ResearchCitation): "statute" | "case" {
-  return citation.authorityKind ?? (citation.authorityId.toLowerCase().startsWith("commonlii-") ? "case" : "statute");
+  if (citation.authorityKind) return citation.authorityKind === "case" ? "case" : "statute";
+  return citation.authorityId.toLowerCase().startsWith("commonlii-") ? "case" : "statute";
 }
 
 /** One research answer: its claims, each tagged by the kind of source it cites when case law is involved. */

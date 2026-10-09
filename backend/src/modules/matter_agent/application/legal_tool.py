@@ -1,6 +1,7 @@
 """Only the research owner supplies legal claims; the agent cannot compose its own."""
 
 from src.modules.matter_agent.application.read_tools import _BaseTool
+from src.modules.matter_agent.domain.legal_context import AgentLegalContext
 from src.modules.matter_agent.domain.models import AgentCitation
 from src.modules.matter_agent.ports import ToolInvocation, ToolResult
 from src.modules.research.contracts import MatterResearchPort
@@ -13,6 +14,8 @@ class ResearchLegalQuestionTool(_BaseTool):
     properties = {
         "question": {"type": "string", "maxLength": 10000},
         "sources": {"type": "string", "enum": ["statutes", "cases", "all"]},
+        "transactionId": {"type": "string", "maxLength": 128},
+        "associationVersion": {"type": "integer", "minimum": 1},
     }
     required = ["question", "sources"]
 
@@ -28,6 +31,8 @@ class ResearchLegalQuestionTool(_BaseTool):
             question=invocation.arguments["question"],
             sources=SourceScope(invocation.arguments["sources"]),
             operation_id=invocation.job_id,
+            transaction_id=invocation.arguments.get("transactionId"),
+            association_version=invocation.arguments.get("associationVersion"),
         )
         citations = tuple(
             AgentCitation(
@@ -37,9 +42,10 @@ class ResearchLegalQuestionTool(_BaseTool):
                 # The retrieval flag establishes a source match, not lawyer review
                 # or current/consolidated law. The approved release is unverified.
                 verification_status="unverified",
-                page=p.page,
+                page=p.page if p.page > 0 else None,
                 passage=p.text,
                 corpus_version=p.corpus_version,
+                authority_metadata=p.authority_metadata,
             )
             for p in answer.passages
         )
@@ -57,6 +63,17 @@ class ResearchLegalQuestionTool(_BaseTool):
                 "unavailableReason": answer.unavailable_reason,
                 "degradedChannels": list(answer.degraded_channels),
             },
-            resource_refs=tuple(c.source_id for c in citations),
+            resource_refs=tuple(
+                dict.fromkeys(
+                    [*(c.source_id for c in citations), *(a.source_id for a in answer.authorities)]
+                )
+            ),
             citations=citations,
+            legal_context=AgentLegalContext(
+                date_context=answer.date_context,
+                authorities=answer.authorities,
+                coverage_gaps=answer.coverage_gaps,
+                source_release_version=answer.source_release_version,
+                unavailable_reason=answer.unavailable_reason,
+            ),
         )

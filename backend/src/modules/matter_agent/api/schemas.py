@@ -6,7 +6,7 @@ enums, never free strings (``api-conventions.md`` §9).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -41,6 +41,64 @@ class ConversationRead(_CamelModel):
     updated_at: datetime
 
 
+class LegalDateContextRead(_CamelModel):
+    current_date: date
+    transaction_id: str | None = None
+    association_version: int | None = None
+    transaction_date: date | None = None
+    fact_id: str | None = None
+    fact_version: int | None = None
+    reason: Literal["reviewed-date", "date-missing", "date-conflict", "transaction-required"]
+
+
+class AuthorityRelationshipRead(_CamelModel):
+    relation: Literal["amends", "supersedes", "made-under", "commences"]
+    target_source_id: str
+    target_reference: str | None = None
+    supporting_page: int | None = None
+    review_state: Literal["unreviewed", "reviewed"]
+
+
+class LegalAuthorityRead(_CamelModel):
+    source_id: str
+    title: str
+    reference: str
+    kind: Literal["statute", "amendment", "gazette"]
+    source_url: str
+    source_sha256: str
+    publication_date: date | None = None
+    effective_from: date | None = None
+    effective_to: date | None = None
+    commencement_known: bool
+    commencement_source_id: str | None = None
+    commencement_page: int | None = None
+    relationships: list[AuthorityRelationshipRead] = Field(default_factory=list)
+    release_version: str
+    review_state: Literal[
+        "discovered",
+        "provenance-recorded",
+        "rights-reviewed",
+        "content-reviewed",
+        "approved",
+        "quarantined",
+        "retired",
+        "unknown",
+    ]
+    currency_status: Literal["current", "superseded", "reverify", "unknown"]
+
+
+class LegalContextRead(_CamelModel):
+    kind: Literal["selection", "result"] = "result"
+    transaction_id: str | None = None
+    association_version: int | None = None
+    date_context: LegalDateContextRead | None = None
+    authorities: list[LegalAuthorityRead] = Field(default_factory=list)
+    coverage_gaps: list[str] = Field(default_factory=list)
+    source_release_version: str | None = None
+    unavailable_reason: str | None = None
+    visibility: Literal["available", "current-policy-unavailable"] = "available"
+
+
 class CitationRead(_CamelModel):
     source_id: str
     source_type: str
@@ -54,6 +112,7 @@ class CitationRead(_CamelModel):
     subject_id: str | None = None
     passage: str | None = None
     corpus_version: str | None = None
+    authority_metadata: LegalAuthorityRead | None = None
 
 
 class MessageRead(_CamelModel):
@@ -68,6 +127,7 @@ class MessageRead(_CamelModel):
     pending_action_id: str | None = None
     conversation_id: str | None = None
     citations: list[CitationRead] = Field(default_factory=list)
+    legal_context: LegalContextRead | None = None
 
 
 class PageInfo(_CamelModel):
@@ -85,6 +145,8 @@ class SendMessageRequest(_StrictCamel):
     """Requires ``Idempotency-Key`` (``api-conventions.md`` §4)."""
 
     content: str = Field(min_length=1, max_length=10_000)
+    transaction_id: str | None = Field(default=None, min_length=1, max_length=128)
+    association_version: int | None = Field(default=None, ge=1, strict=True)
 
 
 class JobRead(_CamelModel):

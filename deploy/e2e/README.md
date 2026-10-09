@@ -10,7 +10,8 @@ retrieval service, container hardening and memory limits.
 docker build -t draftly-backend:local ../../backend
 docker build -t draftly-frontend:local --build-arg NEXT_PUBLIC_API_BASE_URL=https://localhost ../../frontend
 docker build -t draftly-retrieval:local -f ../retrieval/Dockerfile \
-  --build-context deploy=../retrieval ../../../draftly
+  --build-context deploy=../retrieval --build-context platform=../../backend \
+  --build-context legal_sources=../retrieval/empty-release ../../../draftly
 
 # run (uses the backend's uv environment for pytest)
 cd ../../backend && uv run pytest ../deploy/e2e -v -p no:cacheprovider

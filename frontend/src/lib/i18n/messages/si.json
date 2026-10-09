@@ -2809,7 +2809,68 @@
     "turnFailedAfterTools": "මෙවලම් භාවිතයෙන් පසු ප්‍රතිචාරය සම්පූර්ණ කළ නොහැකි විය. නැවත ඉල්ලීමක් යැවීමට පෙර කාරණයේ සටහන් වූ කටයුතු සමාලෝචනය කරන්න.",
     "resultRecord": "සටහන් කළ ප්‍රතිඵලය",
     "proposalUnavailable": "මෙම යෝජනාව ලබා ගත නොහැක. නැවත උත්සාහ කිරීමට පිටුව යළි පූරණය කරන්න.",
-    "matchedSource": "ගැළපෙන මූලාශ්‍ර පාඨය"
+    "matchedSource": "ගැළපෙන මූලාශ්‍ර පාඨය",
+    "legalTransaction": "නීති පර්යේෂණය සඳහා ගනුදෙනුව",
+    "chooseLegalTransaction": "ගනුදෙනුවක් තෝරන්න",
+    "legalTransactionNumber": "ගනුදෙනුව {number} · සංශෝධනය {version}",
+    "refreshLegalTransactions": "තේරීම යළි පූරණය කරන්න",
+    "legalTransactionsUnavailable": "ගනුදෙනු තේරීම ලබා ගත නොහැක. යළි පූරණය කරන්න.",
+    "legalContext": "නීති මූලාශ්‍ර සහ දින",
+    "legalCurrentDate": "ඉල්ලීම කළ අවස්ථාවේ දිනය: {date}",
+    "legalTransactionDate": "සමාලෝචිත ගනුදෙනු දිනය: {date}",
+    "legalUnknown": "නොදනී",
+    "legalScopePin": "සටහන් කළ ගනුදෙනුව: {id} · සංශෝධනය {version}",
+    "legalFactPin": "සටහන් කළ දින කරුණ: {id} · අනුවාදය {version}",
+    "legalDateInputRequired": "දිනයට අදාළ පිළිතුරක් ඉල්ලීමට පෙර තෝරාගත් ගනුදෙනුව සහ එහි සහතික කිරීමේ දිනය සමාලෝචනය කරන්න.",
+    "legalReviewFacts": "කරුණු සමාලෝචනය",
+    "legalCoverageUnavailable": "ඉල්ලූ ඇතැම් මූලාශ්‍ර හෝ සහායක පාඨ කොටස් ලබා ගත නොහැක. පවතින මූලාශ්‍ර සමාලෝචනය කරන්න.",
+    "legalHistoryUnavailable": "වත්මන් මූලාශ්‍ර ප්‍රතිපත්තිය යටතේ සුරැකි නීති පිළිතුර සහ පාඨ කොටස් ලබා ගත නොහැක. මූලාශ්‍ර යොමු සහ දින රඳවා ඇත.",
+    "legalSourceLeads": "පරීක්ෂා කළ යුතු මූලාශ්‍ර",
+    "legalMetadataLead": "මූලාශ්‍ර තොරතුරු පමණි; මෙය සහායක පාඨ කොටසක් නොවේ.",
+    "legalSourceReview": "මූලාශ්‍ර සමාලෝචනය: {state}",
+    "legalCurrency": "සටහන් කළ වත්මන්භාවය: {state}",
+    "legalPublicationDate": "ප්‍රකාශන දිනය: {date}",
+    "legalEffectiveFrom": "සටහන් කළ බලාත්මක දිනය: {date}",
+    "legalEffectiveTo": "සටහන් කළ අවසන් දිනය: {date}",
+    "legalCommencementUnknown": "බලාත්මක වීමේ දිනය නොදනී. ප්‍රකාශන දිනය එය තහවුරු නොකරයි.",
+    "legalCommencementSource": "බලාත්මක වීමේ මූලාශ්‍රය: {source} · පිටුව {page}",
+    "legalTemporalNotice": "සටහන් කළ දින මූලාශ්‍රය විස්තර කරයි. මෙම කාරණයට එය අදාළ වන්නේද යන්න තීරණය නොකරයි.",
+    "legalOfficialSource": "නිල මූලාශ්‍රය විවෘත කරන්න",
+    "legalRelationshipLocator": "සම්බන්ධතාවයේ මූලාශ්‍ර පිටුව: {page} · {state}",
+    "legalKinds": {
+      "statute": "පනත",
+      "amendment": "සංශෝධනය",
+      "gazette": "ගැසට් පත්‍රය"
+    },
+    "legalReviewStates": {
+      "discovered": "හඳුනාගෙන ඇත",
+      "provenance-recorded": "මූලාශ්‍ර ඉතිහාසය සටහන් කර ඇත",
+      "rights-reviewed": "භාවිත හිමිකම් සමාලෝචිතයි",
+      "content-reviewed": "අන්තර්ගතය සමාලෝචිතයි",
+      "approved": "මූලාශ්‍ර නිකුතුව සමාලෝචිතයි",
+      "quarantined": "භාවිතයෙන් වෙන් කර ඇත",
+      "retired": "භාවිතයෙන් ඉවත් කර ඇත",
+      "unknown": "නොදනී"
+    },
+    "legalCurrencyStates": {
+      "current": "වත්මන්",
+      "superseded": "ප්‍රතිස්ථාපිතයි",
+      "reverify": "සමාලෝචනය අවශ්‍යයි",
+      "unknown": "නොදනී"
+    },
+    "legalRelations": {
+      "amends": "සංශෝධනය කරයි",
+      "supersedes": "ප්‍රතිස්ථාපනය කරයි",
+      "made-under": "යටතේ සකස් කර ඇත",
+      "commences": "බලාත්මක කරයි"
+    },
+    "legalRelationshipReview": {
+      "unreviewed": "සම්බන්ධතාව සමාලෝචනය කර නැත",
+      "reviewed": "සම්බන්ධතාව සමාලෝචිතයි"
+    },
+    "legalPassagePage": "මූලාශ්‍ර පිටුව: {page}",
+    "legalSourceRelease": "මූලාශ්‍ර තොරතුරු නිකුතුව: {version}",
+    "legalSourceFingerprint": "මූලාශ්‍ර ගොනුවේ අනන්‍ය අගය"
   },
   "gazette": {
     "modeLabel": "Drafting mode",

@@ -859,3 +859,27 @@ identical question receives a fresh key, while ambiguous acceptance retains the
 original retry key. Receipt reads never enqueue, compose or meter work.
 An absent session or active segment returns no acceptance proof. This read never
 provisions a session or conversation, or writes an audit event or outbox entry.
+
+## Durable legal context and policy replay (2026-10-09)
+
+The message request accepts an explicit transaction ID and association revision;
+both participate in its idempotency fingerprint. The saved user request retains
+the selection, and worker retries reuse it. Model-proposed scope cannot replace
+the saved selection or invent one when it is absent.
+
+Optional frozen `AgentLegalContext` records are stored as discriminated
+`legal-context-v1` entries in the existing citations JSON column. They are decoded
+as a separate message field and never numbered or used as claim evidence.
+Explicit ISO-date and metadata codecs restore typed dates and relationships.
+Optional citation metadata and context enter the canonical hash only when
+present; original nullable citation keys and every legacy hash remain unchanged.
+No database migration is required. Empty answers retain their result context.
+
+API and model history use a current-policy projection: one lookup per exact
+release, at most eight release groups, four concurrent requests and four seconds
+total. Groups over 100 source IDs or without established current permission are
+unavailable. Only genuine assistant legal citations trigger these checks.
+Withheld answers retain source/date references while hiding answer text and
+passages; persisted rows and their historical hashes are never rewritten.
+Overview and full Assistant share bilingual date/source inspection, explicit
+empty transaction selection and source leads separate from supporting passages.

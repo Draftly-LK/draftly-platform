@@ -46,6 +46,8 @@ class AudiencePolicy:
     quotation: QuotationPolicy
     download: DownloadPolicy
     approval: ReviewApproval
+    quotation_hashes: tuple[str, ...] = ()
+    quotation_character_limit: int | None = None
 
 
 @dataclass(frozen=True)

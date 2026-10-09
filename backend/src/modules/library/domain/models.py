@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-AuthorityType = Literal["statute", "amendment"]
+from src.modules.corpus_governance.contracts import AuthorityMetadata
+
+AuthorityType = Literal["statute", "amendment", "gazette"]
 AuthorityWeight = Literal["binding", "unverified-candidate"]
 
 
@@ -19,3 +21,4 @@ class LegalSourceSummary:
     source_url: str
     extraction_confidence: str
     corpus_version: str
+    metadata: AuthorityMetadata | None = None
