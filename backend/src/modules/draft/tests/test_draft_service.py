@@ -588,3 +588,45 @@ async def test_a_refused_generation_names_no_state() -> None:
         await _generate(service, status=SubtypeDecisionStatus.PROVISIONAL)
 
     assert workflow.requested == []
+
+
+# ── Explicit scope (Form 8 only) ─────────────────────────────────────────────
+
+
+async def test_scoped_generation_accepts_the_namespaced_form_08_id() -> None:
+    """The scope guard keys on the template's namespaced id, the same one the API permits."""
+    from src.modules.draft.contracts import FormScope
+    from src.platform.errors import DomainRuleError
+
+    service, repository, _, _ = _build()
+    with pytest.raises(DomainRuleError, match="Scope validation is unavailable"):
+        await service.generate_form(
+            user_id=USER_ID,
+            matter_id=MATTER_ID,
+            actor_id=USER_ID,
+            correlation_id=_CORRELATION,
+            subtype_id=TRANSFER_SUBTYPE_ID,
+            subtype_decision_status=SubtypeDecisionStatus.LAWYER_CONFIRMED,
+            template_id=FORM_08_TEMPLATE_ID,
+            scope=FormScope(transaction_id="transaction_1", association_version=1),
+        )
+    assert repository.forms == {}
+
+
+async def test_scoped_generation_is_refused_for_a_companion_template() -> None:
+    from src.modules.draft.contracts import FormScope
+    from src.platform.errors import DomainRuleError
+
+    service, repository, _, _ = _build()
+    with pytest.raises(DomainRuleError, match="Form 8 only"):
+        await service.generate_form(
+            user_id=USER_ID,
+            matter_id=MATTER_ID,
+            actor_id=USER_ID,
+            correlation_id=_CORRELATION,
+            subtype_id=TRANSFER_SUBTYPE_ID,
+            subtype_decision_status=SubtypeDecisionStatus.LAWYER_CONFIRMED,
+            template_id=TIRE_31_TEMPLATE_ID,
+            scope=FormScope(transaction_id="transaction_1", association_version=1),
+        )
+    assert repository.forms == {}
