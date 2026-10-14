@@ -66,6 +66,7 @@ export function RequirementsPanel({
   const [stale, setStale] = useState(false);
   const [inboxError, setInboxError] = useState(false);
   const [assessmentPending, setAssessmentPending] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(5);
   const epoch = useRef(0);
   const contextEpoch = useRef(0);
   const openedTarget = useRef<string | null>(null);
@@ -115,6 +116,7 @@ export function RequirementsPanel({
     const generation = epoch;
     let alive = true;
     setLoading(true);
+    setVisibleCount(5);
     setSelected(null);
     setError(null);
     setAssessmentPending(false);
@@ -256,7 +258,8 @@ export function RequirementsPanel({
         Number(a.computedResolution === "SATISFIED") -
         Number(b.computedResolution === "SATISFIED"),
     );
-  const groups = [...new Set(rows.map((row) => row.group))];
+  const visibleRows = mode === "checks" ? rows.slice(0, visibleCount) : rows;
+  const groups = [...new Set(visibleRows.map((row) => row.group))];
   const choices: Record<string, string[]> = {
     digitalReview: ["LAWYER_CONFIRMED", "REJECTED"],
     consistency: ["MATCHED", "MISMATCH"],
@@ -327,7 +330,7 @@ export function RequirementsPanel({
           {t("collectDocuments")}
         </Link>
         <div className="grid gap-4 xl:grid-cols-2">
-          <div className="space-y-4">
+          <div id={`${id}-list`} className="space-y-4">
             {groups.map((group) => (
               <section key={group}>
                 <h3 className="text-muted-ink mb-2 text-sm font-semibold">
@@ -336,7 +339,7 @@ export function RequirementsPanel({
                     : t("groups.OFFICE_ADDED")}
                 </h3>
                 <ul className="divide-border divide-y">
-                  {rows
+                  {visibleRows
                     .filter((item) => item.group === group)
                     .map((item) => (
                       <li key={item.id} className="py-2">
@@ -383,6 +386,27 @@ export function RequirementsPanel({
                 </ul>
               </section>
             ))}
+            {mode === "checks" && rows.length > 5 && (
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-muted-ink text-xs" role="status">
+                  {t("showingRequirements", {
+                    shown: visibleRows.length,
+                    total: rows.length,
+                  })}
+                </p>
+                {visibleCount < rows.length && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy || loading}
+                    aria-controls={`${id}-list`}
+                    onClick={() => setVisibleCount((count) => count + 5)}
+                  >
+                    {t("loadMoreRequirements")}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
           {selected ? (
             <div className="border-border space-y-4 border-t pt-4 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">

@@ -3312,6 +3312,8 @@
     "quickAccept": "Accept"
   },
   "requirementsWork": {
+    "loadMoreRequirements": "තවත් පෙන්වන්න",
+    "showingRequirements": "{total} න් {shown} ක් පෙන්වයි",
     "assessmentPending": "අවශ්‍යතා තවමත් ඇගයෙමින් පවතී. ඉදිරියට යාමට ගොනුවේ සැකසුම, ලේඛන සහ තහවුරු කළ කරුණු සමාලෝචනය කරන්න.",
     "reviewSetup": "ගොනුවේ සැකසුම සමාලෝචනය කරන්න",
     "selectRequirement": "විස්තර සහ සමාලෝචන ක්‍රියා බැලීමට වම්පස ඇති අවශ්‍යතාවක් තෝරන්න.",
