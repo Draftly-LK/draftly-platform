@@ -1631,7 +1631,7 @@ def build_research_service(session: AsyncSession) -> ResearchService:
 
     settings = get_settings()
     composer = (
-        GroundedStatuteComposer(api_key=settings.gemini_api_key, model=settings.research_model)
+        GroundedStatuteComposer(api_key=settings.gemini_api_key, model=settings.matter_agent_model)
         if settings.gemini_api_key and settings.provider_data_approval
         else None
     )

@@ -29,6 +29,7 @@
     "next-intl": "4.3.4",
     "react": "19.1.1",
     "react-dom": "19.1.1",
+    "react-markdown": "^10.1.0",
     "tailwind-merge": "2.6.0",
     "zustand": "5.0.8"
   },

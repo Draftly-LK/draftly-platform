@@ -1,6 +1,7 @@
 """Authorized, metered grounded answers for the durable matter conversation."""
 
 import asyncio
+from dataclasses import replace
 from typing import Any
 
 from src.modules.auth.ports import AuditEventInput, AuditPort
@@ -66,7 +67,28 @@ class MatterResearchService:
             ctx.actor_id, "research_queries.monthly", 1, operation_id
         )
         try:
-            result, _, _ = await self._research.retrieve(question, scope, sources)
+            law_overview = question.startswith(
+                "Identify potentially relevant Sri Lankan laws for this case."
+            )
+            if law_overview:
+                # Keep names and OCR values out of the legal search query. Each
+                # topic gets evidence instead of one topic crowding out the rest.
+                searches = await asyncio.gather(
+                    *(
+                        self._research.retrieve(query, scope, sources)
+                        for query in (
+                            "Registration of Title Act registered land instrument gift transfer",
+                            "Notaries Ordinance execution attestation instrument gift",
+                            "Prevention of Frauds Ordinance immovable property gift writing",
+                        )
+                    )
+                )
+                result = replace(
+                    searches[0][0],
+                    passages=[p for found, _, _ in searches for p in found.passages[:4]],
+                )
+            else:
+                result, _, _ = await self._research.retrieve(question, scope, sources)
             result_context.update(
                 authorities=tuple(result.authorities),
                 coverage_gaps=tuple(result.coverage_gaps),
@@ -85,11 +107,13 @@ class MatterResearchService:
                 + "\n\nServer-controlled date context: "
                 + f"current date {date_context.current_date.isoformat()}; reviewed transaction date {date_context.transaction_date}. Treat other dates in the question as assumptions, not canonical matter facts. Unknown commencement stays unknown. Source dates alone do not establish applicability."
             )
-            law_overview = question.startswith(
-                "Identify potentially relevant Sri Lankan laws for this case."
-            )
             if law_overview:
                 dated_question += (
+                    "\nGive a concise list headed by law names, explaining relevance to "
+                    "the case facts. Start with the Registration of Title Act where its "
+                    "retrieved text supports the registered-title transaction. Distinguish "
+                    "title registration from ordinary deed registration; do not apply the "
+                    "Registration of Documents Ordinance indiscriminately to RTA land. "
                     "\nOnly identify potentially relevant laws supported by the retrieved "
                     "passages. A reviewed transaction date is not required for this general "
                     "overview. Do not assert that any provision applies to this transaction "

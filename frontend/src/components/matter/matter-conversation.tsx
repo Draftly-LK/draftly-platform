@@ -21,6 +21,7 @@ import type { DigitalReviewStatus } from "@/types/rta";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   LegalResultContext,
   LegalAuthorityPanel,
@@ -804,7 +805,7 @@ function MessageRow({
               })}
             </time>
           </div>
-          <p className="mt-1 whitespace-pre-wrap leading-7">
+          <div className="mt-1 break-words leading-7">
             {message.legalContext?.visibility === "current-policy-unavailable"
               ? t("legalHistoryUnavailable")
               : renderCitedText(
@@ -817,7 +818,7 @@ function MessageRow({
                     }),
                   t,
                 )}
-          </p>
+          </div>
           {assistant && message.citations.length > 0 && (
             <div
               className="mt-3 flex flex-wrap gap-2"
@@ -841,11 +842,14 @@ function MessageRow({
             </div>
           )}
           {assistant && message.legalContext?.kind === "result" && (
-            <LegalResultContext
-              context={message.legalContext}
-              matterId={matterId}
-              onSelect={onCitation}
-            />
+            <details className="text-muted-ink mt-3 text-xs">
+              <summary className="cursor-pointer">{t("legalContext")}</summary>
+              <LegalResultContext
+                context={message.legalContext}
+                matterId={matterId}
+                onSelect={onCitation}
+              />
+            </details>
           )}
           {assistant && (
             <p className="text-muted-ink mt-3 text-xs">
@@ -864,23 +868,57 @@ function renderCitedText(
   onCitation: (citation: ApiAgentCitation) => void,
   t: ReturnType<typeof useTranslations>,
 ) {
-  return content.split(/(\[\d+\])/g).map((part, index) => {
-    const match = /^\[(\d+)\]$/.exec(part);
-    if (!match) return part;
-    const citation = citations[Number(match[1]) - 1];
-    if (!citation) return part;
-    return (
-      <button
-        key={`${citation.sourceId}-${index}`}
-        type="button"
-        className="text-forest focus-visible:outline-ring mx-0.5 font-semibold hover:underline focus-visible:outline-2"
-        aria-label={`${citation.label}, ${t(`verification.${citation.verificationStatus}`)}`}
-        onClick={() => onCitation(citation)}
-      >
-        {part}
-      </button>
-    );
-  });
+  const markdown = content
+    .replace(/\[{1,2}ref:([A-Za-z0-9_-]+)\]{1,2}/g, (_, id: string) => {
+      const index = citations.findIndex((citation) => citation.sourceId === id);
+      return index >= 0 ? `[${index + 1}]` : "";
+    })
+    .replace(/\[(\d+)\](?!\()/g, "[$1](#citation-$1)");
+  return (
+    <ReactMarkdown
+      skipHtml
+      components={{
+        h1: ({ children }) => (
+          <h3 className="mb-2 mt-4 text-lg font-semibold">{children}</h3>
+        ),
+        h2: ({ children }) => (
+          <h3 className="mb-2 mt-4 font-semibold">{children}</h3>
+        ),
+        h3: ({ children }) => (
+          <h3 className="mb-2 mt-4 font-semibold">{children}</h3>
+        ),
+        h4: ({ children }) => (
+          <h4 className="mb-1 mt-3 font-semibold">{children}</h4>
+        ),
+        p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+        ul: ({ children }) => (
+          <ul className="mb-3 ml-5 list-disc space-y-1">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="mb-3 ml-5 list-decimal space-y-1">{children}</ol>
+        ),
+        hr: () => <hr className="border-border my-4" />,
+        img: () => null,
+        a: ({ href, children }) => {
+          const match = /^#citation-(\d+)$/.exec(href ?? "");
+          const citation = match ? citations[Number(match[1]) - 1] : undefined;
+          if (!citation) return <span>{children}</span>;
+          return (
+            <button
+              type="button"
+              className="text-forest focus-visible:outline-ring mx-0.5 font-semibold hover:underline focus-visible:outline-2"
+              aria-label={`${citation.label}, ${t(`verification.${citation.verificationStatus}`)}`}
+              onClick={() => onCitation(citation)}
+            >
+              [{children}]
+            </button>
+          );
+        },
+      }}
+    >
+      {markdown}
+    </ReactMarkdown>
+  );
 }
 
 function Composer({
