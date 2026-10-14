@@ -34,6 +34,31 @@ class HttpStatuteRetrievalAdapter:
         self._base_url, self._timeout, self._transport = base_url.rstrip("/"), timeout, transport
 
     async def passages_available(self, source_ids: tuple[str, ...], *, corpus_version: str) -> bool:
+        if source_ids and re.fullmatch(r"statutes-index-v1:[0-9a-f]{64}", corpus_version):
+            # The deployed legacy corpus already serves these statute passages.
+            # Replay requires its exact current frozen identity and source IDs;
+            # this establishes availability, never verification or currency.
+            try:
+                async with httpx.AsyncClient(
+                    timeout=self._timeout, transport=self._transport
+                ) as client:
+                    response = await client.get(f"{self._base_url}/sources")
+                    response.raise_for_status()
+                    data = response.json()
+                    if response.headers.get("X-Draftly-Corpus-Version") != corpus_version:
+                        return False
+                    available = (
+                        {
+                            str(item.get("source_id", "")).upper()
+                            for item in data
+                            if isinstance(item, dict)
+                        }
+                        if isinstance(data, list)
+                        else set()
+                    )
+                    return all(key.upper().split(":", 1)[0] in available for key in source_ids)
+            except (httpx.HTTPError, ValueError, TypeError):
+                return False
         if not source_ids or re.fullmatch(r"legal-index-v2:[0-9a-f]{64}", corpus_version) is None:
             return False
         try:
