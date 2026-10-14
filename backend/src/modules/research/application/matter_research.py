@@ -85,9 +85,20 @@ class MatterResearchService:
                 + "\n\nServer-controlled date context: "
                 + f"current date {date_context.current_date.isoformat()}; reviewed transaction date {date_context.transaction_date}. Treat other dates in the question as assumptions, not canonical matter facts. Unknown commencement stays unknown. Source dates alone do not establish applicability."
             )
+            law_overview = question.startswith(
+                "Identify potentially relevant Sri Lankan laws for this case."
+            )
+            if law_overview:
+                dated_question += (
+                    "\nOnly identify potentially relevant laws supported by the retrieved "
+                    "passages. A reviewed transaction date is not required for this general "
+                    "overview. Do not assert that any provision applies to this transaction "
+                    "or is currently in force. State that applicability and commencement "
+                    "require lawyer review of the transaction date and facts."
+                )
             composed = (
                 await self._research.composer.compose(dated_question, eligible)
-                if eligible and date_context.reason == "reviewed-date"
+                if eligible and (date_context.reason == "reviewed-date" or law_overview)
                 else ()
             )
             available = {
@@ -113,7 +124,7 @@ class MatterResearchService:
                 unavailable_reason=None
                 if retained
                 else "legal_date_input_required"
-                if date_context.reason != "reviewed-date"
+                if date_context.reason != "reviewed-date" and not law_overview
                 else "insufficient_authority",
                 degraded_channels=tuple(result.degraded_channels),
                 **result_context,
