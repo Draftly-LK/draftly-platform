@@ -200,8 +200,12 @@ lawyer     = User.notaryRegistration is present
 
 `auth_service.authorize` checks the capability. The practising-status predicate
 is evaluated by `auth_service.require_practising_notary(ctx, matter_id?)` and is
-required by `instrument.attest`, `draft.approve`, `particular.verify`,
+required by `instrument.attest`, `draft.approve`,
 `finding.waive`, `step.override`, and `deadline.confirm`.
+
+Canonical fact-register decisions use the current RTA fact capability and matter
+ownership without a notary registration or certificate-expiry prerequisite
+(user-approved change, 2026-10-14).
 
 The word "clerk" is retired from all service docs. The refusal case is
 "an actor holding a capability the map does not grant".

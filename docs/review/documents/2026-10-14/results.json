@@ -1,0 +1,35 @@
+{
+  "synthetic": true,
+  "scope": "Real DocumentsScreen and RequirementsPanel; synthetic inbox and checklist; shell omitted",
+  "results": [
+    {
+      "locale": "en",
+      "width": 1440,
+      "tablesBeforeRequirements": true,
+      "overflow": false,
+      "serious": []
+    },
+    {
+      "locale": "en",
+      "width": 1024,
+      "tablesBeforeRequirements": true,
+      "overflow": false,
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1440,
+      "tablesBeforeRequirements": true,
+      "overflow": false,
+      "serious": []
+    },
+    {
+      "locale": "si",
+      "width": 1024,
+      "tablesBeforeRequirements": true,
+      "overflow": false,
+      "serious": []
+    }
+  ],
+  "errors": []
+}

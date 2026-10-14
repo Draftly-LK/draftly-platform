@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { Button, buttonClass } from "@/components/ui/button";
 import {
   ApiError,
@@ -265,362 +266,384 @@ export function RequirementsPanel({
       ? ["NOT_APPLICABLE", "WAIVED_BY_LAWYER"]
       : [],
   };
+  const Panel = mode === "documents" ? "details" : "section";
   return (
-    <section
+    <Panel
       aria-labelledby={`${id}-heading`}
-      className="border-border rounded-card space-y-4 border p-4 sm:p-5"
+      open={mode === "documents" && targetRequirementId ? true : undefined}
+      className="border-border rounded-card group border p-4 sm:p-5"
     >
-      <h2 id={`${id}-heading`} className="text-lg font-semibold">
-        {t(mode === "documents" ? "documentsTitle" : "checksTitle")}
-      </h2>
-
-      {loading && <p role="status">{t("loading")}</p>}
-      {error && (
-        <p className="text-red text-sm" role="alert">
-          {error}
-        </p>
+      {mode === "documents" ? (
+        <summary className="text-ink hover:bg-hover-bg flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 rounded [&::-webkit-details-marker]:hidden">
+          <h2 id={`${id}-heading`} className="text-lg font-semibold">
+            {t("documentsTitle")}
+          </h2>
+          <ChevronDown
+            aria-hidden="true"
+            className="size-5 shrink-0 group-open:rotate-180"
+            strokeWidth={1.5}
+          />
+        </summary>
+      ) : (
+        <h2 id={`${id}-heading`} className="text-lg font-semibold">
+          {t("checksTitle")}
+        </h2>
       )}
-      {assessmentPending && (
-        <div className="space-y-3">
-          <p role="status" className="text-muted-ink text-sm">
-            {t("assessmentPending")}
+      <div className="mt-4 space-y-4">
+        {loading && <p role="status">{t("loading")}</p>}
+        {error && (
+          <p className="text-red text-sm" role="alert">
+            {error}
           </p>
-          <Link
-            className={buttonClass("primary")}
-            href={`/matters/${encodeURIComponent(matterId)}/facts#transaction-scope`}
-          >
-            {t("reviewSetup")}
-          </Link>
-        </div>
-      )}
-      {notice && (
-        <p className="text-muted-ink text-sm" role="status">
-          {notice}
-        </p>
-      )}
-      {!loading && checklist && rows.length === 0 && <p>{t("empty")}</p>}
-      {inboxError && (
-        <p role="alert" className="text-amber-text text-sm">
-          {t("inboxUnavailable")}
-        </p>
-      )}
-      <Link
-        className="text-link text-sm underline"
-        href={`/matters/${matterId}/documents`}
-      >
-        {t("collectDocuments")}
-      </Link>
-      <div className="grid gap-4 xl:grid-cols-2">
-        <div className="space-y-4">
-          {groups.map((group) => (
-            <section key={group}>
-              <h3 className="text-muted-ink mb-2 text-sm font-semibold">
-                {t.has(`groups.${group}`)
-                  ? t(`groups.${group}`)
-                  : t("groups.OFFICE_ADDED")}
+        )}
+        {assessmentPending && (
+          <div className="space-y-3">
+            <p role="status" className="text-muted-ink text-sm">
+              {t("assessmentPending")}
+            </p>
+            <Link
+              className={buttonClass("primary")}
+              href={`/matters/${encodeURIComponent(matterId)}/facts#transaction-scope`}
+            >
+              {t("reviewSetup")}
+            </Link>
+          </div>
+        )}
+        {notice && (
+          <p className="text-muted-ink text-sm" role="status">
+            {notice}
+          </p>
+        )}
+        {!loading && checklist && rows.length === 0 && <p>{t("empty")}</p>}
+        {inboxError && (
+          <p role="alert" className="text-amber-text text-sm">
+            {t("inboxUnavailable")}
+          </p>
+        )}
+        <Link
+          className="text-link text-sm underline"
+          href={`/matters/${matterId}/documents`}
+        >
+          {t("collectDocuments")}
+        </Link>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className="space-y-4">
+            {groups.map((group) => (
+              <section key={group}>
+                <h3 className="text-muted-ink mb-2 text-sm font-semibold">
+                  {t.has(`groups.${group}`)
+                    ? t(`groups.${group}`)
+                    : t("groups.OFFICE_ADDED")}
+                </h3>
+                <ul className="divide-border divide-y">
+                  {rows
+                    .filter((item) => item.group === group)
+                    .map((item) => (
+                      <li key={item.id} className="py-2">
+                        <button
+                          type="button"
+                          disabled={busy || loading}
+                          className="text-ink hover:bg-selected-bg w-full rounded px-2 py-1 text-left text-sm font-medium"
+                          onClick={() => choose(item)}
+                        >
+                          {title(item)}
+                        </button>
+                        <p className="text-muted-ink px-2 text-xs leading-5">
+                          {t("applicability")}: {label(item.applicability)}
+                        </p>
+                        <dl className="grid gap-x-3 px-2 text-xs leading-5 sm:grid-cols-2">
+                          {[
+                            "collection",
+                            "digitalReview",
+                            "physicalOriginal",
+                            "currency",
+                            "consistency",
+                          ].map((field) => (
+                            <div key={field}>
+                              <dt className="text-muted-ink inline">
+                                {t(field)}:{" "}
+                              </dt>
+                              <dd className="inline">
+                                {label(
+                                  String(
+                                    item[field as keyof ApiChecklistItemState],
+                                  ),
+                                )}
+                              </dd>
+                            </div>
+                          ))}
+                        </dl>
+                        {item.computedResolution === "SATISFIED" && (
+                          <p className="text-forest px-2 text-xs">
+                            {t("satisfied")}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+          {selected ? (
+            <div className="border-border space-y-4 border-t pt-4 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
+              <h3 ref={selectedHeading} tabIndex={-1} className="font-semibold">
+                {title(selected)}
               </h3>
-              <ul className="divide-border divide-y">
-                {rows
-                  .filter((item) => item.group === group)
-                  .map((item) => (
-                    <li key={item.id} className="py-2">
-                      <button
-                        type="button"
-                        disabled={busy || loading}
-                        className="text-ink hover:bg-selected-bg w-full rounded px-2 py-1 text-left text-sm font-medium"
-                        onClick={() => choose(item)}
+              {selected.explanationKey && (
+                <p className="text-muted-ink text-sm">
+                  {root.has(selected.explanationKey)
+                    ? root(selected.explanationKey)
+                    : humanizeMessageKey(selected.explanationKey)}
+                </p>
+              )}
+              <p className="text-muted-ink text-sm">
+                {t("applicability")}: {label(selected.applicability)}
+              </p>
+              <p className="text-muted-ink text-xs">
+                {t("version", { version: selected.version })}
+              </p>
+              <dl className="grid grid-cols-2 gap-2 text-sm">
+                {[
+                  "collection",
+                  "digitalReview",
+                  "physicalOriginal",
+                  "currency",
+                  "consistency",
+                ].map((field) => (
+                  <div key={field}>
+                    <dt className="text-muted-ink">{t(field)}</dt>
+                    <dd>
+                      {label(
+                        String(selected[field as keyof ApiChecklistItemState]),
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <Button
+                variant="secondary"
+                disabled={busy}
+                onClick={() => void renew()}
+              >
+                {t("renew")}
+              </Button>
+              {
+                <div className="space-y-3">
+                  <label className="block text-sm" htmlFor={`${id}-document`}>
+                    {t("document")}
+                  </label>
+                  <select
+                    id={`${id}-document`}
+                    className={control}
+                    value={document?.id ?? ""}
+                    disabled={busy || stale || inboxError}
+                    onChange={(event) =>
+                      setDocument(
+                        documents.find(
+                          (row) => row.id === event.target.value,
+                        ) ?? null,
+                      )
+                    }
+                  >
+                    <option value="">{t("chooseDocument")}</option>
+                    {documents
+                      .filter(
+                        (row) =>
+                          selected.acceptedDocumentClassIds.length === 0 ||
+                          selected.acceptedDocumentClassIds.includes(
+                            row.classId ?? "",
+                          ),
+                      )
+                      .map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {humanizeMessageKey(row.classId ?? "document")}{" "}
+                          &middot; {row.id}
+                        </option>
+                      ))}
+                  </select>
+                  {document && (
+                    <Link
+                      className="text-link text-sm underline"
+                      href={`/matters/${matterId}/documents/${document.id}/review`}
+                    >
+                      {t("viewDocument")}
+                    </Link>
+                  )}
+                  <Button
+                    disabled={
+                      busy ||
+                      inboxError ||
+                      stale ||
+                      !document ||
+                      !document.interpretationGeneration
+                    }
+                    onClick={() =>
+                      document &&
+                      void save("links", {
+                        detectedDocumentId: document.id,
+                        documentVersion: document.version,
+                        interpretationGeneration:
+                          document.interpretationGeneration,
+                      })
+                    }
+                  >
+                    {t("link")}
+                  </Button>
+                </div>
+              }
+              {mode === "checks" && (
+                <>
+                  {selected.physicalOriginalPolicy !== "NOT_REQUIRED" && (
+                    <div className="space-y-3">
+                      <label className="block text-sm" htmlFor={`${id}-method`}>
+                        {t("method")}
+                      </label>
+                      <input
+                        id={`${id}-method`}
+                        className={control}
+                        value={method}
+                        maxLength={128}
+                        onChange={(event) => setMethod(event.target.value)}
+                        disabled={busy || stale}
+                      />
+                      <Button
+                        disabled={
+                          busy ||
+                          stale ||
+                          !method.trim() ||
+                          selected.liveLinkCount === 0
+                        }
+                        onClick={() =>
+                          void save("original-inspection", {
+                            method: method.trim(),
+                          })
+                        }
                       >
-                        {title(item)}
-                      </button>
-                      <p className="text-muted-ink px-2 text-xs leading-5">
-                        {t("applicability")}: {label(item.applicability)}
-                      </p>
-                      <dl className="grid gap-x-3 px-2 text-xs leading-5 sm:grid-cols-2">
-                        {[
-                          "collection",
-                          "digitalReview",
-                          "physicalOriginal",
-                          "currency",
-                          "consistency",
-                        ].map((field) => (
-                          <div key={field}>
-                            <dt className="text-muted-ink inline">
-                              {t(field)}:{" "}
-                            </dt>
-                            <dd className="inline">
-                              {label(
-                                String(
-                                  item[field as keyof ApiChecklistItemState],
-                                ),
-                              )}
-                            </dd>
-                          </div>
-                        ))}
-                      </dl>
-                      {item.computedResolution === "SATISFIED" && (
-                        <p className="text-forest px-2 text-xs">
-                          {t("satisfied")}
+                        {t("inspect")}
+                      </Button>
+                      {selected.liveLinkCount === 0 && (
+                        <p className="text-muted-ink text-sm">
+                          {t("linkFirst")}
                         </p>
                       )}
-                    </li>
-                  ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-        {selected ? (
-          <div className="border-border space-y-4 border-t pt-4 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0">
-            <h3 ref={selectedHeading} tabIndex={-1} className="font-semibold">
-              {title(selected)}
-            </h3>
-            {selected.explanationKey && (
-              <p className="text-muted-ink text-sm">
-                {root.has(selected.explanationKey)
-                  ? root(selected.explanationKey)
-                  : humanizeMessageKey(selected.explanationKey)}
-              </p>
-            )}
-            <p className="text-muted-ink text-sm">
-              {t("applicability")}: {label(selected.applicability)}
-            </p>
-            <p className="text-muted-ink text-xs">
-              {t("version", { version: selected.version })}
-            </p>
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              {[
-                "collection",
-                "digitalReview",
-                "physicalOriginal",
-                "currency",
-                "consistency",
-              ].map((field) => (
-                <div key={field}>
-                  <dt className="text-muted-ink">{t(field)}</dt>
-                  <dd>
-                    {label(
-                      String(selected[field as keyof ApiChecklistItemState]),
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <Button
-              variant="secondary"
-              disabled={busy}
-              onClick={() => void renew()}
-            >
-              {t("renew")}
-            </Button>
-            {
-              <div className="space-y-3">
-                <label className="block text-sm" htmlFor={`${id}-document`}>
-                  {t("document")}
-                </label>
-                <select
-                  id={`${id}-document`}
-                  className={control}
-                  value={document?.id ?? ""}
-                  disabled={busy || stale || inboxError}
-                  onChange={(event) =>
-                    setDocument(
-                      documents.find((row) => row.id === event.target.value) ??
-                        null,
-                    )
-                  }
-                >
-                  <option value="">{t("chooseDocument")}</option>
-                  {documents
-                    .filter(
-                      (row) =>
-                        selected.acceptedDocumentClassIds.length === 0 ||
-                        selected.acceptedDocumentClassIds.includes(
-                          row.classId ?? "",
-                        ),
-                    )
-                    .map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {humanizeMessageKey(row.classId ?? "document")} &middot;{" "}
-                        {row.id}
-                      </option>
-                    ))}
-                </select>
-                {document && (
-                  <Link
-                    className="text-link text-sm underline"
-                    href={`/matters/${matterId}/documents/${document.id}/review`}
-                  >
-                    {t("viewDocument")}
-                  </Link>
-                )}
-                <Button
-                  disabled={
-                    busy ||
-                    inboxError ||
-                    stale ||
-                    !document ||
-                    !document.interpretationGeneration
-                  }
-                  onClick={() =>
-                    document &&
-                    void save("links", {
-                      detectedDocumentId: document.id,
-                      documentVersion: document.version,
-                      interpretationGeneration:
-                        document.interpretationGeneration,
-                    })
-                  }
-                >
-                  {t("link")}
-                </Button>
-              </div>
-            }
-            {mode === "checks" && (
-              <>
-                {selected.physicalOriginalPolicy !== "NOT_REQUIRED" && (
+                    </div>
+                  )}
                   <div className="space-y-3">
-                    <label className="block text-sm" htmlFor={`${id}-method`}>
-                      {t("method")}
+                    <label
+                      className="block text-sm"
+                      htmlFor={`${id}-dimension`}
+                    >
+                      {t("dimension")}
                     </label>
-                    <input
-                      id={`${id}-method`}
+                    <select
+                      id={`${id}-dimension`}
                       className={control}
-                      value={method}
-                      maxLength={128}
-                      onChange={(event) => setMethod(event.target.value)}
+                      value={dimension}
                       disabled={busy || stale}
+                      onChange={(event) => {
+                        setDimension(event.target.value);
+                        setDecision("");
+                      }}
+                    >
+                      {Object.entries(choices)
+                        .filter(([, values]) => values.length)
+                        .map(([field]) => (
+                          <option value={field} key={field}>
+                            {t(field)}
+                          </option>
+                        ))}
+                    </select>
+                    <label className="block text-sm" htmlFor={`${id}-decision`}>
+                      {t("decision")}
+                    </label>
+                    <select
+                      id={`${id}-decision`}
+                      className={control}
+                      value={decision}
+                      disabled={busy || stale}
+                      onChange={(event) => setDecision(event.target.value)}
+                    >
+                      <option value="">{t("chooseDecision")}</option>
+                      {(choices[dimension] ?? []).map((value) => (
+                        <option key={value} value={value}>
+                          {label(value)}
+                        </option>
+                      ))}
+                    </select>
+                    <label className="block text-sm" htmlFor={`${id}-reason`}>
+                      {t("reason")}
+                    </label>
+                    <textarea
+                      id={`${id}-reason`}
+                      className={control}
+                      value={reason}
+                      disabled={busy || stale}
+                      onChange={(event) => setReason(event.target.value)}
                     />
                     <Button
                       disabled={
                         busy ||
                         stale ||
-                        !method.trim() ||
-                        selected.liveLinkCount === 0
+                        !decision ||
+                        (dimension === "applicability" && !reason.trim())
                       }
                       onClick={() =>
-                        void save("original-inspection", {
-                          method: method.trim(),
+                        void save("decisions", {
+                          [dimension]: decision,
+                          ...(reason.trim() ? { reason: reason.trim() } : {}),
                         })
                       }
                     >
-                      {t("inspect")}
+                      {t("saveDecision")}
                     </Button>
-                    {selected.liveLinkCount === 0 && (
-                      <p className="text-muted-ink text-sm">{t("linkFirst")}</p>
-                    )}
                   </div>
-                )}
-                <div className="space-y-3">
-                  <label className="block text-sm" htmlFor={`${id}-dimension`}>
-                    {t("dimension")}
-                  </label>
-                  <select
-                    id={`${id}-dimension`}
-                    className={control}
-                    value={dimension}
-                    disabled={busy || stale}
-                    onChange={(event) => {
-                      setDimension(event.target.value);
-                      setDecision("");
-                    }}
+                </>
+              )}
+              <details className="text-sm">
+                <summary>{t("history")}</summary>
+                {(selected.inspectionHistory ?? []).map((entry, index) => (
+                  <p
+                    className="my-2 break-words"
+                    key={`${entry.inspectedAt}-${index}`}
                   >
-                    {Object.entries(choices)
-                      .filter(([, values]) => values.length)
-                      .map(([field]) => (
-                        <option value={field} key={field}>
-                          {t(field)}
-                        </option>
-                      ))}
-                  </select>
-                  <label className="block text-sm" htmlFor={`${id}-decision`}>
-                    {t("decision")}
-                  </label>
-                  <select
-                    id={`${id}-decision`}
-                    className={control}
-                    value={decision}
-                    disabled={busy || stale}
-                    onChange={(event) => setDecision(event.target.value)}
-                  >
-                    <option value="">{t("chooseDecision")}</option>
-                    {(choices[dimension] ?? []).map((value) => (
-                      <option key={value} value={value}>
-                        {label(value)}
-                      </option>
+                    {entry.method} &middot; {entry.reviewerId} &middot;{" "}
+                    {entry.inspectedAt}
+                    {entry.originals.map((source) => (
+                      <span
+                        className="block"
+                        key={`${source.sourceFileId}-${source.storageVersion}`}
+                      >
+                        {source.sourceFileId} &middot; {source.storageVersion}{" "}
+                        &middot; {source.sha256}
+                      </span>
                     ))}
-                  </select>
-                  <label className="block text-sm" htmlFor={`${id}-reason`}>
-                    {t("reason")}
-                  </label>
-                  <textarea
-                    id={`${id}-reason`}
-                    className={control}
-                    value={reason}
-                    disabled={busy || stale}
-                    onChange={(event) => setReason(event.target.value)}
-                  />
-                  <Button
-                    disabled={
-                      busy ||
-                      stale ||
-                      !decision ||
-                      (dimension === "applicability" && !reason.trim())
-                    }
-                    onClick={() =>
-                      void save("decisions", {
-                        [dimension]: decision,
-                        ...(reason.trim() ? { reason: reason.trim() } : {}),
-                      })
-                    }
-                  >
-                    {t("saveDecision")}
-                  </Button>
-                </div>
-              </>
-            )}
-            <details className="text-sm">
-              <summary>{t("history")}</summary>
-              {(selected.inspectionHistory ?? []).map((entry, index) => (
-                <p
-                  className="my-2 break-words"
-                  key={`${entry.inspectedAt}-${index}`}
-                >
-                  {entry.method} &middot; {entry.reviewerId} &middot;{" "}
-                  {entry.inspectedAt}
-                  {entry.originals.map((source) => (
-                    <span
-                      className="block"
-                      key={`${source.sourceFileId}-${source.storageVersion}`}
+                  </p>
+                ))}
+                {links.map((link) => (
+                  <p key={link.id} className="my-2 break-words">
+                    <Link
+                      className="text-link underline"
+                      href={`/matters/${matterId}/documents/${link.detectedDocumentId}/review`}
                     >
-                      {source.sourceFileId} &middot; {source.storageVersion}{" "}
-                      &middot; {source.sha256}
-                    </span>
-                  ))}
-                </p>
-              ))}
-              {links.map((link) => (
-                <p key={link.id} className="my-2 break-words">
-                  <Link
-                    className="text-link underline"
-                    href={`/matters/${matterId}/documents/${link.detectedDocumentId}/review`}
-                  >
-                    {t("viewDocument")}
-                  </Link>{" "}
-                  &middot; {label(link.digitalReview)} &middot;{" "}
-                  {t(link.isLive ? "liveEvidence" : "historicalEvidence")}{" "}
-                  &middot;{" "}
-                  {t("version", { version: link.documentVersion ?? 0 })}
-                </p>
-              ))}
-            </details>
-          </div>
-        ) : !loading && rows.length > 0 ? (
-          <div className="border-border flex items-center justify-center border-t px-4 py-8 xl:border-l xl:border-t-0">
-            <p className="text-muted-ink max-w-xs text-center text-sm leading-6">
-              {t("selectRequirement")}
-            </p>
-          </div>
-        ) : null}
+                      {t("viewDocument")}
+                    </Link>{" "}
+                    &middot; {label(link.digitalReview)} &middot;{" "}
+                    {t(link.isLive ? "liveEvidence" : "historicalEvidence")}{" "}
+                    &middot;{" "}
+                    {t("version", { version: link.documentVersion ?? 0 })}
+                  </p>
+                ))}
+              </details>
+            </div>
+          ) : !loading && rows.length > 0 ? (
+            <div className="border-border flex items-center justify-center border-t px-4 py-8 xl:border-l xl:border-t-0">
+              <p className="text-muted-ink max-w-xs text-center text-sm leading-6">
+                {t("selectRequirement")}
+              </p>
+            </div>
+          ) : null}
+        </div>
       </div>
-    </section>
+    </Panel>
   );
 }

@@ -225,6 +225,9 @@ jurisdiction.
 
 An expired certificate blocks those capabilities. It does not warn and proceed.
 
+Canonical fact-register decisions are exempt from this predicate as of
+2026-10-14. They retain their RTA capability and matter-ownership checks.
+
 The refusal case for missing capability is 403 `capability_denied`.
 
 ### NIC / identity — keep two things distinct
