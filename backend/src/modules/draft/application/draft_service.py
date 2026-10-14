@@ -188,7 +188,7 @@ class DraftService:
         candidates = await self._read_candidates(user_id, matter_id)
         missing_causes: dict[str, str] = {}
         if scope is not None:
-            if template.id != "reg_2022_form_08":
+            if template.id != "rta.reg.2022.form.08":
                 raise DomainRuleError("Explicit form scope is supported for Form 8 only.")
             await self._validate_scope(user_id, matter_id, scope)
             resolutions, missing_causes = resolve_scoped_template(template, scope, facts)

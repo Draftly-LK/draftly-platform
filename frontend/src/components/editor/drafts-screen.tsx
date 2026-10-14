@@ -136,7 +136,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
     try {
       if (!scope) return;
       const newForm = await generateForm(getToken, matterId, {
-        templateId: "reg_2022_form_08",
+        templateId: "rta.reg.2022.form.08",
         scope,
         ...(predecessor ? { predecessorFormId: predecessor } : {}),
       });
@@ -340,7 +340,7 @@ function DraftsScreenContent({ matterId, getToken }: DraftsScreenContentProps) {
                           {t("open")}
                           <ArrowRight className="size-4" strokeWidth={1.5} />
                         </Link>
-                        {form.templateId === "reg_2022_form_08" && (
+                        {form.templateId === "rta.reg.2022.form.08" && (
                           <Button
                             variant="secondary"
                             onClick={() => {
