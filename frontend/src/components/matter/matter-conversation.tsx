@@ -25,7 +25,6 @@ import ReactMarkdown from "react-markdown";
 import {
   LegalResultContext,
   LegalAuthorityPanel,
-  LegalTransactionSelector,
   type LegalSourceSelection,
 } from "./legal-source-context";
 import type { ApiResearchSelection } from "@/lib/api/agent";
@@ -111,8 +110,6 @@ export function MatterConversation({
   const [phase, setPhase] = useState<Phase>("idle");
   const [job, setJob] = useState<ApiAgentJob | null>(null);
   const [draft, setDraft] = useState("");
-  const [legalSelection, setLegalSelection] =
-    useState<ApiResearchSelection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [context, setContext] = useState<MatterContext | null>(null);
@@ -462,7 +459,6 @@ export function MatterConversation({
         {
           content,
           conversationId: owner.conversationId,
-          ...(legalSelection ?? {}),
         },
       );
       if (lifetime.current?.signal.aborted) return;
@@ -470,7 +466,7 @@ export function MatterConversation({
         content,
         idempotencyKey: intent.key,
         intent,
-        selection: legalSelection,
+        selection: null,
       };
       pendingSend.current = send;
       setDraft("");
@@ -480,7 +476,7 @@ export function MatterConversation({
       setError(describe(cause, t));
       busyRef.current = false;
     }
-  }, [draft, loading, matterId, runSend, t, legalSelection]);
+  }, [draft, loading, matterId, runSend, t]);
 
   const startFresh = useCallback(async () => {
     if (busyRef.current || !window.confirm(t("newConversationConfirm"))) return;
@@ -675,12 +671,6 @@ export function MatterConversation({
                 )}
               </div>
             )}
-            <LegalTransactionSelector
-              matterId={matterId}
-              value={legalSelection}
-              onChange={setLegalSelection}
-              disabled={busy || loading}
-            />
             <Composer
               busy={busy || loading}
               draft={draft}
