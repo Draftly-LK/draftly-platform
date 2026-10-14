@@ -45,7 +45,12 @@ class HttpStatuteRetrievalAdapter:
                     response = await client.get(f"{self._base_url}/sources")
                     response.raise_for_status()
                     data = response.json()
-                    if response.headers.get("X-Draftly-Corpus-Version") != corpus_version:
+                    identity = await client.get(
+                        f"{self._base_url}/search",
+                        params={"q": "Registration of Title Act", "limit": 1},
+                    )
+                    identity.raise_for_status()
+                    if identity.headers.get("X-Draftly-Corpus-Version") != corpus_version:
                         return False
                     available = (
                         {
