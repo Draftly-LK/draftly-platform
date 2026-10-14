@@ -56,6 +56,7 @@ x-backend: &backend
     GEMINI_CLASSIFY_MODEL: ${GEMINI_CLASSIFY_MODEL:-gemini-2.5-flash-lite}
     GEMINI_EXTRACT_MODEL: ${GEMINI_EXTRACT_MODEL:-gemini-2.5-flash-lite}
     EXTRACTION_PROVIDER: ${EXTRACTION_PROVIDER:-stub}
+    DEMO_RELAXED_GATES: ${DEMO_RELAXED_GATES:-false}
     PROVIDER_DATA_APPROVAL: ${PROVIDER_DATA_APPROVAL:-false}
     # ADC file path only; credential contents live outside the repository.
     GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-}

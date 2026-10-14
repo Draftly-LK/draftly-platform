@@ -41,13 +41,13 @@ def _synthetic_form8_png() -> bytes:
         "Registration of Title Act, No. 21 of 1998 - Section 43",
         "1. Particulars of Land Parcel:",
         "a) District : Colombo",
-        "b) Divisional Secretary's Division : Homagama",
-        "g) Cadastral Map No. : 520005",
-        "j) Parcel No. : 0020",
-        "l) Extent : 0.0153 Hectares",
+        "b) Divisional Secretary's Division : Synthetic DS Division",
+        "g) Cadastral Map No. : 900001",
+        "j) Parcel No. : 0099",
+        "l) Extent : 0.0250 Hectares",
         "3. Transferor: (a) Full Name: SYNTHETIC SELLER (PVT) LTD",
         "4. Transferee: (a) Full Name: SYNTHETIC BUYER",
-        "   (b) National Identity Card No: 945873370V",
+        "   (b) National Identity Card No: 900010002V",
         "5. Consideration: Rs. 1,000,000",
     ]
     for row, line in enumerate(lines):
@@ -77,4 +77,4 @@ async def test_live_classify_and_extract() -> None:
     assert report.kind == "form8-instrument"
     values = {f.key: f.value for f in report.fields}
     assert values.get("district") == "Colombo"
-    assert values.get("parcelNo") == "0020"
+    assert values.get("parcelNo") == "0099"
