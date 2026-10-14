@@ -190,62 +190,6 @@ function DocumentsFlow({
             <p className="mt-2 font-medium">{t("emptyFiles")}</p>
           </div>
         ) : null}
-        <PageRecovery
-          getToken={getToken}
-          inbox={inbox}
-          onChange={() => setRefresh((value) => value + 1)}
-        />
-        <div className="my-6"><RequirementsPanel matterId={matterId} getToken={getToken} mode="documents" /></div>
-        {/* Summary bar */}
-        <div className="border-border bg-surface rounded-card mb-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,12em),1fr))] gap-4 border p-4 text-center [&>div]:min-w-0 [&>div]:break-words">
-          <div>
-            <p className="text-muted-ink text-xs font-semibold">
-              {t("totalDocuments", { count: inbox.documents.length })}
-            </p>
-            <p className="text-2xl font-semibold">{inbox.documents.length}</p>
-          </div>
-          <div>
-            <p className="text-muted-ink text-xs font-semibold">
-              {t("boundaryReview", {
-                count: inbox.boundaryReviewDocumentIds.length,
-              })}
-            </p>
-            <p className="text-2xl font-semibold">
-              {inbox.boundaryReviewDocumentIds.length}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-ink text-xs font-semibold">
-              {t("classificationReview", {
-                count: inbox.classificationReviewDocumentIds.length,
-              })}
-            </p>
-            <p className="text-2xl font-semibold">
-              {inbox.classificationReviewDocumentIds.length}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-ink text-xs font-semibold">
-              {t("unidentified", {
-                count: inbox.unidentifiedDocumentIds.length,
-              })}
-            </p>
-            <p className="text-2xl font-semibold">
-              {inbox.unidentifiedDocumentIds.length}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-ink text-xs font-semibold">
-              {t("unprocessed", {
-                count: inbox.unprocessedSourceFileIds.length,
-              })}
-            </p>
-            <p className="text-2xl font-semibold">
-              {inbox.unprocessedSourceFileIds.length}
-            </p>
-          </div>
-        </div>
-
         {/* Unprocessed files prompt */}
         {inbox.unprocessedSourceFileIds.length > 0 && (
           <div className="border-border-strong bg-selected-bg mb-6 rounded border p-4">
@@ -456,6 +400,68 @@ function DocumentsFlow({
             </div>
           </section>
         )}
+
+        <PageRecovery
+          getToken={getToken}
+          inbox={inbox}
+          onChange={() => setRefresh((value) => value + 1)}
+        />
+        <div className="my-6">
+          <RequirementsPanel
+            matterId={matterId}
+            getToken={getToken}
+            mode="documents"
+          />
+        </div>
+        {/* Summary bar */}
+        <div className="border-border bg-surface rounded-card mb-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,12em),1fr))] gap-4 border p-4 text-center [&>div]:min-w-0 [&>div]:break-words">
+          <div>
+            <p className="text-muted-ink text-xs font-semibold">
+              {t("totalDocuments", { count: inbox.documents.length })}
+            </p>
+            <p className="text-2xl font-semibold">{inbox.documents.length}</p>
+          </div>
+          <div>
+            <p className="text-muted-ink text-xs font-semibold">
+              {t("boundaryReview", {
+                count: inbox.boundaryReviewDocumentIds.length,
+              })}
+            </p>
+            <p className="text-2xl font-semibold">
+              {inbox.boundaryReviewDocumentIds.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-ink text-xs font-semibold">
+              {t("classificationReview", {
+                count: inbox.classificationReviewDocumentIds.length,
+              })}
+            </p>
+            <p className="text-2xl font-semibold">
+              {inbox.classificationReviewDocumentIds.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-ink text-xs font-semibold">
+              {t("unidentified", {
+                count: inbox.unidentifiedDocumentIds.length,
+              })}
+            </p>
+            <p className="text-2xl font-semibold">
+              {inbox.unidentifiedDocumentIds.length}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-ink text-xs font-semibold">
+              {t("unprocessed", {
+                count: inbox.unprocessedSourceFileIds.length,
+              })}
+            </p>
+            <p className="text-2xl font-semibold">
+              {inbox.unprocessedSourceFileIds.length}
+            </p>
+          </div>
+        </div>
       </div>
     </AppShell>
   );

@@ -353,7 +353,7 @@ as `expectedScopeToken`. Acceptance omits scope fields. Association returns the
 destination scope's token, so no destination-token endpoint or client-generated
 hash is needed. Reload only when a later competing change makes that token stale.
 
-All mutations authorize the current RTA capability and practising status inside
+All mutations authorize the current RTA capability inside
 the application service, including replay. The matter lock serializes review
 and scope writes; shared `SqlIdempotencyStore` fingerprints the request. Retries
 return the same fact ID without another successor/decision. The returned row
@@ -382,7 +382,7 @@ fact evidence through the owning public port in the same matter transaction.
 NIC fields are holder observations: `holderNic`, `holderNameEn`, `holderNameSi`,
 `holderDateOfBirth`, `holderAddress`; survey plans retain `surveyorRegistration`.
 They introduce no global required-form facts. They remain subject to explicit
-human evidence review and practising authorization. Existing role-specific
+human evidence review and capability authorization. Existing role-specific
 critical identity types/capabilities and prescribed form mappings are unchanged;
 a later explicit role binding must preserve their critical policy. Legacy NIC
 `transfereeNic` is an observational alias only when the source owner identifies
@@ -444,7 +444,7 @@ conflict tuples so explicit scoped consumers do not borrow matter-wide conflicts
 
 `ReviewFactInput` is published from `verification.contracts` and remains imported
 at the existing review-service path for compatibility. `authorize_decision` exposes
-the owning service's existing fact-specific capability and practising checks.
+the owning service's existing fact-specific capability checks.
 The conversation uses these only for an explicit lawyer-confirmed acceptance card;
 it cannot directly mutate candidates or assert a reviewed value. Confirmation
 pins the exact candidate version, scope token and selected conflict IDs and uses

@@ -116,8 +116,6 @@ class FactReviewService:
             matter=matter,
             capability=capability,
         )
-        if fact_type_id is not None:
-            await self._practising.assert_practising(ctx)
 
     async def authorize_decision(self, ctx: RequestContext, matter_id: str, fact_id: str) -> None:
         """Current authority for a confirmed external proposal, including replay."""

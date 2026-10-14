@@ -14,7 +14,6 @@ from src.bootstrap import (
     build_matter_service,
     build_source_file_storage,
 )
-from src.modules.auth.domain.errors import PracticeStatusError
 from src.modules.auth.domain.models import Role
 from src.modules.auth.infrastructure.orm import UserRow
 from src.modules.document.contracts import FactEvidenceLocator
@@ -63,7 +62,7 @@ async def matter(db_session, tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("missing", [True, False])
-async def test_missing_or_expired_practice_refuses_manual_command(db_session, matter, missing):
+async def test_missing_or_expired_practice_allows_fact_acceptance(db_session, matter, missing):
     user = await db_session.get(UserRow, matter.lawyer_id)
     if missing:
         user.notary_registration = None
@@ -71,13 +70,18 @@ async def test_missing_or_expired_practice_refuses_manual_command(db_session, ma
         user.certificate_valid_until = datetime.now(UTC) - timedelta(days=1)
     await db_session.flush()
     await db_session.refresh(user)
-    with pytest.raises(PracticeStatusError):
-        await build_fact_review_service(db_session).add_manual(
-            RequestContext(matter.lawyer_id, Role.APPROVER, "practice-refusal"),
-            matter.matter_id,
-            ManualFactInput("rta.parcel.village", "SYNTHETIC", "Synthetic instructions"),
-            key="practice",
-        )
+    ctx, data = await scoped_input(db_session, matter)
+    service = build_fact_review_service(db_session)
+    fact = await service.add_manual(ctx, matter.matter_id, data, key="practice")
+    view = await service.get_view(ctx, matter.matter_id, fact.id)
+    accepted = await service.decide(
+        ctx,
+        matter.matter_id,
+        fact.id,
+        ReviewFactInput("accept", fact.version, expected_scope_token=view.scope_token),
+        key="practice-accept",
+    )
+    assert accepted.is_confirmed
 
 
 async def test_manual_input_is_unverified_and_replay_does_not_duplicate(db_session, matter):
